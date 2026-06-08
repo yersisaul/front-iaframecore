@@ -1,12 +1,14 @@
 import { Routes } from '@angular/router';
 
-import { Login } from './login/login';
-import { DashboardLayout } from './layouts/dashboard-layout/dashboard-layout';
-import { Roles } from './roles/roles';
-import { Usuarios } from './usuarios/usuarios';
-import { Nodos } from './nodos/nodos';
-import { Horarios } from './horarios/horarios';
-import { Metadatos } from './metadatos/metadatos';
+import { Login } from './presentation/views/login/login';
+import { DashboardLayout } from './presentation/layouts/dashboard-layout/dashboard-layout';
+import { Roles } from './presentation/views/roles/roles';
+import { Usuarios } from './presentation/views/usuarios/usuarios';
+import { Nodos } from './presentation/views/nodos/nodos';
+import { Horarios } from './presentation/views/horarios/horarios';
+import { Metadatos } from './presentation/views/metadatos/metadatos';
+import { authGuard } from './presentation/guards/auth.guard';
+import { AppRole } from './core/domain/entities/role.enum';
 
 export const routes: Routes = [
     { path: '', redirectTo: '/login', pathMatch: 'full' }, // Redirige a login por defecto
@@ -14,9 +16,12 @@ export const routes: Routes = [
     {
         path: 'dashboard', // Ruta protegida para el dashboard
         component: DashboardLayout,
+        canActivate: [authGuard],
+        canActivateChild: [authGuard], // Valida roles en rutas hijas al navegar directamente
         children: [
-            { path: 'roles', component: Roles },
-            { path: 'usuarios', component: Usuarios },
+            { path: '', redirectTo: 'nodos', pathMatch: 'full' }, // Redirección por defecto
+            { path: 'roles', component: Roles, data: { roles: [AppRole.ADMIN] } },
+            { path: 'usuarios', component: Usuarios, data: { roles: [AppRole.ADMIN] } },
             { path: 'nodos', component: Nodos },
             { path: 'horarios', component: Horarios },
             { path: 'metadatos', component: Metadatos }

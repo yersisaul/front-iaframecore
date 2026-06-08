@@ -1,0 +1,61 @@
+<div class="container-fluid mt-3">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold text-dark">
+        <i class="bi bi-clock-history text-primary me-2"></i>Programación de Horarios
+      </h2>
+      <p class="text-muted mb-0">Configuración e intervalos de ejecución para tareas en segundo plano del sistema.</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+          <h5 class="fw-bold text-dark mb-0">Tareas Cron Programadas</h5>
+        </div>
+        <div class="card-body p-4">
+          <div class="list-group list-group-flush">
+            <!-- Tarea 1 -->
+            <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="fw-bold mb-1">Backup Diario de PostgreSQL</h6>
+                <span class="text-muted small">Fórmula cron: <code>0 2 * * *</code> (Todos los días a las 02:00 AM)</span>
+              </div>
+              <span class="badge bg-success">Activo</span>
+            </div>
+            <!-- Tarea 2 -->
+            <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="fw-bold mb-1">Limpieza de Sesiones Expiradas</h6>
+                <span class="text-muted small">Fórmula cron: <code>*/30 * * * *</code> (Cada 30 minutos)</span>
+              </div>
+              <span class="badge bg-success">Activo</span>
+            </div>
+            <!-- Tarea 3 -->
+            <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="fw-bold mb-1">Verificación de Integridad de Nodos</h6>
+                <span class="text-muted small">Fórmula cron: <code>*/5 * * * *</code> (Cada 5 minutos)</span>
+              </div>
+              <span class="badge bg-warning text-dark">En Espera</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm rounded-3 bg-primary text-white">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-3"><i class="bi bi-info-circle-fill me-2"></i>Estado del Planificador</h5>
+          <p class="mb-4 small opacity-75">El planificador interno está sincronizado con el huso horario local del backend Python/SQLAlchemy.</p>
+          <div class="d-flex align-items-center">
+            <span class="spinner-grow spinner-grow-sm me-2" role="status" aria-hidden="true"></span>
+            <span class="fw-semibold">Planificador Corriendo</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

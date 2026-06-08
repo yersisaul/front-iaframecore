@@ -1,0 +1,88 @@
+<div class="login-wrapper d-flex align-items-center justify-content-center min-vh-100">
+  <div class="glass-card p-5 shadow-lg">
+    <div class="text-center mb-4">
+      <div class="logo-circle mb-3 mx-auto d-flex align-items-center justify-content-center">
+        <i class="bi bi-shield-lock-fill text-primary fs-3"></i>
+      </div>
+      <h2 class="text-white fw-bold">Bienvenido</h2>
+      <p class="text-muted">Inicia sesión en la plataforma core</p>
+    </div>
+
+    @if (errorMessage()) {
+      <div class="alert alert-danger border-0 text-center py-2 mb-4 animate-shake" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage() }}
+      </div>
+    }
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <!-- Campo Usuario -->
+      <div class="mb-4">
+        <label for="username" class="form-label text-white-50 small">Usuario</label>
+        <div class="input-group">
+          <span class="input-group-text bg-dark-transparent border-0 text-white-50">
+            <i class="bi bi-person-fill"></i>
+          </span>
+          <input 
+            type="text" 
+            id="username" 
+            formControlName="username" 
+            class="form-control bg-dark-transparent border-0 text-white" 
+            placeholder="Introduce tu usuario"
+            [class.is-invalid]="loginForm.get('username')?.touched && loginForm.get('username')?.invalid"
+          />
+        </div>
+        @if (loginForm.get('username')?.touched && loginForm.get('username')?.errors?.['required']) {
+          <div class="text-danger small mt-1">El usuario es requerido.</div>
+        }
+        @if (loginForm.get('username')?.touched && loginForm.get('username')?.errors?.['minlength']) {
+          <div class="text-danger small mt-1">El usuario debe tener al menos 3 caracteres.</div>
+        }
+      </div>
+
+      <!-- Campo Contraseña -->
+      <div class="mb-4">
+        <label for="contrasena" class="form-label text-white-50 small">Contraseña</label>
+        <div class="input-group">
+          <span class="input-group-text bg-dark-transparent border-0 text-white-50">
+            <i class="bi bi-lock-fill"></i>
+          </span>
+          <input 
+            [type]="showPassword() ? 'text' : 'password'" 
+            id="contrasena" 
+            formControlName="contrasena" 
+            class="form-control bg-dark-transparent border-0 text-white" 
+            placeholder="••••••••"
+            [class.is-invalid]="loginForm.get('contrasena')?.touched && loginForm.get('contrasena')?.invalid"
+          />
+          <button 
+            type="button" 
+            class="btn btn-outline-dark-transparent border-0 text-white-50" 
+            (click)="togglePasswordVisibility()"
+          >
+            <i class="bi" [class.bi-eye-fill]="showPassword()" [class.bi-eye-slash-fill]="!showPassword()"></i>
+          </button>
+        </div>
+        @if (loginForm.get('contrasena')?.touched && loginForm.get('contrasena')?.errors?.['required']) {
+          <div class="text-danger small mt-1">La contraseña es requerida.</div>
+        }
+        @if (loginForm.get('contrasena')?.touched && loginForm.get('contrasena')?.errors?.['minlength']) {
+          <div class="text-danger small mt-1">La contraseña debe tener al menos 6 caracteres.</div>
+        }
+      </div>
+
+      <!-- Botón de Envío -->
+      <button 
+        type="submit" 
+        class="btn btn-primary w-100 py-3 mt-3 fw-bold btn-submit d-flex align-items-center justify-content-center"
+        [disabled]="loginForm.invalid || isLoading()"
+      >
+        @if (isLoading()) {
+          <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+          <span>Verificando...</span>
+        } @else {
+          <span>Ingresar</span>
+        }
+      </button>
+    </form>
+  </div>
+</div>

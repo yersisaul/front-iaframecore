@@ -1,0 +1,26 @@
+.nav-link {
+  transition: all 0.2s ease-in-out;
+}
+
+.nav-link:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.nav-link.active {
+  background-color: #3b82f6 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
+}
+
+.nav-link.active i {
+  color: #fff !important;
+}
+
+.nav-link i {
+  color: #6c757d;
+  transition: color 0.2s ease-in-out;
+}
+
+.nav-link:hover i {
+  color: #212529;
+}

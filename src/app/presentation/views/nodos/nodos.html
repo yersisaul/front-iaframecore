@@ -1,0 +1,75 @@
+<div class="container-fluid mt-3">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold text-dark">
+        <i class="bi bi-diagram-3-fill text-primary me-2"></i>Gestión de Nodos
+      </h2>
+      <p class="text-muted mb-0">Visualización y estado en tiempo real de los servidores activos de la plataforma core.</p>
+    </div>
+    <span class="badge bg-success px-3 py-2 fs-7 d-flex align-items-center">
+      <i class="bi bi-check-circle-fill me-1"></i>Conectado a API
+    </span>
+  </div>
+
+  <div class="row g-4">
+    <!-- Nodo 1 -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="p-2 bg-primary-subtle rounded text-primary">
+              <i class="bi bi-hdd-network-fill fs-4"></i>
+            </div>
+            <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded">Activo</span>
+          </div>
+          <h5 class="fw-bold mb-1">Nodo Principal (API-01)</h5>
+          <p class="text-muted small mb-3">IP: 192.168.1.50</p>
+          <div class="border-top pt-3 text-muted small d-flex justify-content-between">
+            <span>CPU: 24%</span>
+            <span>RAM: 4.2 GB / 8 GB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nodo 2 -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="p-2 bg-primary-subtle rounded text-primary">
+              <i class="bi bi-hdd-network-fill fs-4"></i>
+            </div>
+            <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded">Activo</span>
+          </div>
+          <h5 class="fw-bold mb-1">Nodo de Procesamiento (Worker-01)</h5>
+          <p class="text-muted small mb-3">IP: 192.168.1.51</p>
+          <div class="border-top pt-3 text-muted small d-flex justify-content-between">
+            <span>CPU: 58%</span>
+            <span>RAM: 6.8 GB / 16 GB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nodo 3 -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="p-2 bg-secondary-subtle rounded text-secondary">
+              <i class="bi bi-hdd-network-fill fs-4"></i>
+            </div>
+            <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1 rounded">Inactivo</span>
+          </div>
+          <h5 class="fw-bold mb-1">Nodo de Respaldo (Backup-02)</h5>
+          <p class="text-muted small mb-3">IP: 192.168.1.99</p>
+          <div class="border-top pt-3 text-muted small d-flex justify-content-between">
+            <span>CPU: 0%</span>
+            <span>RAM: -- / 8 GB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
