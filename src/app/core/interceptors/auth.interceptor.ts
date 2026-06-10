@@ -2,8 +2,7 @@ import { HttpInterceptorFn } from '@angular/common/http';
 import { AppEnvironment } from '../config/app-environment';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const isApiRequest = req.url.startsWith(AppEnvironment.apiUrl) || 
-                       (typeof window !== 'undefined' && req.url.startsWith(window.location.origin + AppEnvironment.apiUrl));
+  const isApiRequest = req.url.startsWith(AppEnvironment.apiUrl);
 
   if (isApiRequest) {
     const clonedReq = req.clone({ withCredentials: true });
@@ -11,5 +10,6 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   }
   return next(req);
 };
+
 
 

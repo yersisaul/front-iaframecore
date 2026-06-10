@@ -1,60 +1,59 @@
-<nav class="navbar navbar-dark bg-dark sticky-top px-3">
-  <div class="container-fluid d-flex justify-content-between align-items-center">
-    <span class="navbar-brand mb-0 h1 d-flex align-items-center">
-      <i class="bi bi-list me-2"></i>Panel de Control
-    </span>
-    @if (currentUser()) {
-      <div class="d-flex align-items-center text-white-50">
-        <span class="me-3 small">
-          <i class="bi bi-person-circle me-1"></i>
-          {{ currentUser()?.name || currentUser()?.username }} ({{ currentUser()?.role }})
-        </span>
-        <button class="btn btn-outline-danger btn-sm border-0 d-flex align-items-center" (click)="onLogout()">
-          <i class="bi bi-box-arrow-right me-1"></i>Salir
-        </button>
-      </div>
+<nav class="sidebar-nav">
+  <!-- Cabecera del Sidebar con Marca -->
+  <div class="sidebar-header d-flex align-items-center mb-4 px-3" [class.justify-content-center]="isCollapsed()">
+    <div class="logo-wrapper d-flex align-items-center gap-2">
+      <img src="assets/icons/logo.svg" alt="AZOR" style="width: 24px; height: 24px;" />
+      <span class="fw-bold fs-5 text-gradient" [class.d-none]="isCollapsed()">Azor</span>
+    </div>
+  </div>
+
+  <ul class="nav flex-column flex-grow-1">
+    <li class="nav-item mb-2">
+      <a routerLink="/dashboard/nodos" routerLinkActive="active"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
+        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Nodos' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-nodos nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()">Nodos</span>
+      </a>
+    </li>
+    <li class="nav-item mb-2">
+      <a routerLink="/dashboard/metadatos" routerLinkActive="active"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
+        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Metadatos' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-metadatos nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()">Metadatos</span>
+      </a>
+    </li>
+
+    @if (isAdmin()) {
+    <li class="nav-item mb-2">
+      <a routerLink="/dashboard/roles" routerLinkActive="active"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
+        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Roles' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-roles nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()">Roles</span>
+      </a>
+    </li>
+    <li class="nav-item mb-2">
+      <a routerLink="/dashboard/usuarios" routerLinkActive="active"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
+        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Usuarios' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-usuarios nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()">Usuarios</span>
+      </a>
+    </li>
     }
+  </ul>
+
+  <div class="sidebar-footer border-top pt-3 d-flex flex-column gap-2">
+    <app-session-control [isCollapsed]="isCollapsed()"></app-session-control>
   </div>
 </nav>
-
-<div class="d-flex" style="min-height: calc(100vh - 56px);">
-  <nav class="bg-light p-4 d-flex flex-column justify-content-between" style="width: 260px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
-    <ul class="nav flex-column">
-      <li class="nav-item mb-2">
-        <a routerLink="/dashboard/nodos" routerLinkActive="active" class="nav-link text-dark fw-500 d-flex align-items-center px-3 py-2 rounded">
-          <i class="bi bi-diagram-3 me-3"></i>
-          <span>Nodos</span>
-        </a>
-      </li>
-      <li class="nav-item mb-2">
-        <a routerLink="/dashboard/metadatos" routerLinkActive="active" class="nav-link text-dark fw-500 d-flex align-items-center px-3 py-2 rounded">
-          <i class="bi bi-file-earmark-text me-3"></i>
-          <span>Metadatos</span>
-        </a>
-      </li>
-      
-      @if (isAdmin()) {
-        <li class="nav-item mb-2">
-          <a routerLink="/dashboard/roles" routerLinkActive="active" class="nav-link text-dark fw-500 d-flex align-items-center px-3 py-2 rounded">
-            <i class="bi bi-shield-lock me-3"></i>
-            <span>Roles</span>
-          </a>
-        </li>
-        <li class="nav-item mb-2">
-          <a routerLink="/dashboard/usuarios" routerLinkActive="active" class="nav-link text-dark fw-500 d-flex align-items-center px-3 py-2 rounded">
-            <i class="bi bi-people me-3"></i>
-            <span>Usuarios</span>
-          </a>
-        </li>
-      }
-    </ul>
-    
-    <div class="sidebar-footer border-top pt-3 text-muted small">
-      <i class="bi bi-info-circle me-1"></i>Core Plataforma v{{ environment.version }}
-    </div>
-  </nav>
-
-  <main class="flex-grow-1 p-4 bg-light-gray" style="background-color: #f8f9fa;">
-    <ng-content></ng-content>
-  </main>
-</div>

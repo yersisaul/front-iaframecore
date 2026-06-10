@@ -1,1 +1,147 @@
-/* You can add global styles to this file, and also import other style files */
+/* Variables de tema */
+:root {
+  --bg-primary: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-sidebar: #ffffff;
+  --text-sidebar: #333333;
+  --text-primary: #333333;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --border-color: #cbd5e1;
+  --border-color-translucent: rgba(203, 213, 225, 0.8);
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-light: rgba(59, 130, 246, 0.1);
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+[data-bs-theme="dark"] {
+  --bg-primary: #121212;
+  --bg-surface: #1e1e1e;
+  --bg-sidebar: #1e1e1e;
+  --text-sidebar: #cbd5e1;
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --border-color: #475569;
+  --border-color-translucent: rgba(71, 85, 105, 0.8);
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-light: rgba(59, 130, 246, 0.2);
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+}
+
+/* Transiciones globales */
+body {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100vh;
+}
+
+/* Clase base para iconos dinámicos usando CSS mask */
+.icon-svg {
+  display: inline-block;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  vertical-align: middle;
+  transition: background-color 0.3s ease;
+}
+
+/* Definición de todas las clases de máscara */
+.icon-nodos {
+  -webkit-mask-image: url('/assets/icons/nodos.svg');
+  mask-image: url('/assets/icons/nodos.svg');
+}
+
+.icon-metadatos {
+  -webkit-mask-image: url('/assets/icons/metadatos.svg');
+  mask-image: url('/assets/icons/metadatos.svg');
+}
+
+.icon-roles {
+  -webkit-mask-image: url('/assets/icons/roles.svg');
+  mask-image: url('/assets/icons/roles.svg');
+}
+
+.icon-usuarios {
+  -webkit-mask-image: url('/assets/icons/usuarios.svg');
+  mask-image: url('/assets/icons/usuarios.svg');
+}
+
+.icon-info {
+  -webkit-mask-image: url('/assets/icons/info.svg');
+  mask-image: url('/assets/icons/info.svg');
+}
+
+.icon-search {
+  -webkit-mask-image: url('/assets/icons/search.svg');
+  mask-image: url('/assets/icons/search.svg');
+}
+
+.icon-filter {
+  -webkit-mask-image: url('/assets/icons/filter.svg');
+  mask-image: url('/assets/icons/filter.svg');
+}
+
+.icon-chevron-left {
+  -webkit-mask-image: url('/assets/icons/chevron-left.svg');
+  mask-image: url('/assets/icons/chevron-left.svg');
+}
+
+.icon-chevron-right {
+  -webkit-mask-image: url('/assets/icons/chevron-right.svg');
+  mask-image: url('/assets/icons/chevron-right.svg');
+}
+
+.icon-sidebar-expand {
+  -webkit-mask-image: url('/assets/icons/sidebar-expand.svg');
+  mask-image: url('/assets/icons/sidebar-expand.svg');
+}
+
+.icon-sidebar-collapse {
+  -webkit-mask-image: url('/assets/icons/sidebar-collapse.svg');
+  mask-image: url('/assets/icons/sidebar-collapse.svg');
+}
+
+.icon-theme-light {
+  -webkit-mask-image: url('/assets/icons/theme-light.svg');
+  mask-image: url('/assets/icons/theme-light.svg');
+}
+
+.icon-theme-dark {
+  -webkit-mask-image: url('/assets/icons/theme-dark.svg');
+  mask-image: url('/assets/icons/theme-dark.svg');
+}
+
+.icon-user {
+  -webkit-mask-image: url('/assets/icons/user.svg');
+  mask-image: url('/assets/icons/user.svg');
+}
+
+.icon-logout {
+  -webkit-mask-image: url('/assets/icons/logout.svg');
+  mask-image: url('/assets/icons/logout.svg');
+}
+
+.icon-ubuntu {
+  -webkit-mask-image: url('/assets/icons/ubuntu.svg');
+  mask-image: url('/assets/icons/ubuntu.svg');
+}
+
+.icon-windows {
+  -webkit-mask-image: url('/assets/icons/windows.svg');
+  mask-image: url('/assets/icons/windows.svg');
+}
+
+/* Transiciones globales para componentes */
+.card, .form-select, .form-control, input, select, button, .top-drawer, .search-filter-group, .sidebar-nav, .user-control {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}

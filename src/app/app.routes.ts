@@ -7,6 +7,7 @@ import { Usuarios } from './presentation/views/usuarios/usuarios';
 import { Nodos } from './presentation/views/nodos/nodos';
 import { Horarios } from './presentation/views/horarios/horarios';
 import { Metadatos } from './presentation/views/metadatos/metadatos';
+import { Camaras } from './presentation/views/camaras/camaras';
 import { authGuard } from './presentation/guards/auth.guard';
 import { AppRole } from './core/domain/entities/role.enum';
 
@@ -23,9 +24,11 @@ export const routes: Routes = [
             { path: 'roles', component: Roles, data: { roles: [AppRole.ADMIN] } },
             { path: 'usuarios', component: Usuarios, data: { roles: [AppRole.ADMIN] } },
             { path: 'nodos', component: Nodos },
+            { path: 'nodos/:hostId/camaras', component: Camaras },
             { path: 'horarios', component: Horarios },
             { path: 'metadatos', component: Metadatos }
         ]
     },
     { path: '**', redirectTo: '/login' } // Redirige a login para cualquier ruta no definida
 ];
+

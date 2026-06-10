@@ -20,6 +20,32 @@ const dbUsuarios = [
   }
 ];
 
+const dbHosts = Array.from({ length: 25 }, (_, i) => {
+  const idNum = i + 1;
+  const isEven = idNum % 2 === 0;
+  const isThird = idNum % 3 === 0;
+  return {
+    host_id: `e1d13fa0-8988-466d-a111-c917b2b73b${idNum.toString(16).padStart(2, '0')}`,
+    hostname: `Server-Node-${idNum.toString().padStart(2, '0')}`,
+    ip_address: `192.168.1.${100 + idNum}`,
+    version: '1.4.2',
+    status: isEven ? 'active' : 'inactive',
+    hw_info: {
+      machine_id: `mach-uuid-${idNum.toString().padStart(3, '0')}`,
+      mac: `00:1A:2B:3C:4D:${idNum.toString(16).toUpperCase().padStart(2, '0')}`,
+      system: isThird ? 'Windows' : 'Linux',
+      release: isThird ? 'Windows Server 2022' : 'Ubuntu 22.04 LTS',
+      arch: 'x86_64'
+    },
+    gpu_info: isEven ? {
+      GPU: 'NVIDIA',
+      model: isThird ? 'RTX 4090' : 'A100 Tensor Core',
+      total_memory: isThird ? '24 GB' : '80 GB',
+      compute_capability: '8.9'
+    } : null
+  };
+});
+
 // Almacén de sesiones en memoria
 const activeSessions = new Map();
 
@@ -162,6 +188,107 @@ const server = http.createServer((req, res) => {
       const safeUsers = dbUsuarios.map(({ contrasena, ...rest }) => rest);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(safeUsers));
+      return;
+    }
+
+    // ---- RUTA: GET /api/hosts/filters/options ----
+    if (req.url.startsWith('/api/hosts/filters/options') && req.method === 'GET') {
+      const sessionId = cookies['session'];
+      const user = activeSessions.get(sessionId);
+
+      if (!user) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'No autorizado' }));
+        return;
+      }
+
+      const osSet = new Set();
+      const archSet = new Set();
+      const gpuSet = new Set();
+      const vramSet = new Set();
+      const versionSet = new Set();
+
+      dbHosts.forEach(h => {
+        if (h.hw_info && h.hw_info.system) osSet.add(h.hw_info.system);
+        if (h.hw_info && h.hw_info.arch) archSet.add(h.hw_info.arch);
+        if (h.gpu_info && h.gpu_info.model) gpuSet.add(h.gpu_info.model);
+        if (h.gpu_info && h.gpu_info.total_memory) vramSet.add(h.gpu_info.total_memory);
+        if (h.version) versionSet.add(h.version);
+      });
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        os: Array.from(osSet).sort(),
+        arch: Array.from(archSet).sort(),
+        gpu: Array.from(gpuSet).sort(),
+        vram: Array.from(vramSet).sort(),
+        version: Array.from(versionSet).sort()
+      }));
+      return;
+    }
+
+    // ---- RUTA: GET /api/hosts ----
+    if (req.url.startsWith('/api/hosts') && req.method === 'GET') {
+      const sessionId = cookies['session'];
+      const user = activeSessions.get(sessionId);
+
+      if (!user) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'No autorizado' }));
+        return;
+      }
+
+      const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+      
+      const search = urlObj.searchParams.get('search') || '';
+      const status = urlObj.searchParams.get('status') || '';
+      const os = urlObj.searchParams.get('os') || '';
+      const arch = urlObj.searchParams.get('arch') || '';
+      const gpu = urlObj.searchParams.get('gpu') || '';
+      const vram = urlObj.searchParams.get('vram') || '';
+      const version = urlObj.searchParams.get('version') || '';
+
+      let filtered = [...dbHosts];
+
+      if (search) {
+        const query = search.toLowerCase();
+        filtered = filtered.filter(h => 
+          h.hostname.toLowerCase().includes(query) || 
+          h.ip_address.toLowerCase().includes(query)
+        );
+      }
+      if (status && status !== 'all') {
+        filtered = filtered.filter(h => h.status === status);
+      }
+      if (os && os !== 'all') {
+        filtered = filtered.filter(h => h.hw_info && h.hw_info.system === os);
+      }
+      if (arch && arch !== 'all') {
+        filtered = filtered.filter(h => h.hw_info && h.hw_info.arch === arch);
+      }
+      if (gpu && gpu !== 'all') {
+        filtered = filtered.filter(h => h.gpu_info && h.gpu_info.model === gpu);
+      }
+      if (vram && vram !== 'all') {
+        filtered = filtered.filter(h => h.gpu_info && h.gpu_info.total_memory === vram);
+      }
+      if (version && version !== 'all') {
+        filtered = filtered.filter(h => h.version === version);
+      }
+
+      const page = parseInt(urlObj.searchParams.get('page') || '1', 10);
+      const limit = parseInt(urlObj.searchParams.get('limit') || '20', 10);
+
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+
+      const paginatedItems = filtered.slice(startIndex, endIndex);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        items: paginatedItems,
+        total: filtered.length
+      }));
       return;
     }
 

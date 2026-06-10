@@ -1,0 +1,28 @@
+<div class="container-fluid mt-3">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold text-dark">
+        <i class="bi bi-camera-video-fill text-primary me-2"></i>Cámaras del Nodo
+      </h2>
+      <p class="text-muted mb-0">Visualización de flujos de video para el nodo seleccionado.</p>
+    </div>
+    <a routerLink="/dashboard/nodos" class="btn btn-outline-secondary d-flex align-items-center">
+      <i class="bi bi-arrow-left me-2"></i>Volver a Nodos
+    </a>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-3 p-4 text-center">
+    <div class="py-5">
+      <div class="display-1 text-muted mb-4">
+        <i class="bi bi-camera-video-off"></i>
+      </div>
+      <h4 class="fw-bold">Visualización en desarrollo</h4>
+      <p class="text-muted">Próximamente se listarán las cámaras asociadas a este nodo.</p>
+      @if (hostId()) {
+        <div class="badge bg-light text-dark p-2 border mt-2">
+          Host ID: <code class="text-primary">{{ hostId() }}</code>
+        </div>
+      }
+    </div>
+  </div>
+</div>

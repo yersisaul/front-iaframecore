@@ -1,4 +1,12 @@
-<app-sidebar>
-  <router-outlet></router-outlet>
-</app-sidebar>
-
+<div class="dashboard-wrapper">
+  <!-- Sidebar de navegación (Full height en el extremo izquierdo) -->
+  <app-sidebar></app-sidebar>
+  
+  <!-- Contenedor del lado derecho -->
+  <div class="main-container">
+    <!-- Contenido principal -->
+    <main class="flex-grow-1 p-4 overflow-auto">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

@@ -1,0 +1,38 @@
+@if (currentUser()) {
+  <div class="user-control d-flex align-items-center justify-content-between p-2 rounded transition-all" 
+       [class.flex-column]="isCollapsed()" 
+       [class.gap-2]="isCollapsed()">
+    <div class="d-flex align-items-center justify-content-center" [class.gap-2]="!isCollapsed()">
+      <span class="icon-svg icon-user user-icon" [title]="currentUser()?.name || currentUser()?.username" style="width: 20px; height: 20px;"></span>
+      <div class="d-flex flex-column lh-1" [class.d-none]="isCollapsed()">
+        <span class="fw-semibold small text-truncate text-body text-start" style="max-width: 110px;">
+          {{ currentUser()?.name || currentUser()?.username }}
+        </span>
+        <span class="text-muted text-start" style="font-size: 0.68rem;">
+          {{ currentUser()?.role }}
+        </span>
+      </div>
+    </div>
+    <div class="d-flex align-items-center gap-2" [class.flex-column]="isCollapsed()">
+      <!-- Botón de Tema (Claro / Oscuro) -->
+      <button class="btn btn-sm btn-theme-switcher shadow-sm rounded-circle p-0 d-flex align-items-center justify-content-center" 
+              style="width: 32px; height: 32px; flex-shrink: 0;" 
+              (click)="toggleTheme()" 
+              [title]="isDarkMode() ? 'Modo Claro' : 'Modo Oscuro'">
+        @if (isDarkMode()) {
+          <span class="icon-svg icon-theme-light" style="width: 16px; height: 16px;"></span>
+        } @else {
+          <span class="icon-svg icon-theme-dark" style="width: 16px; height: 16px;"></span>
+        }
+      </button>
+
+      <!-- Botón Cerrar Sesión -->
+      <button class="btn btn-sm btn-danger border-0 p-0 d-flex align-items-center justify-content-center rounded-circle shadow-sm" 
+              style="width: 32px; height: 32px; flex-shrink: 0;"
+              (click)="onLogout()" 
+              [title]="isCollapsed() ? 'Cerrar Sesión' : 'Salir'">
+        <span class="icon-svg icon-logout logout-icon" style="width: 16px; height: 16px;"></span>
+      </button>
+    </div>
+  </div>
+}

@@ -1,26 +1,103 @@
+:host {
+  display: block;
+  width: 260px;
+  height: 100vh;
+  flex-shrink: 0;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+:host(.collapsed) {
+  width: 78px;
+}
+
+.sidebar-nav {
+  width: 100%;
+  height: 100%;
+  padding: 1.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  white-space: nowrap;
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.02);
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.text-gradient {
+  background: linear-gradient(45deg, var(--primary), #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 .nav-link {
-  transition: all 0.2s ease-in-out;
+  position: relative;
+  padding: 0.75rem 1rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  color: var(--text-sidebar) !important;
+}
+
+:host(.collapsed) .nav-link {
+  padding: 0.75rem 0;
+  justify-content: center;
 }
 
 .nav-link:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--border-color);
+  color: var(--text-primary) !important;
 }
 
 .nav-link.active {
-  background-color: #3b82f6 !important;
-  color: #fff !important;
-  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
+  background-color: var(--primary-light) !important;
+  color: var(--primary) !important;
+  font-weight: 600;
 }
 
-.nav-link.active i {
-  color: #fff !important;
+.active-indicator {
+  position: absolute;
+  left: 0;
+  top: 15%;
+  height: 70%;
+  width: 4px;
+  background-color: var(--primary);
+  border-radius: 0 4px 4px 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
-.nav-link i {
-  color: #6c757d;
-  transition: color 0.2s ease-in-out;
+.nav-link.active .active-indicator {
+  opacity: 1;
 }
 
-.nav-link:hover i {
-  color: #212529;
+.nav-link .icon-svg {
+  transition: color 0.2s, transform 0.2s, background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.nav-link:hover .icon-svg {
+  transform: scale(1.08);
+}
+
+.sidebar-footer {
+  transition: all 0.3s ease;
+}
+
+.version-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted) !important;
+}
+
+:host(.collapsed) .version-info {
+  justify-content: center;
+}
+
+.version-info .icon-info {
+  background-color: var(--text-muted);
 }
