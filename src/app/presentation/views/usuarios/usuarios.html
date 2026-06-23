@@ -31,24 +31,47 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td class="ps-4 fw-semibold text-dark">
-                <i class="bi bi-person-circle me-2 text-primary"></i>admin
-              </td>
-              <td>Administrador del Sistema</td>
-              <td><span class="badge bg-primary">administrador</span></td>
-              <td><code>e4b10fa0-7988-466d-a111-c917b2b73bc5</code></td>
-              <td class="pe-4 text-muted small">2026-01-01 08:00:00 UTC</td>
-            </tr>
-            <tr>
-              <td class="ps-4 fw-semibold text-dark">
-                <i class="bi bi-person-circle me-2 text-secondary"></i>operador
-              </td>
-              <td>Operador de Control</td>
-              <td><span class="badge bg-secondary">operador</span></td>
-              <td><code>67a7a5cc-98a9-4672-9cc9-5b7d0a68d712</code></td>
-              <td class="pe-4 text-muted small">2026-02-15 12:30:00 UTC</td>
-            </tr>
+            @if (isLoading()) {
+              <tr>
+                <td colspan="5" class="text-center py-4">
+                  <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                  <span class="text-muted">Cargando usuarios...</span>
+                </td>
+              </tr>
+            } @else if (errorMessage()) {
+              <tr>
+                <td colspan="5" class="text-center py-4 text-danger">
+                  <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage() }}
+                </td>
+              </tr>
+            } @else if (users().length === 0) {
+              <tr>
+                <td colspan="5" class="text-center py-4 text-muted">
+                  No se encontraron usuarios registrados.
+                </td>
+              </tr>
+            } @else {
+              @for (user of users(); track user.id) {
+                <tr>
+                  <td class="ps-4 fw-semibold text-dark">
+                    <i class="bi bi-person-circle me-2" 
+                       [class.text-primary]="user.role === 'administrador' || user.role === 'admin'" 
+                       [class.text-secondary]="user.role !== 'administrador' && user.role !== 'admin'"></i>
+                    {{ user.username }}
+                  </td>
+                  <td>{{ user.name || 'Sin nombre' }}</td>
+                  <td>
+                    <span class="badge" 
+                          [class.bg-primary]="user.role === 'administrador' || user.role === 'admin'" 
+                          [class.bg-secondary]="user.role !== 'administrador' && user.role !== 'admin'">
+                      {{ user.role }}
+                    </span>
+                  </td>
+                  <td><code>{{ user.id }}</code></td>
+                  <td class="pe-4 text-muted small">{{ user.createdAt | date:'yyyy-MM-dd HH:mm:ss' }} UTC</td>
+                </tr>
+              }
+            }
           </tbody>
         </table>
       </div>

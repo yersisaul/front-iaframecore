@@ -11,6 +11,11 @@ export class ThemeService {
       const isDark = this.darkMode();
       if (typeof window !== 'undefined') {
         document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
       }
     });

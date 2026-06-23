@@ -1,61 +1,144 @@
-<div class="container-fluid mt-3">
-  <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-fluid mt-3 pb-5">
+  <!-- Cabecera -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3 border-bottom pb-3">
     <div>
-      <h2 class="fw-bold text-dark">
-        <i class="bi bi-clock-history text-primary me-2"></i>Programación de Horarios
+      <h2 class="fw-bold text-body mb-1">
+        Programación de Horarios
       </h2>
-      <p class="text-muted mb-0">Configuración e intervalos de ejecución para tareas en segundo plano del sistema.</p>
+      <p class="text-muted mb-0">Configuración, intervalos de ejecución y analíticas activas en los nodos de procesamiento.</p>
+    </div>
+
+    <!-- Controles de filtrado -->
+    <div class="d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center gap-2">
+        <label for="host-filter" class="text-muted small fw-medium mb-0 text-nowrap">Filtrar por Nodo:</label>
+        <select id="host-filter" class="form-select form-select-sm shadow-sm bg-card text-body border-color" style="min-width: 180px;" (change)="filterByHost($event)">
+          <option value="all">Todos los Nodos</option>
+          @for (host of hostsList(); track host.id) {
+            <option [value]="host.fingerprint">{{ host.hostname }} ({{ host.fingerprint }})</option>
+          }
+        </select>
+      </div>
+      
+      <button class="btn btn-outline-secondary btn-sm px-3 border-2" (click)="loadAllSchedules()" [disabled]="isLoading()">
+        @if (isLoading()) {
+          <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+        }
+        Actualizar
+      </button>
     </div>
   </div>
 
-  <div class="row g-4">
-    <div class="col-md-8">
-      <div class="card border-0 shadow-sm rounded-3">
-        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
-          <h5 class="fw-bold text-dark mb-0">Tareas Cron Programadas</h5>
-        </div>
-        <div class="card-body p-4">
-          <div class="list-group list-group-flush">
-            <!-- Tarea 1 -->
-            <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
-              <div>
-                <h6 class="fw-bold mb-1">Backup Diario de PostgreSQL</h6>
-                <span class="text-muted small">Fórmula cron: <code>0 2 * * *</code> (Todos los días a las 02:00 AM)</span>
-              </div>
-              <span class="badge bg-success">Activo</span>
-            </div>
-            <!-- Tarea 2 -->
-            <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
-              <div>
-                <h6 class="fw-bold mb-1">Limpieza de Sesiones Expiradas</h6>
-                <span class="text-muted small">Fórmula cron: <code>*/30 * * * *</code> (Cada 30 minutos)</span>
-              </div>
-              <span class="badge bg-success">Activo</span>
-            </div>
-            <!-- Tarea 3 -->
-            <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
-              <div>
-                <h6 class="fw-bold mb-1">Verificación de Integridad de Nodos</h6>
-                <span class="text-muted small">Fórmula cron: <code>*/5 * * * *</code> (Cada 5 minutos)</span>
-              </div>
-              <span class="badge bg-warning text-dark">En Espera</span>
-            </div>
-          </div>
-        </div>
+  <!-- Estado de carga -->
+  @if (isLoading()) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando horarios de analítica...</span>
       </div>
     </div>
+  }
 
-    <div class="col-md-4">
-      <div class="card border-0 shadow-sm rounded-3 bg-primary text-white">
-        <div class="card-body p-4">
-          <h5 class="fw-bold mb-3"><i class="bi bi-info-circle-fill me-2"></i>Estado del Planificador</h5>
-          <p class="mb-4 small opacity-75">El planificador interno está sincronizado con el huso horario local del backend Python/SQLAlchemy.</p>
+  <!-- Vista principal -->
+  @if (!isLoading()) {
+    <div class="row g-4">
+      <!-- Columna Principal: Lista de Horarios -->
+      <div class="col-12 col-lg-8">
+        @if (filteredSchedules().length === 0) {
+          <div class="card border-0 shadow-sm rounded-3 p-5 text-center bg-card">
+            <div class="display-1 text-muted mb-4">📅</div>
+            <h5 class="fw-bold text-body">No se encontraron tareas programadas</h5>
+            <p class="text-muted mb-0">No hay horarios configurados o activos que coincidan con la selección actual.</p>
+          </div>
+        }
+
+        <!-- Grilla Bento de Horarios -->
+        @if (filteredSchedules().length > 0) {
+          <div class="row g-3">
+            @for (sched of filteredSchedules(); track sched.id) {
+              <div class="col-12 col-md-6">
+                  <div class="card schedule-view-card border-0 shadow-sm overflow-hidden bg-card p-3-5 transition-all"
+                     [class.card-active]="isScheduleActive(sched)">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <h5 class="fw-bold mb-0 text-body">{{ sched.name }}</h5>
+                      <code class="text-primary small font-monospace">{{ sched.hostFingerprint }}</code>
+                    </div>
+                    
+                    <span class="badge d-flex align-items-center gap-1-5 p-2" 
+                          [class.bg-success-subtle]="isScheduleActive(sched)" 
+                          [class.text-success]="isScheduleActive(sched)"
+                          [class.bg-light]="!isScheduleActive(sched)"
+                          [class.text-secondary]="!isScheduleActive(sched)">
+                      <span class="status-dot" [class.active-dot]="isScheduleActive(sched)"></span>
+                      {{ isScheduleActive(sched) ? 'Ejecutando' : 'Inactivo' }}
+                    </span>
+                  </div>
+
+                  <!-- Detalles del Horario -->
+                  <div class="schedule-details mt-3 pt-3 border-top d-flex flex-column gap-2 small text-muted font-monospace">
+                    <div class="d-flex justify-content-between">
+                      <span>RANGO DIARIO:</span>
+                      <span class="text-body fw-semibold">{{ sched.start | date:'HH:mm' }} - {{ sched.end | date:'HH:mm' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                      <span>FRECUENCIA:</span>
+                      <span class="text-body fw-semibold text-uppercase">{{ sched.frequency }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                      <span>ID PLANIFICADOR:</span>
+                      <span class="text-body">{{ sched.id }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Analíticas / Cámaras Asociadas -->
+                  <div class="associated-analytics mt-3 border-top pt-2">
+                    <span class="fs-7 text-muted text-uppercase fw-bold d-block mb-1.5">Canales / Analíticas Activas</span>
+                    <div class="d-flex flex-wrap gap-1-5">
+                      @for (analytic of sched.analyticIds; track analytic) {
+                        <span class="badge bg-light text-dark font-monospace border fs-8">
+                          📹 ID: {{ analytic }}
+                        </span>
+                      }
+                      @if (sched.analyticIds.length === 0) {
+                        <span class="text-muted small italic">Ninguna cámara asignada</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Columna Derecha: Resumen de Estado -->
+      <div class="col-12 col-lg-4">
+        <div class="card border-0 shadow-sm rounded-3 bg-primary text-white p-4 mb-4">
+          <h5 class="fw-bold mb-3"><i class="bi bi-info-circle-fill me-2"></i>Planificador del Sistema</h5>
+          <p class="mb-4 small opacity-75">Las tareas se evalúan automáticamente en tiempo real comparando la zona horaria del host con la hora de referencia del sistema.</p>
           <div class="d-flex align-items-center">
             <span class="spinner-grow spinner-grow-sm me-2" role="status" aria-hidden="true"></span>
             <span class="fw-semibold">Planificador Corriendo</span>
           </div>
         </div>
+
+        <!-- Tarjeta de Estadísticas del Nivel Superior -->
+        <div class="card border-0 shadow-sm rounded-3 p-4 bg-card">
+          <h5 class="fw-bold mb-3 text-body border-bottom pb-2">Estadísticas</h5>
+          <div class="d-flex flex-column gap-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="text-muted fw-medium small">Total Programaciones:</span>
+              <span class="badge bg-secondary rounded-pill font-monospace fs-6 px-3 py-1.5">{{ allSchedules().length }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center border-top pt-3">
+              <span class="text-muted fw-medium small">Tareas en Ejecución:</span>
+              <span class="badge bg-success rounded-pill font-monospace fs-6 px-3 py-1.5">
+                {{ allSchedules().filter(isScheduleActive.bind(this)).length }}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+  }
 </div>

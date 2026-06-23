@@ -4,6 +4,7 @@ import { App } from './app';
 
 describe('App', () => {
   beforeEach(async () => {
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [provideRouter([])]

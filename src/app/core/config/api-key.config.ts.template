@@ -1,0 +1,5 @@
+export const ApiKeyConfig = {
+  // Coloca tu clave JWT API Key estática aquí para pruebas locales.
+  // IMPORTANTE: No subas este archivo con claves reales al repositorio.
+  apiKey: 'INSERTAR_AQUI_TU_JWT_API_KEY'
+};

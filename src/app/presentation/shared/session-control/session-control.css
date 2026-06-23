@@ -1,5 +1,11 @@
+.session-container {
+  height: 48px;
+  width: 100%;
+}
+
 .user-control {
-  transition: all 0.3s ease;
+  height: 48px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;
   background-color: var(--border-color) !important;
   color: var(--text-primary) !important;
@@ -14,6 +20,17 @@
   color: var(--text-secondary) !important;
 }
 
+.user-control.collapsed-mode {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  padding: 0 !important;
+}
+
+.user-control.collapsed-mode:hover {
+  background-color: var(--border-color) !important;
+  border-radius: 8px;
+}
+
 .user-icon {
   background-color: var(--text-primary) !important;
 }
@@ -22,6 +39,7 @@
   background-color: var(--bg-surface) !important;
   color: var(--text-primary) !important;
   border: 1px solid var(--border-color) !important;
+  transition: all 0.2s ease;
 }
 
 .btn-theme-switcher:hover {
@@ -33,5 +51,36 @@
 }
 
 .btn-danger .logout-icon {
-  background-color: #ffffff !important;
+  background-color: var(--text-on-primary-btn) !important;
+}
+
+/* Floating Popover/Dropdown Menu when collapsed */
+.floating-user-menu {
+  bottom: 0px;
+  left: 64px;
+  width: 210px;
+  z-index: 1050;
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15) !important;
+  animation: floatAppear 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes floatAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+}
+
+/* Dark mode overrides */
+::ng-deep .dark .floating-user-menu,
+::ng-deep [data-bs-theme="dark"] .floating-user-menu {
+  background-color: var(--bg-popover-menu) !important;
+  border-color: var(--border-popover-menu) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
 }

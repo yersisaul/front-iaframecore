@@ -1,5 +1,5 @@
 .login-wrapper {
-  background: radial-gradient(circle at 10% 20%, rgb(18, 16, 31) 0%, rgb(33, 27, 56) 90%);
+  background: var(--bg-login-gradient);
   font-family: 'Inter', sans-serif;
   overflow: hidden;
   position: relative;
@@ -17,66 +17,66 @@
   opacity: 0.15;
 }
 .login-wrapper::before {
-  background: #3b82f6;
+  background: var(--bg-login-glow-1);
   top: 10%;
   left: 15%;
 }
 .login-wrapper::after {
-  background: #a855f7;
+  background: var(--bg-login-glow-2);
   bottom: 15%;
   right: 15%;
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-login-glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-login-glass);
   border-radius: 24px;
   width: 100%;
   max-width: 440px;
   z-index: 1;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-login-glass);
 }
 
 .logo-circle {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: var(--bg-login-logo-circle);
+  border: 1px solid var(--border-login-logo-circle);
 }
 
 .bg-dark-transparent {
-  background-color: rgba(0, 0, 0, 0.25) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  background-color: var(--bg-login-input) !important;
+  border: 1px solid var(--border-login-input) !important;
 }
 
 .form-control:focus {
-  background-color: rgba(0, 0, 0, 0.35) !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
-  border-color: rgba(59, 130, 246, 0.5) !important;
-  color: #fff !important;
+  background-color: var(--bg-login-input-focus) !important;
+  box-shadow: var(--shadow-login-input-focus) !important;
+  border-color: var(--border-login-input-focus) !important;
+  color: var(--text-on-primary-btn) !important;
 }
 
 .input-group-text, 
 .btn-outline-dark-transparent {
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--border-login-input) !important;
 }
 
 .btn-submit {
   border-radius: 12px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  background: var(--bg-login-submit-gradient);
   border: none;
-  color: #fff;
-  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+  color: var(--text-on-primary-btn);
+  box-shadow: 0 4px 15px var(--shadow-login-submit);
 }
 
 .btn-submit:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.5);
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  box-shadow: 0 8px 25px var(--shadow-login-submit-hover);
+  background: var(--bg-login-submit-gradient-hover);
 }
 
 .btn-submit:active:not(:disabled) {

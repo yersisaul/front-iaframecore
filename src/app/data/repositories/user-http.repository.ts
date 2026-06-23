@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { IUserRepository } from '../../core/domain/repositories/user.repository';
 import { User } from '../../core/domain/entities/user.entity';
 import { UserDTO } from './dtos/user-dto';
@@ -18,7 +18,30 @@ export class UserHttpRepository implements IUserRepository {
 
   getAll(): Observable<User[]> {
     return this.http.get<UserDTO[]>(this.apiUrl).pipe(
-      map(dtos => dtos.map(UserMapper.toDomain))
+      map(dtos => (dtos || []).map(UserMapper.toDomain)),
+      catchError(err => {
+        if (!AppEnvironment.production) {
+          console.warn('Backend /users endpoint not found. Using fallback mock users.', err);
+          return of([
+            {
+              id: 'e4b10fa0-7988-466d-a111-c917b2b73bc5',
+              username: 'admin',
+              name: 'Administrador del Sistema',
+              role: 'administrador',
+              createdAt: new Date('2026-01-01T08:00:00Z')
+            },
+            {
+              id: '67a7a5cc-98a9-4672-9cc9-5b7d0a68d712',
+              username: 'operador',
+              name: 'Operador de Control',
+              role: 'operador',
+              createdAt: new Date('2026-02-15T12:30:00Z')
+            }
+          ]);
+        }
+        console.error('Error fetching users from API in production:', err);
+        throw err;
+      })
     );
   }
 

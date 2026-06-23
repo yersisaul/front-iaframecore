@@ -1,6 +1,7 @@
-import { UserDTO } from './user-dto';
-
 export interface AuthResponseDTO {
-  user: UserDTO;
+  access_token: string;
+  token_type: string;
+  usuario: string;
+  rol: string;
 }
 

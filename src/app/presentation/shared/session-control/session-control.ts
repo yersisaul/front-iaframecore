@@ -1,4 +1,4 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, inject, input, signal, HostListener } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ThemeService } from '../../../core/services/theme.service';
@@ -19,6 +19,19 @@ export class SessionControl {
   
   // Propiedad responsiva para colapso del sidebar
   readonly isCollapsed = input<boolean>(false);
+
+  // Estado del menú desplegable cuando está colapsado
+  readonly showDropdown = signal<boolean>(false);
+
+  toggleDropdown(event: Event): void {
+    event.stopPropagation();
+    this.showDropdown.update(v => !v);
+  }
+
+  @HostListener('document:click')
+  closeDropdown(): void {
+    this.showDropdown.set(false);
+  }
 
   onLogout(): void {
     this.authService.logout().subscribe({

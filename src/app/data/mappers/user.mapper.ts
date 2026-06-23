@@ -1,14 +1,32 @@
 import { User } from '../../core/domain/entities/user.entity';
 import { UserDTO } from '../repositories/dtos/user-dto';
+import { AuthResponseDTO } from '../repositories/dtos/auth-response.dto';
+import { AppRole } from '../../core/domain/entities/role.enum';
+import { parseUtcDate } from '../../core/utils/date-utils';
 
 export class UserMapper {
+  static fromAuthResponse(dto: AuthResponseDTO): User {
+    const roleStr = dto.rol?.toLowerCase();
+    const mappedRole = (roleStr === 'admin' || roleStr === 'administrador')
+      ? AppRole.ADMIN
+      : AppRole.OPERATOR;
+
+    return {
+      id: dto.usuario,
+      username: dto.usuario,
+      name: dto.usuario,
+      role: mappedRole,
+      createdAt: new Date()
+    };
+  }
+
   static toDomain(dto: UserDTO): User {
     return {
       id: dto.user_id,
       username: dto.usuario,
       name: dto.nombre,
       role: dto.rol,
-      createdAt: new Date(dto.created_at),
+      createdAt: parseUtcDate(dto.created_at),
     };
   }
 

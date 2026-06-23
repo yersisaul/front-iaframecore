@@ -3,6 +3,10 @@ import { provideRouter } from '@angular/router';
 
 import { Usuarios } from './usuarios';
 
+import { provideHttpClient } from '@angular/common/http';
+import { IUserRepository } from '../../../core/domain/repositories/user.repository';
+import { UserHttpRepository } from '../../../data/repositories/user-http.repository';
+
 describe('Usuarios', () => {
   let component: Usuarios;
   let fixture: ComponentFixture<Usuarios>;
@@ -10,7 +14,11 @@ describe('Usuarios', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Usuarios],
-      providers: [provideRouter([])]
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+        { provide: IUserRepository, useClass: UserHttpRepository }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(Usuarios);

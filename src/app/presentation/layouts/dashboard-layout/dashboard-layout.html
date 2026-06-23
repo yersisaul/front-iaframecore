@@ -2,6 +2,11 @@
   <!-- Sidebar de navegación (Full height en el extremo izquierdo) -->
   <app-sidebar></app-sidebar>
   
+  <!-- Backdrop Overlay para dispositivos móviles/tablets -->
+  @if (!isSidebarCollapsed()) {
+    <div class="sidebar-backdrop" (click)="toggleSidebar()"></div>
+  }
+  
   <!-- Contenedor del lado derecho -->
   <div class="main-container">
     <!-- Contenido principal -->

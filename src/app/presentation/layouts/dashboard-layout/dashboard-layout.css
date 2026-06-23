@@ -19,3 +19,30 @@ main {
   background-color: var(--bg-primary) !important;
   transition: background-color 0.3s ease;
 }
+
+/* Backdrop Overlay for Mobile Drawer Sidebar */
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 750px) {
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1040; /* Sit just below the fixed sidebar (1050) */
+    animation: fadeIn 0.2s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+

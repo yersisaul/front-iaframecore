@@ -3,7 +3,7 @@
   <div class="sidebar-header d-flex align-items-center mb-4 px-3" [class.justify-content-center]="isCollapsed()">
     <div class="logo-wrapper d-flex align-items-center gap-2">
       <img src="assets/icons/logo.svg" alt="AZOR" style="width: 24px; height: 24px;" />
-      <span class="fw-bold fs-5 text-gradient" [class.d-none]="isCollapsed()">Azor</span>
+      <span class="fw-bold fs-5 text-gradient" [class.d-none]="isCollapsed()">Azor analytics</span>
     </div>
   </div>
 
@@ -19,14 +19,73 @@
       </a>
     </li>
     <li class="nav-item mb-2">
-      <a routerLink="/dashboard/metadatos" routerLinkActive="active"
-        class="nav-link text-body fw-500 d-flex align-items-center rounded"
-        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Metadatos' : ''">
+      <a style="cursor: pointer;" (click)="toggleMetadataSubmenu($event)"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded position-relative"
+        [class.justify-content-center]="isCollapsed()"
+        [class.active]="isMetadataActive()"
+        [title]="isCollapsed() ? 'Metadatos' : ''">
         <div class="active-indicator"></div>
         <span class="icon-svg icon-metadatos nav-icon" [class.me-3]="!isCollapsed()"
           style="width: 18px; height: 18px;"></span>
-        <span [class.d-none]="isCollapsed()">Metadatos</span>
+        <span [class.d-none]="isCollapsed()" class="flex-grow-1">Metadatos</span>
+        
+        <span [class.d-none]="isCollapsed()" class="submenu-chevron ms-auto" [class.open]="isMetadataOpen()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </span>
       </a>
+      
+      <ul class="submenu-list list-unstyled" [class.open]="isMetadataOpen() && !isCollapsed()">
+        @for (info of availableIndices(); track info.name) {
+          <li>
+            <a [routerLink]="['/dashboard/metadatos', info.name]" routerLinkActive="active-sub"
+              class="submenu-link d-flex align-items-center rounded text-body justify-content-between">
+              <div class="d-flex align-items-center">
+                <span class="submenu-dot me-2" [ngClass]="info.name"></span>
+                <span class="submenu-text text-capitalize">{{ info.name }}</span>
+              </div>
+              <span class="badge rounded-pill bg-light border text-muted small ms-2 submenu-count">{{ formatCount(info.count) }}</span>
+            </a>
+          </li>
+        }
+      </ul>
+    </li>
+
+    <li class="nav-item mb-2">
+      <a style="cursor: pointer;" (click)="toggleListasSubmenu($event)"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded position-relative"
+        [class.justify-content-center]="isCollapsed()"
+        [class.active]="isListasActive()"
+        [title]="isCollapsed() ? 'Listas de Control' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-listas nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()" class="flex-grow-1">Listas de Control</span>
+        
+        <span [class.d-none]="isCollapsed()" class="submenu-chevron ms-auto" [class.open]="isListasOpen()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </span>
+      </a>
+      
+      <ul class="submenu-list list-unstyled" [class.open]="isListasOpen() && !isCollapsed()">
+        <li>
+          <a routerLink="/dashboard/listas/rostros" routerLinkActive="active-sub"
+            class="submenu-link d-flex align-items-center rounded text-body">
+            <span class="submenu-dot me-2 rostros"></span>
+            <span class="submenu-text">Listas de Rostros</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="/dashboard/listas/placas" routerLinkActive="active-sub"
+            class="submenu-link d-flex align-items-center rounded text-body">
+            <span class="submenu-dot me-2 vehiculos"></span>
+            <span class="submenu-text">Listas de Placas</span>
+          </a>
+        </li>
+      </ul>
     </li>
 
     @if (isAdmin()) {

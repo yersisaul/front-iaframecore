@@ -3,6 +3,10 @@ import { provideRouter } from '@angular/router';
 
 import { Login } from './login';
 
+import { provideHttpClient } from '@angular/common/http';
+import { IAuthRepository } from '../../../core/domain/repositories/auth.repository';
+import { AuthHttpRepository } from '../../../data/repositories/auth-http.repository';
+
 describe('Login', () => {
   let component: Login;
   let fixture: ComponentFixture<Login>;
@@ -10,7 +14,11 @@ describe('Login', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Login],
-      providers: [provideRouter([])]
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+        { provide: IAuthRepository, useClass: AuthHttpRepository }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(Login);

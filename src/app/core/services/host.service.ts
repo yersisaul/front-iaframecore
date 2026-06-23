@@ -1,9 +1,8 @@
 import { Injectable, signal } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
-import { Host, PaginatedHostsResponse, HostMapper } from '../domain/entities/host.models';
-import { AppEnvironment } from '../config/app-environment';
+import { Observable, of } from 'rxjs';
+import { tap, catchError } from 'rxjs/operators';
+import { Host, HostMetrics } from '../domain/entities/host.models';
+import { IHostRepository } from '../domain/repositories/host.repository';
 
 export interface HostFilterOptions {
   os: string[];
@@ -27,36 +26,120 @@ export interface HostFilterParams {
   providedIn: 'root'
 })
 export class HostService {
-  private readonly apiUrl = `${AppEnvironment.apiUrl}/hosts`;
-
+  /** All hosts loaded from the backend (unfiltered, used for client-side filtering) */
+  readonly allHosts = signal<Host[]>([]);
+  /** Backward-compat alias kept for components that only need the current page slice */
   readonly hosts = signal<Host[]>([]);
   readonly totalItems = signal(0);
 
-  constructor(private http: HttpClient) {}
+  constructor(private hostRepository: IHostRepository) {}
 
-  getHosts(page: number, limit: number, filters?: HostFilterParams): Observable<Host[]> {
-    let params = new HttpParams()
-      .set('page', page.toString())
-      .set('limit', limit.toString());
-
-    if (filters) {
-      if (filters.search) params = params.set('search', filters.search);
-      if (filters.status) params = params.set('status', filters.status);
-      if (filters.os) params = params.set('os', filters.os);
-      if (filters.arch) params = params.set('arch', filters.arch);
-      if (filters.gpu) params = params.set('gpu', filters.gpu);
-      if (filters.vram) params = params.set('vram', filters.vram);
-      if (filters.version) params = params.set('version', filters.version);
-    }
-
-    return this.http.get<PaginatedHostsResponse>(this.apiUrl, { params }).pipe(
-      tap(res => this.totalItems.set(res.total)),
-      map(res => res.items.map(HostMapper.toDomain)),
-      tap(items => this.hosts.set(items))
+  /**
+   * Loads ALL hosts from the backend in a single request.
+   * Client-side filtering and pagination is applied by the component.
+   */
+  loadAllHosts(): Observable<Host[]> {
+    return this.hostRepository.getAll().pipe(
+      tap(items => {
+        this.allHosts.set(items);
+        this.hosts.set(items);
+        this.totalItems.set(items.length);
+      }),
+      catchError(() => {
+        this.allHosts.set([]);
+        this.hosts.set([]);
+        this.totalItems.set(0);
+        return of([]);
+      })
     );
   }
 
+  /**
+   * Legacy method kept for backward compatibility with Horarios view.
+   * Use loadAllHosts() for the Nodos view.
+   */
+  getHosts(page: number, limit: number, filters?: HostFilterParams): Observable<Host[]> {
+    return this.loadAllHosts();
+  }
+
+  /**
+   * Builds available filter option lists from the already-loaded allHosts signal.
+   * Call this after loadAllHosts() has resolved.
+   */
+  buildFilterOptions(): HostFilterOptions {
+    const items = this.allHosts();
+    const osSet = new Set<string>();
+    const archSet = new Set<string>();
+    const gpuSet = new Set<string>();
+    const vramSet = new Set<string>();
+    const versionSet = new Set<string>();
+
+    items.forEach(h => {
+      if (h.hwInfo?.system) osSet.add(h.hwInfo.system);
+      if (h.hwInfo?.arch) archSet.add(h.hwInfo.arch);
+      if (h.gpuInfo?.model) gpuSet.add(h.gpuInfo.model);
+      if (h.gpuInfo?.totalMemory) vramSet.add(h.gpuInfo.totalMemory);
+      if (h.version) versionSet.add(h.version);
+    });
+
+    return {
+      os: Array.from(osSet).sort(),
+      arch: Array.from(archSet).sort(),
+      gpu: Array.from(gpuSet).sort(),
+      vram: Array.from(vramSet).sort(),
+      version: Array.from(versionSet).sort()
+    };
+  }
+
+  /**
+   * @deprecated Use buildFilterOptions() after loadAllHosts() instead.
+   */
   getHostFilterOptions(): Observable<HostFilterOptions> {
-    return this.http.get<HostFilterOptions>(`${this.apiUrl}/filters/options`);
+    return of(this.buildFilterOptions());
+  }
+
+  getHeartbeat(fingerprint: string): Observable<HostMetrics> {
+    return this.hostRepository.getHeartbeat(fingerprint);
+  }
+
+  updateHostMetrics(fingerprint: string, metrics: HostMetrics | null, status?: string): void {
+    this.allHosts.update(hosts => 
+      hosts.map(h => {
+        if (h.fingerprint === fingerprint) {
+          const updated: Host = { ...h };
+          if (status !== undefined) {
+            updated.status = status;
+          }
+          if (metrics !== undefined) {
+            if (metrics === null) {
+              const lastSeenVal = h.metrics?.lastSeen || null;
+              if (lastSeenVal) {
+                updated.metrics = {
+                  lastSeen: lastSeenVal,
+                  cpu: null as any,
+                  gpu: null as any,
+                  vram: null as any,
+                  memory: null as any
+                };
+              } else {
+                updated.metrics = null;
+              }
+            } else {
+              updated.metrics = metrics;
+            }
+          }
+          return updated;
+        }
+        return h;
+      })
+    );
+  }
+
+  migrateSetup(oldFingerprint: string, newFingerprint: string): Observable<void> {
+    return this.hostRepository.migrateSetup(oldFingerprint, newFingerprint).pipe(
+      tap(() => {
+        this.loadAllHosts().subscribe();
+      })
+    );
   }
 }

@@ -8,6 +8,7 @@ import { Nodos } from './presentation/views/nodos/nodos';
 import { Horarios } from './presentation/views/horarios/horarios';
 import { Metadatos } from './presentation/views/metadatos/metadatos';
 import { Camaras } from './presentation/views/camaras/camaras';
+import { Listas } from './presentation/views/listas/listas';
 import { authGuard } from './presentation/guards/auth.guard';
 import { AppRole } from './core/domain/entities/role.enum';
 
@@ -26,7 +27,10 @@ export const routes: Routes = [
             { path: 'nodos', component: Nodos },
             { path: 'nodos/:hostId/camaras', component: Camaras },
             { path: 'horarios', component: Horarios },
-            { path: 'metadatos', component: Metadatos }
+            { path: 'metadatos', redirectTo: 'metadatos/personas', pathMatch: 'full' },
+            { path: 'metadatos/:indexName', component: Metadatos },
+            { path: 'listas', redirectTo: 'listas/rostros', pathMatch: 'full' },
+            { path: 'listas/:listType', component: Listas }
         ]
     },
     { path: '**', redirectTo: '/login' } // Redirige a login para cualquier ruta no definida

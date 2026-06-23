@@ -1,11 +1,16 @@
 @if (currentUser()) {
-  <div class="user-control d-flex align-items-center justify-content-between p-2 rounded transition-all" 
-       [class.flex-column]="isCollapsed()" 
-       [class.gap-2]="isCollapsed()">
-    <div class="d-flex align-items-center justify-content-center" [class.gap-2]="!isCollapsed()">
-      <span class="icon-svg icon-user user-icon" [title]="currentUser()?.name || currentUser()?.username" style="width: 20px; height: 20px;"></span>
+<div class="session-container position-relative">
+  <!-- Main trigger row (always fixed height of 48px) -->
+  <div class="user-control d-flex align-items-center justify-content-between p-2 rounded transition-all cursor-pointer"
+    [class.collapsed-mode]="isCollapsed()" (click)="isCollapsed() ? toggleDropdown($event) : null">
+
+    <!-- User profile info -->
+    <div class="d-flex align-items-center gap-2" [class.w-100]="isCollapsed()"
+      [class.justify-content-center]="isCollapsed()">
+      <span class="icon-svg icon-user user-icon" [title]="currentUser()?.name || currentUser()?.username"
+        style="width: 24px; height: 24px;"></span>
       <div class="d-flex flex-column lh-1" [class.d-none]="isCollapsed()">
-        <span class="fw-semibold small text-truncate text-body text-start" style="max-width: 110px;">
+        <span class="fw-semibold small text-truncate text-body text-start" style="max-width: 100px;">
           {{ currentUser()?.name || currentUser()?.username }}
         </span>
         <span class="text-muted text-start" style="font-size: 0.68rem;">
@@ -13,26 +18,67 @@
         </span>
       </div>
     </div>
-    <div class="d-flex align-items-center gap-2" [class.flex-column]="isCollapsed()">
+
+    <!-- Action buttons (hidden in collapsed mode, shown inline in expanded mode) -->
+    <div class="d-flex align-items-center gap-2" [class.d-none]="isCollapsed()">
       <!-- Botón de Tema (Claro / Oscuro) -->
-      <button class="btn btn-sm btn-theme-switcher shadow-sm rounded-circle p-0 d-flex align-items-center justify-content-center" 
-              style="width: 32px; height: 32px; flex-shrink: 0;" 
-              (click)="toggleTheme()" 
-              [title]="isDarkMode() ? 'Modo Claro' : 'Modo Oscuro'">
+      <button
+        class="btn btn-sm btn-theme-switcher shadow-sm rounded-circle p-0 d-flex align-items-center justify-content-center"
+        style="width: 28px; height: 28px; flex-shrink: 0;" (click)="toggleTheme(); $event.stopPropagation()"
+        [title]="isDarkMode() ? 'Modo Claro' : 'Modo Oscuro'">
         @if (isDarkMode()) {
-          <span class="icon-svg icon-theme-light" style="width: 16px; height: 16px;"></span>
+        <span class="icon-svg icon-theme-light" style="width: 14px; height: 14px;"></span>
         } @else {
-          <span class="icon-svg icon-theme-dark" style="width: 16px; height: 16px;"></span>
+        <span class="icon-svg icon-theme-dark" style="width: 14px; height: 14px;"></span>
         }
       </button>
 
       <!-- Botón Cerrar Sesión -->
-      <button class="btn btn-sm btn-danger border-0 p-0 d-flex align-items-center justify-content-center rounded-circle shadow-sm" 
-              style="width: 32px; height: 32px; flex-shrink: 0;"
-              (click)="onLogout()" 
-              [title]="isCollapsed() ? 'Cerrar Sesión' : 'Salir'">
-        <span class="icon-svg icon-logout logout-icon" style="width: 16px; height: 16px;"></span>
+      <button
+        class="btn btn-sm btn-danger border-0 p-0 d-flex align-items-center justify-content-center rounded-circle shadow-sm"
+        style="width: 28px; height: 28px; flex-shrink: 0;" (click)="onLogout(); $event.stopPropagation()"
+        [title]="'Cerrar Sesión'">
+        <span class="icon-svg icon-logout logout-icon" style="width: 14px; height: 14px;"></span>
       </button>
     </div>
   </div>
+
+  <!-- Floating Dropdown menu when collapsed (shows name, role, theme toggle, and logout) -->
+  @if (isCollapsed() && showDropdown()) {
+  <div class="floating-user-menu shadow p-3 rounded position-absolute" (click)="$event.stopPropagation()">
+    <div class="d-flex align-items-center gap-2 pb-2 mb-2 border-bottom border-secondary-subtle">
+      <span class="icon-svg icon-user user-icon" style="width: 24px; height: 24px;"></span>
+      <div class="d-flex flex-column lh-1">
+        <span class="fw-semibold small text-truncate text-body text-start" style="max-width: 140px;">
+          {{ currentUser()?.name || currentUser()?.username }}
+        </span>
+        <span class="text-muted text-start" style="font-size: 0.68rem;">
+          {{ currentUser()?.role }}
+        </span>
+      </div>
+    </div>
+
+    <div class="d-flex flex-column gap-2">
+      <!-- Option: Switch Theme -->
+      <button class="btn btn-sm btn-theme-switcher w-100 d-flex align-items-center gap-2 py-1.5 px-3 rounded text-start"
+        (click)="toggleTheme(); toggleDropdown($event)">
+        @if (isDarkMode()) {
+        <span class="icon-svg icon-theme-light" style="width: 14px; height: 14px;"></span>
+        <span>Modo Claro</span>
+        } @else {
+        <span class="icon-svg icon-theme-dark" style="width: 14px; height: 14px;"></span>
+        <span>Modo Oscuro</span>
+        }
+      </button>
+
+      <!-- Option: Logout -->
+      <button class="btn btn-sm btn-outline-danger w-100 d-flex align-items-center gap-2 py-1.5 px-3 rounded text-start"
+        (click)="onLogout()">
+        <span class="icon-svg icon-logout logout-icon bg-danger" style="width: 14px; height: 14px;"></span>
+        <span>Cerrar Sesión</span>
+      </button>
+    </div>
+  </div>
+  }
+</div>
 }
