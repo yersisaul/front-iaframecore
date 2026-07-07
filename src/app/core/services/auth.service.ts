@@ -1,38 +1,57 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject, Injector } from '@angular/core';
 import { Observable, throwError, of } from 'rxjs';
-import { tap, map, catchError } from 'rxjs/operators';
+import { tap, map, catchError, switchMap } from 'rxjs/operators';
 import { User } from '../domain/entities/user.entity';
-import { AppRole } from '../domain/entities/role.enum';
 import { LoginRequestDTO } from '../../data/repositories/dtos/login-request.dto';
 import { ApiKeyConfig } from '../config/api-key.config';
 import { IAuthRepository } from '../domain/repositories/auth.repository';
 import { AppEnvironment } from '../config/app-environment';
+import { PermissionsService } from './permissions.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
+  private injector = inject(Injector);
+
+  private get permissionsService(): PermissionsService {
+    return this.injector.get(PermissionsService);
+  }
+
   // Signals de estado
   readonly currentUser = signal<User | null>(null);
 
   // Signals computados derivados
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
-  readonly isAdmin = computed(() => this.currentUser()?.role === AppRole.ADMIN);
+
+  // isAdmin: verdadero si el usuario tiene el permiso exclusivo de administración (roles.create)
+  readonly isAdmin = computed(() =>
+    this.permissionsService.activePermissionCodes().has('roles.create')
+  );
 
   constructor(private authRepository: IAuthRepository) { }
 
   login(credentials: LoginRequestDTO): Observable<User> {
-    return this.authRepository.login(credentials.username, credentials.contrasena).pipe(
-      map(res => {
+    return this.authRepository.login(credentials.email, credentials.password).pipe(
+      switchMap(res => {
         sessionStorage.setItem('auth_token', res.accessToken);
         sessionStorage.setItem('auth_user', JSON.stringify({
           id: res.user.id,
-          username: res.user.username,
+          email: res.user.email,
           name: res.user.name,
           role: res.user.role,
+          roleId: res.user.roleId || '',
           createdAt: res.user.createdAt.toISOString()
         }));
-        return res.user;
+        
+        // Establecer el usuario actual en la señal antes de cargar los permisos
+        // para que loadUserPermissions() pueda encontrarlo y actualizar su rol.
+        this.currentUser.set(res.user);
+        
+        const roleId = res.user.roleId || '';
+        return this.permissionsService.loadUserPermissions(roleId).pipe(
+          map(() => this.currentUser()!)
+        );
       }),
       tap(user => {
         this.currentUser.set(user);
@@ -40,6 +59,7 @@ export class AuthService {
       catchError(err => {
         sessionStorage.removeItem('auth_token');
         sessionStorage.removeItem('auth_user');
+        this.permissionsService.clearPermissions();
         this.currentUser.set(null);
         return throwError(() => err);
       })
@@ -49,12 +69,13 @@ export class AuthService {
   logout(): Observable<void> {
     sessionStorage.removeItem('auth_token');
     sessionStorage.removeItem('auth_user');
+    this.permissionsService.clearPermissions();
     this.currentUser.set(null);
     return of(undefined);
   }
 
   checkSession(): Observable<User | null> {
-    // 1. Priorizar la sesión dinámica activa en localStorage
+    // 1. Priorizar la sesión dinámica activa en sessionStorage
     try {
       const token = sessionStorage.getItem('auth_token');
       const userJson = sessionStorage.getItem('auth_user');
@@ -62,9 +83,10 @@ export class AuthService {
         const parsed = JSON.parse(userJson);
         const user: User = {
           id: parsed.id,
-          username: parsed.username,
+          email: parsed.email,
           name: parsed.name,
           role: parsed.role,
+          roleId: parsed.roleId,
           createdAt: new Date(parsed.createdAt)
         };
         this.currentUser.set(user);
@@ -76,7 +98,7 @@ export class AuthService {
       sessionStorage.removeItem('auth_user');
     }
 
-    // 2. Si no hay sesión activa en localStorage, verificar si hay una clave estática configurada en api-key.config.ts
+    // 2. Si no hay sesión activa, verificar si hay una clave estática configurada en api-key.config.ts
     const isDevMode = !AppEnvironment.production;
     const configKey = ApiKeyConfig?.apiKey;
     const hasConfigKey = isDevMode &&
@@ -88,12 +110,14 @@ export class AuthService {
     if (hasConfigKey) {
       const staticUser: User = {
         id: 'api_key_user',
-        username: 'apikeyuser',
+        email: 'apikeyuser@iaframecore.com',
         name: 'API Key User',
-        role: AppRole.ADMIN,
+        role: 'ADMIN',
         createdAt: new Date()
       };
       this.currentUser.set(staticUser);
+      // Para el usuario de API Key, cargamos todos los permisos del sistema
+      this.permissionsService.setAdminPermissions();
       return of(staticUser);
     }
 
@@ -101,5 +125,3 @@ export class AuthService {
     return of(null);
   }
 }
-
-

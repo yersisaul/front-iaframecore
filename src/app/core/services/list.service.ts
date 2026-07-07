@@ -29,6 +29,33 @@ export class ListService {
   readonly lists = signal<List[]>([]);
   readonly listDetails = signal<ListDetail[]>([]);
   readonly isLoading = signal<boolean>(false);
+  readonly activeListId = signal<string | null>(null);
+  readonly isViewActive = signal<boolean>(false);
+
+  readonly newRecordIds = signal<Set<string>>(new Set());
+  readonly updatedRecordIds = signal<Set<string>>(new Set());
+  readonly deletingRecordIds = signal<Set<string>>(new Set());
+
+  markAsNew(id: string): void {
+    this.newRecordIds.update(s => new Set([...s, id]));
+    setTimeout(() => {
+      this.newRecordIds.update(s => { const next = new Set(s); next.delete(id); return next; });
+    }, 1000);
+  }
+
+  markAsUpdated(id: string): void {
+    this.updatedRecordIds.update(s => new Set([...s, id]));
+    setTimeout(() => {
+      this.updatedRecordIds.update(s => { const next = new Set(s); next.delete(id); return next; });
+    }, 1000);
+  }
+
+  markAsDeleting(id: string): void {
+    this.deletingRecordIds.update(s => new Set([...s, id]));
+    setTimeout(() => {
+      this.deletingRecordIds.update(s => { const next = new Set(s); next.delete(id); return next; });
+    }, 1000);
+  }
 
   // Configurable similarity threshold for vector similarity matching (default 0.85)
   readonly similarityThreshold = signal<number>(0.85);
@@ -104,6 +131,7 @@ export class ListService {
 
   loadListDetails(listId: string): Observable<ListDetail[]> {
     this.isLoading.set(true);
+    this.activeListId.set(listId);
     return this.listRepository.getListDetails(listId).pipe(
       tap(details => {
         this.listDetails.set(details);
@@ -208,6 +236,63 @@ export class ListService {
     return this.listRepository.registerListDetail(detail).pipe(
       tap(newDetail => {
         this.listDetails.update(current => [...current, newDetail]);
+        this.isLoading.set(false);
+      }),
+      catchError(err => {
+        this.isLoading.set(false);
+        throw err;
+      })
+    );
+  }
+
+  deleteListLocal(listId: string): void {
+    this.lists.update(current => current.filter(l => l.list_id !== listId));
+    if (this.activeListId() === listId) {
+      this.listDetails.set([]);
+    }
+  }
+
+  deleteSubjectLocal(detailId: string): void {
+    this.listDetails.update(current => current.filter(d => d.detail_id !== detailId));
+  }
+
+  updateFaceImg(detailId: string, file: File): Observable<ListDetail> {
+    this.isLoading.set(true);
+    return this.listRepository.updateFaceImg(detailId, file).pipe(
+      tap(res => {
+        this.listDetails.update(current => current.map(d => d.detail_id === detailId ? { ...d, metadata: { ...d.metadata, url_img: res.metadata?.url_img } } : d));
+        this.isLoading.set(false);
+      }),
+      catchError(err => {
+        this.isLoading.set(false);
+        throw err;
+      })
+    );
+  }
+
+  updateFaceDetail(detailId: string, nombreAsociado: string): Observable<ListDetail> {
+    this.isLoading.set(true);
+    return this.listRepository.updateFaceDetail(detailId, { nombre_asociado: nombreAsociado }).pipe(
+      tap(res => {
+        this.listDetails.update(current => current.map(d => d.detail_id === detailId ? { ...d, nombre_asociado: res.nombre_asociado } : d));
+        this.isLoading.set(false);
+      }),
+      catchError(err => {
+        this.isLoading.set(false);
+        throw err;
+      })
+    );
+  }
+
+  updatePlateDetail(detailId: string, plateText: string, nombreAsociado?: string): Observable<ListDetail> {
+    this.isLoading.set(true);
+    return this.listRepository.updatePlateDetail(detailId, { nombre_asociado: nombreAsociado, plate_text: plateText }).pipe(
+      tap(res => {
+        this.listDetails.update(current => current.map(d => d.detail_id === detailId ? { 
+          ...d, 
+          nombre_asociado: res.nombre_asociado,
+          metadata: { ...d.metadata, text_placa: res.metadata?.text_placa }
+        } : d));
         this.isLoading.set(false);
       }),
       catchError(err => {

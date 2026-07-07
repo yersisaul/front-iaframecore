@@ -1,80 +1,772 @@
-<div class="container-fluid mt-3">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h2 class="fw-bold text-dark">
-        <i class="bi bi-people-fill text-primary me-2"></i>Gestión de Usuarios
-      </h2>
-      <p class="text-muted mb-0">Control e inspección de cuentas de acceso registradas en la base de datos PostgreSQL.</p>
-    </div>
-  </div>
+<div class="users-view-container container-fluid py-4 position-relative">
+  <!-- Header Section -->
+  <div class="users-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div class="d-flex align-items-center gap-3">
+      <!-- Botón de Collapse Sidebar (Ghost Button) -->
+      <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
+        (click)="toggleSidebar()" aria-label="Toggle Sidebar">
+        @if (isSidebarCollapsed()) {
+        <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
+        } @else {
+        <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
+        }
+      </button>
 
-  <!-- Alerta de Nivel de Acceso -->
-  <div class="alert alert-info border-0 shadow-sm rounded-3 d-flex align-items-center mb-4" role="alert">
-    <i class="bi bi-shield-check fs-4 text-info me-3"></i>
-    <div>
-      <strong class="text-dark">Acceso Autorizado: Rol Administrador</strong>. 
-      <span class="text-muted">Estás visualizando este listado confidencial porque tu sesión cuenta con permisos administrativos.</span>
-    </div>
-  </div>
-
-  <div class="card border-0 shadow-sm rounded-3">
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th class="ps-4">Usuario</th>
-              <th>Nombre Completo</th>
-              <th>Nivel de Rol</th>
-              <th>UUID (Identificador)</th>
-              <th class="pe-4">Fecha de Creación</th>
-            </tr>
-          </thead>
-          <tbody>
-            @if (isLoading()) {
-              <tr>
-                <td colspan="5" class="text-center py-4">
-                  <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                  <span class="text-muted">Cargando usuarios...</span>
-                </td>
-              </tr>
-            } @else if (errorMessage()) {
-              <tr>
-                <td colspan="5" class="text-center py-4 text-danger">
-                  <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage() }}
-                </td>
-              </tr>
-            } @else if (users().length === 0) {
-              <tr>
-                <td colspan="5" class="text-center py-4 text-muted">
-                  No se encontraron usuarios registrados.
-                </td>
-              </tr>
-            } @else {
-              @for (user of users(); track user.id) {
-                <tr>
-                  <td class="ps-4 fw-semibold text-dark">
-                    <i class="bi bi-person-circle me-2" 
-                       [class.text-primary]="user.role === 'administrador' || user.role === 'admin'" 
-                       [class.text-secondary]="user.role !== 'administrador' && user.role !== 'admin'"></i>
-                    {{ user.username }}
-                  </td>
-                  <td>{{ user.name || 'Sin nombre' }}</td>
-                  <td>
-                    <span class="badge" 
-                          [class.bg-primary]="user.role === 'administrador' || user.role === 'admin'" 
-                          [class.bg-secondary]="user.role !== 'administrador' && user.role !== 'admin'">
-                      {{ user.role }}
-                    </span>
-                  </td>
-                  <td><code>{{ user.id }}</code></td>
-                  <td class="pe-4 text-muted small">{{ user.createdAt | date:'yyyy-MM-dd HH:mm:ss' }} UTC</td>
-                </tr>
-              }
-            }
-          </tbody>
-        </table>
+      <div>
+        <h2 class="fw-bold mb-0 fs-3">Gestión de Accesos</h2>
+        <p class="text-muted mb-0 small mt-1">
+          @if (activeTab() === 'usuarios') {
+          Se encontraron <span class="fw-semibold text-primary">{{ filteredUsers().length }}</span> cuentas de acceso en
+          el sistema.
+          } @else {
+          Configura y define permisos específicos en tiempo real para cada rol del sistema.
+          }
+        </p>
       </div>
     </div>
+
+    <!-- Controles de Navegación y Botones de Acción (Lado Derecho del Encabezado - Fila 1) -->
+    <div class="d-flex align-items-center gap-3">
+      <!-- Tabs "Cuentas de Usuarios" y "Roles y Permisos" -->
+      <div class="view-tabs-group d-flex align-items-center gap-1">
+        <button class="btn-premium-tab" [class.active]="activeTab() === 'usuarios'" (click)="setTab('usuarios')">
+          <span class="icon-svg icon-usuarios" style="width: 14px; height: 14px;"></span>
+          <span class="ms-1.5 d-none d-sm-inline">Cuentas de Usuarios</span>
+          <span class="ms-1.5 d-inline d-sm-none">Usuarios</span>
+        </button>
+        <button class="btn-premium-tab" [class.active]="activeTab() === 'roles'" (click)="setTab('roles')">
+          <span class="icon-svg icon-lock" style="width: 14px; height: 14px;"></span>
+          <span class="ms-1.5 d-none d-sm-inline">Roles y Permisos</span>
+          <span class="ms-1.5 d-inline d-sm-none">Roles</span>
+        </button>
+      </div>
+
+      <!-- Separador vertical -->
+      <div class="header-separator"></div>
+
+      <!-- Botón de acción principal correspondiente (Fila 1) -->
+      @if (activeTab() === 'usuarios') {
+        @if (permissionsService.hasPermission('Usuarios', 'crear') || permissionsService.hasPermission('Usuarios', 'agregar')) {
+          <button class="btn-migrate-config" (click)="openRegisterModal()">
+            <span class="icon-svg icon-user-plus" style="width: 16px; height: 16px;"></span>
+            <span class="d-none d-md-inline">Nuevo Usuario</span>
+          </button>
+        }
+      } @else {
+        @if (permissionsService.hasPermission('Roles', 'crear') || permissionsService.hasPermission('Roles', 'agregar')) {
+          <button class="btn-migrate-config" (click)="openCreateRoleModal()">
+            <span class="icon-svg icon-plus" style="width: 16px; height: 16px;"></span>
+            <span>Nuevo rol</span>
+          </button>
+        }
+      }
+    </div>
   </div>
+
+  <!-- Fila 2: Búsqueda y Filtros (Solo para la pestaña de Usuarios) -->
+  @if (activeTab() === 'usuarios') {
+    <div class="header-row-bottom d-flex align-items-center gap-3 mt-3 mb-4">
+      <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1 bg-surface">
+        <div class="search-input-wrapper position-relative d-flex align-items-center pl-1 flex-grow-1">
+          <span class="icon-svg icon-search search-icon-prefix text-muted" style="width: 18px; height: 18px; opacity: 0.5;"></span>
+          <input type="text" [value]="searchQuery()" (input)="onSearchChange($event)" placeholder="Buscar usuario..."
+            class="search-input-control border-0 ms-2"
+            style="font-size: 0.82rem; outline: none; width: 100%; background: transparent; color: var(--text-primary);" />
+        </div>
+
+        <div class="filter-dropdown-wrapper position-relative flex-shrink-0">
+          <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
+            (click)="toggleFiltersVisibility($event)" [class.active]="selectedRoleFilter() !== 'TODOS'"
+            [class.open]="showFilters()" title="Filtrar por Rol" aria-label="Filtrar por Rol">
+            <span class="icon-svg icon-filter filter-icon"></span>
+            @if (selectedRoleFilter() !== 'TODOS') {
+              <span class="active-badge-dot"></span>
+            }
+          </button>
+
+          <!-- Dropdown Desplegable -->
+          @if (showFilters()) {
+            <div class="filter-dropdown-menu dropdown-rol p-3 scrollable-menu" style="position: absolute; right: 0; top: calc(100% + 8px); z-index: 1000;" (click)="$event.stopPropagation()">
+              <label class="custom-checkbox-wrapper d-flex align-items-center gap-2" for="role-todos">
+                <input class="custom-checkbox-input" type="checkbox" id="role-todos"
+                  [checked]="selectedRoleFilter() === 'TODOS'" (change)="setRoleFilter('TODOS')">
+                <span class="custom-checkbox-box d-flex align-items-center justify-content-center">
+                  <span class="icon-svg icon-check checkbox-check-icon" style="width: 10px; height: 10px;"></span>
+                </span>
+                <span class="custom-checkbox-label">TODOS LOS ROLES</span>
+              </label>
+              <!-- Filtros de rol dinámicos desde el backend -->
+              @for (rol of availableRoles(); track rol.rol_id) {
+                <label class="custom-checkbox-wrapper d-flex align-items-center gap-2 mt-2" [for]="'role-' + rol.rol_id">
+                  <input class="custom-checkbox-input" type="checkbox" [id]="'role-' + rol.rol_id"
+                    [checked]="selectedRoleFilter() === rol.nombre" (change)="setRoleFilter(rol.nombre)">
+                  <span class="custom-checkbox-box d-flex align-items-center justify-content-center">
+                    <span class="icon-svg icon-check checkbox-check-icon" style="width: 10px; height: 10px;"></span>
+                  </span>
+                  <span class="custom-checkbox-label">{{ rol.nombre }}</span>
+                </label>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- TAB: USUARIOS -->
+  @if (activeTab() === 'usuarios') {
+  <!-- Main Bento Grid Layout of Users -->
+  <div class="users-grid mb-4">
+    @if (isLoading()) {
+    <div class="col-12 text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando usuarios...</span>
+      </div>
+    </div>
+    } @else if (errorMessage()) {
+    <div class="col-12 text-center py-5 text-danger fw-semibold">
+      <span class="icon-svg icon-info-circle me-2" style="width: 24px; height: 24px;"></span>
+      {{ errorMessage() }}
+    </div>
+    } @else if (filteredUsers().length === 0) {
+    <div class="col-12 text-center py-5 text-muted border rounded bg-card">
+      No se encontraron usuarios que coincidan con la búsqueda.
+    </div>
+    } @else {
+    @for (user of filteredUsers(); track user.id) {
+    <div class="card user-card h-100" [ngClass]="getRoleCardClass(user.role)"
+      [class.user-card--new]="userService.newRecordIds().has(user.id)"
+      [class.user-card--updated]="userService.updatedRecordIds().has(user.id)"
+      [class.user-card--deleting]="userService.deletingRecordIds().has(user.id)">
+      <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
+        <div>
+          <!-- Header: Avatar Initials + Role Badge -->
+          <div class="user-header-block d-flex align-items-center justify-content-between pb-3 mb-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar-initials-wrap d-flex align-items-center justify-content-center fw-bold fs-5">
+                {{ (user.firstName?.[0] || user.name?.[0] || 'U') | uppercase }}{{ (user.lastName?.[0] || '') |
+                uppercase }}
+              </div>
+              <div>
+                <h5 class="user-name fw-bold mb-0 text-truncate" style="max-width: 160px;" [title]="user.name">
+                  {{ user.name || 'Sin nombre' }}
+                </h5>
+                <span class="user-email text-muted small text-truncate d-block" style="max-width: 160px;"
+                  [title]="user.email">
+                  {{ user.email }}
+                </span>
+              </div>
+            </div>
+
+            <span class="role-badge" [ngClass]="getRoleBadgeClass(user.role)">
+              {{ user.role | uppercase }}
+            </span>
+          </div>
+
+          <!-- Identity Stats Grid -->
+          <div class="user-info-block d-flex flex-column gap-2 mb-3">
+            <div class="info-row d-flex justify-content-between">
+              <span class="info-label">UUID</span>
+              <span class="info-value font-monospace text-truncate text-end" style="max-width: 170px;"
+                [title]="user.id">
+                {{ user.id }}
+              </span>
+            </div>
+            <div class="info-row d-flex justify-content-between">
+              <span class="info-label">Fecha Creación</span>
+              <span class="info-value font-monospace text-truncate text-end" style="max-width: 170px;">
+                {{ user.createdAt | date:'dd/MM/yyyy HH:mm:ss' }} UTC
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Controls Group -->
+        <div class="actions-group d-flex justify-content-end gap-2 mt-2">
+          @if (permissionsService.hasPermission('Usuarios', 'editar')) {
+          <!-- Editar datos -->
+          <button class="btn-action-icon btn-action-edit" (click)="openEditModal(user)" title="Editar Usuario"
+            aria-label="Editar Usuario">
+            <span class="icon-svg icon-edit" style="width: 14px; height: 14px;"></span>
+          </button>
+          <!-- Cambiar clave -->
+          <button class="btn-action-icon btn-action-password" (click)="openPasswordModal(user)"
+            title="Cambiar Contraseña" aria-label="Cambiar Contraseña">
+            <span class="icon-svg icon-lock" style="width: 14px; height: 14px;"></span>
+          </button>
+          }
+          @if (permissionsService.hasPermission('Usuarios', 'eliminar')) {
+          <!-- Eliminar -->
+          <button class="btn-action-icon btn-action-delete" (click)="openDeleteModal(user)" title="Eliminar Usuario"
+            aria-label="Eliminar Usuario">
+            <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+          </button>
+          }
+        </div>
+      </div>
+    </div>
+    }
+    }
+  </div>
+  }
+
+  <!-- TAB: ROLES Y PERMISOS -->
+  @if (activeTab() === 'roles') {
+  <div class="row g-4">
+    <!-- Panel izquierdo: Lista de Roles -->
+    <div class="col-md-4">
+      <div class="card premium-roles-matrix-card border shadow-sm rounded-4 overflow-hidden bg-card p-4">
+        <div class="mb-3">
+          <h5 class="fw-bold mb-0 text-body">Roles del Sistema</h5>
+          <p class="text-muted mb-0 small mt-1">Selecciona un rol para gestionar sus permisos.</p>
+        </div>
+        <div class="scrollable-roles-list">
+          @if (availableRoles().length === 0) {
+          <div class="text-center text-muted py-4">
+            <div class="spinner-border spinner-border-sm" role="status"></div>
+            <span class="ms-2 small">Cargando roles...</span>
+          </div>
+          }
+          @for (rol of availableRoles(); track rol.rol_id) {
+          <div class="w-100 p-3 rounded-3 mb-2 border transition-all role-card-item d-flex align-items-center justify-content-between"
+            [class.active-role-card]="selectedRoleForEdit()?.rol_id === rol.rol_id"
+            [class.border-primary]="selectedRoleForEdit()?.rol_id === rol.rol_id"
+            [class.role-card--new]="permissionsService.newRoleIds().has(rol.rol_id)"
+            [class.role-card--updated]="permissionsService.updatedRoleIds().has(rol.rol_id)"
+            [class.role-card--deleting]="permissionsService.deletingRoleIds().has(rol.rol_id)"
+            (click)="selectRoleForEdit(rol)"
+            style="background: var(--bg-surface, transparent); cursor: pointer;">
+            <div class="flex-grow-1 pe-2">
+              <span class="role-badge mb-1 d-inline-block" [ngClass]="getRoleBadgeClass(rol.nombre)">{{ rol.nombre }}</span>
+              <p class="text-muted mb-0 small mt-1">{{ rol.descripcion }}</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge role-permissions-count-badge small">{{ rol.id_permisos.length }} permisos</span>
+              
+              @if (!isSystemRole(rol.nombre) && permissionsService.hasPermission('Roles', 'eliminar')) {
+              <button class="btn-action-icon btn-action-delete role-delete-btn" (click)="openDeleteRoleModal(rol, $event)" title="Eliminar Rol" aria-label="Eliminar Rol">
+                <span class="icon-svg icon-trash" style="width: 13px; height: 13px;"></span>
+              </button>
+              }
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel derecho: Permisos del rol seleccionado -->
+    <div class="col-md-8">
+      @if (!selectedRoleForEdit()) {
+      <div class="card premium-roles-matrix-card border shadow-sm rounded-4 bg-card d-flex align-items-center justify-content-center p-5 position-relative overflow-hidden">
+        <div class="text-center position-relative px-4" style="max-width: 440px;">
+          <!-- Contenedor del icono con fondo suave -->
+          <div class="mx-auto mb-4 d-flex align-items-center justify-content-center"
+            style="width: 72px; height: 72px; border-radius: 20px; background: rgba(13, 110, 253, 0.08); border: 1px solid rgba(13, 110, 253, 0.15); box-shadow: 0 8px 20px rgba(13, 110, 253, 0.03);">
+            <span class="icon-svg icon-lock" style="width: 32px; height: 32px; background-color: var(--primary);"></span>
+          </div>
+          
+          <h6 class="fw-bold text-body fs-6 mb-2" style="letter-spacing: -0.01em;">Gestión de Permisos</h6>
+          <p class="text-muted small mb-0 lh-lg" style="font-size: 0.82rem;">
+            Selecciona un rol de la columna izquierda para auditar, administrar y actualizar su matriz de permisos y facultades operativas de forma segura.
+          </p>
+        </div>
+      </div>
+      } @else {
+      <div class="card premium-roles-matrix-card border shadow-sm rounded-4 overflow-hidden bg-card">
+        <div class="card-header p-4 border-bottom bg-transparent">
+          <h5 class="fw-bold mb-0 text-body">Permisos: {{ selectedRoleForEdit()!.nombre }}</h5>
+          @if (isSystemRole(selectedRoleForEdit()!.nombre)) {
+          <p class="text-warning mb-0 small mt-1 d-flex align-items-center">
+            <span class="icon-svg icon-warning me-1" style="width: 14px; height: 14px; background-color: #ffc107;"></span>
+            Este es un rol de sistema predefinido y no puede ser modificado.
+          </p>
+          } @else {
+          <p class="text-muted mb-0 small mt-1">Activa o desactiva los permisos. Los cambios se guardan y sincronizan en tiempo real con el backend.</p>
+          }
+        </div>
+        <div class="card-body p-0 table-responsive scrollable-permissions-table-container">
+          <table class="table align-middle table-hover mb-0 permissions-matrix-table">
+            <thead>
+              <tr class="bg-light-translucent">
+                <th scope="col" class="ps-4 py-3 small fw-bold text-muted text-uppercase" style="width: 60%;">Permiso
+                </th>
+                <th scope="col" class="text-center py-3 small fw-bold text-muted text-uppercase">Activado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (permissionsService.availablePermissions().length === 0) {
+              <tr>
+                <td colspan="2" class="text-center py-4 text-muted">
+                  <span class="spinner-border spinner-border-sm me-2"></span>Cargando permisos...
+                </td>
+              </tr>
+              }
+              @for (permiso of permissionsService.availablePermissions(); track permiso.permiso_id) {
+              <tr class="action-row">
+                <td class="ps-4 py-2 text-body small">
+                  <div class="d-flex flex-column">
+                    <span class="fw-medium">{{ permiso.descripcion }}</span>
+                    <span class="text-muted font-monospace" style="font-size: 0.7rem;">{{ permiso.codigo }}</span>
+                  </div>
+                </td>
+                <td class="text-center py-2">
+                  <label class="switch-toggle" [class.switch-disabled]="isSystemRole(selectedRoleForEdit()!.nombre)">
+                    <input type="checkbox" [checked]="isPermissionSelected(permiso.permiso_id)"
+                      [disabled]="isSystemRole(selectedRoleForEdit()!.nombre)"
+                      (change)="togglePermissionForRole(permiso.permiso_id)">
+                    <span class="switch-slider"></span>
+                  </label>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- Toast de Notificaciones Feedback -->
+  @if (toastMessage()) {
+  <div class="custom-toast d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 shadow-lg border"
+    [class.toast-success]="toastType() === 'success'" [class.toast-error]="toastType() === 'error'">
+    @if (toastType() === 'success') {
+    <span class="icon-svg icon-check flex-shrink-0" style="width: 16px; height: 16px;"></span>
+    } @else {
+    <span class="icon-svg icon-info-circle flex-shrink-0" style="width: 16px; height: 16px;"></span>
+    }
+    <span class="small fw-semibold">{{ toastMessage() }}</span>
+  </div>
+  }
+
+  <!-- MODAL: EDITAR DATOS DE USUARIO -->
+  @if (showEditModal()) {
+  <div class="modal-premium-overlay" (click)="closeEditModal()">
+    <div class="modal-premium-card" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+        <div class="d-flex align-items-center gap-3">
+          <div class="modal-header-icon-wrap icon-edit-theme">
+            <span class="icon-svg icon-edit" style="width: 22px; height: 22px;"></span>
+          </div>
+          <div>
+            <h5 class="fw-bold mb-0 text-primary fs-6">Editar Usuario</h5>
+            <p class="text-muted mb-0 small mt-0.5" style="font-size: 0.75rem;">Modifica los accesos y datos de la
+              cuenta</p>
+          </div>
+        </div>
+        <button class="btn-ghost p-1.5" (click)="closeEditModal()" aria-label="Cerrar modal">
+          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <form [formGroup]="editForm" (ngSubmit)="saveUser()">
+        <div class="premium-input-group mb-3">
+          <label class="premium-input-label">Correo Electrónico (Email)</label>
+          <div class="input-icon-wrapper">
+            <span class="icon-svg icon-email input-icon" style="width: 16px; height: 16px;"></span>
+            <input type="email" class="premium-input-control" formControlName="email"
+              placeholder="ejemplo@correo.com" />
+          </div>
+          @if (editForm.get('email')?.touched && editForm.get('email')?.invalid) {
+          <span class="premium-error-msg">Ingresa un correo electrónico válido.</span>
+          }
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <div class="premium-input-group">
+              <label class="premium-input-label">Nombres</label>
+              <div class="input-icon-wrapper">
+                <span class="icon-svg icon-user input-icon" style="width: 16px; height: 16px;"></span>
+                <input type="text" class="premium-input-control" formControlName="nombres" placeholder="Nombres" />
+              </div>
+              @if (editForm.get('nombres')?.touched && editForm.get('nombres')?.invalid) {
+              <span class="premium-error-msg">Requerido.</span>
+              }
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="premium-input-group">
+              <label class="premium-input-label">Apellidos</label>
+              <div class="input-icon-wrapper">
+                <span class="icon-svg icon-user input-icon" style="width: 16px; height: 16px;"></span>
+                <input type="text" class="premium-input-control" formControlName="apellidos" placeholder="Apellidos" />
+              </div>
+              @if (editForm.get('apellidos')?.touched && editForm.get('apellidos')?.invalid) {
+              <span class="premium-error-msg">Requerido.</span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="premium-input-group mb-4">
+          <label class="premium-input-label">Rol del Sistema</label>
+          <div class="input-icon-wrapper">
+            <span class="icon-svg icon-lock" style="width: 16px; height: 16px; color: var(--text-muted); margin-left: 12px; position: absolute; z-index: 2;"></span>
+            <select class="premium-input-control select-premium" formControlName="rol_id">
+              @for (rol of availableRoles(); track rol.rol_id) {
+              <option [value]="rol.rol_id">{{ rol.nombre }}</option>
+              }
+            </select>
+          </div>
+          @if (editForm.get('rol_id')?.touched && editForm.get('rol_id')?.invalid) {
+          <span class="premium-error-msg">Selecciona un rol.</span>
+          }
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="modal-premium-actions d-flex gap-3 mt-4 pt-3">
+          <button type="button" class="btn-premium-cancel" (click)="closeEditModal()" [disabled]="isSaving()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-premium-confirm-edit" [disabled]="editForm.invalid || isSaving()">
+            @if (isSaving()) {
+            <span class="premium-button-spinner"></span>
+            <span>Guardando...</span>
+            } @else {
+            <span>Guardar Cambios</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  }
+
+  <!-- MODAL: CAMBIAR CONTRASEÑA -->
+  @if (showPasswordModal()) {
+  <div class="modal-premium-overlay" (click)="closePasswordModal()">
+    <div class="modal-premium-card" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+        <div class="d-flex align-items-center gap-3">
+          <div class="modal-header-icon-wrap icon-password-theme">
+            <span class="icon-svg icon-lock" style="width: 22px; height: 22px;"></span>
+          </div>
+          <div>
+            <h5 class="fw-bold mb-0 text-body fs-6" style="color: #8b5cf6 !important;">Seguridad de la Cuenta</h5>
+            <p class="text-muted mb-0 small mt-0.5" style="font-size: 0.75rem;">Modifica la contraseña de acceso del
+              usuario</p>
+          </div>
+        </div>
+        <button class="btn-ghost p-1.5" (click)="closePasswordModal()" aria-label="Cerrar modal">
+          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
+        <div class="premium-input-group mb-3">
+          <label class="premium-input-label">Contraseña Actual</label>
+          <div class="input-icon-wrapper">
+            <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
+            <input type="password" class="premium-input-control" formControlName="oldPassword" placeholder="••••••••" />
+          </div>
+          @if (passwordForm.get('oldPassword')?.touched && passwordForm.get('oldPassword')?.invalid) {
+          <span class="premium-error-msg">Este campo es requerido.</span>
+          }
+        </div>
+
+        <div class="premium-input-group mb-3">
+          <label class="premium-input-label">Nueva Contraseña</label>
+          <div class="input-icon-wrapper">
+            <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
+            <input type="password" class="premium-input-control" formControlName="newPassword"
+              placeholder="Mínimo 6 caracteres" />
+          </div>
+          @if (passwordForm.get('newPassword')?.touched && passwordForm.get('newPassword')?.invalid) {
+          <span class="premium-error-msg">La contraseña debe tener al menos 6 caracteres.</span>
+          }
+        </div>
+
+        <div class="premium-input-group mb-4">
+          <label class="premium-input-label">Confirmar Nueva Contraseña</label>
+          <div class="input-icon-wrapper">
+            <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
+            <input type="password" class="premium-input-control" formControlName="confirmPassword"
+              placeholder="Repita la nueva contraseña" />
+          </div>
+          @if (passwordForm.get('confirmPassword')?.touched && passwordForm.errors?.['mismatch']) {
+          <span class="premium-error-msg">Las contraseñas no coinciden.</span>
+          }
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="modal-premium-actions d-flex gap-3 mt-4 pt-3">
+          <button type="button" class="btn-premium-cancel" (click)="closePasswordModal()" [disabled]="isSaving()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-premium-confirm-password" [disabled]="passwordForm.invalid || isSaving()">
+            @if (isSaving()) {
+            <span class="premium-button-spinner"></span>
+            <span>Actualizando...</span>
+            } @else {
+            <span>Actualizar Contraseña</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  }
+
+  <!-- MODAL: CONFIRMACIÓN DE ELIMINACIÓN -->
+  @if (showDeleteModal()) {
+  <div class="delete-camera-modal-overlay" (click)="closeDeleteModal()" aria-modal="true" role="dialog">
+    <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
+
+      <!-- Icono de advertencia -->
+      <div class="delete-modal-icon-wrap">
+        <span class="icon-svg icon-warning" style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
+      </div>
+
+      <!-- Título y mensaje -->
+      <h5 class="delete-modal-title">Eliminar usuario</h5>
+      <p class="delete-modal-message">
+        ¿Estás seguro de que deseas eliminar permanentemente la cuenta de
+        <strong class="delete-modal-camera-name">{{ selectedUser()?.name }}</strong> ({{ selectedUser()?.email }})?
+        Esta acción no se puede deshacer.
+      </p>
+
+      <!-- Acciones -->
+      <div class="delete-modal-actions">
+        <button class="delete-modal-btn-cancel" (click)="closeDeleteModal()" [disabled]="isSaving()">
+          Cancelar
+        </button>
+        <button class="delete-modal-btn-confirm" (click)="deleteUser()" [disabled]="isSaving()">
+          @if (isSaving()) {
+          <span class="delete-modal-spinner"></span>
+          Eliminando...
+          } @else {
+          <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+          Eliminar
+          }
+        </button>
+      </div>
+
+    </div>
+  </div>
+  }
+
+  <!-- MODAL: REGISTRAR NUEVO USUARIO -->
+  @if (showRegisterModal()) {
+  <div class="modal-premium-overlay" (click)="closeRegisterModal()">
+    <div class="modal-premium-card" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4 pb-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="modal-header-icon-wrap icon-edit-theme"
+            style="background: rgba(16, 185, 129, 0.1) !important; color: #10b981 !important;">
+            <span class="icon-svg icon-user-plus" style="width: 22px; height: 22px; background-color: #10b981;"></span>
+          </div>
+          <div>
+            <h5 class="fw-bold mb-0 text-success fs-6">Registrar Usuario</h5>
+            <p class="text-muted mb-0 small mt-0.5" style="font-size: 0.75rem;">Crea una nueva cuenta de acceso en el
+              sistema</p>
+          </div>
+        </div>
+        <button class="btn-ghost p-1.5" (click)="closeRegisterModal()" aria-label="Cerrar modal">
+          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <form [formGroup]="registerForm" (ngSubmit)="registerUser()">
+        <div class="premium-input-group mb-3">
+          <label class="premium-input-label">Correo Electrónico (Email)</label>
+          <div class="input-icon-wrapper">
+            <span class="icon-svg icon-email input-icon" style="width: 16px; height: 16px;"></span>
+            <input type="email" class="premium-input-control" formControlName="email"
+              placeholder="ejemplo@correo.com" />
+          </div>
+          @if (registerForm.get('email')?.touched && registerForm.get('email')?.invalid) {
+          <span class="premium-error-msg">Ingresa un correo electrónico válido.</span>
+          }
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <div class="premium-input-group">
+              <label class="premium-input-label">Nombres</label>
+              <div class="input-icon-wrapper">
+                <span class="icon-svg icon-user input-icon" style="width: 16px; height: 16px;"></span>
+                <input type="text" class="premium-input-control" formControlName="nombres" placeholder="Nombres" />
+              </div>
+              @if (registerForm.get('nombres')?.touched && registerForm.get('nombres')?.invalid) {
+              <span class="premium-error-msg">Requerido.</span>
+              }
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="premium-input-group">
+              <label class="premium-input-label">Apellidos</label>
+              <div class="input-icon-wrapper">
+                <span class="icon-svg icon-user input-icon" style="width: 16px; height: 16px;"></span>
+                <input type="text" class="premium-input-control" formControlName="apellidos" placeholder="Apellidos" />
+              </div>
+              @if (registerForm.get('apellidos')?.touched && registerForm.get('apellidos')?.invalid) {
+              <span class="premium-error-msg">Requerido.</span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="premium-input-group mb-3">
+          <label class="premium-input-label">Contraseña</label>
+          <div class="input-icon-wrapper">
+            <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
+            <input type="password" class="premium-input-control" formControlName="password"
+              placeholder="Mínimo 6 caracteres" />
+          </div>
+          @if (registerForm.get('password')?.touched && registerForm.get('password')?.invalid) {
+          <span class="premium-error-msg">La contraseña debe tener al menos 6 caracteres.</span>
+          }
+        </div>
+
+        <div class="premium-input-group mb-4">
+          <label class="premium-input-label">Rol del Sistema</label>
+          <div class="input-icon-wrapper">
+            <span class="icon-svg icon-lock" style="width: 16px; height: 16px; color: var(--text-muted); margin-left: 12px; position: absolute; z-index: 2;"></span>
+            <select class="premium-input-control select-premium" formControlName="rol_id">
+              @for (rol of availableRoles(); track rol.rol_id) {
+              <option [value]="rol.rol_id">{{ rol.nombre }}</option>
+              }
+            </select>
+          </div>
+          @if (registerForm.get('rol_id')?.touched && registerForm.get('rol_id')?.invalid) {
+          <span class="premium-error-msg">Selecciona un rol.</span>
+          }
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="modal-premium-actions d-flex gap-3 mt-4 pt-3">
+          <button type="button" class="btn-premium-cancel" (click)="closeRegisterModal()" [disabled]="isSaving()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-premium-confirm-edit" style="background: var(--primary) !important;"
+            [disabled]="registerForm.invalid || isSaving()">
+            @if (isSaving()) {
+            <span class="premium-button-spinner"></span>
+            <span>Registrando...</span>
+            } @else {
+            <span>Registrar Usuario</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  }
+
+  <!-- MODAL: CREAR NUEVO ROL -->
+  @if (showCreateRoleModal()) {
+  <div class="modal-premium-overlay" (click)="closeCreateRoleModal()">
+    <div class="modal-premium-card" style="max-width: 600px;" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4 pb-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="modal-header-icon-wrap icon-edit-theme"
+            style="background: rgba(13, 110, 253, 0.1) !important; color: var(--primary) !important;">
+            <span class="icon-svg icon-lock" style="width: 22px; height: 22px; background-color: var(--primary);"></span>
+          </div>
+          <div>
+            <h5 class="fw-bold mb-0 text-primary fs-6">Crear Rol de Sistema</h5>
+            <p class="text-muted mb-0 small mt-0.5" style="font-size: 0.75rem;">Define un nuevo perfil de accesos en la
+              plataforma</p>
+          </div>
+        </div>
+        <button class="btn-ghost p-1.5" (click)="closeCreateRoleModal()" aria-label="Cerrar modal">
+          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <form [formGroup]="createRoleForm" (ngSubmit)="createRoleSubmit()">
+        <div class="premium-input-group mb-3">
+          <label class="premium-input-label">Nombre del Rol</label>
+          <div class="input-icon-wrapper">
+            <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
+            <input type="text" class="premium-input-control" formControlName="nombre"
+              placeholder="Ej. OPERADOR_AVANZADO" />
+          </div>
+          @if (createRoleForm.get('nombre')?.touched && createRoleForm.get('nombre')?.invalid) {
+          <span class="premium-error-msg">Requerido (solo letras, números y guiones bajos).</span>
+          }
+        </div>
+
+        <div class="premium-input-group mb-3">
+          <label class="premium-input-label">Descripción</label>
+          <div class="input-icon-wrapper">
+            <span class="icon-svg icon-message-square input-icon" style="width: 16px; height: 16px;"></span>
+            <input type="text" class="premium-input-control" formControlName="descripcion"
+              placeholder="Ej. Operador con permisos de edición de analíticas" />
+          </div>
+          @if (createRoleForm.get('descripcion')?.touched && createRoleForm.get('descripcion')?.invalid) {
+          <span class="premium-error-msg">Requerido.</span>
+          }
+        </div>
+
+
+
+        <!-- Footer Actions -->
+        <div class="modal-premium-actions d-flex gap-3 mt-4 pt-3">
+          <button type="button" class="btn-premium-cancel" (click)="closeCreateRoleModal()" [disabled]="isSaving()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-premium-confirm-edit" style="background: var(--primary) !important;"
+            [disabled]="createRoleForm.invalid || isSaving()">
+            @if (isSaving()) {
+            <span class="premium-button-spinner"></span>
+            <span>Creando...</span>
+            } @else {
+            <span>Crear Rol</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  }
+  <!-- MODAL: CONFIRMACIÓN DE ELIMINACIÓN DE ROL -->
+  @if (showDeleteRoleModal()) {
+  <div class="delete-camera-modal-overlay" (click)="closeDeleteRoleModal()" aria-modal="true" role="dialog">
+    <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
+
+      <!-- Icono de advertencia -->
+      <div class="delete-modal-icon-wrap">
+        <span class="icon-svg icon-warning" style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
+      </div>
+
+      <!-- Título y mensaje -->
+      <h5 class="delete-modal-title">Eliminar rol</h5>
+      <p class="delete-modal-message">
+        ¿Estás seguro de que deseas eliminar permanentemente el rol de sistema
+        <strong class="delete-modal-camera-name">{{ roleToDelete()?.nombre }}</strong>?
+        Esta acción removerá el rol y dejará sin permisos asociados a los usuarios que lo posean. Esta acción no se puede deshacer.
+      </p>
+
+      <!-- Acciones -->
+      <div class="delete-modal-actions">
+        <button class="delete-modal-btn-cancel" (click)="closeDeleteRoleModal()" [disabled]="isDeletingRole()">
+          Cancelar
+        </button>
+        <button class="delete-modal-btn-confirm" (click)="deleteRoleSubmit()" [disabled]="isDeletingRole()">
+          @if (isDeletingRole()) {
+          <span class="delete-modal-spinner"></span>
+          Eliminando...
+          } @else {
+          <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+          Eliminar
+          }
+        </button>
+      </div>
+
+    </div>
+  </div>
+  }
 </div>

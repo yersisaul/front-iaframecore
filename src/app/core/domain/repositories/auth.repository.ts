@@ -7,5 +7,5 @@ export interface AuthResult {
 }
 
 export abstract class IAuthRepository {
-  abstract login(username: string, contrasena: string): Observable<AuthResult>;
+  abstract login(email: string, password: string): Observable<AuthResult>;
 }

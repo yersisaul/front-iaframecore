@@ -12,6 +12,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { HostService, HostFilterOptions } from '../../../core/services/host.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { Host } from '../../../core/domain/entities/host.models';
+import { copyToClipboard } from '../../../core/utils/clipboard.util';
 
 @Component({
   selector: 'app-nodos',
@@ -20,7 +21,7 @@ import { Host } from '../../../core/domain/entities/host.models';
   styleUrl: './nodos.css',
 })
 export class Nodos implements OnInit, AfterViewInit, OnDestroy {
-  private hostService = inject(HostService);
+  public hostService = inject(HostService);
   private sidebarService = inject(SidebarService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -31,13 +32,12 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
 
   // ── Pagination ──────────────────────────────────────────────────────────────
   readonly columns = signal(this.getInitialColumns());
-  readonly rows = signal(this.getInitialRows());
-  readonly limit = signal(this.columns() * this.rows() * 2);
+  readonly limit = signal(this.columns() * 10);
   readonly currentPage = signal(1, { equal: () => false });
 
   readonly limitOptions = computed(() => {
-    const base = this.columns() * this.rows();
-    return [base * 2, base * 3, base * 4];
+    const cols = this.columns();
+    return [cols * 10, cols * 20, cols * 30];
   });
 
   // ── Search & filter state ────────────────────────────────────────────────────
@@ -63,6 +63,10 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   readonly activeDropdown  = signal<string | null>(null);
 
   readonly isLoading = signal<boolean>(false);
+  readonly viewMode = signal<'cards' | 'list'>('cards');
+
+  private copiedTimeout: any;
+  readonly copiedRowId = signal<string | null>(null);
 
   // ── Host Migration State ─────────────────────────────────────────────────────
   readonly showMigrateModal = signal<boolean>(false);
@@ -71,6 +75,10 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   readonly isMigrating = signal<boolean>(false);
   readonly isOldDropdownOpen = signal<boolean>(false);
   readonly isNewDropdownOpen = signal<boolean>(false);
+
+  // Búsquedas en el modal
+  readonly originSearchText = signal<string>('');
+  readonly targetSearchText = signal<string>('');
 
   readonly selectedOldHost = computed(() => {
     const fp = this.selectedOldFingerprint();
@@ -82,9 +90,34 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     return this.hostService.allHosts().find(h => h.fingerprint === fp);
   });
 
+  // Lista de origen filtrada reactivamente por nombre, fingerprint o IP
+  readonly filteredOriginHosts = computed(() => {
+    const term = this.originSearchText().trim().toLowerCase();
+    const all = this.hostService.allHosts();
+    if (!term) return all;
+    return all.filter(h =>
+      (h.hostname && h.hostname.toLowerCase().includes(term)) ||
+      (h.fingerprint && h.fingerprint.toLowerCase().startsWith(term)) ||
+      (h.ipAddress && h.ipAddress.toLowerCase().includes(term))
+    );
+  });
+
+  // Lista de destino filtrada reactivamente excluyendo el origen seleccionado por nombre, fingerprint o IP
   readonly compatibleTargetHosts = computed(() => {
     const oldFp = this.selectedOldFingerprint();
-    return this.hostService.allHosts().filter(h => h.fingerprint !== oldFp);
+    const term = this.targetSearchText().trim().toLowerCase();
+    
+    // Si no hay origen seleccionado, mostramos todos los hosts; de lo contrario, excluimos el origen
+    const candidates = oldFp
+      ? this.hostService.allHosts().filter(h => h.fingerprint !== oldFp)
+      : this.hostService.allHosts();
+
+    if (!term) return candidates;
+    return candidates.filter(h =>
+      (h.hostname && h.hostname.toLowerCase().includes(term)) ||
+      (h.fingerprint && h.fingerprint.toLowerCase().startsWith(term)) ||
+      (h.ipAddress && h.ipAddress.toLowerCase().includes(term))
+    );
   });
   readonly allHosts = this.hostService.allHosts;
   private heartbeatIntervalSubscription?: Subscription;
@@ -104,7 +137,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     const vram = this.filterVram();
     const ver  = this.filterVersion();
 
-    return all.filter(h => {
+    const filtered = all.filter(h => {
       // Search by hostname or IP (strict prefix matching)
       if (term) {
         const matchesHostname = h.hostname.toLowerCase().startsWith(term);
@@ -125,6 +158,18 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
       if (vram !== 'all' && h.gpuInfo?.totalMemory !== vram)  return false;
       if (ver  !== 'all' && h.version !== ver)                return false;
       return true;
+    });
+
+    // Ordenar: activos (online/active) primero, luego por hostname alfabéticamente
+    return filtered.sort((a, b) => {
+      const aOnline = a.status === 'online' || a.status === 'active' ? 1 : 0;
+      const bOnline = b.status === 'online' || b.status === 'active' ? 1 : 0;
+      
+      if (bOnline !== aOnline) {
+        return bOnline - aOnline;
+      }
+      
+      return a.hostname.toLowerCase().localeCompare(b.hostname.toLowerCase());
     });
   });
 
@@ -183,16 +228,23 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
 
   private getInitialColumns(): number {
     const w = this.estimateContainerWidth();
-    return Math.max(1, Math.floor((w + 24) / (420 + 24)));
+    return Math.max(1, Math.floor((w + 24) / (335 + 24)));
   }
 
   private getInitialRows(): number {
-    if (typeof window === 'undefined') return 3;
-    return Math.max(3, Math.floor((window.innerHeight - 320) / 280));
+    return 3;
   }
 
   constructor() {
     // Restore state from URL query params
+    const savedMode = localStorage.getItem('nodos_view_mode') as 'cards' | 'list';
+    if (savedMode) {
+      this.viewMode.set(savedMode);
+      if (savedMode === 'list') {
+        this.limit.set(10);
+      }
+    }
+
     const qp = this.route.snapshot.queryParams;
     if (qp['search'])  { this.searchControl.setValue(qp['search']); this.searchTerm.set(qp['search']); }
     if (qp['status'])  this.filterStatus.set(qp['status']);
@@ -218,6 +270,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.hostService.isViewActive.set(true);
     this.isLoading.set(true);
     this.hostService.loadAllHosts().subscribe(() => {
       this.isLoading.set(false);
@@ -242,14 +295,16 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.hostService.isViewActive.set(false);
     this.stopHeartbeatPolling();
     this.resizeObserver?.disconnect();
     this.resizeSubscription?.unsubscribe();
+    if (this.copiedTimeout) clearTimeout(this.copiedTimeout);
   }
 
   // ── URL sync ──────────────────────────────────────────────────────────────────
   private syncUrl(): void {
-    const defaultLimit = this.columns() * this.rows();
+    const defaultLimit = this.columns() * 10;
     const qp: Record<string, any> = {
       page:    this.currentPage() > 1       ? this.currentPage()  : null,
       limit:   this.limit() !== defaultLimit ? this.limit()        : null,
@@ -270,16 +325,20 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
 
   // ── Resize handling ───────────────────────────────────────────────────────────
   private adjustColumnsAndLimit(containerWidth: number): void {
-    const newCols = Math.max(1, Math.floor((containerWidth + 24) / (420 + 24)));
-    const newRows = Math.max(3, Math.floor((window.innerHeight - 320) / 280));
+    if (containerWidth <= 0) return;
+    const newCols = Math.max(1, Math.floor((containerWidth + 24) / (335 + 24)));
     const oldCols = this.columns();
-    const oldRows = this.rows();
-    if (newCols !== oldCols || newRows !== oldRows) {
-      const screens = Math.max(2, Math.min(4, Math.round(this.limit() / (oldCols * oldRows || 1))));
+    if (newCols !== oldCols) {
       this.columns.set(newCols);
-      this.rows.set(newRows);
-      this.limit.set(newCols * newRows * screens);
-      this.currentPage.set(1);
+      if (this.viewMode() === 'cards') {
+        const currentLimit = this.limit();
+        const validOptions = [newCols * 10, newCols * 20, newCols * 30];
+        if (!validOptions.includes(currentLimit)) {
+          this.limit.set(newCols * 10);
+        }
+        this.currentPage.set(1);
+        this.syncUrl();
+      }
     }
   }
 
@@ -506,49 +565,71 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.isNewDropdownOpen.set(false);
   }
 
+  @HostListener('document:keydown.escape')
+  handleEscapeKey(): void {
+    if (this.showFilterPanel()) {
+      this.showFilterPanel.set(false);
+    }
+    if (this.activeDropdown()) {
+      this.activeDropdown.set(null);
+    }
+  }
+
   // ── Host Migration Methods ───────────────────────────────────────────────────
-  toggleOldDropdown(event: Event): void {
+  toggleOldDropdown(event: any): void {
     event.stopPropagation();
     this.isNewDropdownOpen.set(false);
     this.isOldDropdownOpen.update(v => !v);
   }
 
-  toggleNewDropdown(event: Event): void {
+  toggleNewDropdown(event: any): void {
     event.stopPropagation();
     this.isOldDropdownOpen.set(false);
     this.isNewDropdownOpen.update(v => !v);
   }
 
-  selectOldHost(fingerprint: string, event: Event): void {
+  selectOldHost(fingerprint: string, event: any): void {
     event.stopPropagation();
     this.selectedOldFingerprint.set(fingerprint);
-    this.selectedNewFingerprint.set(''); // reset new host when old host changes
+    // Si ya teníamos seleccionado el mismo host en destino, limpiamos el destino
+    if (this.selectedNewFingerprint() === fingerprint) {
+      this.selectedNewFingerprint.set('');
+    }
     this.isOldDropdownOpen.set(false);
   }
 
-  selectNewHost(fingerprint: string, event: Event): void {
+  selectNewHost(fingerprint: string, event: any): void {
     event.stopPropagation();
+    // No permitir seleccionar el mismo host que el de origen
+    if (this.selectedOldFingerprint() === fingerprint) {
+      return;
+    }
     this.selectedNewFingerprint.set(fingerprint);
     this.isNewDropdownOpen.set(false);
   }
 
-  clearOldSelection(event: Event): void {
+  clearOldSelection(event: any): void {
     event.stopPropagation();
     this.selectedOldFingerprint.set('');
     this.selectedNewFingerprint.set('');
+    this.originSearchText.set('');
+    this.targetSearchText.set('');
     this.isOldDropdownOpen.set(false);
     this.isNewDropdownOpen.set(false);
   }
 
-  clearNewSelection(event: Event): void {
+  clearNewSelection(event: any): void {
     event.stopPropagation();
     this.selectedNewFingerprint.set('');
+    this.targetSearchText.set('');
     this.isNewDropdownOpen.set(false);
   }
 
   openMigrateModal(): void {
     this.selectedOldFingerprint.set('');
     this.selectedNewFingerprint.set('');
+    this.originSearchText.set('');
+    this.targetSearchText.set('');
     this.isOldDropdownOpen.set(false);
     this.isNewDropdownOpen.set(false);
     this.isMigrating.set(false);
@@ -580,5 +661,44 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
         alert('Error al migrar la configuración del nodo.');
       }
     });
+  }
+
+  setViewMode(mode: 'cards' | 'list'): void {
+    this.viewMode.set(mode);
+    localStorage.setItem('nodos_view_mode', mode);
+    if (mode === 'list') {
+      this.limit.set(10);
+    } else {
+      this.limit.set(this.columns() * 10);
+    }
+    this.currentPage.set(1);
+    this.syncUrl();
+  }
+
+  copyRowContent(value: string, uniqueKey: string): void {
+    if (!value) return;
+    copyToClipboard(value).then(() => {
+      this.copiedRowId.set(uniqueKey);
+      if (this.copiedTimeout) clearTimeout(this.copiedTimeout);
+      this.copiedTimeout = setTimeout(() => {
+        this.copiedRowId.set(null);
+      }, 2000);
+    }).catch(err => {
+      console.error('Error al copiar al portapapeles', err);
+    });
+  }
+
+  formatLastSeen(date: Date | string | null | undefined): string {
+    if (!date) return '-';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '-';
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const year = d.getFullYear();
+    const month = pad(d.getMonth() + 1);
+    const day = pad(d.getDate());
+    const hours = pad(d.getHours());
+    const minutes = pad(d.getMinutes());
+    const seconds = pad(d.getSeconds());
+    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
   }
 }

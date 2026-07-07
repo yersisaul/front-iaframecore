@@ -20,6 +20,14 @@ main {
   transition: background-color 0.3s ease;
 }
 
+.main-content {
+  /* Fill the remaining vertical space inside the flex column */
+  min-height: 0;
+  height: 0;
+  flex: 1 1 0;
+  overflow-y: auto;
+}
+
 /* Backdrop Overlay for Mobile Drawer Sidebar */
 .sidebar-backdrop {
   display: none;

@@ -1,87 +1,97 @@
-<div class="login-wrapper d-flex align-items-center justify-content-center min-vh-100">
-  <div class="glass-card p-5 shadow-lg">
-    <div class="text-center mb-4">
-      <div class="logo-circle mb-3 mx-auto d-flex align-items-center justify-content-center">
-        <i class="bi bi-shield-lock-fill text-primary fs-3"></i>
+<div class="login-wrapper d-flex align-items-center justify-content-center min-vh-100 position-relative">
+  <!-- Dynamic geometric background elements -->
+  <div class="bg-grid-overlay"></div>
+  <div class="bg-glow-orb orb-1"></div>
+  <div class="bg-glow-orb orb-2"></div>
+  <div class="bg-glow-orb orb-3"></div>
+
+  <div class="glass-card shadow-2xl p-5 border border-white/10 rounded-3xl animate-fade-in-up">
+    <!-- Header Block with SVG Brand Logo -->
+    <div class="text-center mb-5">
+      <div class="logo-container mb-4 mx-auto d-flex align-items-center justify-content-center">
+        <!-- Official Azor Logo Vector SVG -->
+        <img src="logo.svg" alt="AZOR" style="width: 44px; height: 44px; color: #ffffff;" />
       </div>
-      <h2 class="text-white fw-bold">Bienvenido</h2>
-      <p class="text-muted">Inicia sesión en la plataforma core</p>
+      <h2 class="brand-title fw-extrabold mb-1">AZOR ANALYTICS</h2>
+      <p class="brand-subtitle text-slate-400 small">Inteligencia Artificial y Análisis de Video</p>
     </div>
 
+    <!-- Alarm / Error Alerts -->
     @if (errorMessage()) {
-      <div class="alert alert-danger border-0 text-center py-2 mb-4 animate-shake" role="alert">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage() }}
-      </div>
+    <div
+      class="custom-alert-shake alert-error d-flex align-items-center gap-2 p-3 mb-4 rounded-xl border border-rose-500/20"
+      role="alert">
+      <span class="icon-svg icon-warning text-rose-500 flex-shrink-0" style="width: 16px; height: 16px;"></span>
+      <span class="small fw-semibold text-rose-200">{{ errorMessage() }}</span>
+    </div>
     }
 
+    <!-- Form Block -->
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-      <!-- Campo Usuario -->
+      <!-- Email input -->
       <div class="mb-4">
-        <label for="username" class="form-label text-white-50 small">Usuario</label>
-        <div class="input-group">
-          <span class="input-group-text bg-dark-transparent border-0 text-light">
-            <i class="bi bi-person-fill"></i>
+        <label for="email" class="input-label-primary text-slate-300 small mb-2 d-block">Correo Electrónico</label>
+        <div class="premium-field-group">
+          <span class="field-icon-prefix">
+            <span class="icon-svg icon-email" style="width: 16px; height: 16px;"></span>
           </span>
-          <input 
-            type="text" 
-            id="username" 
-            formControlName="username" 
-            class="form-control bg-dark-transparent border-0 text-white" 
-            placeholder="Introduce tu usuario"
-            [class.is-invalid]="loginForm.get('username')?.touched && loginForm.get('username')?.invalid"
-          />
+          <input type="email" id="email" formControlName="email" class="premium-input-box"
+            placeholder="ejemplo@correo.com"
+            [class.input-box-error]="loginForm.get('email')?.touched && loginForm.get('email')?.invalid" />
         </div>
-        @if (loginForm.get('username')?.touched && loginForm.get('username')?.errors?.['required']) {
-          <div class="text-danger small mt-1">El usuario es requerido.</div>
+        @if (loginForm.get('email')?.touched && loginForm.get('email')?.errors?.['required']) {
+        <div class="validation-error-msg mt-1.5 d-flex align-items-center gap-1">
+          <span class="error-dot"></span>El correo electrónico es requerido.
+        </div>
         }
-        @if (loginForm.get('username')?.touched && loginForm.get('username')?.errors?.['minlength']) {
-          <div class="text-danger small mt-1">El usuario debe tener al menos 3 caracteres.</div>
+        @if (loginForm.get('email')?.touched && loginForm.get('email')?.errors?.['email']) {
+        <div class="validation-error-msg mt-1.5 d-flex align-items-center gap-1">
+          <span class="error-dot"></span>Introduce un correo electrónico válido.
+        </div>
         }
       </div>
 
-      <!-- Campo Contraseña -->
+      <!-- Password input -->
       <div class="mb-4">
-        <label for="contrasena" class="form-label text-white-50 small">Contraseña</label>
-        <div class="input-group">
-          <span class="input-group-text bg-dark-transparent border-0 text-light">
-            <i class="bi bi-lock-fill"></i>
+        <label for="password" class="input-label-primary text-slate-300 small mb-2 d-block">Contraseña</label>
+        <div class="premium-field-group">
+          <span class="field-icon-prefix">
+            <span class="icon-svg icon-lock" style="width: 16px; height: 16px;"></span>
           </span>
-          <input 
-            [type]="showPassword() ? 'text' : 'password'" 
-            id="contrasena" 
-            formControlName="contrasena" 
-            class="form-control bg-dark-transparent border-0 text-white" 
-            placeholder="••••••••"
-            [class.is-invalid]="loginForm.get('contrasena')?.touched && loginForm.get('contrasena')?.invalid"
-          />
-          <button 
-            type="button" 
-            class="btn btn-outline-dark-transparent border-0 text-white-50" 
-            (click)="togglePasswordVisibility()"
-          >
-            <i class="bi" [class.bi-eye-fill]="showPassword()" [class.bi-eye-slash-fill]="!showPassword()"></i>
+          <input [type]="showPassword() ? 'text' : 'password'" id="password" formControlName="password"
+            class="premium-input-box pe-12" placeholder="••••••••"
+            [class.input-box-error]="loginForm.get('password')?.touched && loginForm.get('password')?.invalid" />
+          <button type="button" class="btn-field-icon-suffix transition-all" (click)="togglePasswordVisibility()"
+            [title]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+            @if (showPassword()) {
+            <span class="icon-svg icon-eye" style="width: 16px; height: 16px;"></span>
+            } @else {
+            <span class="icon-svg icon-eye-off" style="width: 16px; height: 16px;"></span>
+            }
           </button>
         </div>
-        @if (loginForm.get('contrasena')?.touched && loginForm.get('contrasena')?.errors?.['required']) {
-          <div class="text-danger small mt-1">La contraseña es requerida.</div>
+        @if (loginForm.get('password')?.touched && loginForm.get('password')?.errors?.['required']) {
+        <div class="validation-error-msg mt-1.5 d-flex align-items-center gap-1">
+          <span class="error-dot"></span>La contraseña es requerida.
+        </div>
         }
-        @if (loginForm.get('contrasena')?.touched && loginForm.get('contrasena')?.errors?.['minlength']) {
-          <div class="text-danger small mt-1">La contraseña debe tener al menos 6 caracteres.</div>
+        @if (loginForm.get('password')?.touched && loginForm.get('password')?.errors?.['minlength']) {
+        <div class="validation-error-msg mt-1.5 d-flex align-items-center gap-1">
+          <span class="error-dot"></span>La contraseña debe tener al menos 6 caracteres.
+        </div>
         }
       </div>
 
-      <!-- Botón de Envío -->
-      <button 
-        type="submit" 
-        class="btn btn-primary w-100 py-3 mt-3 fw-bold btn-submit d-flex align-items-center justify-content-center"
-        [disabled]="loginForm.invalid || isLoading()"
-      >
+      <!-- Action Button -->
+      <button type="submit"
+        class="premium-btn-submit w-100 py-3 mt-4 fw-semibold d-flex align-items-center justify-content-center gap-2"
+        [disabled]="loginForm.invalid || isLoading()">
         @if (isLoading()) {
-          <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-          <span>Verificando...</span>
+        <span class="btn-spinner"></span>
+        <span>Verificando Credenciales...</span>
         } @else {
-          <i class="bi bi-box-arrow-in-right me-2 fs-5"></i>
-          <span>Ingresar</span>
+        <span class="icon-svg icon-login-arrow" style="width: 18px; height: 18px;"></span>
+        <span>Ingresar a la Plataforma</span>
         }
       </button>
     </form>

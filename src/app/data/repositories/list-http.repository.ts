@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Observable, of, forkJoin } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { IListRepository } from '../../core/domain/repositories/list.repository';
 import { List, ListDetail } from '../../core/domain/entities/list.models';
@@ -39,7 +39,7 @@ export class ListHttpRepository implements IListRepository {
       list_type: list.list_type === 'face_recognition' ? 'RF' : (list.list_type === 'plate_recognition' ? 'LPR' : list.list_type),
       description: list.description !== undefined ? list.description : null
     };
-    return this.http.post<any>(`${this.listsUrl}/register`, payload).pipe(
+    return this.http.post<any>(`${this.listsUrl}/`, payload).pipe(
       map(item => ({
         list_id: item.list_id,
         name: item.name,
@@ -50,7 +50,7 @@ export class ListHttpRepository implements IListRepository {
   }
 
   deleteList(listId: string): Observable<void> {
-    return this.http.delete<void>(`${this.listsUrl}/delete/${listId}`).pipe(
+    return this.http.delete<void>(`${this.listsUrl}/${listId}`).pipe(
       catchError(err => {
         if (AppEnvironment.enableBackendWorkarounds && err.status === 500) {
           console.warn('[BACKEND-WORKAROUND] deleteList returned status 500. Assuming operation succeeded as per workaround.', err);
@@ -62,26 +62,32 @@ export class ListHttpRepository implements IListRepository {
   }
 
   getListDetails(listId: string): Observable<ListDetail[]> {
-    // Query list details directly using list_id parameter. If the backend is repaired/mocked,
-    // this handles filtering server-side. For backward compatibility, we also filter client-side.
-    return this.http.get<ListDetail[]>(`${this.detailsUrl}/`, { params: { list_id: listId } }).pipe(
-      map(items => this.sanitizeDetails((items || []).filter(d => d.list_id === listId))),
+    // En producción, el listado de sujetos está separado en dos endpoints específicos:
+    // /frontend/list_details/faces/ y /frontend/list_details/plates/
+    // Realizamos una consulta en paralelo y unificamos los resultados para filtrarlos por list_id.
+    const faces$ = this.http.get<ListDetail[]>(`${this.detailsUrl}/faces/`).pipe(
       catchError(err => {
-        console.warn(`Failed to fetch list details directly via /list_details/?list_id=${listId}. Trying fallback.`, err);
-        // Fallback: Try fetching via list endpoint if the backend is very old
-        return this.http.get<any>(`${this.listsUrl}/${listId}`).pipe(
-          map(res => {
-            let details: ListDetail[] = [];
-            if (Array.isArray(res)) details = res as ListDetail[];
-            else if (res && Array.isArray(res.details)) details = res.details as ListDetail[];
-            else if (res && Array.isArray(res.list_details)) details = res.list_details as ListDetail[];
-            return this.sanitizeDetails(details);
-          }),
-          catchError(err2 => {
-            console.error(`[ListRepo] Both getListDetails methods failed:`, err2);
-            return of([]);
-          })
-        );
+        console.warn('[ListRepo] Failed to fetch faces details, recovering with empty list.', err);
+        return of([]);
+      })
+    );
+
+    const plates$ = this.http.get<ListDetail[]>(`${this.detailsUrl}/plates/`).pipe(
+      catchError(err => {
+        console.warn('[ListRepo] Failed to fetch plates details, recovering with empty list.', err);
+        return of([]);
+      })
+    );
+
+    return forkJoin([faces$, plates$]).pipe(
+      map(([faces, plates]) => {
+        const allDetails = [...(faces || []), ...(plates || [])];
+        const filtered = allDetails.filter(d => d.list_id === listId);
+        return this.sanitizeDetails(filtered);
+      }),
+      catchError(err => {
+        console.error('[ListRepo] Both list details endpoints failed:', err);
+        return of([]);
       })
     );
   }
@@ -165,7 +171,7 @@ export class ListHttpRepository implements IListRepository {
   }
 
   deleteListDetail(detailId: string): Observable<void> {
-    return this.http.delete<void>(`${this.detailsUrl}/delete/${detailId}`).pipe(
+    return this.http.delete<void>(`${this.detailsUrl}/${detailId}`).pipe(
       catchError(err => {
         if (AppEnvironment.enableBackendWorkarounds && err.status === 500) {
           console.warn('[BACKEND-WORKAROUND] deleteListDetail returned status 500. Assuming operation succeeded as per workaround.', err);
@@ -256,13 +262,71 @@ export class ListHttpRepository implements IListRepository {
       list_type: list.list_type === 'face_recognition' ? 'RF' : (list.list_type === 'plate_recognition' ? 'LPR' : list.list_type),
       description: list.description !== undefined ? list.description : null
     };
-    return this.http.post<any>(`${this.listsUrl}/update`, payload).pipe(
+    return this.http.put<any>(`${this.listsUrl}/${list.list_id}`, payload).pipe(
       map(item => ({
         list_id: item.list_id,
         name: item.name,
         description: item.description,
         list_type: item.list_type === 'RF' ? 'face_recognition' : (item.list_type === 'LPR' ? 'plate_recognition' : item.list_type)
       }))
+    );
+  }
+
+  updateFaceImg(detailId: string, file: File): Observable<ListDetail> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    return this.http.put<any>(`${this.detailsUrl}/update_face_img/${detailId}`, formData).pipe(
+      map(res => ({
+        detail_id: res.detail_id || detailId,
+        list_id: res.list_id || '',
+        nombre_asociado: res.nombre_asociado || '',
+        fingerprint_host: res.fingerprint_host || '',
+        embedding: res.embedding || [],
+        metadata: {
+          url_img: res.url_img ? MetadataMapper.sanitizeImageUrl(res.url_img) : undefined
+        }
+      } as ListDetail))
+    );
+  }
+
+  updateFaceDetail(detailId: string, payload: { nombre_asociado: string }): Observable<ListDetail> {
+    const body = new HttpParams().set('nombre_asociado', payload.nombre_asociado);
+    return this.http.put<any>(`${this.detailsUrl}/update_face_detail/${detailId}`, body.toString(), {
+      headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded')
+    }).pipe(
+      map(res => ({
+        detail_id: res.detail_id || detailId,
+        list_id: res.list_id || '',
+        nombre_asociado: res.nombre_asociado || payload.nombre_asociado,
+        fingerprint_host: res.fingerprint_host || '',
+        embedding: res.embedding || [],
+        metadata: {
+          url_img: res.url_img ? MetadataMapper.sanitizeImageUrl(res.url_img) : undefined
+        }
+      } as ListDetail))
+    );
+  }
+
+  updatePlateDetail(detailId: string, payload: { nombre_asociado?: string, plate_text: string }): Observable<ListDetail> {
+    let body = new HttpParams().set('plate_text', payload.plate_text);
+    if (payload.nombre_asociado !== undefined) {
+      body = body.set('nombre_asociado', payload.nombre_asociado);
+    }
+    return this.http.put<any>(`${this.detailsUrl}/update_plate_detail/${detailId}`, body.toString(), {
+      headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded')
+    }).pipe(
+      map(res => ({
+        detail_id: res.detail_id || detailId,
+        list_id: res.list_id || '',
+        nombre_asociado: res.nombre_asociado || payload.nombre_asociado || '',
+        fingerprint_host: res.fingerprint_host || '',
+        embedding: res.embedding || [],
+        metadata: {
+          text_placa: res.metadata?.text_placa || payload.plate_text,
+          url_img: res.metadata?.url_img ? MetadataMapper.sanitizeImageUrl(res.metadata.url_img) : undefined
+        }
+      } as ListDetail))
     );
   }
 

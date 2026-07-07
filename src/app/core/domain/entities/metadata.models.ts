@@ -24,6 +24,7 @@ export interface MetaBaseRecord {
   timestamp: Date;
   confiabilidad: number;
   imagenRemota: string;
+  embedding?: number[];
 }
 
 export interface MetaPersona extends MetaBaseRecord {

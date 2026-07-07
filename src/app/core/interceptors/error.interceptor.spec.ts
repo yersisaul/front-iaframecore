@@ -7,6 +7,8 @@ import { AuthService } from '../services/auth.service';
 import { signal } from '@angular/core';
 import { vi } from 'vitest';
 
+import { of } from 'rxjs';
+
 describe('errorInterceptor', () => {
   let httpClient: HttpClient;
   let httpTestingController: HttpTestingController;
@@ -18,8 +20,13 @@ describe('errorInterceptor', () => {
       navigate: vi.fn()
     };
 
+    const currentUserSignal = signal<any>({ email: 'testuser@iaframecore.com' });
     authServiceMock = {
-      currentUser: signal<any>({ username: 'testuser' })
+      currentUser: currentUserSignal,
+      logout: () => {
+        currentUserSignal.set(null);
+        return of(undefined);
+      }
     };
 
     TestBed.configureTestingModule({

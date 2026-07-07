@@ -17,11 +17,6 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
 
   if (isApiRequest) {
-    if (isLoginRequest) {
-      const clonedReq = req.clone({ withCredentials: true });
-      return next(clonedReq);
-    }
-
     // Buscar la clave estática configurada en el archivo contenedor (solo si no es producción)
     const isDevMode = !AppEnvironment.production;
     const configKey = ApiKeyConfig?.apiKey;
@@ -31,15 +26,24 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
                          configKey !== 'INSERTAR_AQUI_TU_JWT_API_KEY' &&
                          configKey.trim() !== '';
 
-    // Priorizar el token dinámico de sessionStorage (sesión activa). Si no existe, usar la clave estática.
+    // Obtener el token dinámico de sessionStorage (sesión activa)
     const localToken = sessionStorage.getItem('auth_token');
-    const token = localToken ? localToken : (hasConfigKey ? configKey : null);
 
     const headers: Record<string, string> = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-      headers['X-API-Key'] = token;
-      headers['x-api-key'] = token;
+
+    // 1. Establecer X-API-Key (siempre priorizar la clave estática configKey para validar contra la API REST)
+    if (hasConfigKey) {
+      headers['X-API-Key'] = configKey;
+      headers['x-api-key'] = configKey;
+    } else if (localToken) {
+      // Fallback si no hay clave estática
+      headers['X-API-Key'] = localToken;
+      headers['x-api-key'] = localToken;
+    }
+
+    // 2. Establecer Authorization (solo con el token dinámico JWT del usuario logueado)
+    if (localToken && !isLoginRequest) {
+      headers['Authorization'] = `Bearer ${localToken}`;
     }
 
     const clonedReq = req.clone({

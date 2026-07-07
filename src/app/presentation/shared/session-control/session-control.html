@@ -7,11 +7,11 @@
     <!-- User profile info -->
     <div class="d-flex align-items-center gap-2" [class.w-100]="isCollapsed()"
       [class.justify-content-center]="isCollapsed()">
-      <span class="icon-svg icon-user user-icon" [title]="currentUser()?.name || currentUser()?.username"
+      <span class="icon-svg icon-user user-icon" [title]="currentUser()?.name || currentUser()?.email"
         style="width: 24px; height: 24px;"></span>
       <div class="d-flex flex-column lh-1" [class.d-none]="isCollapsed()">
         <span class="fw-semibold small text-truncate text-body text-start" style="max-width: 100px;">
-          {{ currentUser()?.name || currentUser()?.username }}
+          {{ currentUser()?.name || currentUser()?.email }}
         </span>
         <span class="text-muted text-start" style="font-size: 0.68rem;">
           {{ currentUser()?.role }}
@@ -50,7 +50,7 @@
       <span class="icon-svg icon-user user-icon" style="width: 24px; height: 24px;"></span>
       <div class="d-flex flex-column lh-1">
         <span class="fw-semibold small text-truncate text-body text-start" style="max-width: 140px;">
-          {{ currentUser()?.name || currentUser()?.username }}
+          {{ currentUser()?.name || currentUser()?.email }}
         </span>
         <span class="text-muted text-start" style="font-size: 0.68rem;">
           {{ currentUser()?.role }}

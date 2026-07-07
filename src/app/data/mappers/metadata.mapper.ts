@@ -84,7 +84,8 @@ export class MetadataMapper {
       edad: src.edad || '',
       genero: src.genero || '',
       colores: Array.isArray(src.colores) ? src.colores.map(MetadataMapper.toDomainColor) : [],
-      posturas: Array.isArray(src.posturas) ? src.posturas.map(MetadataMapper.toDomainPostura) : []
+      posturas: Array.isArray(src.posturas) ? src.posturas.map(MetadataMapper.toDomainPostura) : [],
+      embedding: src.embedding
     };
   }
 
@@ -101,7 +102,8 @@ export class MetadataMapper {
       imagenRemota: MetadataMapper.sanitizeImageUrl(src.ruta_imagen_remota),
       tipoObjeto: src.tipo_objeto || '',
       colores: Array.isArray(src.colores) ? src.colores.map(MetadataMapper.toDomainColor) : [],
-      reconocimiento: src.reconocimiento || ''
+      reconocimiento: src.reconocimiento || '',
+      embedding: src.embedding
     };
   }
 
@@ -119,7 +121,8 @@ export class MetadataMapper {
       edad: src.edad || '',
       genero: src.genero || '',
       colores: Array.isArray(src.colores) ? src.colores.map(MetadataMapper.toDomainColor) : [],
-      reconocimiento: src.reconocimiento || ''
+      reconocimiento: src.reconocimiento || '',
+      embedding: src.embedding
     };
   }
 
@@ -135,7 +138,8 @@ export class MetadataMapper {
       confiabilidad: score,
       imagenRemota: MetadataMapper.sanitizeImageUrl(src.ruta_imagen_remota),
       tipoObjeto: src.tipo_objeto || '',
-      colores: Array.isArray(src.colores) ? src.colores.map(MetadataMapper.toDomainColor) : []
+      colores: Array.isArray(src.colores) ? src.colores.map(MetadataMapper.toDomainColor) : [],
+      embedding: src.embedding
     };
   }
 

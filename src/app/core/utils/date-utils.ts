@@ -8,7 +8,20 @@ export function parseUtcDate(value: any): Date {
   if (typeof value === 'number') return new Date(value);
   if (typeof value === 'string') {
     let str = value.trim();
-    // Regex matches if the string ends with 'Z' or a timezone offset like +HH:MM, -HH:MM, +HH, -HH
+    
+    // Soporte para formato DD/MM/YYYY HH:mm(:ss)
+    const slashRegex = /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(:(\d{2}))?$/;
+    const match = str.match(slashRegex);
+    if (match) {
+      const day = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1; // 0-indexado
+      const year = parseInt(match[3], 10);
+      const hour = parseInt(match[4], 10);
+      const minute = parseInt(match[5], 10);
+      const second = match[7] ? parseInt(match[7], 10) : 0;
+      return new Date(Date.UTC(year, month, day, hour, minute, second));
+    }
+
     const tzRegex = /(Z|([+-]\d{2}(:?\d{2})?))$/;
     if (!tzRegex.test(str)) {
       str = str + 'Z';

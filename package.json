@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "node generate-env.js && ng serve",
+    "start": "node generate-env.js && ng serve --host 0.0.0.0 --port 4205",
     "build": "node generate-env.js && ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",

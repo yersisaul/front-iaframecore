@@ -1,75 +1,106 @@
 <div class="nodos-container container-fluid py-4 position-relative">
-  <!-- Cabecera principal (Estilo Nodos) -->
-  <div class="nodos-header camaras-view-header d-flex justify-content-between align-items-center mb-4">
-    <div class="d-flex align-items-center gap-3">
-      <!-- Botón de volver a Nodos -->
-      <a routerLink="/dashboard/nodos"
-        class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
-        aria-label="Volver a Nodos" title="Volver a Nodos">
-        <span class="icon-svg icon-chevron-left" style="width: 24px; height: 24px;"></span>
-      </a>
 
-      <div>
-        <div class="d-flex align-items-center gap-2">
-          <h2 class="fw-bold mb-0 fs-3">Cámaras del Nodo</h2>
-          @if (license()) {
-            <button class="btn btn-sm btn-license-badge d-flex align-items-center justify-content-center transition-all ms-2"
-              (click)="openLicenseModal()" title="Ver Licencia y Cuotas">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-            </button>
-          }
+  <!-- ══════════════════════════════════════════════════════
+       CABECERA — 2 FILAS (Mismo formato que Nodos)
+       ══════════════════════════════════════════════════════ -->
+  <div class="view-header mb-4">
+
+    <!-- ─── FILA 1: Identidad + Controles principales ─── -->
+    <div class="header-row-top d-flex align-items-center justify-content-between gap-3">
+
+      <!-- IZQUIERDA: Botón volver + Identidad de página -->
+      <div class="d-flex align-items-center gap-3">
+
+        <!-- Botón de volver a Nodos (sin cambios) -->
+        <a routerLink="/dashboard/nodos"
+          class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
+          aria-label="Volver a Nodos" title="Volver a Nodos">
+          <span class="icon-svg icon-chevron-left" style="width: 24px; height: 24px;"></span>
+        </a>
+
+        <!-- Bloque de identidad: título + subtítulo -->
+        <div class="header-identity">
+          <h2 class="fw-bold mb-0 header-page-title">
+            Cámaras del Nodo{{ currentHost()?.hostname ? ' "' + currentHost()?.hostname + '"' : '' }}
+          </h2>
+          <p class="text-muted mb-0 header-page-subtitle mt-1">
+            Se encontraron <span class="fw-semibold text-primary">{{ filteredCameras().length }}</span> cámaras en este
+            nodo.
+          </p>
         </div>
-        <p class="text-muted small mb-0 mt-1">
-          Se encontraron <span class="fw-semibold text-primary">{{ filteredCameras().length }}</span> cámaras en este nodo.
-        </p>
+      </div>
+
+      <!-- DERECHA: Botón Horarios + Tabs de vista + Separador + Botón Licencia -->
+      <div class="d-flex align-items-center gap-3">
+
+
+        <!-- Tabs de Vista (Tarjetas / Lista) -->
+        <div class="view-tabs-group d-flex align-items-center gap-1">
+          <button class="btn-premium-tab" [class.active]="viewMode() === 'cards'" (click)="setViewMode('cards')">
+            <span class="icon-svg icon-grid" style="width: 14px; height: 14px;"></span>
+            <span>Tarjetas</span>
+          </button>
+          <button class="btn-premium-tab" [class.active]="viewMode() === 'list'" (click)="setViewMode('list')">
+            <span class="icon-svg icon-list" style="width: 14px; height: 14px;"></span>
+            <span>Lista</span>
+          </button>
+        </div>
+
+        <!-- Separador vertical + Botón Licencia y Cuotas (condicional) -->
+        @if (license()) {
+        <div class="header-separator"></div>
+
+        <button class="btn-migrate-config" (click)="openLicenseModal()">
+          <span class="icon-svg icon-shield" style="width: 15px; height: 15px;"></span>
+          <span>Licencia y Cuotas</span>
+        </button>
+        }
+
       </div>
     </div>
+    <!-- /FILA 1 -->
 
-    <div class="d-flex align-items-center gap-3">
-      <!-- Barra de Búsqueda Unificada y Botón de Filtros Agrupados -->
+    <!-- ─── FILA 2: Búsqueda + Paginación ─── -->
+    <div class="header-row-bottom d-flex align-items-center gap-3 mt-3">
+
+      <!-- Barra de Búsqueda + Botón de Filtros -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
-        <div class="search-input-wrapper position-relative d-flex align-items-center pl-1">
-          <span class="icon-svg search-icon-prefix text-muted"
-            style="-webkit-mask-image: url('/assets/icons/search.svg'); mask-image: url('/assets/icons/search.svg'); background-color: currentColor; width: 18px; height: 18px; opacity: 0.5;"></span>
+        <!-- Input wrapper ocupa todo el espacio libre, empujando el filtro al extremo -->
+        <div class="search-input-wrapper d-flex align-items-center flex-grow-1">
+          <span class="icon-svg icon-search search-icon-prefix text-muted flex-shrink-0" style="width: 18px; height: 18px; opacity: 0.5;"></span>
           <input type="text" [formControl]="searchControl" placeholder="Buscar cámara..."
-            class="search-input-control border-0 ms-2" style="font-size: 0.82rem; outline: none; width: 180px;" />
+            class="search-input-control border-0 ms-2" style="outline: none; flex: 1; min-width: 0;" />
         </div>
-        <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
+        <!-- Botón filtro al extremo derecho del searchbar -->
+        <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
           (click)="toggleFilterPanel()" [class.active]="hasActiveFilters()" [class.open]="showFilterPanel()"
           title="Filtros avanzados" aria-label="Filtros avanzados">
-          <span class="icon-svg filter-icon"
-            style="-webkit-mask-image: url('/assets/icons/filter.svg'); mask-image: url('/assets/icons/filter.svg'); background-color: currentColor; width: 22px; height: 22px;"></span>
+          <span class="icon-svg icon-filter filter-icon"></span>
           @if (hasActiveFilters()) {
           <span class="active-badge-dot"></span>
           }
         </button>
       </div>
 
-      <!-- Botón Horarios del Nodo -->
-      <button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center gap-2 px-3 py-2 rounded-pill shadow-sm"
-        (click)="openSchedulesModal()" title="Gestionar Horarios del Nodo">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <polyline points="12 6 12 12 16 14"/>
-        </svg>
-        <span class="fw-semibold small">Horarios del Nodo</span>
-      </button>
+      <!-- Espaciador flexible -->
+      <div class="flex-grow-1"></div>
 
       <!-- Selector de Cámaras por Página -->
       <div class="d-flex align-items-center gap-2">
-        <label for="limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Cámaras por página:</label>
-        <select id="limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
+        <label for="cam-limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Cámaras por página:</label>
+        <select id="cam-limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
           (change)="onLimitChange($event)">
           @for (opt of limitOptions(); track $index) {
           <option [value]="opt" [selected]="limit() === opt">{{ opt }}</option>
           }
         </select>
       </div>
+
     </div>
+    <!-- /FILA 2 -->
+
   </div>
+  <!-- /view-header -->
 
   <!-- Backdrop Overlay para el Drawer Superior -->
   @if (showFilterPanel()) {
@@ -81,7 +112,7 @@
     <div class="drawer-content p-4">
       <div class="container-fluid">
         <!-- Drawer Header -->
-        <div class="d-flex justify-content-between align-items-start mb-3 border-bottom pb-3">
+        <div class="d-flex justify-content-between align-items-start mb-3 pb-3">
           <div>
             <div class="d-flex align-items-center gap-2">
               <span class="icon-svg drawer-header-icon icon-filter"></span>
@@ -91,11 +122,7 @@
               en tiempo real.</p>
           </div>
           <button class="btn-ghost close-drawer-btn" (click)="toggleFilterPanel()" aria-label="Cerrar filtros">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
+            <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
           </button>
         </div>
 
@@ -104,7 +131,7 @@
           <!-- Filtro Estado -->
           <div class="filter-cell position-relative" (click)="toggleDropdown('status', $event)">
             <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-usuarios"></span>
+              <span class="icon-svg filter-cell-icon icon-activity"></span>
               <span class="filter-lbl mb-0">Estado de Actividad</span>
             </div>
             <div class="filter-display-val">
@@ -138,7 +165,7 @@
           <!-- Filtro Tipo de Stream -->
           <div class="filter-cell position-relative" (click)="toggleDropdown('streamType', $event)">
             <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-metadatos"></span>
+              <span class="icon-svg filter-cell-icon icon-wifi"></span>
               <span class="filter-lbl mb-0">Tipo de Stream</span>
             </div>
             <div class="filter-display-val">
@@ -166,7 +193,7 @@
           <!-- Filtro Decodificador -->
           <div class="filter-cell position-relative" (click)="toggleDropdown('decoder', $event)">
             <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-roles"></span>
+              <span class="icon-svg filter-cell-icon icon-settings"></span>
               <span class="filter-lbl mb-0">Decodificador</span>
             </div>
             <div class="filter-display-val">
@@ -194,7 +221,7 @@
           <!-- Filtro Analítica de IA -->
           <div class="filter-cell position-relative" (click)="toggleDropdown('analyticType', $event)">
             <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-info"></span>
+              <span class="icon-svg filter-cell-icon icon-info-circle"></span>
               <span class="filter-lbl mb-0">Analítica de IA</span>
             </div>
             <div class="filter-display-val">
@@ -223,7 +250,7 @@
         </div>
 
         <!-- Acciones del Modal: Limpiar y Aplicar -->
-        <div class="d-flex gap-3 mt-4 border-top pt-3 w-100">
+        <div class="d-flex gap-3 mt-4 pt-3 w-100">
           <button class="btn btn-clear-filters flex-fill py-2.5" (click)="resetFilters()">
             Limpiar Filtros
           </button>
@@ -248,8 +275,7 @@
   @if (!isLoading() && filteredCameras().length === 0) {
   <div class="card border-0 shadow-sm rounded-3 p-5 text-center mb-4 bg-card">
     <div class="py-4">
-      <span class="icon-svg text-muted"
-        style="-webkit-mask-image: url('/assets/icons/camara.svg'); mask-image: url('/assets/icons/camara.svg'); background-color: currentColor; width: 48px; height: 48px; opacity: 0.5; margin-bottom: 1rem;"></span>
+      <span class="icon-svg icon-camara text-muted" style="width: 48px; height: 48px; opacity: 0.5; margin-bottom: 1rem;"></span>
       <h5 class="fw-bold">No se encontraron cámaras</h5>
       <p class="text-muted">
         @if (cameras().length === 0) {
@@ -262,28 +288,33 @@
   </div>
   }
 
-  <!-- Cuadrícula de Cámaras (Estilo Bento Nodos) -->
+  <!-- Cuadrícula de Cámaras (Estilo Bento Nodos) o Tabla Premium -->
   @if (!isLoading() && cameras().length > 0) {
+  @if (viewMode() === 'cards') {
   <div #camerasGrid class="hosts-grid mb-4">
     @for (camera of pagedCameras(); track camera.id) {
-    <div class="card host-card h-100" [class.is-active]="camera.status === 'online'" (click)="openAiPanel(camera)">
+    <div class="card host-card h-100" [class.is-active]="isCameraOnline(camera)"
+      [class.card-crud-new]="cameraNewIds().has(camera.id)"
+      [class.card-crud-updated]="cameraUpdatedIds().has(camera.id)"
+      [class.card-crud-deleting]="cameraDeletingIds().has(camera.id)" (click)="openAiPanel(camera)">
       <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
         <div>
           <!-- Cabecera: Icono + Nombre + Decoder + Estado -->
-          <div class="host-header-block d-flex align-items-center justify-content-between pb-3 mb-3">
+          <div class="host-header-block d-flex align-items-center justify-content-between pb-3">
             <div class="d-flex align-items-center gap-2">
-              <span class="icon-svg os-avatar-icon icon-camara"
-                style="-webkit-mask-image: url('/assets/icons/camara.svg'); mask-image: url('/assets/icons/camara.svg'); background-color: currentColor; width: 24px; height: 24px;"></span>
-              <h5 class="host-title fw-bold mb-0 text-truncate" style="max-width: 170px;" [title]="camera.name">
-                {{ camera.name }}
-              </h5>
+              <span class="icon-svg os-avatar-icon icon-camara" style="width: 24px; height: 24px;"></span>
+              <div class="host-title-container">
+                <h5 class="host-title fw-bold mb-0" [title]="camera.name">
+                  {{ camera.name }}
+                </h5>
+              </div>
             </div>
 
             <div class="d-flex align-items-center gap-2">
               <!-- Estado de Actividad -->
-              <span class="status-badge" [class.status-badge-online]="camera.status === 'online'"
-                [class.status-badge-offline]="camera.status !== 'online'">
-                {{ camera.status === 'online' ? 'Online' : 'Offline' }}
+              <span class="status-badge" [class.status-badge-online]="isCameraOnline(camera)"
+                [class.status-badge-offline]="!isCameraOnline(camera)">
+                {{ isCameraOnline(camera) ? 'Online' : 'Offline' }}
               </span>
               <!-- Decoder -->
               <span class="version-tag">{{ camera.decoder | uppercase }}</span>
@@ -291,26 +322,45 @@
           </div>
 
           <!-- Lista de especificaciones -->
-          <div class="specs-list d-flex flex-column gap-2">
-            <div class="spec-row d-flex justify-content-between">
-              <span class="spec-lbl">Tipo Stream</span>
-              <span class="spec-val font-monospace text-uppercase">{{ camera.streamType }}</span>
+          <div class="specs-list d-flex flex-column gap-1">
+            <div class="spec-row d-flex justify-content-between"
+              [class.copied-flash]="copiedRowId() === camera.id + '-host'"
+              (click)="copyRowContent(camera.hostFingerprint, camera.id + '-host'); $event.stopPropagation()">
+              <span class="spec-lbl">Host</span>
+              @if (copiedRowId() === camera.id + '-host') {
+              <span class="copied-badge text-success fw-bold ms-auto"
+                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-truncate text-end">
+                {{ getHostName(camera.hostFingerprint) }}
+              </span>
+              }
             </div>
 
-            <div class="spec-row d-flex justify-content-between">
+            <div class="spec-row d-flex justify-content-between"
+              [class.copied-flash]="copiedRowId() === camera.id + '-streamType'"
+              (click)="copyRowContent(camera.streamType, camera.id + '-streamType'); $event.stopPropagation()">
+              <span class="spec-lbl">Tipo Stream</span>
+              @if (copiedRowId() === camera.id + '-streamType') {
+              <span class="copied-badge text-success fw-bold ms-auto"
+                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-uppercase">{{ camera.streamType }}</span>
+              }
+            </div>
+
+            <div class="spec-row d-flex justify-content-between"
+              [class.copied-flash]="copiedRowId() === camera.id + '-id'"
+              (click)="copyRowContent(camera.id, camera.id + '-id'); $event.stopPropagation()">
               <span class="spec-lbl">Camera ID</span>
-              <span class="spec-val font-monospace text-truncate text-end" style="max-width: 200px;"
-                [title]="camera.id">
+              @if (copiedRowId() === camera.id + '-id') {
+              <span class="copied-badge text-success fw-bold ms-auto"
+                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-truncate text-end">
                 {{ camera.id }}
               </span>
-            </div>
-
-            <div class="spec-row d-flex justify-content-between">
-              <span class="spec-lbl">Host</span>
-              <span class="spec-val font-monospace text-truncate text-end" style="max-width: 200px;"
-                [title]="camera.hostFingerprint">
-                {{ camera.hostFingerprint }}
-              </span>
+              }
             </div>
 
             <div class="spec-row d-flex justify-content-between align-items-center">
@@ -318,11 +368,7 @@
               <a [href]="'https://www.google.com/maps/search/?api=1&query=' + camera.location.lat + ',' + camera.location.lon"
                 target="_blank" rel="noopener noreferrer" class="coords-map-btn" (click)="$event.stopPropagation()"
                 title="Ver ubicación en Google Maps">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"
-                  class="coords-pin-svg">
-                  <path
-                    d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" />
-                </svg>
+                <span class="icon-svg icon-location-pin coords-pin-svg" style="width: 18px; height: 18px;"></span>
                 <span class="font-monospace">{{ camera.location.lat | number:'1.1-4' }}, {{ camera.location.lon |
                   number:'1.1-4' }}</span>
               </a>
@@ -333,6 +379,87 @@
     </div>
     }
   </div>
+  } @else {
+  <!-- Tabla Premium de Cámaras -->
+  <div class="border shadow-sm rounded-4 mb-4 bg-card overflow-hidden">
+    <div class="nm-table-container">
+      <table class="table nm-table align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">ESTADO</th>
+            <th scope="col">NOMBRE DE CÁMARA</th>
+            <th scope="col">NODO ASOCIADO</th>
+            <th scope="col">STREAM</th>
+            <th scope="col">DECODIFICADOR</th>
+            <th scope="col">COORDENADAS</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (camera of pagedCameras(); track camera.id) {
+          <tr class="nm-table-tr align-middle" [class.card-crud-new]="cameraNewIds().has(camera.id)"
+            [class.card-crud-updated]="cameraUpdatedIds().has(camera.id)"
+            [class.card-crud-deleting]="cameraDeletingIds().has(camera.id)" (click)="openAiPanel(camera)">
+            <!-- Estado -->
+            <td class="ps-3">
+              <span class="d-inline-flex align-items-center gap-2">
+                <span class="status-dot" [class.online]="isCameraOnline(camera)"></span>
+                <span class="fw-semibold" style="font-size: 0.88rem;" [class.text-success]="isCameraOnline(camera)"
+                  [class.text-danger]="!isCameraOnline(camera)">
+                  {{ isCameraOnline(camera) ? 'Online' : 'Offline' }}
+                </span>
+              </span>
+            </td>
+            <!-- Nombre -->
+            <td>
+              <div class="camera-name-marquee-container">
+                <span class="camera-name-marquee-text fw-bold text-body" style="font-size: 0.88rem;">{{ camera.name }}</span>
+              </div>
+            </td>
+            <!-- Nodo / Host -->
+            <td>
+              <span class="text-body text-truncate d-inline-block" style="font-size: 0.88rem;"
+                [title]="camera.hostFingerprint">
+                {{ getHostName(camera.hostFingerprint) }}
+              </span>
+            </td>
+            <!-- Stream -->
+            <td>
+              <div class="d-inline-flex align-items-center gap-2 text-uppercase font-monospace text-body"
+                style="font-size: 0.85rem; font-weight: 600;">
+                @if (camera.streamType.toLowerCase().includes('webrtc')) {
+                <span class="icon-svg icon-webrtc" style="width: 15px; height: 15px; background-color: #0ea5e9;"></span>
+                } @else if (camera.streamType.toLowerCase().includes('rtsp')) {
+                <span class="icon-svg icon-rtsp" style="width: 15px; height: 15px; background-color: #10b981;"></span>
+                } @else {
+                <span class="icon-svg icon-play" style="width: 15px; height: 15px; background-color: #f97316;"></span>
+                }
+                <span>{{ camera.streamType }}</span>
+              </div>
+            </td>
+            <!-- Decodificador -->
+            <td>
+              <span class="text-body font-monospace text-uppercase" style="font-size: 0.85rem; font-weight: 500;">{{
+                camera.decoder }}</span>
+            </td>
+            <!-- Coordenadas -->
+            <td>
+              <a [href]="'https://www.google.com/maps/search/?api=1&query=' + camera.location.lat + ',' + camera.location.lon"
+                target="_blank" rel="noopener noreferrer" class="coords-map-btn" (click)="$event.stopPropagation()"
+                title="Ver ubicación en Google Maps"
+                style="font-size: 0.82rem; gap: 6px; padding: 6px 12px; border-radius: 6px;">
+                <span class="icon-svg icon-location-pin coords-pin-svg" style="width: 16px; height: 16px;"></span>
+                <span class="font-monospace">{{ camera.location.lat | number:'1.1-2' }}, {{ camera.location.lon |
+                  number:'1.1-2' }}</span>
+              </a>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  }
+  }
 
   <!-- Paginación -->
   @if (totalPages() > 1) {
@@ -365,16 +492,12 @@
     <div class="d-flex align-items-center gap-2 jump-to-page-container">
       <span class="text-muted small fw-medium">Ir a:</span>
       <input type="text" class="form-control form-control-sm text-center shadow-sm"
-        style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;"
-        [placeholder]="currentPage()"
-        inputmode="numeric" pattern="[0-9]*"
-        (input)="onPageInput($event)"
-        (keydown.enter)="jumpToPage($event)"
+        style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;" [placeholder]="currentPage()"
+        inputmode="numeric" pattern="[0-9]*" (input)="onPageInput($event)" (keydown.enter)="jumpToPage($event)"
         (blur)="jumpToPage($event)" />
       <span class="text-muted small fw-medium">de {{ totalPages() }}</span>
     </div>
   </div>
-  }
   }
 
   <!-- Backdrop Overlay para el Drawer Lateral Derecho -->
@@ -388,10 +511,9 @@
       @if (selectedCamera(); as camera) {
       <div class="drawer-scroll-area">
         <!-- Cabecera del Drawer -->
-        <div class="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
+        <div class="d-flex justify-content-between align-items-start mb-4 pb-3">
           <div class="d-flex align-items-center gap-3 w-100 me-2" style="min-width: 0;">
-            <span class="icon-svg drawer-header-icon"
-              style="-webkit-mask-image: url('/assets/icons/camara.svg'); mask-image: url('/assets/icons/camara.svg'); background-color: currentColor; width: 28px; height: 28px; flex-shrink: 0; color: var(--primary);"></span>
+            <span class="icon-svg icon-camara drawer-header-icon" style="width: 28px; height: 28px; flex-shrink: 0; color: var(--primary);"></span>
             <div style="min-width: 0; flex: 1;">
               <h5 class="fw-bold mb-0 text-truncate" style="font-size: 1.15rem;" [title]="camera.name">
                 {{ camera.name }}
@@ -408,38 +530,25 @@
             @if (!isEditingCamera()) {
             <div class="camera-action-btn-group d-flex align-items-center gap-1 flex-shrink-0">
               <!-- Botón Editar -->
-              <button
-                class="cam-icon-btn cam-icon-btn-edit d-flex align-items-center justify-content-center"
+              @if (permissionsService.hasPermission('Cámaras', 'editar')) {
+              <button class="cam-icon-btn cam-icon-btn-edit d-flex align-items-center justify-content-center"
                 (click)="startEditingCamera(camera)" title="Editar Información" aria-label="Editar cámara">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                </svg>
+                <span class="icon-svg icon-edit" style="width: 15px; height: 15px;"></span>
               </button>
+              }
               <!-- Botón Eliminar -->
-              <button
-                class="cam-icon-btn cam-icon-btn-delete d-flex align-items-center justify-content-center"
+              @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
+              <button class="cam-icon-btn cam-icon-btn-delete d-flex align-items-center justify-content-center"
                 (click)="openDeleteModal(camera)" title="Eliminar Cámara" aria-label="Eliminar cámara">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                  <path d="M10 11v6" />
-                  <path d="M14 11v6" />
-                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                </svg>
+                <span class="icon-svg icon-trash" style="width: 15px; height: 15px;"></span>
               </button>
+              }
             </div>
             }
           </div>
 
           <button class="btn-ghost close-drawer-btn flex-shrink-0" (click)="closeAiPanel()" aria-label="Cerrar panel">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
+            <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
           </button>
         </div>
 
@@ -481,7 +590,7 @@
               }
             </div>
           </div>
-          <div class="d-flex gap-3 mt-4 border-top pt-3 w-100">
+          <div class="d-flex gap-3 mt-4 pt-3 w-100">
             <button type="button" class="btn btn-clear-filters flex-fill py-2.5" (click)="cancelEditingCamera()">
               Cancelar
             </button>
@@ -522,13 +631,18 @@
 
           <div class="d-flex flex-column gap-2">
             @for (analytic of getAnalyticsForCamera(camera.id); track analytic.id) {
-            <div class="ai-control-card-wrapper mb-2" [class.ai-active]="analytic.status === 'active'" [class.expanded]="isAnalyticDetailsExpanded(analytic.id)">
+            <div class="ai-control-card-wrapper mb-2" [class.ai-active]="analytic.status === 'active'"
+              [class.expanded]="isAnalyticDetailsExpanded(analytic.id)"
+              [class.card-crud-new]="analyticNewIds().has(analytic.id)"
+              [class.card-crud-updated]="analyticUpdatedIds().has(analytic.id)"
+              [class.card-crud-deleting]="analyticDeletingIds().has(analytic.id)">
               <div class="ai-control-header" (click)="toggleAnalyticDetails(analytic.id)">
                 <div class="d-flex align-items-center gap-3">
                   <span class="analytic-color-dot shadow-sm"
                     [style.background-color]="getAnalyticColor(analytic.type)"></span>
                   <div>
-                    <span class="fw-bold d-block" style="font-size: 0.85rem;">{{ getAnalyticLabel(analytic.type) }}</span>
+                    <span class="fw-bold d-block" style="font-size: 0.85rem;">{{ getAnalyticLabel(analytic.type)
+                      }}</span>
                     @if (analytic.detectionClasses.length > 0) {
                     <span class="text-muted" style="font-size: 0.72rem;">
                       {{ analytic.detectionClasses.slice(0, 3).join(', ') }}{{ analytic.detectionClasses.length > 3 ?
@@ -543,90 +657,87 @@
                   <div class="form-check form-switch m-0 d-flex align-items-center" (click)="$event.stopPropagation()">
                     <input class="form-check-input" type="checkbox" role="switch" [id]="'switch-' + analytic.id"
                       [checked]="analytic.status === 'active'"
+                      [disabled]="!permissionsService.hasPermission('Analíticas', 'activar_desactivar')"
                       (change)="toggleAnalyticStatus(analytic)">
                   </div>
                   <!-- Botón Eliminar Analítica -->
+                  @if (permissionsService.hasPermission('Analíticas', 'eliminar')) {
                   <button class="cam-icon-btn cam-icon-btn-delete d-flex align-items-center justify-content-center"
-                    (click)="openDeleteAnalyticModal(analytic); $event.stopPropagation()"
-                    title="Eliminar Analítica" aria-label="Eliminar analítica">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                    </svg>
+                    (click)="openDeleteAnalyticModal(analytic); $event.stopPropagation()" title="Eliminar Analítica"
+                    aria-label="Eliminar analítica">
+                    <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
                   </button>
+                  }
                   <!-- Chevron decorativo para indicar expansión -->
                   <div class="btn-toggle-details transition-all d-flex align-items-center justify-content-center"
                     [class.open]="isAnalyticDetailsExpanded(analytic.id)">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                      style="transition: transform 0.2s ease;">
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
+                    <span class="icon-svg icon-chevron-down" style="width: 14px; height: 14px; transition: transform 0.2s ease;"></span>
                   </div>
                 </div>
               </div>
 
               @if (isAnalyticDetailsExpanded(analytic.id)) {
-                <div class="analytic-details-expanded" style="animation: slideDown 0.2s ease-out;">
-                  <!-- Lista vertical de horarios asociados -->
-                  <div class="d-flex flex-column gap-2 mb-3">
-                    @for (sched of getSchedulesForAnalytic(analytic.id); track sched.id) {
-                      <!-- Tarjeta de Horario estilo Bento -->
-                      <div class="schedule-bento-card"
-                        [class]="'freq-' + sched.frequency"
-                        (click)="toggleScheduleAssociation(sched, analytic.id, false)"
-                        title="Click para remover este horario de la analítica">
-                        <div class="card-left-section">
-                          <span class="schedule-name">{{ sched.name }}</span>
-                          <span class="schedule-meta-frequency">{{ sched.frequency | titlecase }}</span>
-                        </div>
-                        <div class="card-right-section">
-                          <span class="schedule-meta-date">{{ getScheduleDateLabelCompact(sched) }}</span>
-                          <span class="schedule-meta-time">{{ getScheduleTimeLabelCompact(sched) }}</span>
-                        </div>
-                        <div class="card-delete-hover">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-danger">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                          </svg>
-                        </div>
-                      </div>
-                    } @empty {
-                      <span class="text-muted small italic" style="font-size: 0.72rem; padding-left: 4px;">Sin horarios programados (opera 24/7)</span>
+              <div class="analytic-details-expanded" style="animation: slideDown 0.2s ease-out;">
+                <!-- Lista vertical de horarios asociados -->
+                <div class="d-flex flex-column gap-2 mb-3">
+                  @for (sched of getSchedulesForAnalytic(analytic.id); track sched.id) {
+                  <!-- Tarjeta de Horario estilo Bento -->
+                  <div class="schedule-bento-card" [class]="'freq-' + sched.frequency"
+                    [class.schedule-bento-card--desactivado]="sched.status !== 'activo'"
+                    (click)="toggleScheduleAssociation(sched, analytic.id, false)"
+                    title="Click para remover este horario de la analítica">
+                    <div class="card-left-section">
+                      <span class="schedule-name">{{ sched.name }}</span>
+                      <span class="schedule-meta-frequency">{{ sched.frequency | titlecase }}</span>
+                    </div>
+                    <div class="card-right-section">
+                      <span class="schedule-meta-date">{{ getScheduleDateLabelCompact(sched) }}</span>
+                      <span class="schedule-meta-time">{{ getScheduleTimeLabelCompact(sched) }}</span>
+                    </div>
+                    @if (sched.status !== 'activo') {
+                    <div class="schedule-deactivated-overlay">
+                      <span class="schedule-deactivated-overlay-badge">Desactivado</span>
+                    </div>
                     }
+                    <div class="card-delete-hover">
+                      <span class="icon-svg icon-trash text-danger" style="width: 14px; height: 14px;"></span>
+                    </div>
                   </div>
-
-                  <!-- Botón/Dropdown para añadir horario (siempre visible) -->
-                  <div class="position-relative w-100 d-block">
-                    <button class="btn-add-schedule-dashed"
-                      (click)="toggleAddScheduleDropdown(analytic.id, $event)">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                      </svg>
-                      <span>Añadir Horario</span>
-                    </button>
-
-                    @if (activeAddScheduleDropdown() === analytic.id) {
-                      <div class="custom-dropdown-options-menu shadow border py-1 position-absolute start-0 mt-1 rounded bg-dark-translucent" style="min-width: 180px; z-index: 100;" (click)="$event.stopPropagation()">
-                        @for (sched of getUnassociatedSchedules(analytic.id); track sched.id) {
-                          <div class="custom-dropdown-option py-2 px-3 small text-white" (click)="toggleScheduleAssociation(sched, analytic.id, true); toggleAddScheduleDropdown(analytic.id, $event)" style="cursor: pointer;">
-                            {{ sched.name }}
-                          </div>
-                        }
-                        @if (getUnassociatedSchedules(analytic.id).length > 0) {
-                          <div class="dropdown-divider border-secondary my-1"></div>
-                        }
-                        <div class="custom-dropdown-option py-2 px-3 small text-primary fw-semibold" (click)="openSchedulesModal(); toggleAddScheduleDropdown(analytic.id, $event)" style="cursor: pointer;">
-                          + Gestionar Horarios
-                        </div>
-                      </div>
-                    }
-                  </div>
+                  } @empty {
+                  <span class="text-muted small italic" style="font-size: 0.72rem; padding-left: 4px;">Sin horarios
+                    programados (opera 24/7)</span>
+                  }
                 </div>
+
+                <!-- Botón/Dropdown para añadir horario (siempre visible) -->
+                <div class="position-relative w-100 d-block">
+                  <button class="btn-add-schedule-dashed" (click)="toggleAddScheduleDropdown(analytic.id, $event)">
+                    <span class="icon-svg icon-plus" style="width: 12px; height: 12px;"></span>
+                    <span>Añadir Horario</span>
+                  </button>
+
+                  @if (activeAddScheduleDropdown() === analytic.id) {
+                  <div class="add-schedule-dropdown-menu shadow" (click)="$event.stopPropagation()">
+                    <div class="dropdown-header-title">Asociar Horario</div>
+                    @for (sched of getUnassociatedSchedules(analytic.id); track sched.id) {
+                    <div class="add-schedule-dropdown-item"
+                      (click)="toggleScheduleAssociation(sched, analytic.id, true); toggleAddScheduleDropdown(analytic.id, $event)">
+                      <span class="item-name">{{ sched.name }}</span>
+                      <span class="item-meta">{{ sched.frequency | titlecase }}</span>
+                    </div>
+                    } @empty {
+                    <div class="dropdown-empty-state">No hay más horarios disponibles</div>
+                    }
+                    <div class="dropdown-divider"></div>
+                    <a [routerLink]="['/dashboard/horarios']" class="dropdown-manage-link"
+                      (click)="toggleAddScheduleDropdown(analytic.id, $event)">
+                      <span class="icon-svg icon-settings" style="width: 12px; height: 12px;"></span>
+                      <span>Gestionar Horarios</span>
+                    </a>
+                  </div>
+                  }
+                </div>
+              </div>
               }
             </div>
             }
@@ -635,7 +746,7 @@
       </div>
 
       <!-- Botón de Cerrar -->
-      <div class="mt-4 border-top pt-3">
+      <div class="mt-4 pt-3">
         <button class="btn btn-clear-filters w-100 py-2" (click)="closeAiPanel()">
           Cerrar Panel
         </button>
@@ -655,12 +766,7 @@
 
     <!-- Icono de advertencia -->
     <div class="delete-modal-icon-wrap">
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-      </svg>
+      <span class="icon-svg icon-warning" style="width: 28px; height: 28px; color: var(--color-warning);"></span>
     </div>
 
     <!-- Título y mensaje -->
@@ -681,13 +787,7 @@
         <span class="delete-modal-spinner"></span>
         Eliminando...
         } @else {
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="3 6 5 6 21 6" />
-          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-          <path d="M10 11v6" /><path d="M14 11v6" />
-          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-        </svg>
+        <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
         Eliminar
         }
       </button>
@@ -706,12 +806,7 @@
 
     <!-- Icono de advertencia -->
     <div class="delete-modal-icon-wrap">
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-      </svg>
+      <span class="icon-svg icon-warning" style="width: 28px; height: 28px; color: var(--color-warning);"></span>
     </div>
 
     <!-- Título y mensaje -->
@@ -732,13 +827,7 @@
         <span class="delete-modal-spinner"></span>
         Eliminando...
         } @else {
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="3 6 5 6 21 6" />
-          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-          <path d="M10 11v6" /><path d="M14 11v6" />
-          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-        </svg>
+        <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
         Eliminar
         }
       </button>
@@ -748,56 +837,6 @@
 </div>
 }
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-  Modal de Confirmación: Eliminar Horario
-══════════════════════════════════════════════════════════════════════════ -->
-@if (showDeleteScheduleModal()) {
-<div class="delete-camera-modal-overlay" (click)="closeDeleteScheduleModal()" aria-modal="true" role="dialog">
-  <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
-
-    <!-- Icono de advertencia -->
-    <div class="delete-modal-icon-wrap">
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-      </svg>
-    </div>
-
-    <!-- Título y mensaje -->
-    <h5 class="delete-modal-title">Eliminar horario</h5>
-    <p class="delete-modal-message">
-      ¿Estás seguro de que deseas eliminar el horario
-      <strong class="delete-modal-camera-name">{{ scheduleToDelete()?.name }}</strong>?
-      Esta acción no se puede deshacer.
-    </p>
-
-    <!-- Acciones -->
-    <div class="delete-modal-actions">
-      <button class="delete-modal-btn-cancel" (click)="closeDeleteScheduleModal()" [disabled]="isDeletingSchedule()">
-        Cancelar
-      </button>
-      <button class="delete-modal-btn-confirm" (click)="confirmDeleteSchedule()" [disabled]="isDeletingSchedule()">
-        @if (isDeletingSchedule()) {
-        <span class="delete-modal-spinner"></span>
-        Eliminando...
-        } @else {
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="3 6 5 6 21 6" />
-          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-          <path d="M10 11v6" /><path d="M14 11v6" />
-          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-        </svg>
-        Eliminar
-        }
-      </button>
-    </div>
-
-  </div>
-</div>
-}
 
 <!-- ═══════════════════════════════════════════════════════════════════════
   Modal de Licencia y Cuotas Bento
@@ -809,179 +848,150 @@
     <div class="license-modal-header d-flex justify-content-between align-items-start pb-2 mb-3">
       <div class="d-flex align-items-center gap-3">
         <div class="license-icon-container">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            style="color: var(--primary);">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
+          <span class="icon-svg icon-shield" style="width: 28px; height: 28px; color: var(--primary);"></span>
         </div>
         <div>
           <div class="d-flex align-items-center gap-2 mb-1">
             <h4 class="fw-bold mb-0">Licencia del Nodo</h4>
             @if (license(); as lic) {
-              <span class="badge-license-type text-capitalize mb-0.5" [class.badge-license-temp]="lic.tipo === 'temporal'" [class.badge-license-perm]="lic.tipo === 'permanente'" style="font-size: 0.68rem; padding: 2px 8px;">
-                <span class="badge-license-indicator"></span>
-                {{ lic.tipo }}
-              </span>
+            <span class="badge-license-type text-capitalize mb-0.5" [class.badge-license-temp]="lic.tipo === 'temporal'"
+              [class.badge-license-perm]="lic.tipo === 'permanente'" style="font-size: 0.68rem; padding: 2px 8px;">
+              <span class="badge-license-indicator"></span>
+              {{ lic.tipo }}
+            </span>
             }
           </div>
           <p class="text-muted small mb-0">Detalles de la licencia activa y límites de analíticas</p>
         </div>
       </div>
       <button class="btn-ghost close-drawer-btn" (click)="showLicenseModal.set(false)" aria-label="Cerrar modal">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
+        <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
       </button>
     </div>
 
     <!-- Contenido del Modal -->
     @if (license(); as lic) {
-      <!-- Fila 1: Fingerprint del Nodo -->
-      <div class="row g-3 mb-3">
-        <div class="col-12">
-          <div class="license-fingerprint-container p-3 rounded-3 d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center gap-3 flex-grow-1 overflow-hidden">
-              <div class="license-fingerprint-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
-                  <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
-                  <line x1="6" y1="6" x2="6.01" y2="6" />
-                  <line x1="6" y1="18" x2="6.01" y2="18" />
-                </svg>
-              </div>
-              <div class="overflow-hidden flex-grow-1">
-                <span class="license-meta-label">Fingerprint del Nodo</span>
-                <code class="license-fingerprint-text font-monospace d-block text-break">{{ hostId() }}</code>
-              </div>
+    <!-- Fila 1: Fingerprint del Nodo -->
+    <div class="row g-3 mb-3">
+      <div class="col-12">
+        <div class="license-fingerprint-container p-3 rounded-3 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-3 flex-grow-1 overflow-hidden">
+            <div class="license-fingerprint-icon">
+              <span class="icon-svg icon-server" style="width: 18px; height: 18px;"></span>
             </div>
-            <button class="btn btn-ghost btn-copy-fingerprint ms-3" (click)="copyFingerprint()" title="Copiar Fingerprint">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-            </button>
+            <div class="overflow-hidden flex-grow-1">
+              <span class="license-meta-label">Fingerprint del Nodo</span>
+              <code class="license-fingerprint-text font-monospace d-block text-break">{{ hostId() }}</code>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-copy-fingerprint ms-3" (click)="copyFingerprint()"
+            title="Copiar Fingerprint">
+            <span class="icon-svg icon-copy" style="width: 16px; height: 16px;"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fila 2: Fecha de emisión, Fecha de expiración -->
+    <div class="row g-3 mb-4">
+      <!-- Fecha de Emisión -->
+      <div class="col-12 col-md-6">
+        <div class="license-meta-card card-emission">
+          <div class="license-meta-card-header">
+            <div class="license-meta-card-icon">
+              <span class="icon-svg icon-calendar" style="width: 14px; height: 14px;"></span>
+            </div>
+            <span class="license-meta-label">Fecha de Emisión</span>
+          </div>
+          <div class="license-meta-card-value font-monospace mt-1" style="font-size: 0.88rem;">
+            {{ lic.emision | date:'dd/MM/yyyy HH:mm' }}
           </div>
         </div>
       </div>
 
-      <!-- Fila 2: Fecha de emisión, Fecha de expiración -->
-      <div class="row g-3 mb-4">
-        <!-- Fecha de Emisión -->
-        <div class="col-12 col-md-6">
-          <div class="license-meta-card card-emission">
-            <div class="license-meta-card-header">
-              <div class="license-meta-card-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-              </div>
-              <span class="license-meta-label">Fecha de Emisión</span>
+      <!-- Fecha de Expiración -->
+      <div class="col-12 col-md-6">
+        <div class="license-meta-card card-expiration" [class.expiration-temp]="lic.tipo === 'temporal'">
+          <div class="license-meta-card-header">
+            <div class="license-meta-card-icon">
+              <span class="icon-svg icon-clock" style="width: 14px; height: 14px;"></span>
             </div>
-            <div class="license-meta-card-value font-monospace mt-1" style="font-size: 0.88rem;">
-              {{ lic.emision | date:'dd/MM/yyyy HH:mm' }}
-            </div>
+            <span class="license-meta-label">Fecha de Expiración</span>
           </div>
-        </div>
-
-        <!-- Fecha de Expiración -->
-        <div class="col-12 col-md-6">
-          <div class="license-meta-card card-expiration" [class.expiration-temp]="lic.tipo === 'temporal'">
-            <div class="license-meta-card-header">
-              <div class="license-meta-card-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-              </div>
-              <span class="license-meta-label">Fecha de Expiración</span>
-            </div>
-            <div class="license-meta-card-value mt-1">
-              @if (lic.tipo === 'temporal' && lic.expiracion) {
-                <span class="text-danger font-monospace" style="font-size: 0.88rem; font-weight: 600;">
-                  {{ lic.expiracion | date:'dd/MM/yyyy HH:mm' }}
-                </span>
-              } @else {
-                <span class="text-success d-flex align-items-center gap-1.5" style="font-size: 0.88rem; font-weight: 600;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  Sin expiración
-                </span>
-              }
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Título de la Sección (Fijo arriba) -->
-      <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary">
-          <rect x="3" y="3" width="7" height="9" />
-          <rect x="14" y="3" width="7" height="5" />
-          <rect x="14" y="12" width="7" height="9" />
-          <rect x="3" y="16" width="7" height="5" />
-        </svg>
-        Cuotas y Consumo de Analíticas
-      </h5>
-
-      <!-- Cuerpo Scrolleable (Solo las analíticas) -->
-      <div class="license-scroll-wrapper position-relative flex-grow-1 overflow-hidden d-flex flex-column" style="max-height: 400px;">
-        <div class="license-modal-body scroll-container overflow-y-auto pe-1" (scroll)="onLicenseScroll($event)" style="max-height: 400px;">
-          <div class="quota-list-container d-flex flex-column gap-3">
-            @for (feat of sortedLicenseFeatures(); track feat.key) {
-              <div class="quota-row-item transition-all" [class.quota-row-high]="getQuotaColorClass(feat.key) === 'danger'">
-                <!-- Fila 1: Nombre de la analítica a la izquierda, Consumo y Porcentaje a la derecha -->
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <div class="d-flex align-items-center">
-                    <span class="quota-status-dot" [class]="'quota-dot-' + getQuotaColorClass(feat.key)"></span>
-                    <span class="quota-row-name text-capitalize" [title]="feat.key">
-                      {{ feat.key.split('_').join(' ') }}
-                    </span>
-                  </div>
-                  <div class="d-flex align-items-center gap-2">
-                    <span class="quota-item-ratio font-monospace small">
-                      <strong>{{ licenseQuotaUsage()[feat.key] || 0 }}</strong><span class="text-muted"> / {{ feat.limit }}</span>
-                    </span>
-                    <span class="quota-percentage-pill" [class]="'quota-pill-' + getQuotaColorClass(feat.key)">
-                      {{ getQuotaPercentage(feat.key) | number:'1.0-0' }}%
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Fila 2: Barra de Progreso -->
-                <div class="quota-progress-container">
-                  <div class="quota-progress-bar animate-progress"
-                    [class]="'quota-progress-' + getQuotaColorClass(feat.key)"
-                    [style.width.%]="getQuotaPercentage(feat.key)">
-                  </div>
-                </div>
-              </div>
+          <div class="license-meta-card-value mt-1">
+            @if (lic.tipo === 'temporal' && lic.expiracion) {
+            <span class="text-danger font-monospace" style="font-size: 0.88rem; font-weight: 600;">
+              {{ lic.expiracion | date:'dd/MM/yyyy HH:mm' }}
+            </span>
+            } @else {
+            <span class="text-success d-flex align-items-center gap-1.5" style="font-size: 0.88rem; font-weight: 600;">
+              <span class="icon-svg icon-check" style="width: 14px; height: 14px;"></span>
+              Sin expiración
+            </span>
             }
           </div>
         </div>
+      </div>
+    </div>
 
-        <!-- Scroll Hint Overlay (Premium) -->
-        <div class="drawer-scroll-hint" [class.hidden]="licenseScrolledToBottom()" aria-hidden="true">
-          <div class="scroll-hint-chevron">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
+    <!-- Título de la Sección (Fijo arriba) -->
+    <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+      <span class="icon-svg icon-layout-dashboard text-primary" style="width: 18px; height: 18px;"></span>
+      Cuotas y Consumo de Analíticas
+    </h5>
+
+    <!-- Cuerpo Scrolleable (Solo las analíticas) -->
+    <div class="license-scroll-wrapper position-relative flex-grow-1 overflow-hidden d-flex flex-column"
+      style="max-height: 400px;">
+      <div class="license-modal-body scroll-container overflow-y-auto pe-1" (scroll)="onLicenseScroll($event)"
+        style="max-height: 400px;">
+        <div class="quota-list-container d-flex flex-column gap-3">
+          @for (feat of sortedLicenseFeatures(); track feat.key) {
+          <div class="quota-row-item transition-all" [class.quota-row-high]="getQuotaColorClass(feat.key) === 'danger'">
+            <!-- Fila 1: Nombre de la analítica a la izquierda, Consumo y Porcentaje a la derecha -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="d-flex align-items-center">
+                <span class="quota-status-dot" [class]="'quota-dot-' + getQuotaColorClass(feat.key)"></span>
+                <span class="quota-row-name text-capitalize" [title]="feat.key">
+                  {{ feat.key.split('_').join(' ') }}
+                </span>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="quota-item-ratio font-monospace small">
+                  <strong>{{ licenseQuotaUsage()[feat.key] || 0 }}</strong><span class="text-muted"> / {{ feat.limit
+                    }}</span>
+                </span>
+                <span class="quota-percentage-pill" [class]="'quota-pill-' + getQuotaColorClass(feat.key)">
+                  {{ getQuotaPercentage(feat.key) | number:'1.0-0' }}%
+                </span>
+              </div>
+            </div>
+
+            <!-- Fila 2: Barra de Progreso -->
+            <div class="quota-progress-container">
+              <div class="quota-progress-bar animate-progress"
+                [class]="'quota-progress-' + getQuotaColorClass(feat.key)"
+                [style.width.%]="getQuotaPercentage(feat.key)">
+              </div>
+            </div>
           </div>
+          }
         </div>
       </div>
+
+      <!-- Scroll Hint Overlay (Premium) -->
+      <div class="drawer-scroll-hint" [class.hidden]="licenseScrolledToBottom()" aria-hidden="true">
+        <div class="scroll-hint-chevron">
+          <span class="icon-svg icon-chevron-down" style="width: 16px; height: 16px;"></span>
+        </div>
+      </div>
+    </div>
     } @else {
-      <div class="license-modal-body">
-        <div class="text-center py-5 text-muted">
-          No se encontró información de licencia para este nodo.
-        </div>
+    <div class="license-modal-body">
+      <div class="text-center py-5 text-muted">
+        No se encontró información de licencia para este nodo.
       </div>
+    </div>
     }
 
     <!-- Pie del Modal -->
@@ -989,541 +999,6 @@
       <button class="btn btn-clear-filters px-4 py-2" (click)="showLicenseModal.set(false)">
         Cerrar
       </button>
-    </div>
-  </div>
-</div>
-}
-
-<!-- Modal de Gestión de Horarios del Nodo -->
-@if (showSchedulesModal()) {
-<div class="schedules-modal-overlay" (click)="closeSchedulesModal()" aria-modal="true" role="dialog">
-  <div class="license-modal-card schedules-modal-card" (click)="onModalCardClick($event)" style="max-width: 960px;">
-    <!-- Cabecera del Modal -->
-    <div class="license-modal-header d-flex justify-content-between align-items-start pb-2 mb-3">
-      <div class="d-flex align-items-center gap-3">
-        <div class="license-icon-container">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            style="color: var(--primary);">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-        </div>
-        <div>
-          <h4 class="fw-bold mb-0">Horarios de Operación del Nodo</h4>
-          <p class="text-muted small mb-0">Administra los rangos horarios globales para el procesamiento de analíticas en este host.</p>
-        </div>
-      </div>
-      <button class="btn-ghost close-drawer-btn" (click)="closeSchedulesModal()" aria-label="Cerrar modal">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Cuerpo del Modal (2 Columnas: Lista a la izquierda, Formulario a la derecha) -->
-    <div class="schedules-modal-body-columns flex-grow-1" style="min-height: 600px; max-height: 80vh;">
-      <!-- Columna Izquierda: Lista de Horarios -->
-      <div class="schedules-list-column d-flex flex-column h-100 overflow-hidden">
-        <h5 class="fw-bold fs-6 mb-3 d-flex align-items-center gap-2">
-          <span>Horarios Creados</span>
-          <span class="badge bg-secondary-light text-primary fs-8 rounded-pill">{{ schedules().length }}</span>
-        </h5>
-
-        <div class="schedules-list-container scroll-container overflow-y-auto flex-grow-1 pe-2">
-          @if (schedules().length === 0) {
-            <div class="text-muted italic small text-center py-5 border rounded bg-light-translucent">
-              No hay horarios configurados en este nodo.
-            </div>
-          }
-
-          <div class="d-flex flex-column gap-3">
-            @for (sched of schedules(); track sched.id) {
-              <div class="schedule-modal-item p-3 rounded-3 border transition-all"
-                [class.schedule-active]="isScheduleActive(sched)" [class.schedule-inactive]="!isScheduleActive(sched)">
-                <div class="d-flex align-items-start justify-content-between">
-                  <div class="flex-grow-1 pe-3">
-                    <div class="d-flex align-items-center justify-content-between w-100">
-                      <div class="d-flex align-items-center gap-2">
-                        <span class="status-dot animate-pulse-green" [class.pulse]="isScheduleActive(sched)"></span>
-                        <span class="fw-bold" style="font-size: 0.9rem;">{{ sched.name }}</span>
-                      </div>
-                    </div>
-                    <div class="d-flex align-items-center gap-2 mt-2">
-                      <span class="badge bg-light-translucent text-uppercase text-muted" style="font-size: 0.65rem;">{{ sched.frequency }}</span>
-                      <span class="font-monospace text-muted small" style="font-size: 0.72rem;">
-                        {{ sched.start | date:'dd/MM/yyyy HH:mm' }} - {{ sched.end | date:'dd/MM/yyyy HH:mm' }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="d-flex gap-1">
-                    <button class="btn btn-xs btn-ghost p-1.5" (click)="startEditSchedule(sched)" title="Editar Horario">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                      </svg>
-                    </button>
-                    <button class="btn btn-xs btn-ghost text-danger p-1.5" (click)="openDeleteScheduleModal(sched)" title="Eliminar Horario">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 6h18" />
-                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-
-      <!-- Columna Derecha: Formulario de Creación / Edición -->
-      <div class="schedule-form-column d-flex flex-column h-100" style="overflow: visible !important;">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="fw-bold fs-6 mb-0 text-primary">
-            {{ editingScheduleId() ? 'Editar Horario' : 'Nuevo Horario de Operación' }}
-          </h5>
-          @if (editingScheduleId()) {
-            <button class="btn btn-xs btn-ghost text-muted" (click)="cancelEditSchedule()">Crear nuevo</button>
-          }
-        </div>
-
-        <div class="flex-grow-1 pe-1" style="overflow: visible !important;">
-          <!-- Form Body -->
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Nombre del Horario</label>
-            @if (editingScheduleId()) {
-              <input type="text" class="form-control form-control-sm" placeholder="Ej. Horario Comercial"
-                [ngModel]="editingScheduleName()" (ngModelChange)="editingScheduleName.set($event)">
-            } @else {
-              <input type="text" class="form-control form-control-sm" placeholder="Ej. Horario Comercial"
-                [ngModel]="newScheduleName()" (ngModelChange)="newScheduleName.set($event)">
-            }
-          </div>
-
-          <!-- Frecuencia -->
-          <div class="mb-3">
-            <label class="form-label d-block text-muted small fw-semibold">Frecuencia</label>
-            <div class="frequency-segment-control">
-              @if (editingScheduleId()) {
-                <button type="button" class="frequency-segment-btn"
-                  [class.active]="editingScheduleFrequency() === 'diario'"
-                  (click)="onEditingScheduleFrequencyChange('diario')">Diario</button>
-                <button type="button" class="frequency-segment-btn"
-                  [class.active]="editingScheduleFrequency() === 'semanal'"
-                  (click)="onEditingScheduleFrequencyChange('semanal')">Semanal</button>
-                <button type="button" class="frequency-segment-btn"
-                  [class.active]="editingScheduleFrequency() === 'mensual'"
-                  (click)="onEditingScheduleFrequencyChange('mensual')">Mensual</button>
-              } @else {
-                <button type="button" class="frequency-segment-btn"
-                  [class.active]="newScheduleFrequency() === 'diario'"
-                  (click)="onNewScheduleFrequencyChange('diario')">Diario</button>
-                <button type="button" class="frequency-segment-btn"
-                  [class.active]="newScheduleFrequency() === 'semanal'"
-                  (click)="onNewScheduleFrequencyChange('semanal')">Semanal</button>
-                <button type="button" class="frequency-segment-btn"
-                  [class.active]="newScheduleFrequency() === 'mensual'"
-                  (click)="onNewScheduleFrequencyChange('mensual')">Mensual</button>
-              }
-            </div>
-          </div>
-
-          <!-- Selector de Rango de Fechas -->
-          <div class="mb-3 position-relative">
-            <label class="form-label text-muted small fw-semibold">Rango de Fechas</label>
-            @if (editingScheduleId()) {
-              <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
-                [disabled]="!editingScheduleFrequency()"
-                (click)="openCalendar('editingRange', $event)">
-                <span>
-                  @if (!editingScheduleFrequency()) {
-                    Selecciona una frecuencia primero
-                  } @else if (editingScheduleDateStart()) {
-                    {{ formatDateLabel(editingScheduleDateStart()) }}
-                    @if (editingScheduleDateEnd() && editingScheduleDateStart() !== editingScheduleDateEnd()) {
-                      - {{ formatDateLabel(editingScheduleDateEnd()) }}
-                    }
-                  } @else {
-                    Elegir rango de fechas
-                  }
-                </span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                  class="text-muted opacity-75">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-              </button>
-
-              @if (activeCalendarField() === 'editingRange') {
-              <div class="custom-calendar-popover position-absolute top-100 start-0 shadow-lg"
-                (click)="$event.stopPropagation()" style="z-index: 9999;">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <button type="button" class="calendar-header-btn btn-ghost"
-                    [disabled]="isPrevCalendarMonthDisabled()"
-                    (click)="prevCalendarMonth($event)">
-                    &lt;
-                  </button>
-                  <span class="fw-bold text-capitalize" style="font-size: 0.85rem; color: var(--text-primary);">
-                    {{ getMonths()[calendarViewMonth()] }} {{ calendarViewYear() }}
-                  </span>
-                  <button type="button" class="calendar-header-btn btn-ghost"
-                    (click)="nextCalendarMonth($event)">
-                    &gt;
-                  </button>
-                </div>
-
-                <div class="d-grid text-center text-muted small mb-1"
-                  style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
-                  <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
-                </div>
-
-                <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
-                  @for (empty of calendarGrid().emptyDays; track empty) {
-                  <div style="width: 28px; height: 28px;"></div>
-                  }
-                  @for (day of calendarGrid().days; track day) {
-                  <button type="button" class="calendar-day-btn" 
-                    [class.selected]="isCalendarDateSelected(day)"
-                    [class.in-range]="isCalendarDateInRange(day)"
-                    [disabled]="isCalendarDayDisabled(day)"
-                    (click)="selectCalendarDay(day)">
-                    {{ day }}
-                  </button>
-                  }
-                </div>
-
-                <div class="calendar-footer">
-                  <div class="calendar-footer-range">
-                    @if (tempDateStart()) {
-                      {{ formatDateLabel(tempDateStart()) }}
-                      @if (tempDateEnd() && tempDateStart() !== tempDateEnd()) {
-                        - {{ formatDateLabel(tempDateEnd()) }}
-                      }
-                    } @else {
-                      Sin selección
-                    }
-                  </div>
-                  @if (getCalendarValidationWarning()) {
-                    <div class="calendar-footer-warning text-danger small mt-1 px-2" style="font-size: 0.72rem; line-height: 1.2; text-align: left;">
-                      {{ getCalendarValidationWarning() }}
-                    </div>
-                  }
-                  <div class="calendar-footer-actions">
-                    <button type="button" class="calendar-footer-btn-reset"
-                      (click)="clearCalendarSelection()">
-                      LIMPIAR
-                    </button>
-                    <button type="button" class="calendar-footer-btn-apply"
-                      [disabled]="!isCalendarSelectionValid()"
-                      (click)="applyCalendarSelection()">
-                      APLICAR
-                    </button>
-                  </div>
-                </div>
-              </div>
-              }
-            } @else {
-              <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
-                [disabled]="!newScheduleFrequency()"
-                (click)="openCalendar('newRange', $event)">
-                <span>
-                  @if (!newScheduleFrequency()) {
-                    Selecciona una frecuencia primero
-                  } @else if (newScheduleDateStart()) {
-                    {{ formatDateLabel(newScheduleDateStart()) }}
-                    @if (newScheduleDateEnd() && newScheduleDateStart() !== newScheduleDateEnd()) {
-                      - {{ formatDateLabel(newScheduleDateEnd()) }}
-                    }
-                  } @else {
-                    Elegir rango de fechas
-                  }
-                </span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                  class="text-muted opacity-75">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-              </button>
-
-              @if (activeCalendarField() === 'newRange') {
-              <div class="custom-calendar-popover position-absolute top-100 start-0 shadow-lg"
-                (click)="$event.stopPropagation()" style="z-index: 9999;">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <button type="button" class="calendar-header-btn btn-ghost"
-                    [disabled]="isPrevCalendarMonthDisabled()"
-                    (click)="prevCalendarMonth($event)">
-                    &lt;
-                  </button>
-                  <span class="fw-bold text-capitalize" style="font-size: 0.85rem; color: var(--text-primary);">
-                    {{ getMonths()[calendarViewMonth()] }} {{ calendarViewYear() }}
-                  </span>
-                  <button type="button" class="calendar-header-btn btn-ghost"
-                    (click)="nextCalendarMonth($event)">
-                    &gt;
-                  </button>
-                </div>
-
-                <div class="d-grid text-center text-muted small mb-1"
-                  style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
-                  <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
-                </div>
-
-                <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
-                  @for (empty of calendarGrid().emptyDays; track empty) {
-                  <div style="width: 28px; height: 28px;"></div>
-                  }
-                  @for (day of calendarGrid().days; track day) {
-                  <button type="button" class="calendar-day-btn" 
-                    [class.selected]="isCalendarDateSelected(day)"
-                    [class.in-range]="isCalendarDateInRange(day)"
-                    [disabled]="isCalendarDayDisabled(day)"
-                    (click)="selectCalendarDay(day)">
-                    {{ day }}
-                  </button>
-                  }
-                </div>
-
-                <div class="calendar-footer">
-                  <div class="calendar-footer-range">
-                    @if (tempDateStart()) {
-                      {{ formatDateLabel(tempDateStart()) }}
-                      @if (tempDateEnd() && tempDateStart() !== tempDateEnd()) {
-                        - {{ formatDateLabel(tempDateEnd()) }}
-                      }
-                    } @else {
-                      Sin selección
-                    }
-                  </div>
-                  @if (getCalendarValidationWarning()) {
-                    <div class="calendar-footer-warning text-danger small mt-1 px-2" style="font-size: 0.72rem; line-height: 1.2; text-align: left;">
-                      {{ getCalendarValidationWarning() }}
-                    </div>
-                  }
-                  <div class="calendar-footer-actions">
-                    <button type="button" class="calendar-footer-btn-reset"
-                      (click)="clearCalendarSelection()">
-                      LIMPIAR
-                    </button>
-                    <button type="button" class="calendar-footer-btn-apply"
-                      [disabled]="!isCalendarSelectionValid()"
-                      (click)="applyCalendarSelection()">
-                      APLICAR
-                    </button>
-                  </div>
-                </div>
-              </div>
-              }
-            }
-          </div>
-
-          <!-- Rango de Horas (Inicio / Fin) -->
-          <div class="row g-2 mb-3">
-            <div class="col-6 position-relative">
-              <label class="form-label text-muted small fw-semibold">Hora Inicio</label>
-              @if (editingScheduleId()) {
-                <button type="button" class="calendar-trigger-btn w-100 font-monospace"
-                  (click)="openTimePicker('editingStart', $event)">
-                  <span>{{ editingScheduleTimeStart() || 'Elegir hora' }}</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                    class="text-muted opacity-75">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
-                </button>
-
-                @if (activeTimeField() === 'editingStart') {
-                <div class="custom-time-popover position-absolute top-100 start-0 shadow-lg" (click)="$event.stopPropagation()" style="z-index: 9999;">
-                  <div class="time-picker-container">
-                    <div class="time-column-wrapper">
-                      <div class="time-column-header">Hora</div>
-                      <div class="time-column scroll-container">
-                        @for (h of hoursList; track h) {
-                        <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
-                          (click)="selectTimeHour(h)">
-                          {{ h | number:'2.0-0' }}
-                        </button>
-                        }
-                      </div>
-                    </div>
-                    <div class="time-separator">:</div>
-                    <div class="time-column-wrapper">
-                      <div class="time-column-header">Min</div>
-                      <div class="time-column scroll-container">
-                        @for (m of minutesList; track m) {
-                        <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
-                          (click)="selectTimeMinute(m)">
-                          {{ m | number:'2.0-0' }}
-                        </button>
-                        }
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                }
-              } @else {
-                <button type="button" class="calendar-trigger-btn w-100 font-monospace"
-                  (click)="openTimePicker('newStart', $event)">
-                  <span>{{ newScheduleTimeStart() || 'Elegir hora' }}</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                    class="text-muted opacity-75">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
-                </button>
-
-                @if (activeTimeField() === 'newStart') {
-                <div class="custom-time-popover position-absolute top-100 start-0 shadow-lg" (click)="$event.stopPropagation()" style="z-index: 9999;">
-                  <div class="time-picker-container">
-                    <div class="time-column-wrapper">
-                      <div class="time-column-header">Hora</div>
-                      <div class="time-column scroll-container">
-                        @for (h of hoursList; track h) {
-                        <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
-                          (click)="selectTimeHour(h)">
-                          {{ h | number:'2.0-0' }}
-                        </button>
-                        }
-                      </div>
-                    </div>
-                    <div class="time-separator">:</div>
-                    <div class="time-column-wrapper">
-                      <div class="time-column-header">Min</div>
-                      <div class="time-column scroll-container">
-                        @for (m of minutesList; track m) {
-                        <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
-                          (click)="selectTimeMinute(m)">
-                          {{ m | number:'2.0-0' }}
-                        </button>
-                        }
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                }
-              }
-            </div>
-
-            <div class="col-6 position-relative">
-              <label class="form-label text-muted small fw-semibold">Hora Fin</label>
-              @if (editingScheduleId()) {
-                <button type="button" class="calendar-trigger-btn w-100 font-monospace"
-                  (click)="openTimePicker('editingEnd', $event)">
-                  <span>{{ editingScheduleTimeEnd() || 'Elegir hora' }}</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                    class="text-muted opacity-75">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
-                </button>
-
-                @if (activeTimeField() === 'editingEnd') {
-                <div class="custom-time-popover position-absolute top-100 start-0 shadow-lg" (click)="$event.stopPropagation()" style="z-index: 9999;">
-                  <div class="time-picker-container">
-                    <div class="time-column-wrapper">
-                      <div class="time-column-header">Hora</div>
-                      <div class="time-column scroll-container">
-                        @for (h of hoursList; track h) {
-                        <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
-                          (click)="selectTimeHour(h)">
-                          {{ h | number:'2.0-0' }}
-                        </button>
-                        }
-                      </div>
-                    </div>
-                    <div class="time-separator">:</div>
-                    <div class="time-column-wrapper">
-                      <div class="time-column-header">Min</div>
-                      <div class="time-column scroll-container">
-                        @for (m of minutesList; track m) {
-                        <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
-                          (click)="selectTimeMinute(m)">
-                          {{ m | number:'2.0-0' }}
-                        </button>
-                        }
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                }
-              } @else {
-                <button type="button" class="calendar-trigger-btn w-100 font-monospace"
-                  (click)="openTimePicker('newEnd', $event)">
-                  <span>{{ newScheduleTimeEnd() || 'Elegir hora' }}</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                    class="text-muted opacity-75">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
-                </button>
-
-                @if (activeTimeField() === 'newEnd') {
-                <div class="custom-time-popover position-absolute top-100 start-0 shadow-lg" (click)="$event.stopPropagation()" style="z-index: 9999;">
-                  <div class="time-picker-container">
-                    <div class="time-column-wrapper">
-                      <div class="time-column-header">Hora</div>
-                      <div class="time-column scroll-container">
-                        @for (h of hoursList; track h) {
-                        <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
-                          (click)="selectTimeHour(h)">
-                          {{ h | number:'2.0-0' }}
-                        </button>
-                        }
-                      </div>
-                    </div>
-                    <div class="time-separator">:</div>
-                    <div class="time-column-wrapper">
-                      <div class="time-column-header">Min</div>
-                      <div class="time-column scroll-container">
-                        @for (m of minutesList; track m) {
-                        <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
-                          (click)="selectTimeMinute(m)">
-                          {{ m | number:'2.0-0' }}
-                        </button>
-                        }
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                }
-              }
-            </div>
-          </div>
-
-
-
-
-
-        </div>
-
-        <!-- Form Footer Actions -->
-        <div class="d-flex gap-3 mt-4 w-100">
-          @if (editingScheduleId()) {
-            <button class="btn btn-clear-filters flex-fill py-2" (click)="cancelEditSchedule()">Cancelar</button>
-            <button class="btn btn-apply-filters flex-fill py-2" (click)="saveScheduleEdit()"
-              [disabled]="!editingScheduleName().trim() || !editingScheduleFrequency() || !editingScheduleDateStart() || !editingScheduleDateEnd()">Guardar</button>
-          } @else {
-            <button class="btn btn-apply-filters w-100 py-2" (click)="createSchedule()"
-              [disabled]="!newScheduleName().trim() || !newScheduleFrequency() || !newScheduleDateStart() || !newScheduleDateEnd()">Crear Horario</button>
-          }
-        </div>
-      </div>
     </div>
   </div>
 </div>

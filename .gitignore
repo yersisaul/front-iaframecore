@@ -48,10 +48,10 @@ graphify-out/
 
 # Environment variables
 .env
-
 .gitignore
-
-schemas.txt
 schemas.md
-endpointsrouters.md
-endpointsrouters.txt
+endpoints.md
+
+# Generated configuration files
+src/app/core/config/api-key.config.ts
+src/app/core/config/websocket.config.ts

@@ -14,6 +14,16 @@ export class CameraHttpRepository implements ICameraRepository {
 
   constructor(private http: HttpClient) {}
 
+  getAll(): Observable<Camera[]> {
+    return this.http.get<CameraDTO[]>(`${this.apiUrl}/`).pipe(
+      map(dtos => (dtos || []).map(CameraMapper.toDomain)),
+      catchError(err => {
+        console.error('Error in CameraHttpRepository.getAll:', err);
+        return of([]);
+      })
+    );
+  }
+
   getByHost(hostFingerprint: string): Observable<Camera[]> {
     return this.http.get<CameraDTO[]>(`${this.apiUrl}/${hostFingerprint}`).pipe(
       map(dtos => (dtos || []).map(CameraMapper.toDomain)),
@@ -25,9 +35,8 @@ export class CameraHttpRepository implements ICameraRepository {
   }
 
   update(cameraId: string, body: { camera_name: string; location: { lat: number; lon: number } }): Observable<any> {
-    // TODO: [BACKEND-FIX] Remove this catchError workaround block once the backend is fixed.
-    // The backend sometimes returns 500 error even when the camera update is successful.
-    return this.http.post<any>(`${this.apiUrl}/update/${cameraId}`, body).pipe(
+    // PATCH /frontend/cameras/{camera_id}
+    return this.http.patch<any>(`${this.apiUrl}/${cameraId}`, body).pipe(
       catchError(err => {
         if (err.status !== 400 && err.status !== 401 && err.status !== 403 && err.status !== 404 && err.status !== 422) {
           console.warn('[BACKEND-WORKAROUND] Camera update returned status ' + err.status + '. Assuming success. Please fix backend.', err);
@@ -39,9 +48,8 @@ export class CameraHttpRepository implements ICameraRepository {
   }
 
   delete(cameraId: string): Observable<any> {
-    // TODO: [BACKEND-FIX] Remove this catchError workaround block once the backend is fixed.
-    // The backend sometimes returns 500 error even when the camera delete is successful.
-    return this.http.delete<any>(`${this.apiUrl}/delete/${cameraId}`).pipe(
+    // DELETE /frontend/cameras/{camera_id}
+    return this.http.delete<any>(`${this.apiUrl}/${cameraId}`).pipe(
       catchError(err => {
         if (err.status !== 400 && err.status !== 401 && err.status !== 403 && err.status !== 404 && err.status !== 422) {
           console.warn('[BACKEND-WORKAROUND] Camera delete returned status ' + err.status + '. Assuming success. Please fix backend.', err);

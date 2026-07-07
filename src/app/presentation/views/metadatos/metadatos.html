@@ -1,6 +1,6 @@
 <div class="metadata-view-container container-fluid py-4 position-relative">
   <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4 header-section">
+  <div class="d-flex justify-content-between align-items-center header-section">
     <div class="d-flex align-items-center gap-3">
       <!-- Botón de Collapse Sidebar (Ghost Button) -->
       <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
@@ -17,7 +17,8 @@
           Búsqueda de {{ activeIndex() }}
         </h2>
         <p class="text-muted mb-0 small">
-          Se encontraron <span class="fw-semibold text-primary">{{ formatTotalRecords(totalRecords()) }}</span> registros en el índice
+          Se encontraron <span class="fw-semibold text-primary">{{ formatTotalRecords(totalRecords()) }}</span>
+          registros en el índice
         </p>
       </div>
     </div>
@@ -25,8 +26,7 @@
       <!-- Barra de Búsqueda Unificada y Botón de Filtros Agrupados -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
         <div class="search-input-wrapper position-relative d-flex align-items-center pl-1">
-          <span class="icon-svg search-icon-prefix text-muted"
-            style="-webkit-mask-image: url('/assets/icons/search.svg'); mask-image: url('/assets/icons/search.svg'); background-color: currentColor; width: 18px; height: 18px; opacity: 0.5;"></span>
+          <span class="icon-svg icon-search search-icon-prefix text-muted" style="width: 18px; height: 18px; opacity: 0.5;"></span>
           <input type="text" [formControl]="searchControl" placeholder="Buscar metadatos..."
             class="search-input-control border-0 ms-2" style="font-size: 0.82rem; outline: none; width: 180px;" />
         </div>
@@ -35,11 +35,7 @@
         @if (activeIndex() === 'rostros') {
         <button type="button" class="btn-ghost image-search-btn d-flex align-items-center justify-content-center ms-1"
           (click)="triggerImageUpload()" title="Buscar por imagen" aria-label="Buscar por imagen">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="image-search-icon">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-            <circle cx="12" cy="13" r="4"></circle>
-          </svg>
+          <span class="icon-svg icon-upload image-search-icon" style="width: 18px; height: 18px;"></span>
         </button>
         <input type="file" #imageInput class="d-none" accept="image/*" (change)="onImageSelected($event)" />
         }
@@ -47,8 +43,7 @@
         <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
           (click)="toggleFiltersVisibility()" [class.active]="hasActiveFilters()" [class.open]="showFilters()"
           title="Mostrar/ocultar filtros" aria-label="Mostrar/ocultar filtros">
-          <span class="icon-svg filter-icon"
-            style="-webkit-mask-image: url('/assets/icons/filter.svg'); mask-image: url('/assets/icons/filter.svg'); background-color: currentColor; width: 22px; height: 22px;"></span>
+          <span class="icon-svg icon-filter filter-icon"></span>
           @if (hasActiveFilters()) {
           <span class="active-badge-dot"></span>
           }
@@ -72,83 +67,54 @@
   <div class="horizontal-filters-bar mb-4" [class.hidden]="!showFilters()">
     <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
       <!-- 1. CÁMARAS -->
-      @if (filterOptions().camaras.length > 0) {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilters().camaras.length > 0" (click)="toggleDropdown('camaras', $event)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="filter-icon">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-            <circle cx="12" cy="13" r="4"></circle>
-          </svg>
+          <span class="icon-svg icon-camara filter-icon" style="width: 14px; height: 14px;"></span>
           <span>Cámaras</span>
           @if (tempFilters().camaras.length > 0) {
           <span class="badge bg-primary text-white" style="font-size: 0.7rem; border-radius: 10px;">{{
             tempFilters().camaras.length }}</span>
           }
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'camaras'">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'camaras'"
+            style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'camaras') {
-        <div class="filter-dropdown-menu dropdown-camaras p-3 scrollable-menu" (click)="$event.stopPropagation()">
-          @for (cam of filterOptions().camaras; track cam) {
-          <label class="custom-checkbox-wrapper d-flex align-items-center gap-2" [for]="'cam-' + cam">
-            <input class="custom-checkbox-input" type="checkbox" [id]="'cam-' + cam"
-              [checked]="tempFilters().camaras.includes(cam)" (change)="toggleMultiSelectFilter('camaras', cam)">
-            <span class="custom-checkbox-box d-flex align-items-center justify-content-center">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"
-                stroke-linecap="round" stroke-linejoin="round" class="checkbox-check-icon">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-            <span class="custom-checkbox-label text-truncate w-100" [title]="cam">{{ cam }}</span>
+        <div class="filter-dropdown-menu dropdown-camaras p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @for (cam of camarasOptions(); track cam) {
+          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
+            <input type="checkbox" [checked]="tempFilters().camaras.includes(cam)"
+              (change)="toggleMultiSelectFilter('camaras', cam)" class="form-check-input flex-shrink-0" />
+            <span class="text-truncate" [title]="cam">{{ cam }}</span>
           </label>
           }
         </div>
         }
       </div>
-      }
 
       <!-- 2. TIPO DE OBJETO -->
-      @if (filterOptions().tipoObjeto.length > 0) {
+      @if (activeIndex() === 'personas' || activeIndex() === 'vehiculos' || activeIndex() === 'otros') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
           [class.active]="tempFilters().tipoObjeto.length > 0" (click)="toggleDropdown('tipoObjeto', $event)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="filter-icon">
-            <path
-              d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
-            </path>
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-            <line x1="12" y1="22.08" x2="12" y2="12"></line>
-          </svg>
+          <span class="icon-svg icon-box filter-icon" style="width: 14px; height: 14px;"></span>
           <span>Tipo de Objeto</span>
           @if (tempFilters().tipoObjeto.length > 0) {
           <span class="badge bg-primary text-white" style="font-size: 0.7rem; border-radius: 10px;">{{
             tempFilters().tipoObjeto.length }}</span>
           }
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'tipoObjeto'">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'tipoObjeto'"
+            style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'tipoObjeto') {
-        <div class="filter-dropdown-menu dropdown-tipo p-3 scrollable-menu" (click)="$event.stopPropagation()">
-          @for (obj of filterOptions().tipoObjeto; track obj) {
-          <label class="custom-checkbox-wrapper d-flex align-items-center gap-2" [for]="'obj-' + obj">
-            <input class="custom-checkbox-input" type="checkbox" [id]="'obj-' + obj"
-              [checked]="tempFilters().tipoObjeto.includes(obj)" (change)="toggleMultiSelectFilter('tipoObjeto', obj)">
-            <span class="custom-checkbox-box d-flex align-items-center justify-content-center">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"
-                stroke-linecap="round" stroke-linejoin="round" class="checkbox-check-icon">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-            <span class="custom-checkbox-label text-capitalize">{{ obj }}</span>
+        <div class="filter-dropdown-menu dropdown-tipo p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @for (obj of tipoObjetoOptions(); track obj) {
+          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
+            <input type="checkbox" [checked]="tempFilters().tipoObjeto.includes(obj)"
+              (change)="toggleMultiSelectFilter('tipoObjeto', obj)" class="form-check-input flex-shrink-0" />
+            <span class="text-truncate text-capitalize">{{ obj }}</span>
           </label>
           }
         </div>
@@ -157,42 +123,28 @@
       }
 
       <!-- 6. COLORES -->
-      @if (filterOptions().colores.length > 0) {
+      @if (activeIndex() === 'personas' || activeIndex() === 'rostros' || activeIndex() === 'vehiculos' || activeIndex()
+      === 'otros') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
           [class.active]="tempFilters().colores.length > 0" (click)="toggleDropdown('colores', $event)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="filter-icon">
-            <path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z"></path>
-            <circle cx="7.5" cy="10.5" r="1.5"></circle>
-            <circle cx="11.5" cy="7.5" r="1.5"></circle>
-            <circle cx="16.5" cy="9.5" r="1.5"></circle>
-            <circle cx="15.5" cy="14.5" r="1.5"></circle>
-          </svg>
+          <span class="icon-svg icon-grid filter-icon" style="width: 14px; height: 14px;"></span>
           <span>Colores</span>
           @if (tempFilters().colores.length > 0) {
           <span class="badge bg-primary text-white" style="font-size: 0.7rem; border-radius: 10px;">{{
             tempFilters().colores.length }}</span>
           }
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'colores'">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'colores'"
+            style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'colores') {
-        <div class="filter-dropdown-menu dropdown-colores p-3 scrollable-menu" (click)="$event.stopPropagation()">
-          @for (col of filterOptions().colores; track col) {
-          <label class="custom-checkbox-wrapper d-flex align-items-center gap-2" [for]="'col-' + col">
-            <input class="custom-checkbox-input" type="checkbox" [id]="'col-' + col"
-              [checked]="tempFilters().colores.includes(col)" (change)="toggleMultiSelectFilter('colores', col)">
-            <span class="custom-checkbox-box d-flex align-items-center justify-content-center">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"
-                stroke-linecap="round" stroke-linejoin="round" class="checkbox-check-icon">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-            <span class="custom-checkbox-label text-capitalize">{{ col }}</span>
+        <div class="filter-dropdown-menu dropdown-colores p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @for (col of coloresOptions(); track col) {
+          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
+            <input type="checkbox" [checked]="tempFilters().colores.includes(col)"
+              (change)="toggleMultiSelectFilter('colores', col)" class="form-check-input flex-shrink-0" />
+            <span class="text-truncate text-capitalize">{{ col }}</span>
           </label>
           }
         </div>
@@ -201,39 +153,26 @@
       }
 
       <!-- 7. POSTURAS -->
-      @if (filterOptions().posturas.length > 0) {
+      @if (activeIndex() === 'personas') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
           [class.active]="tempFilters().posturas.length > 0" (click)="toggleDropdown('posturas', $event)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="filter-icon">
-            <circle cx="12" cy="4" r="1.5"></circle>
-            <path d="M12 7.5V14M9 10h6M9.5 18l2.5-4 2.5 4"></path>
-          </svg>
+          <span class="icon-svg icon-user filter-icon" style="width: 14px; height: 14px;"></span>
           <span>Posturas</span>
           @if (tempFilters().posturas.length > 0) {
           <span class="badge bg-primary text-white" style="font-size: 0.7rem; border-radius: 10px;">{{
             tempFilters().posturas.length }}</span>
           }
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'posturas'">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+          <span class="icon-svg icon-chevron-down transition-all" style="width: 10px; height: 10px;"
+            [class.rotated]="activeDropdown() === 'posturas'"></span>
         </button>
         @if (activeDropdown() === 'posturas') {
-        <div class="filter-dropdown-menu dropdown-posturas p-3 scrollable-menu" (click)="$event.stopPropagation()">
-          @for (pos of filterOptions().posturas; track pos) {
-          <label class="custom-checkbox-wrapper d-flex align-items-center gap-2" [for]="'pos-' + pos">
-            <input class="custom-checkbox-input" type="checkbox" [id]="'pos-' + pos"
-              [checked]="tempFilters().posturas.includes(pos)" (change)="toggleMultiSelectFilter('posturas', pos)">
-            <span class="custom-checkbox-box d-flex align-items-center justify-content-center">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"
-                stroke-linecap="round" stroke-linejoin="round" class="checkbox-check-icon">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-            <span class="custom-checkbox-label text-capitalize">{{ pos }}</span>
+        <div class="filter-dropdown-menu dropdown-posturas p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @for (pos of posturasOptions(); track pos) {
+          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
+            <input type="checkbox" [checked]="tempFilters().posturas.includes(pos)"
+              (change)="toggleMultiSelectFilter('posturas', pos)" class="form-check-input flex-shrink-0" />
+            <span class="text-truncate text-capitalize">{{ pos }}</span>
           </label>
           }
         </div>
@@ -242,21 +181,15 @@
       }
 
       <!-- 3. EDAD -->
-      @if (filterOptions().edades.length > 0) {
+      @if (activeIndex() === 'personas' || activeIndex() === 'rostros') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
           [class.active]="tempFilters().edad !== null" (click)="toggleDropdown('edad', $event)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="filter-icon">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
+          <span class="icon-svg icon-clock filter-icon" style="width: 14px; height: 14px;"></span>
           <span>Edad: {{ tempFilters().edad || 'Todos' }}</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'edad'">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'edad'"
+            style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'edad') {
         <div class="filter-dropdown-menu dropdown-edad p-2" (click)="$event.stopPropagation()">
@@ -264,7 +197,7 @@
             (click)="selectSingleFilter('edad', null)">
             Todos
           </button>
-          @for (ed of filterOptions().edades; track ed) {
+          @for (ed of edadesOptions(); track ed) {
           <button class="dropdown-item py-1.5 px-3 rounded text-capitalize" [class.active]="tempFilters().edad === ed"
             (click)="selectSingleFilter('edad', ed)">
             {{ ed }}
@@ -276,21 +209,15 @@
       }
 
       <!-- 4. GÉNERO -->
-      @if (filterOptions().generos.length > 0) {
+      @if (activeIndex() === 'personas' || activeIndex() === 'rostros') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
           [class.active]="tempFilters().genero !== null" (click)="toggleDropdown('genero', $event)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="filter-icon">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
+          <span class="icon-svg icon-user filter-icon" style="width: 14px; height: 14px;"></span>
           <span>Género: {{ tempFilters().genero || 'Todos' }}</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'genero'">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'genero'"
+            style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'genero') {
         <div class="filter-dropdown-menu dropdown-genero p-2" (click)="$event.stopPropagation()">
@@ -298,7 +225,7 @@
             (click)="selectSingleFilter('genero', null)">
             Todos
           </button>
-          @for (gen of filterOptions().generos; track gen) {
+          @for (gen of generosOptions(); track gen) {
           <button class="dropdown-item py-1.5 px-3 rounded text-capitalize"
             [class.active]="tempFilters().genero === gen" (click)="selectSingleFilter('genero', gen)">
             {{ gen }}
@@ -310,23 +237,16 @@
       }
 
       <!-- 5. RECONOCIMIENTO -->
-      @if (filterOptions().reconocimientos.length > 0) {
+      @if (activeIndex() === 'rostros' || activeIndex() === 'vehiculos') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
           [class.active]="tempFilters().reconocimiento !== null" (click)="toggleDropdown('reconocimiento', $event)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="filter-icon">
-            <rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect>
-            <line x1="7" y1="8" x2="17" y2="8"></line>
-            <line x1="7" y1="12" x2="17" y2="12"></line>
-            <line x1="7" y1="16" x2="13" y2="16"></line>
-          </svg>
-          <span>Reconocimiento: {{ tempFilters().reconocimiento || 'Todos' }}</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'reconocimiento'">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+          <span class="icon-svg icon-list filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>{{ activeIndex() === 'vehiculos' ? 'Placa' : 'Sujeto' }}: {{ tempFilters().reconocimiento || 'Todos'
+            }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'reconocimiento'"
+            style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'reconocimiento') {
         <div class="filter-dropdown-menu dropdown-reconocimiento p-2" (click)="$event.stopPropagation()">
@@ -334,7 +254,7 @@
             (click)="selectSingleFilter('reconocimiento', null)">
             Todos
           </button>
-          @for (rec of filterOptions().reconocimientos; track rec) {
+          @for (rec of reconocimientosOptions(); track rec) {
           <button class="dropdown-item py-1.5 px-3 rounded text-capitalize"
             [class.active]="tempFilters().reconocimiento === rec" (click)="selectSingleFilter('reconocimiento', rec)">
             {{ rec }}
@@ -351,23 +271,15 @@
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
           [class.active]="tempFilters().coincidenciaFiltro !== 'all'"
           (click)="toggleDropdown('coincidenciaFiltro', $event)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="filter-icon">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-          </svg>
+          <span class="icon-svg icon-user filter-icon" style="width: 14px; height: 14px;"></span>
           <span>
             Coincidencia:
             {{ tempFilters().coincidenciaFiltro === 'all' ? 'Todos' : (tempFilters().coincidenciaFiltro ===
             'coincidencia' ? 'Solo Coincidencias' : 'Sin Coincidencias') }}
           </span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'coincidenciaFiltro'">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'coincidenciaFiltro'"
+            style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'coincidenciaFiltro') {
         <div class="filter-dropdown-menu dropdown-coincidenciaFiltro p-2" (click)="$event.stopPropagation()">
@@ -396,19 +308,12 @@
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilters().confiabilidadMin > 0 || tempFilters().confiabilidadMax < 1"
           (click)="toggleDropdown('confiabilidad', $event)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="filter-icon">
-            <line x1="19" y1="5" x2="5" y2="19"></line>
-            <circle cx="6.5" cy="6.5" r="2.5"></circle>
-            <circle cx="17.5" cy="17.5" r="2.5"></circle>
-          </svg>
+          <span class="icon-svg icon-settings filter-icon" style="width: 14px; height: 14px;"></span>
           <span>Confiabilidad ({{ (tempFilters().confiabilidadMin * 100) | number:'1.0-0' }}% - {{
             (tempFilters().confiabilidadMax * 100) | number:'1.0-0' }}%)</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'confiabilidad'">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'confiabilidad'"
+            style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'confiabilidad') {
         <div class="filter-dropdown-menu dropdown-confiabilidad p-3" (click)="$event.stopPropagation()">
@@ -463,23 +368,15 @@
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilters().timestampDesde || tempFilters().timestampHasta"
           (click)="toggleDropdown('fechas', $event)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="filter-icon">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
-          </svg>
+          <span class="icon-svg icon-calendar filter-icon" style="width: 14px; height: 14px;"></span>
           <span>Rango de Fechas</span>
           @if (tempFilters().timestampDesde || tempFilters().timestampHasta) {
           <span class="badge-dot-active bg-primary animate-pulse"
             style="width: 6px; height: 6px; border-radius: 50%;"></span>
           }
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'fechas'">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'fechas'"
+            style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'fechas') {
         <div class="filter-dropdown-menu dropdown-fechas p-3" (click)="$event.stopPropagation()">
@@ -502,14 +399,7 @@
                 <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
                   (click)="openCalendarField('desde', $event)">
                   <span>{{ formatCalendarDateLabel(dateDesdeStr()) || 'Elegir fecha' }}</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="text-muted opacity-75">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
+                  <span class="icon-svg icon-calendar text-muted opacity-75" style="width: 13px; height: 13px;"></span>
                 </button>
 
                 @if (activeCalendarField() === 'desde') {
@@ -552,12 +442,7 @@
                 <button type="button" class="calendar-trigger-btn w-100 font-monospace"
                   (click)="openTimePickerField('desde', $event)">
                   <span>{{ timeDesdeStr() || '00:00' }}</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="text-muted opacity-75">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
+                  <span class="icon-svg icon-clock text-muted opacity-75" style="width: 13px; height: 13px;"></span>
                 </button>
 
                 @if (activeTimeField() === 'desde') {
@@ -602,14 +487,7 @@
                 <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
                   (click)="openCalendarField('hasta', $event)">
                   <span>{{ formatCalendarDateLabel(dateHastaStr()) || 'Elegir fecha' }}</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="text-muted opacity-75">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
+                  <span class="icon-svg icon-calendar text-muted opacity-75" style="width: 13px; height: 13px;"></span>
                 </button>
 
                 @if (activeCalendarField() === 'hasta') {
@@ -652,12 +530,7 @@
                 <button type="button" class="calendar-trigger-btn w-100 font-monospace"
                   (click)="openTimePickerField('hasta', $event)">
                   <span>{{ timeHastaStr() || '23:59' }}</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="text-muted opacity-75">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
+                  <span class="icon-svg icon-clock text-muted opacity-75" style="width: 13px; height: 13px;"></span>
                 </button>
 
                 @if (activeTimeField() === 'hasta') {
@@ -712,21 +585,14 @@
         @if (hasActiveFilters()) {
         <button (click)="onResetFilters()"
           class="btn btn-outline-secondary btn-premium-action d-flex align-items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2.5 2v6h6M21.5 22v-6h-6" />
-            <path d="M22 11.5A10 10 0 0 0 9.5 3A10 10 0 0 0 2 11.5m0 1A10 10 0 0 0 14.5 21A10 10 0 0 0 22 12.5" />
-          </svg>
+          <span class="icon-svg icon-close" style="width: 14px; height: 14px;"></span>
           Limpiar Filtros
         </button>
         }
 
         @if (hasPendingFilterChanges()) {
         <button (click)="onApplyFilters()" class="btn btn-primary btn-premium-action d-flex align-items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
+          <span class="icon-svg icon-save" style="width: 14px; height: 14px; background-color: currentColor;"></span>
           Aplicar Filtros
         </button>
         }
@@ -752,12 +618,7 @@
       @if (!isLoading() && records().length === 0) {
       <div class="empty-state-view text-center py-5 rounded bg-white shadow-sm border">
         <div class="empty-icon-wrapper mb-3 text-muted">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-            <line x1="9" y1="9" x2="15" y2="15" />
-            <line x1="15" y1="9" x2="9" y2="15" />
-          </svg>
+          <span class="icon-svg icon-warning text-muted opacity-50" style="width: 48px; height: 48px;"></span>
         </div>
         <h4 class="fw-bold">Sin Resultados</h4>
         <p class="text-muted">No se encontraron metadatos que coincidan con los filtros seleccionados.</p>
@@ -770,9 +631,8 @@
       <div class="metadata-grid">
         @for (record of records(); track record.id) {
         <div class="card metadata-card border-0 shadow-sm rounded-3 position-relative"
-          [class.has-action-button]="activeIndex() === 'rostros' || (activeIndex() === 'vehiculos' && getReconocimiento(record))"
-          style="overflow: visible !important;" (mousemove)="onCardMouseMove($event, record.id)"
-          (mouseleave)="onCardMouseLeave()">
+          [class.metadata-card--live-new]="newRecordIds().has(record.id)" style="overflow: visible !important;"
+          (mousemove)="onCardMouseMove($event, record.id)" (mouseleave)="onCardMouseLeave()">
 
           <!-- Image section with overlay -->
           <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center">
@@ -781,12 +641,7 @@
               class="card-img-top object-fit-contain w-100 h-100" alt="Thumbnail" />
             } @else {
             <div class="placeholder-img-icon position-absolute d-flex flex-column align-items-center">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round" class="text-muted">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
+              <span class="icon-svg icon-box text-muted" style="width: 32px; height: 32px;"></span>
               <span class="text-muted small mt-2">Sin Imagen</span>
             </div>
             }
@@ -794,6 +649,26 @@
             <!-- Floating Index Type indicator -->
             <div class="index-badge-overlay text-capitalize">
               {{ activeIndex() }}
+            </div>
+
+            <!-- Premium hover overlay with actions -->
+            <div class="ed-img-overlay d-flex flex-column align-items-center justify-content-center gap-3">
+              @if (record.embedding && record.embedding.length > 0) {
+              <button type="button" class="btn-overlay-action btn-coincidence"
+                (click)="filtrarPorCoincidencia(record); $event.stopPropagation()"
+                title="Filtrar por Coincidencia Vectorial">
+                <span class="icon-svg icon-search" style="width: 13px; height: 13px;"></span>
+                <span>Filtrar por coincidencia</span>
+              </button>
+              }
+
+              @if (activeIndex() === 'rostros' || (activeIndex() === 'vehiculos' && getReconocimiento(record))) {
+              <button type="button" class="btn-overlay-action btn-watchlist"
+                (click)="openAddToListModal(record); $event.stopPropagation()" title="Agregar a Lista de Control">
+                <span class="icon-svg icon-plus" style="width: 13px; height: 13px;"></span>
+                <span>Añadir a Lista</span>
+              </button>
+              }
             </div>
           </div>
 
@@ -805,11 +680,7 @@
                   {{ record.camara }}
                 </h6>
                 <div class="timestamp-row text-muted small mb-0 d-flex align-items-center gap-1 text-end flex-shrink-0">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                    class="flex-shrink-0">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                  </svg>
+                  <span class="icon-svg icon-clock flex-shrink-0" style="width: 11px; height: 11px;"></span>
                   <span style="font-size: 0.72rem;">{{ formatDate(record.timestamp) }}</span>
                 </div>
               </div>
@@ -826,29 +697,13 @@
                 </div>
                 <div class="progress" style="height: 5px; background-color: var(--border-color);">
                   <div class="progress-bar" role="progressbar" [style.width.%]="record.confiabilidad * 100" [ngClass]="{
-                             'bg-danger': record.confiabilidad < 0.5,
-                             'bg-warning': record.confiabilidad >= 0.5 && record.confiabilidad < 0.8,
-                             'bg-success': record.confiabilidad >= 0.8
-                           }" [attr.aria-valuenow]="record.confiabilidad * 100" aria-valuemin="0" aria-valuemax="100">
+                              'bg-danger': record.confiabilidad < 0.5,
+                              'bg-warning': record.confiabilidad >= 0.5 && record.confiabilidad < 0.8,
+                              'bg-success': record.confiabilidad >= 0.8
+                            }" [attr.aria-valuenow]="record.confiabilidad * 100" aria-valuemin="0" aria-valuemax="100">
                   </div>
                 </div>
               </div>
-
-              <!-- Action Button for Watchlist -->
-              @if (activeIndex() === 'rostros' || (activeIndex() === 'vehiculos' && getReconocimiento(record))) {
-              <div class="mt-3 card-action-row">
-                <button type="button"
-                  class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-1.5"
-                  (click)="openAddToListModal(record); $event.stopPropagation()">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                  <span>Agregar a Lista</span>
-                </button>
-              </div>
-              }
             </div>
           </div>
 
@@ -857,12 +712,7 @@
           <div class="metadata-card-popover" [style.left.px]="mouseX()" [style.top.px]="mouseY()">
             <div class="popover-header d-flex align-items-center justify-content-between">
               <div class="d-flex align-items-center gap-1.5">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                  class="text-primary popover-header-icon">
-                  <path
-                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
-                  </path>
-                </svg>
+                <span class="icon-svg icon-box text-primary popover-header-icon" style="width: 12px; height: 12px;"></span>
                 <span class="popover-header-title text-muted text-uppercase fw-bold">Atributos</span>
               </div>
               <span class="badge bg-secondary-light text-secondary text-capitalize"
@@ -906,7 +756,7 @@
             <div class="popover-section">
               <div class="popover-section-title text-muted text-uppercase fw-bold">Posturas</div>
               <div class="attributes-grid">
-                @for (pos of getPosturas(record); track pos.postura) {
+                @for (pos of getPosturas(record); track $index) {
                 <span class="attribute-pill posture-pill text-capitalize">
                   {{ pos.postura }}
                   <span class="posture-count">{{ pos.conteo }}</span>
@@ -921,7 +771,7 @@
             <div class="popover-section">
               <div class="popover-section-title text-muted text-uppercase fw-bold">Colores</div>
               <div class="attributes-grid">
-                @for (col of record.colores; track col.colorText) {
+                @for (col of record.colores; track $index) {
                 <span class="color-pill-v2 d-inline-flex align-items-center rounded-pill py-1 px-2 border"
                   [style.background-color]="getColorStyle(col)"
                   [style.color]="getColorLuminance(col.r, col.g, col.b) > 0.6 ? '#1e293b' : '#ffffff'"
@@ -975,11 +825,8 @@
         <div class="d-flex align-items-center gap-2 jump-to-page-container">
           <span class="text-muted small fw-medium">Ir a:</span>
           <input type="text" class="form-control form-control-sm text-center shadow-sm"
-            style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;"
-            [placeholder]="currentPage()"
-            inputmode="numeric" pattern="[0-9]*"
-            (input)="onPageInput($event)"
-            (keydown.enter)="jumpToPage($event)"
+            style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;" [placeholder]="currentPage()"
+            inputmode="numeric" pattern="[0-9]*" (input)="onPageInput($event)" (keydown.enter)="jumpToPage($event)"
             (blur)="jumpToPage($event)" />
           <span class="text-muted small fw-medium">de {{ totalPages() }}</span>
         </div>
@@ -997,11 +844,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
         <h5 class="fw-bold mb-0 text-body fs-6">Agregar a Lista de Control</h5>
         <button class="btn-ghost p-1" (click)="closeAddToListModal()" aria-label="Cerrar modal">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
+          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
         </button>
       </div>
 

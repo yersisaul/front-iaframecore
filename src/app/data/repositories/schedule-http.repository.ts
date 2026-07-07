@@ -25,7 +25,10 @@ export class ScheduleHttpRepository implements IScheduleRepository {
   }
 
   register(dto: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/create`, dto).pipe(
+    // POST /frontend/schedules/
+    const mappedDto = this.mapDtoForBackend(dto);
+    const url = this.apiUrl.endsWith('/') ? this.apiUrl : `${this.apiUrl}/`;
+    return this.http.post(url, mappedDto).pipe(
       catchError(err => {
         if (err.status !== 400 && err.status !== 401 && err.status !== 403 && err.status !== 404 && err.status !== 422) {
           return of(null);
@@ -36,7 +39,9 @@ export class ScheduleHttpRepository implements IScheduleRepository {
   }
 
   update(scheduleId: string, dto: any): Observable<any> {
-    return this.http.put(`${this.apiUrl}/update/${scheduleId}`, dto).pipe(
+    // PUT /frontend/schedules/{schedule_id}
+    const mappedDto = this.mapDtoForBackend(dto);
+    return this.http.put(`${this.apiUrl}/${scheduleId}`, mappedDto).pipe(
       catchError(err => {
         if (err.status !== 400 && err.status !== 401 && err.status !== 403 && err.status !== 404 && err.status !== 422) {
           return of(null);
@@ -47,7 +52,9 @@ export class ScheduleHttpRepository implements IScheduleRepository {
   }
 
   updateState(scheduleId: string, status: 'activo' | 'inactivo'): Observable<any> {
-    return this.http.post(`${this.apiUrl}/update_state/${scheduleId}`, { status }).pipe(
+    // PATCH /frontend/schedules/update_state/{schedule_id}
+    const mappedStatus = status === 'activo' ? 'active' : 'inactive';
+    return this.http.patch(`${this.apiUrl}/update_state/${scheduleId}`, { status: mappedStatus }).pipe(
       catchError(err => {
         if (err.status !== 400 && err.status !== 401 && err.status !== 403 && err.status !== 404 && err.status !== 422) {
           return of(null);
@@ -58,7 +65,8 @@ export class ScheduleHttpRepository implements IScheduleRepository {
   }
 
   delete(scheduleId: string): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/delete/${scheduleId}`).pipe(
+    // DELETE /frontend/schedules/{schedule_id}
+    return this.http.delete(`${this.apiUrl}/${scheduleId}`).pipe(
       catchError(err => {
         if (err.status !== 400 && err.status !== 401 && err.status !== 403 && err.status !== 404 && err.status !== 422) {
           return of(null);
@@ -66,5 +74,73 @@ export class ScheduleHttpRepository implements IScheduleRepository {
         throw err;
       })
     );
+  }
+
+  private mapDtoForBackend(dto: any): any {
+    if (!dto) return dto;
+    const mapped = { ...dto };
+    
+    // 1. Format dates to "DD/MM/YYYY HH:mm"
+    if (mapped.timestamp_inicio) {
+      mapped.timestamp_inicio = this.formatDateForBackend(mapped.timestamp_inicio);
+    }
+    if (mapped.timestamp_fin) {
+      mapped.timestamp_fin = this.formatDateForBackend(mapped.timestamp_fin);
+    }
+    
+    // 2. Map status ('activo' -> 'active', 'inactivo' -> 'inactive')
+    if (mapped.estado) {
+      if (mapped.estado === 'activo') {
+        mapped.estado = 'active';
+      } else if (mapped.estado === 'inactivo') {
+        mapped.estado = 'inactive';
+      }
+    }
+    
+    return mapped;
+  }
+
+  private formatDateForBackend(value: any): string {
+    if (!value) return '';
+    
+    // If string, inspect format first
+    if (typeof value === 'string') {
+      const str = value.trim();
+      
+      // Matches YYYY-MM-DDTHH:mm:ss... (ISO format)
+      const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+      if (isoMatch) {
+        const [_, y, m, d, hh, mm] = isoMatch;
+        return `${d}/${m}/${y} ${hh}:${mm}`;
+      }
+      
+      // Matches YYYY-MM-DD HH:mm:ss or YYYY-MM-DD HH:mm
+      const spaceMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+      if (spaceMatch) {
+        const [_, y, m, d, hh, mm] = spaceMatch;
+        return `${d}/${m}/${y} ${hh}:${mm}`;
+      }
+      
+      // If already DD/MM/YYYY HH:mm, keep first 16 chars
+      const slashMatch = str.match(/^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}/);
+      if (slashMatch) {
+        return str.substring(0, 16);
+      }
+    }
+    
+    // Default to Date object parsing (as UTC)
+    const dateObj = (value instanceof Date) ? value : new Date(value);
+    if (isNaN(dateObj.getTime())) {
+      return '';
+    }
+    
+    const pad = (num: number) => num.toString().padStart(2, '0');
+    const day = pad(dateObj.getUTCDate());
+    const month = pad(dateObj.getUTCMonth() + 1);
+    const year = dateObj.getUTCFullYear();
+    const hours = pad(dateObj.getUTCHours());
+    const minutes = pad(dateObj.getUTCMinutes());
+    
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
   }
 }

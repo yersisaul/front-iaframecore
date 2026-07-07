@@ -1,11 +1,14 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
-import { RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 import { AppEnvironment } from '../../../core/config/app-environment';
 import { SessionControl } from '../session-control/session-control';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { MetadataService } from '../../../core/services/metadata.service';
+import { PermissionsService } from '../../../core/services/permissions.service';
+import { Subscription } from 'rxjs';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-sidebar',
@@ -16,13 +19,13 @@ import { MetadataService } from '../../../core/services/metadata.service';
     '[class.collapsed]': 'isCollapsed()'
   }
 })
-export class Sidebar implements OnInit {
+export class Sidebar implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private sidebarService = inject(SidebarService);
   private metadataService = inject(MetadataService);
   private router = inject(Router);
+  readonly permissionsService = inject(PermissionsService);
 
-  readonly isAdmin = this.authService.isAdmin;
   readonly currentUser = this.authService.currentUser;
   readonly environment = AppEnvironment;
   readonly isCollapsed = this.sidebarService.isCollapsed;
@@ -31,9 +34,18 @@ export class Sidebar implements OnInit {
   readonly isMetadataOpen = signal(false);
   readonly isListasOpen = signal(false);
 
+  private routerSubscription?: Subscription;
+
   ngOnInit(): void {
-    // Load available indices from OpenSearch
+    // Carga inicial de índices
     this.metadataService.loadAvailableIndices().subscribe();
+
+    // Refrescar conteos en cada navegación completada
+    this.routerSubscription = this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe(() => {
+      this.metadataService.loadAvailableIndices().subscribe();
+    });
 
     // Auto-open submenu if active route is metadata
     if (this.isMetadataActive()) {
@@ -43,6 +55,10 @@ export class Sidebar implements OnInit {
     if (this.isListasActive()) {
       this.isListasOpen.set(true);
     }
+  }
+
+  ngOnDestroy(): void {
+    this.routerSubscription?.unsubscribe();
   }
 
   isMetadataActive(): boolean {

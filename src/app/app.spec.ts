@@ -1,13 +1,17 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { App } from './app';
+import { WebsocketService } from './core/services/websocket.service';
 
 describe('App', () => {
   beforeEach(async () => {
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([])]
+      providers: [
+        provideRouter([]),
+        { provide: WebsocketService, useValue: { connect: () => {}, disconnect: () => {} } }
+      ]
     }).compileComponents();
   });
 

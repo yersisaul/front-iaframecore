@@ -21,6 +21,7 @@ function getEnvValue(key) {
 }
 
 const jwtKey = getEnvValue('JWT_API_KEY');
+const apiTarget = getEnvValue('API_TARGET') || 'http://localhost:8000';
 
 if (!jwtKey) {
   console.error('❌ Error: JWT_API_KEY no está definido en el archivo .env.');
@@ -32,9 +33,19 @@ const fileContent = `export const ApiKeyConfig = {
 };
 `;
 
+const wsTarget = apiTarget.replace(/^http/, 'ws');
+const wsConfigContent = `export const WebsocketConfig = {
+  wsUrl: '${wsTarget}'
+};
+`;
+
 if (!fs.existsSync(configDir)) {
   fs.mkdirSync(configDir, { recursive: true });
 }
 
 fs.writeFileSync(configPath, fileContent, 'utf8');
 console.log('✅ src/app/core/config/api-key.config.ts generado exitosamente desde .env');
+
+const wsConfigPath = path.join(configDir, 'websocket.config.ts');
+fs.writeFileSync(wsConfigPath, wsConfigContent, 'utf8');
+console.log('✅ src/app/core/config/websocket.config.ts generado exitosamente desde .env');

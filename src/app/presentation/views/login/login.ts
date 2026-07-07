@@ -24,8 +24,8 @@ export class Login {
     private router: Router
   ) {
     this.loginForm = this.fb.group({
-      username: ['', [Validators.required, Validators.minLength(3)]],
-      contrasena: ['', [Validators.required, Validators.minLength(6)]]
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, Validators.minLength(6)]]
     });
   }
 
@@ -52,7 +52,7 @@ export class Login {
       error: (err) => {
         this.isLoading.set(false);
         if (err.status === 401) {
-          this.errorMessage.set('Usuario o contraseña incorrectos.');
+          this.errorMessage.set('Correo o contraseña incorrectos.');
         } else {
           this.errorMessage.set('Ocurrió un error en el servidor. Inténtelo más tarde.');
         }

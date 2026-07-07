@@ -1,6 +1,6 @@
 <div class="listas-view-container container-fluid py-4">
   <!-- Cabecera Premium -->
-  <div class="d-flex justify-content-between align-items-center mb-4 header-section">
+  <div class="d-flex justify-content-between align-items-center header-section">
     <div class="d-flex align-items-center gap-3">
       <!-- Botón de Collapse Sidebar (Ghost Button) -->
       <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
@@ -21,1048 +21,1018 @@
         </p>
       </div>
     </div>
+
+    @if (permissionsService.hasPermission('Listas', 'crear')) {
+    <button class="btn-migrate-config" (click)="openListModal('create')">
+      <span class="icon-svg icon-plus" style="width: 14px; height: 14px;"></span>
+      <span>Crear Lista</span>
+    </button>
+    }
   </div>
 
   <!-- Grid & Inspector Drawer Layout -->
   <div class="row g-4 align-items-stretch container-lists-layout">
-      <!-- Column 1: Watchlists Selector (Left Pane) -->
-      <div class="col-xl-3 col-lg-3 col-md-4 col-12 d-flex flex-column container-lists-left">
-        <div class="card bento-card p-4 h-100 d-flex flex-column">
-          <div class="mb-3">
-            <h5 class="fw-bold fs-6 mb-1 text-body">Listas Disponibles</h5>
-            <p class="text-muted small mb-0">Seleccione una watchlist para gestionar sus registros.</p>
-          </div>
+    <!-- Column 1: Watchlists Selector (Left Pane) -->
+    <div class="col-12 col-lg-4 d-flex flex-column container-lists-left">
+      <div class="card bento-card p-4 h-100 d-flex flex-column">
+        <div class="mb-3">
+          <h5 class="fw-bold fs-6 mb-1 text-body">Listas Disponibles</h5>
+          <p class="text-muted small mb-0">Seleccione una watchlist para gestionar sus registros.</p>
+        </div>
 
-          @if (isListsLoading()) {
-          <div class="text-center py-4 my-auto">
-            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-          </div>
-          } @else if (filteredLists().length === 0) {
-          <div class="text-center py-4 border rounded border-dashed bg-light-translucent mb-3 my-auto">
-            <span class="text-muted small fst-italic">No hay listas de este tipo creadas.</span>
-          </div>
-          } @else {
+        @if (isListsLoading()) {
+        <div class="text-center py-4 my-auto">
+          <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+        </div>
+        } @else if (filteredLists().length === 0) {
+        <div class="text-center py-4 border rounded border-dashed bg-light-translucent mb-3 my-auto">
+          <span class="text-muted small fst-italic">No hay listas de este tipo creadas.</span>
+        </div>
+        } @else {
+        <div
+          class="d-flex flex-column gap-2 lists-selector-container mb-3 overflow-y-auto scroll-container pe-1 flex-grow-1 min-h-0">
+          @for (lst of filteredLists(); track lst.list_id) {
           <div
-            class="d-flex flex-column gap-2 lists-selector-container mb-3 overflow-y-auto scroll-container pe-1 max-height-selector">
-            @for (lst of filteredLists(); track lst.list_id) {
-            <div
-              class="list-item-row d-flex align-items-center justify-content-between p-3 rounded-3 border transition-all"
-              [class.active-list]="selectedListId() === lst.list_id" (click)="onListSelected(lst.list_id)">
-              <div class="d-flex align-items-center gap-3 w-100-min-0">
-                <span class="submenu-dot" [class.rostros]="listType() === 'face_recognition'"
-                  [class.vehiculos]="listType() === 'plate_recognition'"></span>
-                <div class="text-truncate w-100-min-0">
-                  <span class="fw-semibold text-body d-block text-truncate fs-normal-label">{{ lst.name }}</span>
-                  <span class="text-muted small text-truncate d-block fs-tiny-label" [title]="lst.description">{{
-                    lst.description || 'Sin descripción' }}</span>
-                </div>
-              </div>
-
-              <div class="d-flex align-items-center gap-1 list-item-actions">
-                <button class="btn-ghost p-1.5 text-primary-hover rounded-3 edit-list-btn"
-                  (click)="openListModal('edit', lst, $event)" title="Editar Lista">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path>
-                  </svg>
-                </button>
-                <button class="btn-ghost p-1.5 text-danger-hover rounded-3 delete-list-btn"
-                  (click)="onDeleteWatchlist(lst.list_id, $event)" title="Eliminar Lista">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                </button>
+            class="list-item-row d-flex align-items-center justify-content-between p-3 rounded-3 border transition-all"
+            [class.active-list]="selectedListId() === lst.list_id" [class.card-crud-new]="listNewIds().has(lst.list_id)"
+            [class.card-crud-updated]="listUpdatedIds().has(lst.list_id)"
+            [class.card-crud-deleting]="listDeletingIds().has(lst.list_id)" (click)="onListSelected(lst.list_id)">
+            <div class="d-flex align-items-center gap-3 w-100-min-0">
+              <span class="submenu-dot" [class.rostros]="listType() === 'face_recognition'"
+                [class.vehiculos]="listType() === 'plate_recognition'"></span>
+              <div class="text-truncate w-100-min-0">
+                <span class="fw-semibold text-body d-block text-truncate fs-normal-label">{{ lst.name }}</span>
+                <span class="text-muted small text-truncate d-block fs-tiny-label" [title]="lst.description">{{
+                  lst.description || 'Sin descripción' }}</span>
               </div>
             </div>
-            }
+
+            <div class="d-flex align-items-center gap-1 list-item-actions">
+              @if (permissionsService.hasPermission('Listas', 'editar')) {
+              <button class="btn-ghost p-1.5 text-primary-hover rounded-3 edit-list-btn"
+                (click)="openListModal('edit', lst, $event)" title="Editar Lista">
+                <span class="icon-svg icon-edit" style="width: 14px; height: 14px;"></span>
+              </button>
+              }
+              @if (permissionsService.hasPermission('Listas', 'eliminar')) {
+              <button class="btn-ghost p-1.5 text-danger-hover rounded-3 delete-list-btn"
+                (click)="onDeleteWatchlist(lst.list_id, $event)" title="Eliminar Lista">
+                <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+              </button>
+              }
+            </div>
           </div>
           }
-
-          <!-- Botón de crear nueva lista ubicado al final del panel -->
-          <div class="d-flex justify-content-center pt-2 mb-3 mt-auto">
-            <button
-              class="btn btn-outline-primary btn-premium-action d-flex align-items-center gap-2 w-100 justify-content-center"
-              (click)="openListModal('create')">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span>Nueva Lista</span>
-            </button>
-          </div>
         </div>
-      </div>
+        }
 
-      <!-- Column 2: Subjects Grid / Workspace (Right Pane) -->
-      <div class="col-xl-9 col-lg-9 col-md-8 col-12 d-flex flex-column container-lists-right">
-        @if (!selectedListId()) {
-        <div
-          class="card bento-card w-100 p-5 d-flex flex-column align-items-center justify-content-center text-center h-100 min-height-detail empty-state-panel">
+      </div>
+    </div>
+
+    <!-- Column 2: Subjects Grid / Workspace (Right Pane) -->
+    <div class="col-12 col-lg-8 d-flex flex-column container-lists-right">
+      @if (!selectedListId()) {
+      <div
+        class="card bento-card w-100 p-5 d-flex flex-column align-items-center justify-content-center text-center h-100 min-height-detail">
+        <div style="max-width: 440px;">
           <div class="empty-state-icon mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="1.2" class="text-muted opacity-40">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="9" y1="9" x2="15" y2="9"></line>
-              <line x1="9" y1="13" x2="15" y2="13"></line>
-              <line x1="9" y1="17" x2="15" y2="17"></line>
-            </svg>
+            <span class="icon-svg icon-list text-muted opacity-40" style="width: 64px; height: 64px;"></span>
           </div>
           <h4 class="fw-bold mb-2 text-body">Ninguna Lista de Control Seleccionada</h4>
-          <p class="text-muted max-width-text mb-0 fs-paragraph-normal">
+          <p class="text-muted max-width-text mb-0 fs-paragraph-normal mx-auto">
             Por favor, seleccione una watchlist en el menú izquierdo para visualizar sus integrantes y cargar su
             historial de avistamientos y alertas.
           </p>
         </div>
-        } @else {
-        <!-- Subjects Workspace Card -->
-        <div class="card bento-card w-100 p-4 d-flex flex-column h-100 min-height-detail">
-          <!-- Active List Header -->
-          @if (activeList(); as list) {
-          <div class="d-flex justify-content-between align-items-center pb-2 mb-3">
-            <div class="text-truncate w-100-min-0">
-              <div class="d-flex align-items-center gap-2 w-100-min-0">
-                <h4 class="fw-bold text-body mb-0 text-truncate fs-heading-medium" [title]="list.name">{{ list.name }}</h4>
-                <button class="btn-ghost p-1 text-primary-hover rounded-3" (click)="openListModal('edit', list, $event)" title="Editar Lista">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-muted opacity-60">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path>
-                  </svg>
-                </button>
-              </div>
-              <p class="text-muted small mb-0 mt-1 fs-paragraph-tiny">
-                Se encontraron <span class="fw-semibold text-primary">{{ filteredListDetails().length }}</span> registros en la lista
-              </p>
+      </div>
+      } @else {
+      <!-- Subjects Workspace Card -->
+      <div class="card bento-card w-100 p-4 d-flex flex-column h-100 min-height-detail">
+        <!-- Active List Header -->
+        @if (activeList(); as list) {
+        <div class="d-flex justify-content-between align-items-center pb-2 mb-3">
+          <div class="text-truncate w-100-min-0">
+            <div class="d-flex align-items-center gap-2 w-100-min-0">
+              <h4 class="fw-bold text-body mb-0 text-truncate fs-heading-medium" [title]="list.name">{{ list.name }}
+              </h4>
+              @if (permissionsService.hasPermission('Listas', 'editar')) {
+              <button class="btn-ghost p-1 text-primary-hover rounded-3" (click)="openListModal('edit', list, $event)"
+                title="Editar Lista">
+                <span class="icon-svg icon-edit text-muted opacity-60" style="width: 14px; height: 14px;"></span>
+              </button>
+              }
             </div>
+            <p class="text-muted small mb-0 mt-1 fs-paragraph-tiny">
+              Se encontraron <span class="fw-semibold text-primary">{{ filteredListDetails().length }}</span> registros
+              en la lista
+            </p>
+          </div>
 
-            <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-2">
-              <!-- Barra de Búsqueda Unificada y Botón de Filtros Agrupados -->
-              <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
-                <div class="search-input-wrapper position-relative d-flex align-items-center ps-1">
-                  <span class="icon-svg search-icon-prefix text-muted"
-                    style="-webkit-mask-image: url('/assets/icons/search.svg'); mask-image: url('/assets/icons/search.svg'); background-color: currentColor; width: 18px; height: 18px; opacity: 0.5;"></span>
-                  <input type="text" [formControl]="searchControl" placeholder="Buscar sujeto..."
-                    class="search-input-control border-0 ms-2" style="font-size: 0.82rem; outline: none; width: 180px;" />
-                </div>
-
-                <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
-                  (click)="toggleFiltersVisibility()" [class.active]="hasActiveFilters()" [class.open]="showFilters()"
-                  title="Mostrar/ocultar filtros" aria-label="Mostrar/ocultar filtros">
-                  <span class="icon-svg filter-icon"
-                    style="-webkit-mask-image: url('/assets/icons/filter.svg'); mask-image: url('/assets/icons/filter.svg'); background-color: currentColor; width: 22px; height: 22px;"></span>
-                  @if (hasActiveFilters()) {
-                  <span class="active-badge-dot"></span>
-                  }
-                </button>
+          <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-2">
+            <!-- Barra de Búsqueda Unificada y Botón de Filtros Agrupados -->
+            <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
+              <div class="search-input-wrapper position-relative d-flex align-items-center ps-1">
+                <span class="icon-svg icon-search search-icon-prefix text-muted"
+                  style="width: 18px; height: 18px; opacity: 0.5;"></span>
+                <input type="text" [formControl]="searchControl" placeholder="Buscar sujeto..."
+                  class="search-input-control border-0 ms-2" style="font-size: 0.82rem; outline: none; width: 180px;" />
               </div>
 
-              <button class="btn btn-primary btn-sm d-flex align-items-center gap-1.5 btn-pill-add transition-all"
-                (click)="openAddSubjectModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                <span>Agregar Sujeto</span>
+              <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
+                (click)="toggleFiltersVisibility()" [class.active]="hasActiveFilters()" [class.open]="showFilters()"
+                title="Mostrar/ocultar filtros" aria-label="Mostrar/ocultar filtros">
+                <span class="icon-svg icon-filter filter-icon"></span>
+                @if (hasActiveFilters()) {
+                <span class="active-badge-dot"></span>
+                }
               </button>
             </div>
-          </div>
-          }
 
-          <!-- Barra de Filtros Horizontal inside the card -->
-          <div class="horizontal-filters-bar" [class.hidden]="!showFilters()">
-            <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
-
-              <!-- 1. UMBRAL DE DETECCIÓN (Solo para Rostros) -->
-              @if (listType() === 'face_recognition') {
-              <div class="filter-dropdown-wrapper position-relative">
-                <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-                  [class.active]="tempSimilarityThreshold() !== 0.85" (click)="toggleDropdown('umbral', $event)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" class="filter-icon">
-                    <line x1="19" y1="5" x2="5" y2="19"></line>
-                    <circle cx="6.5" cy="6.5" r="2.5"></circle>
-                    <circle cx="17.5" cy="17.5" r="2.5"></circle>
-                  </svg>
-                  <span>Umbral de Similitud: {{ (tempSimilarityThreshold() * 100) | number:'1.0-0' }}%</span>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-                    stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron transition-all"
-                    [class.rotated]="activeDropdown() === 'umbral'">
-                    <polyline points="6 9 12 15 18 9"></polyline>
-                  </svg>
-                </button>
-                @if (activeDropdown() === 'umbral') {
-                <div class="filter-dropdown-menu dropdown-confiabilidad p-3" (click)="$event.stopPropagation()">
-                  <div class="dropdown-header-title mb-2 text-uppercase text-muted fw-bold">Umbral de Detección</div>
-
-                  <!-- Presets -->
-                  <div class="d-flex gap-2 mb-3 preset-buttons-row">
-                    <button type="button" class="preset-btn text-nowrap" [class.active]="tempSimilarityThreshold() === 0.5"
-                      (click)="setThresholdPreset('all')">
-                      Bajo (50%+)
-                    </button>
-                    <button type="button" class="preset-btn text-nowrap" [class.active]="tempSimilarityThreshold() === 0.7"
-                      (click)="setThresholdPreset('high')">
-                      Medio (70%+)
-                    </button>
-                    <button type="button" class="preset-btn text-nowrap" [class.active]="tempSimilarityThreshold() === 0.9"
-                      (click)="setThresholdPreset('veryHigh')">
-                      Alto (90%+)
-                    </button>
-                  </div>
-
-                  <!-- Slider Rango -->
-                  <div>
-                    <label class="filter-label d-flex justify-content-between small mb-1.5 fw-medium text-muted">
-                      <span>Similitud Mínima</span>
-                      <span class="text-primary fw-semibold">{{ (tempSimilarityThreshold() * 100) | number:'1.0-0' }}%</span>
-                    </label>
-                    <input type="range" class="form-range" min="0.5" max="1.0" step="0.01" [value]="tempSimilarityThreshold()"
-                      (input)="onSimilarityThresholdChange($event)">
-                  </div>
-                </div>
-                }
-              </div>
-              }
-
-              <!-- 2. FILTRO DE AVISTAMIENTOS -->
-              <div class="filter-dropdown-wrapper position-relative">
-                <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-                  [class.active]="tempAvistamientosFilter() !== 'all'" (click)="toggleDropdown('avistamientos', $event)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" class="filter-icon">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                  <span>
-                    Avistamientos:
-                    {{ tempAvistamientosFilter() === 'all' ? 'Todos' : (tempAvistamientosFilter() === 'with' ? 'Con avistamientos' :
-                    'Sin avistamientos') }}
-                  </span>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-                    stroke-linecap="round" stroke-linejoin="round" class="dropdown-chevron transition-all"
-                    [class.rotated]="activeDropdown() === 'avistamientos'">
-                    <polyline points="6 9 12 15 18 9"></polyline>
-                  </svg>
-                </button>
-                @if (activeDropdown() === 'avistamientos') {
-                <div class="filter-dropdown-menu dropdown-coincidenciaFiltro p-2" (click)="$event.stopPropagation()">
-                  <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempAvistamientosFilter() === 'all'"
-                    (click)="selectAvistamientosFilter('all')">
-                    Todos los Sujetos
-                  </button>
-                  <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempAvistamientosFilter() === 'with'"
-                    (click)="selectAvistamientosFilter('with')">
-                    Con Avistamientos
-                  </button>
-                  <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempAvistamientosFilter() === 'without'"
-                    (click)="selectAvistamientosFilter('without')">
-                    Sin Avistamientos
-                  </button>
-                </div>
-                }
-              </div>
-
-              <!-- ACCIONES DE FILTRO -->
-              <div class="filter-actions-group d-flex align-items-center gap-2">
-                @if (hasActiveFilters()) {
-                <button (click)="onResetFilters()"
-                  class="btn btn-outline-secondary btn-premium-action d-flex align-items-center gap-2 py-1.5 px-3">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2.5 2v6h6M21.5 22v-6h-6" />
-                    <path d="M22 11.5A10 10 0 0 0 9.5 3A10 10 0 0 0 2 11.5m0 1A10 10 0 0 0 14.5 21A10 10 0 0 0 22 12.5" />
-                  </svg>
-                  <span class="fs-xs-btn">Limpiar Filtros</span>
-                </button>
-                }
-
-                @if (hasPendingFilterChanges()) {
-                <button (click)="onApplyFilters()"
-                  class="btn btn-primary btn-premium-action d-flex align-items-center gap-2 py-1.5 px-3">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  <span class="fs-xs-btn">Aplicar Filtros</span>
-                </button>
-                }
-              </div>
-            </div>
-          </div>
-
-          <!-- Grid Scrollable Viewport -->
-          <div class="flex-grow-1 overflow-y-auto scroll-container pe-1 max-height-grid-workspace">
-            @if (isListsLoading()) {
-            <div class="text-center py-5">
-              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-            </div>
-            } @else if (listDetails().length === 0) {
-            <div class="d-flex flex-column align-items-center justify-content-center text-center py-5">
-              <div class="empty-state-icon mb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="1.5" class="text-muted opacity-50">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="8" x2="12" y2="12"></line>
-                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                </svg>
-              </div>
-              <h5 class="fw-bold mb-1">No hay sujetos registrados</h5>
-              <p class="text-muted small max-width-text mb-0">
-                Registra sujetos a esta watchlist desde **Metadatos** haciendo clic en **"Agregar a Lista"**, o haz clic
-                en **"Agregar Sujeto"** arriba.
-              </p>
-            </div>
-            } @else if (filteredListDetails().length === 0) {
-            <div class="d-flex flex-column align-items-center justify-content-center text-center py-5">
-              <div class="empty-state-icon mb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="1.5" class="text-muted opacity-50">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="8" x2="12" y2="12"></line>
-                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                </svg>
-              </div>
-              <h5 class="fw-bold mb-1">Sin coincidencias</h5>
-              <p class="text-muted small max-width-text mb-3">
-                No se encontraron sujetos con los filtros de búsqueda activos.
-              </p>
-              <button (click)="onResetFilters()" class="btn btn-outline-secondary btn-sm rounded-pill px-3">Limpiar
-                Filtros</button>
-            </div>
-            } @else {
-            <!-- Subjects Grid Auto-fit -->
-            <div class="subjects-grid">
-              @for (detail of filteredListDetails(); track detail.detail_id) {
-              <div
-                class="subject-card rounded-4 p-4 bg-light-translucent cursor-pointer transition-all position-relative d-flex flex-column align-items-center justify-content-between text-center"
-                [class.active-subject]="selectedSubjectDetailId() === detail.detail_id"
-                (click)="selectSubjectDetail(detail.detail_id); $event.stopPropagation()">
-
-                <!-- Floating Count Badge (Top-Left) -->
-                <span class="subject-card-badge position-absolute d-flex align-items-center gap-1">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="badge-icon">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                  <span>{{ subjectDetections()[detail.detail_id]?.count || 0 }}</span>
-                </span>
-
-                <!-- Delete Button (Top-Right, Hover) -->
-                <button
-                  class="btn-ghost delete-subject-btn position-absolute p-1.5 text-danger-hover rounded-circle shadow-sm"
-                  (click)="deleteSubject(detail.detail_id); $event.stopPropagation()" title="Eliminar de lista">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                </button>
-
-                <!-- Subject Avatar/Image -->
-                <div class="subject-card-img-wrapper mb-3">
-                  <img [src]="detail.metadata?.url_img || 'assets/icons/logo.svg'"
-                    [class.rounded-circle]="listType() === 'face_recognition'"
-                    [class.rounded-3]="listType() !== 'face_recognition'"
-                    class="object-fit-cover border shadow-sm subject-card-avatar" />
-                </div>
-
-                <!-- Subject Information -->
-                <div class="subject-card-info w-100 mb-0 text-truncate">
-                  @if (listType() === 'face_recognition') {
-                  <h6 class="fw-bold mb-1 text-truncate text-body fs-subject-title"
-                    [title]="detail.nombre_asociado">
-                    {{ detail.nombre_asociado }}
-                  </h6>
-                  } @else {
-                  <h6 class="fw-bold mb-0.5 font-monospace text-primary text-truncate fs-plate-title"
-                    [title]="detail.metadata?.text_placa">
-                    {{ detail.metadata?.text_placa || 'PLACA DESCONOCIDA' }}
-                  </h6>
-                  <span class="text-muted d-block text-truncate extra-small mb-1.5" style="font-size: 0.72rem; font-weight: 500;" [title]="detail.nombre_asociado">
-                    {{ detail.nombre_asociado || 'Sin propietario' }}
-                  </span>
-                  }
-
-                  <div class="sighting-status-wrapper mt-2">
-                    @if (subjectDetections()[detail.detail_id]?.hits?.[0]; as lastHit) {
-                    <span class="sighting-status-indicator text-muted d-inline-flex align-items-center justify-content-center gap-1 text-truncate extra-small"
-                      [title]="'Último: ' + lastHit.camara + ' (' + (lastHit.confiabilidad * 100 | number:'1.0-0') + '%)'">
-                      <span class="status-pulse-dot bg-success"></span>
-                      <span>Último: <strong class="text-secondary">{{ lastHit.camara }}</strong></span>
-                    </span>
-                    } @else if (subjectDetections()[detail.detail_id]?.loading) {
-                    <span class="sighting-status-indicator text-muted d-inline-flex align-items-center justify-content-center gap-1 text-truncate extra-small style-loading">
-                      <span class="status-pulse-dot bg-warning"></span>
-                      <span>Cargando...</span>
-                    </span>
-                    } @else {
-                    <span class="sighting-status-indicator text-muted d-inline-flex align-items-center justify-content-center gap-1 text-truncate extra-small style-empty">
-                      <span class="status-pulse-dot bg-secondary"></span>
-                      <span>Sin avistamientos</span>
-                    </span>
-                    }
-                  </div>
-                </div>
-
-              </div>
-              }
-            </div>
+            @if (permissionsService.hasPermission('Detalles Listas', 'crear')) {
+            <button class="btn-migrate-config" (click)="openAddSubjectModal()">
+              <span class="icon-svg icon-plus" style="width: 14px; height: 14px;"></span>
+              <span>Agregar Sujeto</span>
+            </button>
             }
           </div>
         </div>
         }
-      </div>
-    </div>
 
-    <!-- Sighting Inspector Drawer overlay backdrop -->
-    <div class="drawer-backdrop" [class.show]="selectedSubjectDetailId()" (click)="selectSubjectDetail(null)"></div>
+        <!-- Barra de Filtros Horizontal inside the card -->
+        <div class="horizontal-filters-bar" [class.hidden]="!showFilters()">
+          <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
-    <!-- Sighting Inspector Drawer -->
-    <div class="inspector-drawer" [class.open]="selectedSubjectDetailId()">
-      @if (selectedSubjectDetail(); as activeDetail) {
-      <div class="drawer-header d-flex align-items-center justify-content-between border-bottom p-4">
-        <h5 class="fw-bold mb-0 text-body fs-5">Ficha de Información</h5>
-        <button class="btn-close-details" (click)="selectSubjectDetail(null); $event.stopPropagation()"
-          title="Cerrar Detalles">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
+            <!-- 1. UMBRAL DE DETECCIÓN (Solo para Rostros) -->
+            @if (listType() === 'face_recognition') {
+            <div class="filter-dropdown-wrapper position-relative">
+              <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+                [class.active]="tempSimilarityThreshold() !== 0.85" (click)="toggleDropdown('umbral', $event)">
+                <span class="icon-svg icon-settings filter-icon" style="width: 14px; height: 14px;"></span>
+                <span>Umbral de Similitud: {{ (tempSimilarityThreshold() * 100) | number:'1.0-0' }}%</span>
+                <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+                  [class.rotated]="activeDropdown() === 'umbral'" style="width: 10px; height: 10px;"></span>
+              </button>
+              @if (activeDropdown() === 'umbral') {
+              <div class="filter-dropdown-menu dropdown-confiabilidad p-3" (click)="$event.stopPropagation()">
+                <div class="dropdown-header-title mb-2 text-uppercase text-muted fw-bold">Umbral de Detección</div>
 
-      <!-- Scroll hint wrapper -->
-      <div class="drawer-scroll-wrapper position-relative flex-grow-1 d-flex flex-column overflow-hidden">
-        <div class="drawer-body p-4 scroll-container flex-grow-1 overflow-y-auto" (scroll)="onDrawerScroll($event)">
-          <!-- Premium Identity Card -->
-          <div class="identity-card mb-4">
-
-            <!-- Clean Avatar Header (no banner, no animation) -->
-            <div class="identity-avatar-header">
-              <img [src]="activeDetail.metadata?.url_img || 'assets/icons/logo.svg'"
-                class="identity-avatar object-fit-cover bg-body"
-                [class.rounded-circle]="listType() === 'face_recognition'"
-                [class.rounded-3]="listType() !== 'face_recognition'" />
-            </div>
-
-            <!-- Identity Info -->
-            <div class="identity-info px-4 pb-4">
-
-              <!-- Name / Plate -->
-              @if (listType() === 'face_recognition') {
-              <h3 class="identity-name fw-bold mb-1">{{ activeDetail.nombre_asociado }}</h3>
-              } @else {
-              <h3 class="identity-plate fw-bold font-monospace mb-1">{{ activeDetail.metadata?.text_placa ||
-                'DESCONOCIDA' }}</h3>
-              }
-
-              <!-- Metadata Rows -->
-              <div class="identity-meta-list">
-
-                <!-- Propietario (Vehicle only) -->
-                @if (listType() !== 'face_recognition') {
-                <div class="identity-meta-row">
-                  <div class="identity-meta-icon identity-meta-icon--primary">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                  </div>
-                  <div class="identity-meta-body">
-                    <span class="identity-meta-label">Propietario</span>
-                    <span class="identity-meta-value" [title]="activeDetail.nombre_asociado">{{
-                      activeDetail.nombre_asociado || 'No asignado' }}</span>
-                  </div>
-                </div>
-                }
-
-                <!-- ID de Registro -->
-                <div class="identity-meta-row">
-                  <div class="identity-meta-icon identity-meta-icon--secondary">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                    </svg>
-                  </div>
-                  <div class="identity-meta-body">
-                    <span class="identity-meta-label">ID Registro</span>
-                    <span class="identity-meta-value font-monospace text-truncate d-block"
-                      [title]="activeDetail.detail_id">{{ activeDetail.detail_id }}</span>
-                  </div>
+                <!-- Presets -->
+                <div class="d-flex gap-2 mb-3 preset-buttons-row">
+                  <button type="button" class="preset-btn text-nowrap"
+                    [class.active]="tempSimilarityThreshold() === 0.5" (click)="setThresholdPreset('all')">
+                    Bajo (50%+)
+                  </button>
+                  <button type="button" class="preset-btn text-nowrap"
+                    [class.active]="tempSimilarityThreshold() === 0.7" (click)="setThresholdPreset('high')">
+                    Medio (70%+)
+                  </button>
+                  <button type="button" class="preset-btn text-nowrap"
+                    [class.active]="tempSimilarityThreshold() === 0.9" (click)="setThresholdPreset('veryHigh')">
+                    Alto (90%+)
+                  </button>
                 </div>
 
-                <!-- Lista de Control -->
-                <div class="identity-meta-row">
-                  <div class="identity-meta-icon identity-meta-icon--info">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="8" y1="6" x2="21" y2="6"></line>
-                      <line x1="8" y1="12" x2="21" y2="12"></line>
-                      <line x1="8" y1="18" x2="21" y2="18"></line>
-                      <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                      <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                      <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                    </svg>
-                  </div>
-                  <div class="identity-meta-body">
-                    <span class="identity-meta-label">Lista de Control</span>
-                    <span class="identity-meta-value text-truncate d-block" [title]="activeList()?.name">{{
-                      activeList()?.name }}</span>
-                  </div>
-                </div>
-
-                <!-- Descripción -->
-                @if (activeList()?.description) {
-                <div class="identity-meta-row identity-meta-row--last">
-                  <div class="identity-meta-icon identity-meta-icon--muted">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="16" x2="12" y2="12"></line>
-                      <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                    </svg>
-                  </div>
-                  <div class="identity-meta-body">
-                    <span class="identity-meta-label">Descripción</span>
-                    <span class="identity-meta-value text-truncate d-block" [title]="activeList()?.description">{{
-                      activeList()?.description }}</span>
-                  </div>
-                </div>
-                }
-
-              </div>
-            </div>
-          </div>
-
-          <!-- Timeline Section -->
-          <div class="d-flex flex-column drawer-timeline-section mt-2">
-            <div class="d-flex align-items-center justify-content-between mb-4">
-              <h6 class="fw-bold text-uppercase text-muted mb-0 fs-timeline-title">Avistamientos recientes</h6>
-              <span class="badge badge-records-pill font-monospace fs-records-pill-padded">
-                {{ subjectDetections()[selectedSubjectDetailId()!]?.count || 0 }}
-              </span>
-            </div>
-
-            <!-- Timeline Content -->
-            @if (subjectDetections()[selectedSubjectDetailId()!]?.loading) {
-            <div class="text-center py-5">
-              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-            </div>
-            }
-
-            @if (!subjectDetections()[selectedSubjectDetailId()!]?.loading &&
-            (!subjectDetections()[selectedSubjectDetailId()!]?.hits ||
-            subjectDetections()[selectedSubjectDetailId()!]?.hits?.length === 0)) {
-            <div class="d-flex flex-column align-items-center justify-content-center py-5 text-center">
-              <div class="empty-state-avatar-bubble mb-2 opacity-50">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  class="text-muted">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                </svg>
-              </div>
-              <span class="text-muted small fst-italic fs-empty-sightings">Sin registros de avistamientos
-                recientes.</span>
-            </div>
-            }
-
-            @if (!subjectDetections()[selectedSubjectDetailId()!]?.loading &&
-            subjectDetections()[selectedSubjectDetailId()!]?.hits?.length! > 0) {
-            <div class="timeline-feed position-relative pe-5 me-3">
-              @for (hit of subjectDetections()[selectedSubjectDetailId()!]?.hits; track hit.id) {
-              <div class="timeline-item position-relative mb-4">
-                <!-- Punto del Timeline Premium con Anillo de Glow -->
-                <span class="timeline-bullet position-absolute rounded-circle"></span>
-
-                <div class="card timeline-card border p-3 rounded-3 transition-all shadow-sm border-start-3"
-                  [class.border-start-emerald]="hit.confiabilidad >= 0.8"
-                  [class.border-start-amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
-                  [class.border-start-rose]="hit.confiabilidad < 0.5"
-                  (mouseenter)="setHoveredHit(hit)"
-                  (mouseleave)="setHoveredHit(null)">
-                  <div class="d-flex gap-3 align-items-center">
-                    <div class="timeline-img-wrapper flex-shrink-0 position-relative">
-                      <img [src]="hit.imagen" class="border bg-dark timeline-sighting-img shadow-xs" />
-                    </div>
-                    <div class="text-truncate flex-grow-1">
-                      <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                        <span
-                          class="small fw-bold text-body text-truncate d-flex align-items-center fs-sighting-camera">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="text-secondary me-2 opacity-75">
-                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
-                            </path>
-                            <circle cx="12" cy="13" r="4"></circle>
-                          </svg>
-                          {{ hit.camara }}
-                        </span>
-
-                        <span class="badge timeline-confidence-badge font-monospace"
-                          [class.badge-emerald]="hit.confiabilidad >= 0.8"
-                          [class.badge-amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
-                          [class.badge-rose]="hit.confiabilidad < 0.5">
-                          {{ (hit.confiabilidad * 100) | number:'1.0-0' }}%
-                        </span>
-                      </div>
-
-                      <div class="d-flex align-items-center gap-2 text-muted fs-sighting-time">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-60">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                        <span>{{ hit.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
-                      </div>
-                    </div>
-                  </div>
+                <!-- Slider Rango -->
+                <div>
+                  <label class="filter-label d-flex justify-content-between small mb-1.5 fw-medium text-muted">
+                    <span>Similitud Mínima</span>
+                    <span class="text-primary fw-semibold">{{ (tempSimilarityThreshold() * 100) | number:'1.0-0'
+                      }}%</span>
+                  </label>
+                  <input type="range" class="form-range" min="0.5" max="1.0" step="0.01"
+                    [value]="tempSimilarityThreshold()" (input)="onSimilarityThresholdChange($event)">
                 </div>
               </div>
               }
             </div>
             }
+
+            <!-- 2. FILTRO DE AVISTAMIENTOS -->
+            <div class="filter-dropdown-wrapper position-relative">
+              <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+                [class.active]="tempAvistamientosFilter() !== 'all'" (click)="toggleDropdown('avistamientos', $event)">
+                <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
+                <span>
+                  Avistamientos:
+                  {{ tempAvistamientosFilter() === 'all' ? 'Todos' : (tempAvistamientosFilter() === 'with' ? 'Con
+                  avistamientos' :
+                  'Sin avistamientos') }}
+                </span>
+                <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+                  [class.rotated]="activeDropdown() === 'avistamientos'" style="width: 10px; height: 10px;"></span>
+              </button>
+              @if (activeDropdown() === 'avistamientos') {
+              <div class="filter-dropdown-menu dropdown-coincidenciaFiltro p-2" (click)="$event.stopPropagation()">
+                <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempAvistamientosFilter() === 'all'"
+                  (click)="selectAvistamientosFilter('all')">
+                  Todos los Sujetos
+                </button>
+                <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempAvistamientosFilter() === 'with'"
+                  (click)="selectAvistamientosFilter('with')">
+                  Con Avistamientos
+                </button>
+                <button class="dropdown-item py-1.5 px-3 rounded"
+                  [class.active]="tempAvistamientosFilter() === 'without'"
+                  (click)="selectAvistamientosFilter('without')">
+                  Sin Avistamientos
+                </button>
+              </div>
+              }
+            </div>
+
+            <!-- ACCIONES DE FILTRO -->
+            <div class="filter-actions-group d-flex align-items-center gap-2">
+              @if (hasActiveFilters()) {
+              <button (click)="onResetFilters()"
+                class="btn btn-outline-secondary btn-premium-action d-flex align-items-center gap-2 py-1.5 px-3">
+                <span class="icon-svg icon-close" style="width: 12px; height: 12px;"></span>
+                <span class="fs-xs-btn">Limpiar Filtros</span>
+              </button>
+              }
+
+              @if (hasPendingFilterChanges()) {
+              <button (click)="onApplyFilters()"
+                class="btn btn-primary btn-premium-action d-flex align-items-center gap-2 py-1.5 px-3">
+                <span class="icon-svg icon-save"
+                  style="width: 12px; height: 12px; background-color: currentColor;"></span>
+                <span class="fs-xs-btn">Aplicar Filtros</span>
+              </button>
+              }
+            </div>
           </div>
         </div>
 
-        <!-- Scroll Hint Overlay (Premium) -->
-        <div class="drawer-scroll-hint" [class.hidden]="drawerScrolledToBottom()" aria-hidden="true">
-          <div class="scroll-hint-chevron">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
+        <!-- Grid Scrollable Viewport -->
+        <div class="flex-grow-1 overflow-y-auto scroll-container pe-1 min-h-0">
+          @if (isListsLoading()) {
+          <div class="text-center py-5">
+            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
           </div>
+          } @else if (listDetails().length === 0) {
+          <div class="d-flex flex-column align-items-center justify-content-center text-center py-5">
+            <div class="empty-state-icon mb-3">
+              <span class="icon-svg icon-warning text-muted opacity-50" style="width: 48px; height: 48px;"></span>
+            </div>
+            <h5 class="fw-bold mb-1">No hay sujetos registrados</h5>
+            <p class="text-muted small max-width-text mb-0">
+              Registra sujetos a esta watchlist desde **Metadatos** haciendo clic en **"Agregar a Lista"**, o haz clic
+              en **"Agregar Sujeto"** arriba.
+            </p>
+          </div>
+          } @else if (filteredListDetails().length === 0) {
+          <div class="d-flex flex-column align-items-center justify-content-center text-center py-5">
+            <div class="empty-state-icon mb-3">
+              <span class="icon-svg icon-info-circle text-muted"
+                style="width: 48px; height: 48px; opacity: 0.5;"></span>
+            </div>
+            <h5 class="fw-bold mb-1">Sin coincidencias</h5>
+            <p class="text-muted small max-width-text mb-3">
+              No se encontraron sujetos con los filtros de búsqueda activos.
+            </p>
+            <button (click)="onResetFilters()" class="btn btn-outline-secondary btn-sm rounded-pill px-3">Limpiar
+              Filtros</button>
+          </div>
+          } @else {
+          <!-- Subjects Grid Auto-fit -->
+          <div class="subjects-grid">
+            @for (detail of filteredListDetails(); track detail.detail_id) {
+            <div
+              class="subject-card rounded-4 p-4 bg-light-translucent cursor-pointer transition-all position-relative d-flex flex-column align-items-center justify-content-between text-center"
+              [class.active-subject]="selectedSubjectDetailId() === detail.detail_id"
+              [class.card-crud-new]="listNewIds().has(detail.detail_id)"
+              [class.card-crud-updated]="listUpdatedIds().has(detail.detail_id)"
+              [class.card-crud-deleting]="listDeletingIds().has(detail.detail_id)"
+              (click)="selectSubjectDetail(detail.detail_id); $event.stopPropagation()">
+
+              <!-- Floating Count Badge (Top-Left) -->
+              <span class="subject-card-badge position-absolute d-flex align-items-center gap-1">
+                <span class="icon-svg icon-target badge-icon"
+                  style="width: 10px; height: 10px; background-color: currentColor;"></span>
+                <span>{{ subjectDetections()[detail.detail_id]?.count || 0 }}</span>
+              </span>
+
+              <!-- Delete Button (Top-Right, Hover) -->
+              @if (permissionsService.hasPermission('Detalles Listas', 'eliminar')) {
+              <button
+                class="btn-ghost delete-subject-btn position-absolute p-1.5 text-danger-hover rounded-circle shadow-sm"
+                (click)="deleteSubject(detail.detail_id); $event.stopPropagation()" title="Eliminar de lista">
+                <span class="icon-svg icon-trash" style="width: 13px; height: 13px;"></span>
+              </button>
+              }
+
+              <!-- Subject Avatar/Image -->
+              <div class="subject-card-img-wrapper mb-3">
+                <img [src]="detail.metadata?.url_img || 'logo.svg'"
+                  [class.rounded-circle]="listType() === 'face_recognition'"
+                  [class.rounded-3]="listType() !== 'face_recognition'"
+                  class="object-fit-cover border shadow-sm subject-card-avatar" />
+              </div>
+
+              <!-- Subject Information -->
+              <div class="subject-card-info w-100 mb-0 text-truncate">
+                @if (listType() === 'face_recognition') {
+                <h6 class="fw-bold mb-1 text-truncate text-body fs-subject-title" [title]="detail.nombre_asociado">
+                  {{ detail.nombre_asociado }}
+                </h6>
+                } @else {
+                <h6 class="fw-bold mb-0.5 font-monospace text-primary text-truncate fs-plate-title"
+                  [title]="detail.metadata?.text_placa">
+                  {{ detail.metadata?.text_placa || 'PLACA DESCONOCIDA' }}
+                </h6>
+                <span class="text-muted d-block text-truncate extra-small mb-1.5"
+                  style="font-size: 0.72rem; font-weight: 500;" [title]="detail.nombre_asociado">
+                  {{ detail.nombre_asociado || 'Sin propietario' }}
+                </span>
+                }
+
+                <div class="sighting-status-wrapper mt-2">
+                  @if (subjectDetections()[detail.detail_id]?.hits?.[0]; as lastHit) {
+                  <span
+                    class="sighting-status-indicator text-muted d-inline-flex align-items-center justify-content-center gap-1 text-truncate extra-small"
+                    [title]="'Último: ' + lastHit.camara + ' (' + (lastHit.confiabilidad * 100 | number:'1.0-0') + '%)'">
+                    <span class="status-pulse-dot bg-success"></span>
+                    <span>Último: <strong class="text-secondary">{{ lastHit.camara }}</strong></span>
+                  </span>
+                  } @else if (subjectDetections()[detail.detail_id]?.loading) {
+                  <span
+                    class="sighting-status-indicator text-muted d-inline-flex align-items-center justify-content-center gap-1 text-truncate extra-small style-loading">
+                    <span class="status-pulse-dot bg-warning"></span>
+                    <span>Cargando...</span>
+                  </span>
+                  } @else {
+                  <span
+                    class="sighting-status-indicator text-muted d-inline-flex align-items-center justify-content-center gap-1 text-truncate extra-small style-empty">
+                    <span class="status-pulse-dot bg-secondary"></span>
+                    <span>Sin avistamientos</span>
+                  </span>
+                  }
+                </div>
+              </div>
+
+            </div>
+            }
+          </div>
+          }
         </div>
       </div>
       }
     </div>
+  </div>
 
-    <!-- ── Sighting Preview Panel (Hover) ───────────────────── -->
-    @if (hoveredHit(); as hit) {
-    <div class="sighting-preview-panel"
-         (mouseenter)="setHoveredHit(hit)"
-         (mouseleave)="setHoveredHit(null)">
+  <!-- Sighting Inspector Drawer overlay backdrop -->
+  <div class="drawer-backdrop" [class.show]="selectedSubjectDetailId()" (click)="selectSubjectDetail(null)"></div>
 
-      <!-- Image Hero -->
-      <div class="sighting-preview-hero">
-        <img [src]="hit.imagen" class="sighting-preview-img" alt="Avistamiento" />
-        <!-- Confidence badge -->
-        <div class="sighting-preview-conf"
-             [class.conf-emerald]="hit.confiabilidad >= 0.8"
-             [class.conf-amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
-             [class.conf-rose]="hit.confiabilidad < 0.5">
-          {{ (hit.confiabilidad * 100) | number:'1.0-0' }}% Confianza
-        </div>
-      </div>
-
-      <!-- Content -->
-      <div class="sighting-preview-body">
-        <h5 class="sighting-preview-title fw-bold mb-1">Detalle del Avistamiento</h5>
-        <p class="text-muted small mb-3">Información capturada en el evento de detección</p>
-
-        <!-- Meta rows -->
-        <div class="sighting-preview-meta">
-
-          <!-- Cámara -->
-          <div class="sighting-preview-row">
-            <div class="sighting-preview-icon sp-icon--camera">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">Cámara</span>
-              <span class="sp-value">{{ hit.camara }}</span>
-            </div>
-          </div>
-
-          <!-- Timestamp -->
-          <div class="sighting-preview-row">
-            <div class="sighting-preview-icon sp-icon--time">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">Fecha y Hora</span>
-              <span class="sp-value font-monospace">{{ hit.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
-            </div>
-          </div>
-
-          <!-- Confiabilidad -->
-          <div class="sighting-preview-row">
-            <div class="sighting-preview-icon sp-icon--conf">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">Confiabilidad</span>
-              <div class="sp-conf-bar-wrapper">
-                <div class="sp-conf-bar"
-                     [style.width.%]="hit.confiabilidad * 100"
-                     [class.sp-conf-bar--emerald]="hit.confiabilidad >= 0.8"
-                     [class.sp-conf-bar--amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
-                     [class.sp-conf-bar--rose]="hit.confiabilidad < 0.5">
-                </div>
-                <span class="sp-conf-label">{{ (hit.confiabilidad * 100) | number:'1.0-0' }}%</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- ID del registro -->
-          <div class="sighting-preview-row">
-            <div class="sighting-preview-icon sp-icon--id">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">ID Detección</span>
-              <span class="sp-value font-monospace text-truncate d-block" [title]="hit.id">{{ hit.id }}</span>
-            </div>
-          </div>
-
-          <!-- Sujeto asociado -->
-          <div class="sighting-preview-row sighting-preview-row--highlight">
-            <div class="sighting-preview-icon sp-icon--subject">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">Sujeto Asociado</span>
-              <span class="sp-value fw-bold">{{ selectedSubjectDetail()?.nombre_asociado || selectedSubjectDetail()?.metadata?.text_placa || '—' }}</span>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Atributos Detallados Section -->
-        @if (getTipoObjeto(hit) || getEdad(hit) || getGenero(hit) || getReconocimiento(hit) || (getPosturas(hit) && getPosturas(hit).length > 0) || (hit.colores && hit.colores.length > 0)) {
-        <h6 class="sighting-preview-section-title fw-bold text-uppercase mt-4 mb-3" style="font-size: 0.75rem; letter-spacing: 0.08em; color: var(--text-muted);">Atributos Detectados</h6>
-
-        <div class="sighting-attributes-container d-flex flex-column gap-3">
-          <!-- Identificación -->
-          @if (getTipoObjeto(hit) || getEdad(hit) || getGenero(hit) || getReconocimiento(hit)) {
-          <div class="popover-section">
-            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2" style="font-size: 0.65rem; letter-spacing: 0.05em;">Identificación</div>
-            <div class="attributes-grid">
-              @if (getTipoObjeto(hit)) {
-              <span class="attribute-pill object-type-pill text-capitalize">
-                <span class="pill-dot"></span>
-                {{ getTipoObjeto(hit) }}
-              </span>
-              }
-              @if (getEdad(hit)) {
-              <span class="attribute-pill age-pill text-capitalize">
-                Edad: {{ getEdad(hit) }}
-              </span>
-              }
-              @if (getGenero(hit)) {
-              <span class="attribute-pill gender-pill text-capitalize">
-                Género: {{ getGenero(hit) }}
-              </span>
-              }
-              @if (getReconocimiento(hit)) {
-              <span class="attribute-pill recognition-pill text-capitalize">
-                {{ getReconocimiento(hit) }}
-              </span>
-              }
-            </div>
-          </div>
-          }
-
-          <!-- Posturas -->
-          @if (getPosturas(hit) && getPosturas(hit).length > 0) {
-          <div class="popover-section">
-            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2" style="font-size: 0.65rem; letter-spacing: 0.05em;">Posturas</div>
-            <div class="attributes-grid">
-              @for (pos of getPosturas(hit); track pos.postura) {
-              <span class="attribute-pill posture-pill text-capitalize">
-                {{ pos.postura }}
-                <span class="posture-count">{{ pos.conteo }}</span>
-              </span>
-              }
-            </div>
-          </div>
-          }
-
-          <!-- Colores -->
-          @if (hit.colores && hit.colores.length > 0) {
-          <div class="popover-section">
-            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2" style="font-size: 0.65rem; letter-spacing: 0.05em;">Colores Detectados</div>
-            <div class="attributes-grid">
-              @for (col of hit.colores; track col.colorText) {
-              <span class="color-pill-v2 d-inline-flex align-items-center rounded-pill py-1 px-2 border"
-                [style.background-color]="getColorStyle(col)"
-                [style.color]="getColorLuminance(col.r, col.g, col.b) > 0.6 ? '#1e293b' : '#ffffff'"
-                [style.border-color]="getColorLuminance(col.r, col.g, col.b) > 0.9 ? '#cbd5e1' : 'transparent'"
-                [title]="col.colorText + ' (' + (col.porcentaje * 100 | number:'1.0-0') + '%)'">
-                <span class="color-text text-capitalize" style="font-size: 0.7rem; font-weight: 600;">{{ col.colorText }}</span>
-                <span class="color-percentage-v2" style="font-size: 0.65rem; opacity: 0.85; margin-left: 4px;">{{ (col.porcentaje * 100) | number:'1.0-0' }}%</span>
-              </span>
-              }
-            </div>
-          </div>
-          }
-        </div>
-        }
-      </div>
+  <!-- Sighting Inspector Drawer -->
+  <div class="inspector-drawer" [class.open]="selectedSubjectDetailId()">
+    @if (selectedSubjectDetail(); as activeDetail) {
+    <div class="drawer-header d-flex align-items-center justify-content-between border-bottom p-4">
+      <h5 class="fw-bold mb-0 text-body fs-5">Ficha de Información</h5>
+      <button class="btn-close-details" (click)="selectSubjectDetail(null); $event.stopPropagation()"
+        title="Cerrar Detalles">
+        <span class="icon-svg icon-close" style="width: 14px; height: 14px;"></span>
+      </button>
     </div>
-    }
 
-    <!-- Modal Agregar Persona/Placa a Lista (Estilo Premium) -->
-    @if (showAddSubjectModal()) {
-    <div class="modal-backdrop-custom d-flex align-items-center justify-content-center"
-      (click)="closeAddSubjectModal()">
-      <div class="modal-card-custom p-5 shadow-lg border" (click)="$event.stopPropagation()">
-        <!-- Modal Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-          <h5 class="fw-bold mb-0 text-body fs-5">
-            Agregar a la Lista de {{ listType() === 'face_recognition' ? 'Rostros' : 'Placas' }}
-          </h5>
-          <button class="btn-ghost p-1" (click)="closeAddSubjectModal()" aria-label="Cerrar modal"
-            [disabled]="isSavingSubject()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
+    <!-- Scroll hint wrapper -->
+    <div class="drawer-scroll-wrapper position-relative flex-grow-1 d-flex flex-column overflow-hidden">
+      <div class="drawer-body p-4 scroll-container flex-grow-1 overflow-y-auto" (scroll)="onDrawerScroll($event)">
+        <!-- Premium Identity Card -->
+        <div class="identity-card mb-4">
 
-        <!-- Modal Body -->
-        <div class="modal-body-custom">
-          @if (listType() === 'face_recognition') {
-          <!-- Nombre del Sujeto -->
-          <div class="mb-4">
-            <label class="form-label mb-1">Nombre Completo</label>
-            <input type="text" class="form-control" placeholder="Ej. Juan Pérez"
-              [value]="subjectName()"
-              (input)="subjectName.set($any($event.target).value)"
-              [disabled]="isSavingSubject()" />
+          <!-- Clean Avatar Header (no banner, no animation) -->
+          <div class="identity-avatar-header">
+            <img [src]="activeDetail.metadata?.url_img || 'logo.svg'" class="identity-avatar object-fit-cover bg-body"
+              [class.rounded-circle]="listType() === 'face_recognition'"
+              [class.rounded-3]="listType() !== 'face_recognition'" />
           </div>
 
-          <!-- Carga de Imagen -->
-          <div class="mb-4">
-            <label class="form-label mb-2">Foto de la Persona</label>
+          <!-- Identity Info -->
+          <div class="identity-info px-4 pb-4">
 
-            <div
-              class="image-upload-zone p-4 border rounded-3 text-center position-relative transition-all d-flex flex-column align-items-center justify-content-center"
-              [class.has-preview]="imagePreviewUrl()" (click)="fileInput.click()">
-
-              <input type="file" #fileInput class="d-none" accept="image/*" (change)="onFileSelected($event)" />
-
-              @if (!imagePreviewUrl()) {
-              <div class="upload-icon mb-2 text-primary opacity-75">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                  <polyline points="21 15 16 10 5 21"></polyline>
-                </svg>
-              </div>
-              <span class="fw-semibold text-body small">Haz clic para seleccionar una foto</span>
-              <span class="text-muted extra-small mt-1">Formatos recomendados: JPG, PNG</span>
+            <!-- Name / Plate with Edit Trigger -->
+            <div class="d-flex align-items-center justify-content-center gap-2 mb-2 identity-title-row">
+              @if (listType() === 'face_recognition') {
+              <h3 class="identity-name fw-bold mb-0 text-truncate" style="max-width: 85%;">{{
+                activeDetail.nombre_asociado }}</h3>
               } @else {
-              <div class="preview-container position-relative w-100">
-                <img [src]="imagePreviewUrl()" class="img-preview rounded shadow-sm max-preview-img" />
-                <button
-                  class="btn-ghost remove-preview-btn position-absolute p-1 rounded-circle shadow border bg-body modal-remove-btn"
-                  (click)="selectedFile.set(null); imagePreviewUrl.set(null); $event.stopPropagation()" title="Eliminar Foto"
-                  [disabled]="isSavingSubject()">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="text-danger">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </button>
-              </div>
+              <h3 class="identity-plate fw-bold font-monospace mb-0 text-truncate" style="max-width: 85%;">{{
+                activeDetail.metadata?.text_placa || 'DESCONOCIDA' }}</h3>
+              }
+
+              @if (permissionsService.hasPermission('Detalles Listas', 'editar')) {
+              <button
+                class="btn-ghost p-1 text-primary-hover rounded-circle edit-subject-icon-btn d-flex align-items-center justify-content-center"
+                (click)="openEditSubjectModal(activeDetail)" title="Editar Sujeto">
+                <span class="icon-svg icon-edit text-muted opacity-60" style="width: 14px; height: 14px;"></span>
+              </button>
               }
             </div>
+
+            <!-- Metadata Rows -->
+            <div class="identity-meta-list">
+
+              <!-- Propietario (Vehicle only) -->
+              @if (listType() !== 'face_recognition') {
+              <div class="identity-meta-row">
+                <div class="identity-meta-icon identity-meta-icon--primary">
+                  <span class="icon-svg icon-user" style="width: 13px; height: 13px;"></span>
+                </div>
+                <div class="identity-meta-body">
+                  <span class="identity-meta-label">Propietario</span>
+                  <span class="identity-meta-value" [title]="activeDetail.nombre_asociado">{{
+                    activeDetail.nombre_asociado || 'No asignado' }}</span>
+                </div>
+              </div>
+              }
+
+              <!-- ID de Registro -->
+              <div class="identity-meta-row">
+                <div class="identity-meta-icon identity-meta-icon--secondary">
+                  <span class="icon-svg icon-box" style="width: 13px; height: 13px;"></span>
+                </div>
+                <div class="identity-meta-body">
+                  <span class="identity-meta-label">ID Registro</span>
+                  <span class="identity-meta-value font-monospace text-truncate d-block"
+                    [title]="activeDetail.detail_id">{{ activeDetail.detail_id }}</span>
+                </div>
+              </div>
+
+              <!-- Lista de Control -->
+              <div class="identity-meta-row">
+                <div class="identity-meta-icon identity-meta-icon--info">
+                  <span class="icon-svg icon-list" style="width: 13px; height: 13px;"></span>
+                </div>
+                <div class="identity-meta-body">
+                  <span class="identity-meta-label">Lista de Control</span>
+                  <span class="identity-meta-value text-truncate d-block" [title]="activeList()?.name">{{
+                    activeList()?.name }}</span>
+                </div>
+              </div>
+
+              <!-- Descripción -->
+              @if (activeList()?.description) {
+              <div class="identity-meta-row identity-meta-row--last">
+                <div class="identity-meta-icon identity-meta-icon--muted">
+                  <span class="icon-svg icon-message-square" style="width: 13px; height: 13px;"></span>
+                </div>
+                <div class="identity-meta-body">
+                  <span class="identity-meta-label">Descripción</span>
+                  <span class="identity-meta-value text-truncate d-block" [title]="activeList()?.description">{{
+                    activeList()?.description }}</span>
+                </div>
+              </div>
+              }
+
+            </div>
           </div>
-          } @else {
-          <!-- Placa (Texto) -->
-          <div class="mb-4">
-            <label class="form-label mb-1">Texto de la Placa</label>
-            <input type="text" class="form-control" placeholder="Ej. ABC123"
-              [value]="subjectName()"
-              (input)="subjectName.set($any($event.target).value)"
-              [disabled]="isSavingSubject()" />
+        </div>
+
+        <!-- Timeline Section -->
+        <div class="d-flex flex-column drawer-timeline-section mt-2">
+          <div class="d-flex align-items-center justify-content-between mb-4">
+            <h6 class="fw-bold text-uppercase text-muted mb-0 fs-timeline-title">Avistamientos recientes</h6>
+            <span class="badge badge-records-pill font-monospace fs-records-pill-padded">
+              {{ subjectDetections()[selectedSubjectDetailId()!]?.count || 0 }}
+            </span>
           </div>
 
-          <!-- Nombre del Propietario (Opcional) -->
-          <div class="mb-4">
-            <label class="form-label mb-1">Nombre del Propietario (Opcional)</label>
-            <input type="text" class="form-control" placeholder="Ej. Juan Pérez"
-              [value]="subjectOwnerName()"
-              (input)="subjectOwnerName.set($any($event.target).value)"
-              [disabled]="isSavingSubject()" />
+          <!-- Timeline Content -->
+          @if (subjectDetections()[selectedSubjectDetailId()!]?.loading) {
+          <div class="text-center py-5">
+            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+          </div>
+          }
+
+          @if (!subjectDetections()[selectedSubjectDetailId()!]?.loading &&
+          (!subjectDetections()[selectedSubjectDetailId()!]?.hits ||
+          subjectDetections()[selectedSubjectDetailId()!]?.hits?.length === 0)) {
+          <div class="d-flex flex-column align-items-center justify-content-center py-5 text-center">
+            <div class="empty-state-avatar-bubble mb-2 opacity-50">
+              <span class="icon-svg icon-warning text-muted" style="width: 24px; height: 24px;"></span>
+            </div>
+            <span class="text-muted small fst-italic fs-empty-sightings">Sin registros de avistamientos
+              recientes.</span>
+          </div>
+          }
+
+          @if (!subjectDetections()[selectedSubjectDetailId()!]?.loading &&
+          subjectDetections()[selectedSubjectDetailId()!]?.hits?.length! > 0) {
+          <div class="timeline-feed position-relative pe-5 me-3">
+            @for (hit of subjectDetections()[selectedSubjectDetailId()!]?.hits; track hit.id) {
+            <div class="timeline-item position-relative mb-4">
+              <!-- Punto del Timeline Premium con Anillo de Glow -->
+              <span class="timeline-bullet position-absolute rounded-circle"></span>
+
+              <div class="card timeline-card border p-3 rounded-3 transition-all shadow-sm border-start-3"
+                [class.border-start-emerald]="hit.confiabilidad >= 0.8"
+                [class.border-start-amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
+                [class.border-start-rose]="hit.confiabilidad < 0.5" (mouseenter)="setHoveredHit(hit)"
+                (mouseleave)="setHoveredHit(null)">
+                <div class="d-flex gap-3 align-items-center">
+                  <div class="timeline-img-wrapper flex-shrink-0 position-relative">
+                    <img [src]="hit.imagen" class="border bg-dark timeline-sighting-img shadow-xs" />
+                  </div>
+                  <div class="text-truncate flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                      <span class="small fw-bold text-body text-truncate d-flex align-items-center fs-sighting-camera">
+                        <span class="icon-svg icon-camara text-secondary me-2 opacity-75"
+                          style="width: 12px; height: 12px;"></span>
+                        {{ hit.camara }}
+                      </span>
+
+                      <span class="badge timeline-confidence-badge font-monospace"
+                        [class.badge-emerald]="hit.confiabilidad >= 0.8"
+                        [class.badge-amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
+                        [class.badge-rose]="hit.confiabilidad < 0.5">
+                        {{ (hit.confiabilidad * 100) | number:'1.0-0' }}%
+                      </span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 text-muted fs-sighting-time">
+                      <span class="icon-svg icon-clock" style="width: 11px; height: 11px; opacity: 0.6;"></span>
+                      <span>{{ hit.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            }
           </div>
           }
         </div>
-
-        <!-- Modal Footer -->
-        <div class="d-flex gap-3 pt-4 mt-2">
-          <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
-            (click)="closeAddSubjectModal()" [disabled]="isSavingSubject()">
-            Cancelar
-          </button>
-          <button
-            class="btn btn-primary flex-fill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 border-radius-8 fs-btn-save"
-            (click)="saveSubject()" [disabled]="isSaveDisabled()">
-            @if (isSavingSubject()) {
-            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-            <span>Guardando...</span>
-            } @else {
-            <span>Guardar Registro</span>
-            }
-          </button>
-        </div>
       </div>
-    </div>
-    }
 
-    <!-- Modal Crear/Editar Lista (Estilo Premium Unificado) -->
-    @if (showListModal()) {
-    <div class="modal-backdrop-custom d-flex align-items-center justify-content-center" (click)="closeListModal()">
-      <div class="modal-card-custom p-5 shadow-lg border" (click)="$event.stopPropagation()" style="max-width: 480px;">
-        <!-- Modal Header -->
-        <div class="modal-header-custom d-flex justify-content-between align-items-center mb-4">
-          <h4 class="fw-bold mb-0 text-primary">
-            {{ listModalMode() === 'create' ? 'Nueva Lista de Control' : 'Editar Lista de Control' }}
-          </h4>
-          <button class="btn-ghost p-1" (click)="closeListModal()" aria-label="Cerrar modal">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Modal Body -->
-        <div class="modal-body-custom">
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold mb-1">Nombre de la Lista</label>
-            <input type="text" class="form-control" placeholder="Ej. Acceso Restringido"
-              [value]="listModalName()"
-              (input)="listModalName.set($any($event.target).value)" />
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold mb-1">Descripción (Opcional)</label>
-            <textarea class="form-control" rows="3" placeholder="Describa el propósito..."
-              [value]="listModalDesc()"
-              (input)="listModalDesc.set($any($event.target).value)"></textarea>
-          </div>
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="modal-footer-custom d-flex gap-3 pt-3 mt-4">
-          <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8"
-            (click)="closeListModal()">
-            Cancelar
-          </button>
-          <button class="btn btn-primary flex-fill py-2 fw-semibold border-radius-8"
-            (click)="saveWatchlist()" [disabled]="!listModalName().trim()">
-            {{ listModalMode() === 'create' ? 'Crear Lista' : 'Guardar Cambios' }}
-          </button>
-        </div>
-      </div>
-    </div>
-    }
-
-    <!-- Modal de Confirmación: Eliminar Lista de Control -->
-    @if (showDeleteListModal()) {
-    <div class="delete-camera-modal-overlay" (click)="closeDeleteListModal()" aria-modal="true" role="dialog">
-      <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
-        <!-- Icono de advertencia -->
-        <div class="delete-modal-icon-wrap">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-        </div>
-
-        <!-- Título y mensaje -->
-        <h5 class="delete-modal-title">Eliminar Lista de Control</h5>
-        <p class="delete-modal-message">
-          ¿Estás seguro de que deseas eliminar la lista
-          <strong class="delete-modal-camera-name">{{ listToDelete()?.name }}</strong>?
-          Se eliminarán todos los sujetos asociados y esta acción no se puede deshacer.
-        </p>
-
-        <!-- Acciones -->
-        <div class="delete-modal-actions">
-          <button class="delete-modal-btn-cancel" (click)="closeDeleteListModal()" [disabled]="isDeletingList()">
-            Cancelar
-          </button>
-          <button class="delete-modal-btn-confirm" (click)="confirmDeleteWatchlist()" [disabled]="isDeletingList()">
-            @if (isDeletingList()) {
-            <span class="delete-modal-spinner"></span>
-            Eliminando...
-            } @else {
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6" /><path d="M14 11v6" />
-              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-            </svg>
-            Eliminar
-            }
-          </button>
-        </div>
-      </div>
-    </div>
-    }
-
-    <!-- Modal de Confirmación: Eliminar Sujeto -->
-    @if (showDeleteSubjectModal()) {
-    <div class="delete-camera-modal-overlay" (click)="closeDeleteSubjectModal()" aria-modal="true" role="dialog">
-      <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
-        <!-- Icono de advertencia -->
-        <div class="delete-modal-icon-wrap">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-        </div>
-
-        <!-- Título y mensaje -->
-        <h5 class="delete-modal-title">Eliminar Registro</h5>
-        <p class="delete-modal-message">
-          ¿Estás seguro de que deseas eliminar a
-          <strong class="delete-modal-camera-name">{{ subjectToDeleteName() }}</strong>
-          de la lista de control? Esta acción no se puede deshacer.
-        </p>
-
-        <!-- Acciones -->
-        <div class="delete-modal-actions">
-          <button class="delete-modal-btn-cancel" (click)="closeDeleteSubjectModal()" [disabled]="isDeletingSubject()">
-            Cancelar
-          </button>
-          <button class="delete-modal-btn-confirm" (click)="confirmDeleteSubject()" [disabled]="isDeletingSubject()">
-            @if (isDeletingSubject()) {
-            <span class="delete-modal-spinner"></span>
-            Eliminando...
-            } @else {
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6" /><path d="M14 11v6" />
-              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-            </svg>
-            Eliminar
-            }
-          </button>
+      <!-- Scroll Hint Overlay (Premium) -->
+      <div class="drawer-scroll-hint" [class.hidden]="drawerScrolledToBottom()" aria-hidden="true">
+        <div class="scroll-hint-chevron">
+          <span class="icon-svg icon-chevron-down" style="width: 18px; height: 18px;"></span>
         </div>
       </div>
     </div>
     }
   </div>
+
+  <!-- ── Sighting Preview Panel (Hover) ───────────────────── -->
+  @if (hoveredHit(); as hit) {
+  <div class="sighting-preview-panel" (mouseenter)="setHoveredHit(hit)" (mouseleave)="setHoveredHit(null)">
+
+    <!-- Image Hero -->
+    <div class="sighting-preview-hero">
+      <img [src]="hit.imagen" class="sighting-preview-img" alt="Avistamiento" />
+      <!-- Confidence badge -->
+      <div class="sighting-preview-conf" [class.conf-emerald]="hit.confiabilidad >= 0.8"
+        [class.conf-amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
+        [class.conf-rose]="hit.confiabilidad < 0.5">
+        {{ (hit.confiabilidad * 100) | number:'1.0-0' }}% Confianza
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="sighting-preview-body">
+      <h5 class="sighting-preview-title fw-bold mb-1">Detalle del Avistamiento</h5>
+      <p class="text-muted small mb-3">Información capturada en el evento de detección</p>
+
+      <!-- Meta rows -->
+      <div class="sighting-preview-meta">
+
+        <!-- Cámara -->
+        <div class="sighting-preview-row">
+          <div class="sighting-preview-icon sp-icon--camera">
+            <span class="icon-svg icon-camara"
+              style="width: 14px; height: 14px; background-color: currentColor;"></span>
+          </div>
+          <div class="sighting-preview-field">
+            <span class="sp-label">Cámara</span>
+            <span class="sp-value">{{ hit.camara }}</span>
+          </div>
+        </div>
+
+        <!-- Timestamp -->
+        <div class="sighting-preview-row">
+          <div class="sighting-preview-icon sp-icon--time">
+            <span class="icon-svg icon-clock" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+          </div>
+          <div class="sighting-preview-field">
+            <span class="sp-label">Fecha y Hora</span>
+            <span class="sp-value font-monospace">{{ hit.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
+          </div>
+        </div>
+
+        <!-- Confiabilidad -->
+        <div class="sighting-preview-row">
+          <div class="sighting-preview-icon sp-icon--conf">
+            <span class="icon-svg icon-shield"
+              style="width: 14px; height: 14px; background-color: currentColor;"></span>
+          </div>
+          <div class="sighting-preview-field">
+            <span class="sp-label">Confiabilidad</span>
+            <div class="sp-conf-bar-wrapper">
+              <div class="sp-conf-bar" [style.width.%]="hit.confiabilidad * 100"
+                [class.sp-conf-bar--emerald]="hit.confiabilidad >= 0.8"
+                [class.sp-conf-bar--amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
+                [class.sp-conf-bar--rose]="hit.confiabilidad < 0.5">
+              </div>
+              <span class="sp-conf-label">{{ (hit.confiabilidad * 100) | number:'1.0-0' }}%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ID del registro -->
+        <div class="sighting-preview-row">
+          <div class="sighting-preview-icon sp-icon--id">
+            <span class="icon-svg icon-box" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+          </div>
+          <div class="sighting-preview-field">
+            <span class="sp-label">ID Detección</span>
+            <span class="sp-value font-monospace text-truncate d-block" [title]="hit.id">{{ hit.id }}</span>
+          </div>
+        </div>
+
+        <!-- Sujeto asociado -->
+        <div class="sighting-preview-row sighting-preview-row--highlight">
+          <div class="sighting-preview-icon sp-icon--subject">
+            <span class="icon-svg icon-user" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+          </div>
+          <div class="sighting-preview-field">
+            <span class="sp-label">Sujeto Asociado</span>
+            <span class="sp-value fw-bold">{{ selectedSubjectDetail()?.nombre_asociado ||
+              selectedSubjectDetail()?.metadata?.text_placa || '—' }}</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Atributos Detallados Section -->
+      @if (getTipoObjeto(hit) || getEdad(hit) || getGenero(hit) || getReconocimiento(hit) || (getPosturas(hit) &&
+      getPosturas(hit).length > 0) || (hit.colores && hit.colores.length > 0)) {
+      <h6 class="sighting-preview-section-title fw-bold text-uppercase mt-4 mb-3"
+        style="font-size: 0.75rem; letter-spacing: 0.08em; color: var(--text-muted);">Atributos Detectados</h6>
+
+      <div class="sighting-attributes-container d-flex flex-column gap-3">
+        <!-- Identificación -->
+        @if (getTipoObjeto(hit) || getEdad(hit) || getGenero(hit) || getReconocimiento(hit)) {
+        <div class="popover-section">
+          <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
+            style="font-size: 0.65rem; letter-spacing: 0.05em;">Identificación</div>
+          <div class="attributes-grid">
+            @if (getTipoObjeto(hit)) {
+            <span class="attribute-pill object-type-pill text-capitalize">
+              <span class="pill-dot"></span>
+              {{ getTipoObjeto(hit) }}
+            </span>
+            }
+            @if (getEdad(hit)) {
+            <span class="attribute-pill age-pill text-capitalize">
+              Edad: {{ getEdad(hit) }}
+            </span>
+            }
+            @if (getGenero(hit)) {
+            <span class="attribute-pill gender-pill text-capitalize">
+              Género: {{ getGenero(hit) }}
+            </span>
+            }
+            @if (getReconocimiento(hit)) {
+            <span class="attribute-pill recognition-pill text-capitalize">
+              {{ getReconocimiento(hit) }}
+            </span>
+            }
+          </div>
+        </div>
+        }
+
+        <!-- Posturas -->
+        @if (getPosturas(hit) && getPosturas(hit).length > 0) {
+        <div class="popover-section">
+          <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
+            style="font-size: 0.65rem; letter-spacing: 0.05em;">Posturas</div>
+          <div class="attributes-grid">
+            @for (pos of getPosturas(hit); track pos.postura) {
+            <span class="attribute-pill posture-pill text-capitalize">
+              {{ pos.postura }}
+              <span class="posture-count">{{ pos.conteo }}</span>
+            </span>
+            }
+          </div>
+        </div>
+        }
+
+        <!-- Colores -->
+        @if (hit.colores && hit.colores.length > 0) {
+        <div class="popover-section">
+          <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
+            style="font-size: 0.65rem; letter-spacing: 0.05em;">Colores Detectados</div>
+          <div class="attributes-grid">
+            @for (col of hit.colores; track col.colorText) {
+            <span class="color-pill-v2 d-inline-flex align-items-center rounded-pill py-1 px-2 border"
+              [style.background-color]="getColorStyle(col)"
+              [style.color]="getColorLuminance(col.r, col.g, col.b) > 0.6 ? '#1e293b' : '#ffffff'"
+              [style.border-color]="getColorLuminance(col.r, col.g, col.b) > 0.9 ? '#cbd5e1' : 'transparent'"
+              [title]="col.colorText + ' (' + (col.porcentaje * 100 | number:'1.0-0') + '%)'">
+              <span class="color-text text-capitalize" style="font-size: 0.7rem; font-weight: 600;">{{ col.colorText
+                }}</span>
+              <span class="color-percentage-v2" style="font-size: 0.65rem; opacity: 0.85; margin-left: 4px;">{{
+                (col.porcentaje * 100) | number:'1.0-0' }}%</span>
+            </span>
+            }
+          </div>
+        </div>
+        }
+      </div>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- Modal Agregar Persona/Placa a Lista (Estilo Premium) -->
+  @if (showAddSubjectModal()) {
+  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center" (click)="closeAddSubjectModal()">
+    <div class="modal-card-custom p-5 shadow-lg border" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold mb-0 text-body fs-5">
+          Agregar a la Lista de {{ listType() === 'face_recognition' ? 'Rostros' : 'Placas' }}
+        </h5>
+        <button class="btn-ghost p-1" (click)="closeAddSubjectModal()" aria-label="Cerrar modal"
+          [disabled]="isSavingSubject()">
+          <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body-custom">
+        @if (listType() === 'face_recognition') {
+        <!-- Nombre del Sujeto -->
+        <div class="mb-4">
+          <label class="form-label mb-1">Nombre Completo</label>
+          <input type="text" class="form-control" placeholder="Ej. Juan Pérez" [value]="subjectName()"
+            (input)="subjectName.set($any($event.target).value)" [disabled]="isSavingSubject()" />
+        </div>
+
+        <!-- Carga de Imagen -->
+        <div class="mb-4">
+          <label class="form-label mb-2">Foto de la Persona</label>
+
+          <div
+            class="image-upload-zone p-4 border rounded-3 text-center position-relative transition-all d-flex flex-column align-items-center justify-content-center"
+            [class.has-preview]="imagePreviewUrl()" (click)="fileInput.click()">
+
+            <input type="file" #fileInput class="d-none" accept="image/*" (change)="onFileSelected($event)" />
+
+            @if (!imagePreviewUrl()) {
+            <div class="upload-icon mb-2 text-primary opacity-75">
+              <span class="icon-svg icon-box" style="width: 32px; height: 32px;"></span>
+            </div>
+            <span class="fw-semibold text-body small">Haz clic para seleccionar una foto</span>
+            <span class="text-muted extra-small mt-1">Formatos recomendados: JPG, PNG</span>
+            } @else {
+            <div class="preview-container position-relative w-100">
+              <img [src]="imagePreviewUrl()" class="img-preview rounded shadow-sm max-preview-img" />
+              <button
+                class="btn-ghost remove-preview-btn position-absolute p-1 rounded-circle shadow border bg-body modal-remove-btn"
+                (click)="selectedFile.set(null); imagePreviewUrl.set(null); $event.stopPropagation()"
+                title="Eliminar Foto" [disabled]="isSavingSubject()">
+                <span class="icon-svg icon-close text-danger" style="width: 14px; height: 14px;"></span>
+              </button>
+            </div>
+            }
+          </div>
+        </div>
+        } @else {
+        <!-- Placa (Texto) -->
+        <div class="mb-4">
+          <label class="form-label mb-1">Texto de la Placa</label>
+          <input type="text" class="form-control" placeholder="Ej. ABC123" [value]="subjectName()"
+            (input)="subjectName.set($any($event.target).value)" [disabled]="isSavingSubject()" />
+        </div>
+
+        <!-- Nombre del Propietario (Opcional) -->
+        <div class="mb-4">
+          <label class="form-label mb-1">Nombre del Propietario (Opcional)</label>
+          <input type="text" class="form-control" placeholder="Ej. Juan Pérez" [value]="subjectOwnerName()"
+            (input)="subjectOwnerName.set($any($event.target).value)" [disabled]="isSavingSubject()" />
+        </div>
+        }
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="d-flex gap-3 pt-4 mt-2">
+        <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
+          (click)="closeAddSubjectModal()" [disabled]="isSavingSubject()">
+          Cancelar
+        </button>
+        <button
+          class="btn btn-primary flex-fill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 border-radius-8 fs-btn-save"
+          (click)="saveSubject()" [disabled]="isSaveDisabled()">
+          @if (isSavingSubject()) {
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <span>Guardando...</span>
+          } @else {
+          <span>Guardar Registro</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Modal Crear/Editar Lista (Estilo Premium Unificado) -->
+  @if (showListModal()) {
+  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center" (click)="closeListModal()">
+    <div class="modal-card-custom p-5 shadow-lg border" (click)="$event.stopPropagation()" style="max-width: 480px;">
+      <!-- Modal Header -->
+      <div class="modal-header-custom d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0 text-primary">
+          {{ listModalMode() === 'create' ? 'Nueva Lista de Control' : 'Editar Lista de Control' }}
+        </h4>
+        <button class="btn-ghost p-1" (click)="closeListModal()" aria-label="Cerrar modal">
+          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body-custom">
+        <div class="mb-3">
+          <label class="form-label text-muted small fw-semibold mb-1">Nombre de la Lista</label>
+          <input type="text" class="form-control" placeholder="Ej. Acceso Restringido" [value]="listModalName()"
+            (input)="listModalName.set($any($event.target).value)" />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label text-muted small fw-semibold mb-1">Descripción (Opcional)</label>
+          <textarea class="form-control" rows="3" placeholder="Describa el propósito..." [value]="listModalDesc()"
+            (input)="listModalDesc.set($any($event.target).value)"></textarea>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer-custom d-flex gap-3 pt-3 mt-4">
+        <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8" (click)="closeListModal()">
+          Cancelar
+        </button>
+        <button class="btn btn-primary flex-fill py-2 fw-semibold border-radius-8" (click)="saveWatchlist()"
+          [disabled]="!listModalName().trim()">
+          {{ listModalMode() === 'create' ? 'Crear Lista' : 'Guardar Cambios' }}
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Modal de Confirmación: Eliminar Lista de Control -->
+  @if (showDeleteListModal()) {
+  <div class="delete-camera-modal-overlay" (click)="closeDeleteListModal()" aria-modal="true" role="dialog">
+    <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
+      <!-- Icono de advertencia -->
+      <div class="delete-modal-icon-wrap">
+        <span class="icon-svg icon-warning text-warning"
+          style="width: 28px; height: 28px; background-color: currentColor;"></span>
+      </div>
+
+      <!-- Título y mensaje -->
+      <h5 class="delete-modal-title">Eliminar Lista de Control</h5>
+      <p class="delete-modal-message">
+        ¿Estás seguro de que deseas eliminar la lista
+        <strong class="delete-modal-camera-name">{{ listToDelete()?.name }}</strong>?
+        Se eliminarán todos los sujetos asociados y esta acción no se puede deshacer.
+      </p>
+
+      <!-- Acciones -->
+      <div class="delete-modal-actions">
+        <button class="delete-modal-btn-cancel" (click)="closeDeleteListModal()" [disabled]="isDeletingList()">
+          Cancelar
+        </button>
+        <button class="delete-modal-btn-confirm" (click)="confirmDeleteWatchlist()" [disabled]="isDeletingList()">
+          @if (isDeletingList()) {
+          <span class="delete-modal-spinner"></span>
+          Eliminando...
+          } @else {
+          <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+          Eliminar
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Modal de Confirmación: Eliminar Sujeto -->
+  @if (showDeleteSubjectModal()) {
+  <div class="delete-camera-modal-overlay" (click)="closeDeleteSubjectModal()" aria-modal="true" role="dialog">
+    <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
+      <!-- Icono de advertencia -->
+      <div class="delete-modal-icon-wrap">
+        <span class="icon-svg icon-warning text-warning"
+          style="width: 28px; height: 28px; background-color: currentColor;"></span>
+      </div>
+
+      <!-- Título y mensaje -->
+      <h5 class="delete-modal-title">Eliminar Registro</h5>
+      <p class="delete-modal-message">
+        ¿Estás seguro de que deseas eliminar a
+        <strong class="delete-modal-camera-name">{{ subjectToDeleteName() }}</strong>
+        de la lista de control? Esta acción no se puede deshacer.
+      </p>
+
+      <!-- Acciones -->
+      <div class="delete-modal-actions">
+        <button class="delete-modal-btn-cancel" (click)="closeDeleteSubjectModal()" [disabled]="isDeletingSubject()">
+          Cancelar
+        </button>
+        <button class="delete-modal-btn-confirm" (click)="confirmDeleteSubject()" [disabled]="isDeletingSubject()">
+          @if (isDeletingSubject()) {
+          <span class="delete-modal-spinner"></span>
+          Eliminando...
+          } @else {
+          <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+          Eliminar
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+  <!-- Modal Editar Persona/Placa (Estilo Premium Unificado) -->
+  @if (showEditSubjectModal()) {
+  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center" (click)="closeEditSubjectModal()">
+    <div class="modal-card-custom p-5 shadow-lg border" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold mb-0 text-body fs-5">
+          Editar Sujeto de {{ listType() === 'face_recognition' ? 'Rostros' : 'Placas' }}
+        </h5>
+        <button class="btn-ghost p-1" (click)="closeEditSubjectModal()" aria-label="Cerrar modal"
+          [disabled]="isUpdatingSubject()">
+          <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body-custom">
+        @if (listType() === 'face_recognition') {
+        <!-- Nombre del Sujeto -->
+        <div class="mb-4">
+          <label class="form-label mb-1">Nombre Completo</label>
+          <input type="text" class="form-control" placeholder="Ej. Juan Pérez" [value]="editSubjectName()"
+            (input)="editSubjectName.set($any($event.target).value)" [disabled]="isUpdatingSubject()" />
+        </div>
+
+        <!-- Carga/Reemplazo de Imagen -->
+        <div class="mb-4">
+          <label class="form-label mb-2">Reemplazar Foto (Opcional)</label>
+          <div
+            class="image-upload-zone p-4 border rounded-3 text-center position-relative transition-all d-flex flex-column align-items-center justify-content-center has-preview"
+            (click)="editFileInput.click()">
+            <input type="file" #editFileInput class="d-none" accept="image/*" (change)="onEditFileSelected($event)" />
+
+            <div class="preview-container position-relative w-100">
+              <img [src]="editImagePreviewUrl() || 'logo.svg'" class="img-preview rounded shadow-sm max-preview-img" />
+              @if (selectedEditFile()) {
+              <button
+                class="btn-ghost remove-preview-btn position-absolute p-1 rounded-circle shadow border bg-body modal-remove-btn"
+                (click)="selectedEditFile.set(null); editImagePreviewUrl.set(selectedSubjectDetail()?.metadata?.url_img || null); $event.stopPropagation()"
+                title="Deshacer Cambio" [disabled]="isUpdatingSubject()">
+                <span class="icon-svg icon-close text-danger" style="width: 14px; height: 14px;"></span>
+              </button>
+              }
+            </div>
+          </div>
+        </div>
+        } @else {
+        <!-- Placa (Texto) -->
+        <div class="mb-4">
+          <label class="form-label mb-1">Texto de la Placa</label>
+          <input type="text" class="form-control" placeholder="Ej. ABC123" [value]="editSubjectPlate()"
+            (input)="editSubjectPlate.set($any($event.target).value)" [disabled]="isUpdatingSubject()" />
+        </div>
+
+        <!-- Nombre del Propietario (Opcional) -->
+        <div class="mb-4">
+          <label class="form-label mb-1">Nombre del Propietario</label>
+          <input type="text" class="form-control" placeholder="Ej. Juan Pérez" [value]="editSubjectName()"
+            (input)="editSubjectName.set($any($event.target).value)" [disabled]="isUpdatingSubject()" />
+        </div>
+        }
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="d-flex gap-3 pt-4 mt-2">
+        <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
+          (click)="closeEditSubjectModal()" [disabled]="isUpdatingSubject()">
+          Cancelar
+        </button>
+        <button
+          class="btn btn-primary flex-fill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 border-radius-8 fs-btn-save"
+          (click)="saveEditSubject()"
+          [disabled]="isUpdatingSubject() || (listType() === 'face_recognition' ? !editSubjectName().trim() : !editSubjectPlate().trim())">
+          @if (isUpdatingSubject()) {
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <span>Guardando...</span>
+          } @else {
+          <span>Guardar Cambios</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+</div>

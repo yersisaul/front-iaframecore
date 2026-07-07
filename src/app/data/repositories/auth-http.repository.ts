@@ -15,10 +15,10 @@ export class AuthHttpRepository implements IAuthRepository {
 
   constructor(private http: HttpClient) {}
 
-  login(username: string, contrasena: string): Observable<AuthResult> {
+  login(email: string, password: string): Observable<AuthResult> {
     const body = {
-      usuario: username,
-      password: contrasena
+      email,
+      password
     };
 
     return this.http.post<AuthResponseDTO>(`${this.apiUrl}/login`, body).pipe(

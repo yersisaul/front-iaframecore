@@ -28,6 +28,13 @@ export interface ScheduleDTO {
 
 export class ScheduleMapper {
   static toDomain(dto: ScheduleDTO): Schedule {
+    let mappedStatus = dto.estado || '';
+    if (mappedStatus === 'active') {
+      mappedStatus = 'activo';
+    } else if (mappedStatus === 'inactive') {
+      mappedStatus = 'inactivo';
+    }
+
     return {
       id: dto.schedule_id,
       name: dto.nombre,
@@ -36,7 +43,7 @@ export class ScheduleMapper {
       start: parseUtcDate(dto.timestamp_inicio),
       end: parseUtcDate(dto.timestamp_fin),
       frequency: dto.frecuencia ? dto.frecuencia.trim().toLowerCase() : '',
-      status: dto.estado
+      status: mappedStatus
     };
   }
 }

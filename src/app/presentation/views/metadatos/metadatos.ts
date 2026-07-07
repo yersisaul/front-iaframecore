@@ -13,6 +13,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 
 import { ListService } from '../../../core/services/list.service';
+import { CameraService } from '../../../core/services/camera.service';
 
 @Component({
   selector: 'app-metadatos',
@@ -29,6 +30,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   private storageRepository = inject(IStorageRepository);
   private destroyRef = inject(DestroyRef);
   private listService = inject(ListService);
+  private cameraService = inject(CameraService);
 
   // Watchlist Modal Integration
   readonly showAddToWatchlistModal = signal<boolean>(false);
@@ -57,16 +59,80 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   readonly isLoading = this.metadataService.isLoading;
   readonly currentPage = this.metadataService.currentPage;
   readonly pageSize = this.metadataService.pageSize;
+  readonly newRecordIds = this.metadataService.newRecordIds;
 
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
 
+  // ── Computed Filter Options (API + Selected + Fallbacks) ──────────────────────
+  readonly tipoObjetoOptions = computed<string[]>(() => {
+    const opts = this.filterOptions();
+    const dynamic = opts ? opts.tipoObjeto || [] : [];
+    const temp = this.tempFilters()?.tipoObjeto || [];
+    const idx = this.activeIndex();
+    let fallbacks: string[] = [];
+    if (idx === 'personas') fallbacks = ['persona', 'ciclista', 'peatón'];
+    else if (idx === 'vehiculos') fallbacks = ['auto', 'camioneta', 'motocicleta', 'camión', 'omnibús'];
+    else if (idx === 'otros') fallbacks = ['mochila', 'maleta', 'bolso'];
+    
+    return Array.from(new Set([...dynamic, ...temp, ...fallbacks])).filter(Boolean);
+  });
+
+  readonly coloresOptions = computed<string[]>(() => {
+    const opts = this.filterOptions();
+    const dynamic = opts ? opts.colores || [] : [];
+    const temp = this.tempFilters()?.colores || [];
+    const fallbacks = ['negro', 'blanco', 'gris', 'rojo', 'azul', 'verde', 'amarillo', 'marrón'];
+    return Array.from(new Set([...dynamic, ...temp, ...fallbacks])).filter(Boolean);
+  });
+
+  readonly posturasOptions = computed<string[]>(() => {
+    const opts = this.filterOptions();
+    const dynamic = opts ? opts.posturas || [] : [];
+    const temp = this.tempFilters()?.posturas || [];
+    const fallbacks = ['caminando', 'parado', 'sentado', 'corriendo'];
+    return Array.from(new Set([...dynamic, ...temp, ...fallbacks])).filter(Boolean);
+  });
+
+  readonly edadesOptions = computed<string[]>(() => {
+    const opts = this.filterOptions();
+    const dynamic = opts ? opts.edades || [] : [];
+    const temp = this.tempFilters()?.edad ? [this.tempFilters().edad!] : [];
+    const fallbacks = ['niño', 'joven', 'adulto', 'anciano'];
+    return Array.from(new Set([...dynamic, ...temp, ...fallbacks])).filter(Boolean);
+  });
+
+  readonly generosOptions = computed<string[]>(() => {
+    const opts = this.filterOptions();
+    const dynamic = opts ? opts.generos || [] : [];
+    const temp = this.tempFilters()?.genero ? [this.tempFilters().genero!] : [];
+    const fallbacks = ['masculino', 'femenino'];
+    return Array.from(new Set([...dynamic, ...temp, ...fallbacks])).filter(Boolean);
+  });
+
+  readonly camarasOptions = computed<string[]>(() => {
+    const opts = this.filterOptions();
+    const dynamic = opts ? opts.camaras || [] : [];
+    const temp = this.tempFilters()?.camaras || [];
+    // Fallback: incluir todos los nombres de cámaras registradas en el sistema.
+    // Esto garantiza que el desplegable tenga opciones aunque OpenSearch aún no tenga
+    // documentos indexados para esas cámaras o si las agregaciones fallan.
+    const systemCameras = this.cameraService.cameras().map(c => c.name);
+    return Array.from(new Set([...dynamic, ...temp, ...systemCameras])).filter(Boolean);
+  });
+
+  readonly reconocimientosOptions = computed<string[]>(() => {
+    const opts = this.filterOptions();
+    const dynamic = opts ? opts.reconocimientos || [] : [];
+    const temp = this.tempFilters()?.reconocimiento ? [this.tempFilters().reconocimiento!] : [];
+    return Array.from(new Set([...dynamic, ...temp])).filter(Boolean);
+  });
+
   // ── Pagination conscious of grid ──
   readonly columns = signal(this.getInitialColumns());
-  readonly rows = signal(this.getInitialRows());
 
   readonly limitOptions = computed(() => {
-    const base = this.columns() * this.rows();
-    return [base * 2, base * 3, base * 4];
+    const cols = this.columns();
+    return [cols * 10, cols * 20, cols * 30];
   });
 
   // Filter drawer/panel visibility
@@ -411,7 +477,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       const queryParams: any = {};
       queryParams['page'] = page > 1 ? page : null;
 
-      const defaultPageSize = 30;
+      const defaultPageSize = this.columns() * 10;
       queryParams['limit'] = pageSize !== defaultPageSize ? pageSize : null;
 
       // Sync active filters
@@ -441,6 +507,10 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     // Load watchlists globally
     this.listService.loadLists().subscribe();
 
+    // Precargar todas las cámaras del sistema para poblar el desplegable de filtro
+    // aunque OpenSearch no tenga documentos indexados para esas cámaras aún.
+    this.cameraService.getAllCameras().subscribe();
+
     // Coordinate path parameters and query parameters to avoid duplicate network calls
     combineLatest({
       params: this.route.paramMap,
@@ -454,8 +524,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
         const pageVal = queryParams['page'] ? parseInt(queryParams['page'], 10) : 1;
         const page = !isNaN(pageVal) && pageVal > 0 ? pageVal : 1;
 
-        const base = this.columns() * this.rows();
-        const defaultPageSize = base * 2;
+        const defaultPageSize = this.columns() * 10;
         const limitVal = queryParams['limit'] ? parseInt(queryParams['limit'], 10) : null;
         const pageSize = limitVal && !isNaN(limitVal) && limitVal > 0 ? limitVal : defaultPageSize;
 
@@ -508,33 +577,26 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
 
   private getInitialColumns(): number {
     const w = this.estimateContainerWidth();
-    return Math.max(1, Math.floor((w + 24) / (420 + 24)));
+    return Math.max(1, Math.floor((w + 24) / (335 + 24)));
   }
 
   private getInitialRows(): number {
-    if (typeof window === 'undefined') return 3;
-    return Math.max(3, Math.floor((window.innerHeight - 320) / 420));
+    return 3;
   }
 
   private adjustColumnsAndLimit(containerWidth: number): void {
-    const newCols = Math.max(1, Math.floor((containerWidth + 24) / (420 + 24)));
-    const newRows = Math.max(3, Math.floor((window.innerHeight - 320) / 420));
-    
+    if (containerWidth <= 0) return;
+    const newCols = Math.max(1, Math.floor((containerWidth + 24) / (335 + 24)));
     const oldCols = this.columns();
-    const oldRows = this.rows();
     
-    if (newCols !== oldCols || newRows !== oldRows) {
+    if (newCols !== oldCols) {
       const currentSize = this.pageSize();
-      const oldBase = oldCols * oldRows;
-      const screens = Math.max(2, Math.min(4, Math.round(currentSize / (oldBase || 1))));
+      const validOptions = [newCols * 10, newCols * 20, newCols * 30];
       
       this.columns.set(newCols);
-      this.rows.set(newRows);
-      
-      const newBase = newCols * newRows;
-      const newSize = newBase * screens;
-      
-      this.metadataService.setPageSize(newSize);
+      if (!validOptions.includes(currentSize)) {
+        this.metadataService.setPageSize(newCols * 10);
+      }
       this.metadataService.setPage(1);
     }
   }
@@ -985,5 +1047,19 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
         alert('Error al agregar el sujeto a la lista de control.');
       }
     });
+  }
+
+  filtrarPorCoincidencia(record: any): void {
+    if (!record || !record.embedding || record.embedding.length === 0) {
+      alert('Este registro no contiene un vector de características (embedding) disponible para filtrar.');
+      return;
+    }
+
+    this.metadataService.updateFilters({
+      imageEmbedding: record.embedding,
+      imageSearchUrl: record.imagenRemota,
+      imageFile: null
+    });
+    this.metadataService.setPage(1);
   }
 }

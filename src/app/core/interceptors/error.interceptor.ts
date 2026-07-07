@@ -14,8 +14,15 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       if (error.status === 401) {
         // Ignoramos la validación inicial de sesión y el login para evitar redirecciones infinitas o flujos truncados
         if (!req.url.endsWith('/session') && !req.url.endsWith('/login')) {
-          authService.currentUser.set(null);
-          router.navigate(['/login']);
+          authService.logout().subscribe({
+            next: () => {
+              router.navigate(['/login']);
+            },
+            error: () => {
+              // Fallback en caso de fallo
+              router.navigate(['/login']);
+            }
+          });
         }
       }
       return throwError(() => error);

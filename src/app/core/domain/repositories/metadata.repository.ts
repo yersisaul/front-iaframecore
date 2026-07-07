@@ -17,4 +17,5 @@ export abstract class IMetadataRepository {
     pageSize: number
   ): Observable<MetadataSearchResult>;
   abstract searchFacesByImage(file: File, size: number): Observable<MetaRostro[]>;
+  abstract getById(index: MetaIndexName, docId: string): Observable<MetaRecord>;
 }

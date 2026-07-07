@@ -19,6 +19,14 @@ export class MetadataService {
   readonly isLoading = signal<boolean>(false);
   readonly currentPage = signal<number>(1);
   readonly pageSize = signal<number>(24);
+  readonly newRecordIds = signal<Set<string>>(new Set());
+
+  markAsNew(id: string): void {
+    this.newRecordIds.update(s => new Set([...s, id]));
+    setTimeout(() => {
+      this.newRecordIds.update(s => { const next = new Set(s); next.delete(id); return next; });
+    }, 900);
+  }
 
   constructor(
     private repository: IMetadataRepository,
@@ -45,6 +53,17 @@ export class MetadataService {
         return of(fallback);
       })
     );
+  }
+
+  incrementIndexCount(indexName: MetaIndexName): void {
+    this.availableIndices.update(list => {
+      return list.map(item => {
+        if (item.name === indexName) {
+          return { ...item, count: item.count + 1 };
+        }
+        return item;
+      });
+    });
   }
 
   setActiveIndex(index: MetaIndexName): void {

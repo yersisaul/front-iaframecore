@@ -26,6 +26,8 @@ import { IStorageRepository } from './core/domain/repositories/storage.repositor
 import { StorageHttpRepository } from './data/repositories/storage-http.repository';
 import { IListRepository } from './core/domain/repositories/list.repository';
 import { ListHttpRepository } from './data/repositories/list-http.repository';
+import { IEventRepository } from './core/domain/repositories/event.repository';
+import { EventHttpRepository } from './data/repositories/event-http.repository';
 
 export function initializeApp(authService: AuthService) {
   return () => authService.checkSession();
@@ -56,7 +58,8 @@ export const appConfig: ApplicationConfig = {
     { provide: IAuthRepository, useClass: AuthHttpRepository },
     { provide: IAnalyticRepository, useClass: AnalyticHttpRepository },
     { provide: IStorageRepository, useClass: StorageHttpRepository },
-    { provide: IListRepository, useClass: ListHttpRepository }
+    { provide: IListRepository, useClass: ListHttpRepository },
+    { provide: IEventRepository, useClass: EventHttpRepository }
   ]
 };
 

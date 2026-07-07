@@ -8,6 +8,7 @@ import { Metadatos } from './metadatos';
 import { IStorageRepository } from '../../../core/domain/repositories/storage.repository';
 import { IMetadataRepository } from '../../../core/domain/repositories/metadata.repository';
 import { IListRepository } from '../../../core/domain/repositories/list.repository';
+import { ICameraRepository } from '../../../core/domain/repositories/camera.repository';
 
 describe('Metadatos', () => {
   let component: Metadatos;
@@ -33,6 +34,15 @@ describe('Metadatos', () => {
     updateList: () => of({})
   };
 
+  const mockCameraRepository = {
+    getByHost: () => of([]),
+    getAll: () => of([]),
+    create: () => of({}),
+    update: () => of({}),
+    updateStatus: () => of({}),
+    delete: () => of(undefined)
+  };
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Metadatos],
@@ -42,7 +52,8 @@ describe('Metadatos', () => {
         provideHttpClientTesting(),
         { provide: IStorageRepository, useValue: mockStorageRepository },
         { provide: IMetadataRepository, useValue: mockMetadataRepository },
-        { provide: IListRepository, useValue: mockListRepository }
+        { provide: IListRepository, useValue: mockListRepository },
+        { provide: ICameraRepository, useValue: mockCameraRepository }
       ]
     }).compileComponents();
 
@@ -57,21 +68,19 @@ describe('Metadatos', () => {
 
   it('should compute limitOptions and adjust pageSize on layout changes', () => {
     component.columns.set(5);
-    component.rows.set(3);
 
-    // base = 15. We drop base * 1, so limitOptions starts at base * 2 (30)
-    expect(component.limitOptions()).toEqual([30, 45, 60]);
+    // base = 5. limitOptions should be: [50, 100, 150]
+    expect(component.limitOptions()).toEqual([50, 100, 150]);
 
     const spySetPageSize = vi.spyOn((component as any).metadataService, 'setPageSize');
     const spySetPage = vi.spyOn((component as any).metadataService, 'setPage');
 
-    // Trigger adjustment. We call it with a width that fits 4 columns and 3 rows (base = 12)
-    // Old base was 15, current size in service is 30 (screens = 2). New size should be 12 * 2 = 24.
-    component['adjustColumnsAndLimit'](4 * 444 - 24);
+    // Trigger adjustment. We call it with a width that fits 4 columns (base cols = 4)
+    // 4 * (335 + 24) - 24 = 1412px
+    component['adjustColumnsAndLimit'](1412);
 
     expect(component.columns()).toBe(4);
-    expect(component.rows()).toBe(3);
-    expect(spySetPageSize).toHaveBeenCalledWith(24);
+    expect(spySetPageSize).toHaveBeenCalledWith(40);
     expect(spySetPage).toHaveBeenCalledWith(1);
   });
 });

@@ -26,6 +26,8 @@ function getEnvValue(key) {
 const apiTarget = getEnvValue('API_TARGET');
 const openSearchTarget = getEnvValue('OPENSEARCH_TARGET');
 
+const wsTarget = apiTarget ? apiTarget.replace(/^http/, 'ws') : '';
+
 if (!apiTarget || !openSearchTarget) {
   console.error('❌ Error: API_TARGET u OPENSEARCH_TARGET no están definidos en el archivo .env.');
   process.exit(1);
@@ -35,24 +37,53 @@ console.log(`=========================================`);
 console.log(`🔌 Cargando proxy desde variables de entorno:`);
 console.log(`   - /api        -> ${apiTarget}`);
 console.log(`   - /opensearch -> ${openSearchTarget}`);
+console.log(`   - /ws         -> ${wsTarget} (WebSocket)`);
 console.log(`=========================================`);
+
+const dynamicCorsBypass = {
+  changeOrigin: true,
+  secure: false,
+  onProxyReq: (proxyReq, req, res) => {
+    // Si la petición original tiene un Origin, lo mantenemos en la subida para no romper firmas
+    if (req.headers.origin) {
+      proxyReq.setHeader('Origin', req.headers.origin);
+    }
+  },
+  onProxyRes: (proxyRes, req, res) => {
+    // Reescribimos las cabeceras de respuesta al vuelo para que el navegador siempre las acepte
+    if (req.headers.origin) {
+      proxyRes.headers['access-control-allow-origin'] = req.headers.origin;
+      proxyRes.headers['access-control-allow-credentials'] = 'true';
+      proxyRes.headers['access-control-allow-headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey';
+      proxyRes.headers['access-control-allow-methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+    }
+  }
+};
 
 module.exports = {
   "/api": {
+    ...dynamicCorsBypass,
     "target": apiTarget,
-    "secure": false,
-    "changeOrigin": true,
     "pathRewrite": {
       "^/api": ""
     }
   },
   "/opensearch": {
+    ...dynamicCorsBypass,
     "target": openSearchTarget,
-    "secure": false,
-    "changeOrigin": true,
     "pathRewrite": {
       "^/opensearch": ""
     },
     "logLevel": "warn"
+  },
+  "/ws": {
+    "target": wsTarget,
+    "secure": false,
+    "changeOrigin": true,
+    "ws": true,
+    "logLevel": "debug",
+    "headers": {
+      "Origin": apiTarget
+    }
   }
 };

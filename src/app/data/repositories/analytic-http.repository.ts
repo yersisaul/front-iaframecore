@@ -14,6 +14,16 @@ export class AnalyticHttpRepository implements IAnalyticRepository {
 
   constructor(private http: HttpClient) {}
 
+  getAll(): Observable<Analytic[]> {
+    return this.http.get<AnalyticDTO[]>(`${this.apiUrl}/`).pipe(
+      map(dtos => (dtos || []).map(AnalyticMapper.toDomain)),
+      catchError(err => {
+        console.error('Error in AnalyticHttpRepository.getAll:', err);
+        return of([]);
+      })
+    );
+  }
+
   getByHost(hostFingerprint: string): Observable<Analytic[]> {
     return this.http.get<AnalyticDTO[]>(`${this.apiUrl}/${hostFingerprint}`).pipe(
       map(dtos => (dtos || []).map(AnalyticMapper.toDomain)),
@@ -25,7 +35,8 @@ export class AnalyticHttpRepository implements IAnalyticRepository {
   }
 
   updateStatus(analyticId: string, status: 'active' | 'inactive'): Observable<any> {
-    return this.http.post(`${this.apiUrl}/update_status/${analyticId}`, {
+    // PATCH /frontend/analytics/update_status/{analytic_id}
+    return this.http.patch(`${this.apiUrl}/update_status/${analyticId}`, {
       status: status
     }).pipe(
       catchError(err => {
@@ -40,6 +51,7 @@ export class AnalyticHttpRepository implements IAnalyticRepository {
   }
 
   delete(analyticId: string): Observable<any> {
+    // DELETE /frontend/analytics/{analytic_id}
     return this.http.delete<any>(`${this.apiUrl}/${analyticId}`).pipe(
       catchError(err => {
         if (AppEnvironment.enableBackendWorkarounds && 

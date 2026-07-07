@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, AfterViewInit, inject, signal, computed, ViewChild, ElementRef, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, inject, signal, computed, effect, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink, Params } from '@angular/router';
 import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, Subject, Subscription } from 'rxjs';
@@ -8,21 +8,13 @@ import { ScheduleService } from '../../../core/services/schedule.service';
 import { AnalyticService } from '../../../core/services/analytic.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { HostService } from '../../../core/services/host.service';
+import { PermissionsService } from '../../../core/services/permissions.service';
+import { copyToClipboard } from '../../../core/utils/clipboard.util';
 import { Schedule } from '../../../core/domain/entities/schedule.models';
 import { Analytic } from '../../../core/domain/entities/analytic.models';
 import { Camera } from '../../../core/domain/entities/camera.models';
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
-
-function getDateString(d: Date): string {
-  const pad = (num: number) => num.toString().padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function getTimeString(d: Date): string {
-  const pad = (num: number) => num.toString().padStart(2, '0');
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 @Component({
   selector: 'app-camaras',
@@ -39,6 +31,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   private analyticService = inject(AnalyticService);
   private sidebarService = inject(SidebarService);
   private hostService = inject(HostService);
+  public permissionsService = inject(PermissionsService);
 
   @ViewChild('camerasGrid', { static: false }) camerasGrid!: ElementRef<HTMLDivElement>;
 
@@ -47,6 +40,15 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly cameras = this.cameraService.cameras;
   readonly schedules = this.scheduleService.schedules;
   readonly analytics = this.analyticService.analytics;
+  
+  readonly cameraNewIds = this.cameraService.newRecordIds;
+  readonly cameraUpdatedIds = this.cameraService.updatedRecordIds;
+  readonly cameraDeletingIds = this.cameraService.deletingRecordIds;
+
+  readonly analyticNewIds = this.analyticService.newRecordIds;
+  readonly analyticUpdatedIds = this.analyticService.updatedRecordIds;
+  readonly analyticDeletingIds = this.analyticService.deletingRecordIds;
+
   readonly isLoading = computed(() =>
     this.cameraService.isLoading() || this.scheduleService.isLoading()
   );
@@ -55,42 +57,14 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   readonly showLicenseModal = signal<boolean>(false);
   readonly licenseScrolledToBottom = signal<boolean>(false);
+  readonly viewMode = signal<'cards' | 'list'>('cards');
 
-  readonly showSchedulesModal = signal<boolean>(false);
   readonly activeAddScheduleDropdown = signal<string | null>(null);
   readonly expandedAnalyticIds = signal<Set<string>>(new Set());
 
   openLicenseModal(): void {
     this.licenseScrolledToBottom.set(false);
     this.showLicenseModal.set(true);
-  }
-
-  openSchedulesModal(): void {
-    this.showSchedulesModal.set(true);
-    this.newScheduleName.set('');
-    this.newScheduleDateStart.set('');
-    this.newScheduleTimeStart.set('');
-    this.newScheduleDateEnd.set('');
-    this.newScheduleTimeEnd.set('');
-    this.newScheduleSelectedAnalyticIds.set([]);
-    this.newScheduleFrequency.set('');
-    this.showCreateForm.set(false);
-    this.editingScheduleId.set(null);
-    this.activeCalendarField.set(null);
-    this.activeTimeField.set(null);
-  }
-
-  closeSchedulesModal(): void {
-    this.showSchedulesModal.set(false);
-    this.editingScheduleId.set(null);
-    this.activeCalendarField.set(null);
-    this.activeTimeField.set(null);
-  }
-
-  onModalCardClick(event: Event): void {
-    event.stopPropagation();
-    this.activeCalendarField.set(null);
-    this.activeTimeField.set(null);
   }
 
   onLicenseScroll(event: Event): void {
@@ -102,7 +76,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   copyFingerprint(): void {
     const fingerprint = this.hostId();
     if (fingerprint) {
-      navigator.clipboard.writeText(fingerprint).catch(err => console.error('Error copying to clipboard', err));
+      copyToClipboard(fingerprint).catch(err => console.error('Error copying to clipboard', err));
     }
   }
 
@@ -206,7 +180,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const dec = this.filterDecoder();
     const analyticType = this.filterAnalyticType();
 
-    return list.filter(c => {
+    const filtered = list.filter(c => {
       // Search only by camera name or camera ID (prefix matching)
       if (term) {
         const matchesName = c.name.toLowerCase().startsWith(term);
@@ -240,18 +214,39 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
       return true;
     });
+
+    // Ordenar: activas (online/active) primero, luego por nombre de nodo alfabéticamente (y por nombre de cámara si es el mismo nodo)
+    return filtered.sort((a, b) => {
+      const aOnline = a.status.toLowerCase() === 'online' || a.status.toLowerCase() === 'active' ? 1 : 0;
+      const bOnline = b.status.toLowerCase() === 'online' || b.status.toLowerCase() === 'active' ? 1 : 0;
+      
+      if (bOnline !== aOnline) {
+        return bOnline - aOnline;
+      }
+      
+      const nodeA = this.getHostName(a.hostFingerprint).toLowerCase();
+      const nodeB = this.getHostName(b.hostFingerprint).toLowerCase();
+      const nodeCompare = nodeA.localeCompare(nodeB);
+      if (nodeCompare !== 0) {
+        return nodeCompare;
+      }
+      
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    });
   });
 
   readonly currentPage = signal(1, { equal: () => false });
 
   // Paginación consciente de la cuadrícula
   readonly columns = signal(this.getInitialColumns());
-  readonly rows = signal(this.getInitialRows());
-  readonly limit = signal(this.columns() * this.rows() * 2);
+  readonly limit = signal(this.columns() * 10);
+
+  private copiedTimeout: any;
+  readonly copiedRowId = signal<string | null>(null);
 
   readonly limitOptions = computed(() => {
-    const base = this.columns() * this.rows();
-    return [base * 2, base * 3, base * 4];
+    const cols = this.columns();
+    return [cols * 10, cols * 20, cols * 30];
   });
 
   // Paginación reactiva calculada en el cliente
@@ -301,6 +296,8 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly showAiPanel = signal<boolean>(false);
   // Cámara seleccionada para el panel lateral
   readonly selectedCamera = signal<Camera | null>(null);
+  readonly pendingCameraId = signal<string | null>(null);
+  readonly pendingAnalyticId = signal<string | null>(null);
 
   // Lógica de edición de cámara
   readonly isEditingCamera = signal<boolean>(false);
@@ -318,10 +315,6 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly analyticToDelete = signal<Analytic | null>(null);
   readonly isDeletingAnalytic = signal<boolean>(false);
 
-  // Lógica de eliminación de horario (modal de confirmación)
-  readonly showDeleteScheduleModal = signal<boolean>(false);
-  readonly scheduleToDelete = signal<Schedule | null>(null);
-  readonly isDeletingSchedule = signal<boolean>(false);
 
   // Reloj interno para verificar horarios activos
   readonly currentTime = signal<Date>(new Date());
@@ -341,13 +334,12 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   private getInitialColumns(): number {
     const width = this.estimateContainerWidth();
-    const columnas = Math.floor((width + 24) / (420 + 24));
+    const columnas = Math.floor((width + 24) / (335 + 24));
     return Math.max(1, columnas);
   }
 
   private getInitialRows(): number {
-    if (typeof window === 'undefined') return 3;
-    return Math.max(3, Math.floor((window.innerHeight - 300) / 280));
+    return 3;
   }
 
   private initializeFromQueryParams(params: Params | undefined): void {
@@ -359,7 +351,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     }
 
     const limitVal = params['limit'] ? parseInt(params['limit'], 10) : null;
-    const defaultLimit = this.columns() * this.rows();
+    const defaultLimit = this.columns() * 10;
     const l = limitVal && !isNaN(limitVal) && limitVal > 0 ? limitVal : defaultLimit;
     if (this.limit() !== l) {
       this.limit.set(l);
@@ -377,11 +369,46 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     this.filterStreamType.set(params['streamType'] || 'all');
     this.filterDecoder.set(params['decoder'] || 'all');
     this.filterAnalyticType.set(params['analyticType'] || 'all');
+
+    if (params['camera']) {
+      this.pendingCameraId.set(params['camera']);
+    } else {
+      this.pendingCameraId.set(null);
+    }
+    if (params['analytic']) {
+      this.pendingAnalyticId.set(params['analytic']);
+    } else {
+      this.pendingAnalyticId.set(null);
+    }
   }
 
   constructor() {
     const initialParams = this.route.snapshot?.queryParams;
     this.initializeFromQueryParams(initialParams);
+
+    effect(() => {
+      const pCamId = this.pendingCameraId();
+      const pAnId = this.pendingAnalyticId();
+      const cams = this.cameras();
+
+      if (pCamId && cams.length > 0) {
+        const foundCam = cams.find(c => c.id === pCamId);
+        if (foundCam) {
+          this.selectedCamera.set(foundCam);
+          this.showAiPanel.set(true);
+          this.pendingCameraId.set(null);
+
+          if (pAnId) {
+            this.expandedAnalyticIds.update(set => {
+              const newSet = new Set(set);
+              newSet.add(pAnId);
+              return newSet;
+            });
+            this.pendingAnalyticId.set(null);
+          }
+        }
+      }
+    }, { allowSignalWrites: true });
 
     // Wire searchControl -> searchTerm signal with debounce
     this.searchControl.valueChanges.pipe(
@@ -410,7 +437,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     ).subscribe(({ page, limit, search, status, streamType, decoder, analyticType }) => {
       const queryParams: any = {};
       queryParams['page'] = page > 1 ? page : null;
-      const defaultLimit = this.columns() * this.rows();
+      const defaultLimit = this.columns() * 10;
       queryParams['limit'] = limit !== defaultLimit ? limit : null;
       queryParams['search'] = search || null;
       queryParams['status'] = status !== 'all' ? status : null;
@@ -510,12 +537,26 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   @HostListener('document:click')
   closeAllDropdowns(): void {
     this.activeDropdown.set(null);
-    this.activeCalendarField.set(null);
-    this.activeTimeField.set(null);
     this.activeAddScheduleDropdown.set(null);
   }
 
+  @HostListener('document:keydown.escape')
+  handleEscapeKey(): void {
+    if (this.showFilterPanel()) {
+      this.showFilterPanel.set(false);
+    }
+    if (this.activeDropdown()) {
+      this.activeDropdown.set(null);
+    }
+  }
+
   ngOnInit(): void {
+    this.cameraService.isViewActive.set(true);
+    this.analyticService.isViewActive.set(true);
+
+    const savedMode = localStorage.getItem('camaras_view_mode') as 'cards' | 'list';
+    if (savedMode) this.viewMode.set(savedMode);
+
     const fingerprint = this.route.snapshot.paramMap.get('hostId');
     this.hostId.set(fingerprint);
 
@@ -526,8 +567,8 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       // Cargar cámaras del nodo
       this.cameraService.getCamerasByHost(fingerprint).subscribe();
 
-      // Cargar TODOS los horarios y filtrar client-side por fingerprint
-      this.scheduleService.getSchedulesByHost(fingerprint).subscribe();
+      // Cargar TODOS los horarios globales
+      this.scheduleService.getAllSchedules().subscribe();
 
       // Cargar las analíticas de IA del nodo
       this.analyticService.getAnalyticsByHost(fingerprint).subscribe();
@@ -538,25 +579,6 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       this.currentTime.set(new Date());
       this.checkScheduleTransitions();
     }, 1000);
-
-    // Auto-recarga de cámaras cada 5 segundos (nuevo desde backend, edición o eliminación)
-    if (fingerprint) {
-      this.pollTimerId = setInterval(() => {
-        this.cameraService.getCamerasByHost(fingerprint).subscribe({
-          next: (cameras) => {
-            // Si la cámara seleccionada fue eliminada externamente, cerrar panel
-            const selected = this.selectedCamera();
-            if (selected && !cameras.find(c => c.id === selected.id)) {
-              this.closeAiPanel();
-            } else if (selected) {
-              // Actualizar datos del panel si la cámara fue editada
-              const updated = cameras.find(c => c.id === selected.id);
-              if (updated) this.selectedCamera.set(updated);
-            }
-          }
-        });
-      }, 5000);
-    }
   }
 
   ngAfterViewInit(): void {
@@ -577,11 +599,11 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnDestroy(): void {
+    this.cameraService.isViewActive.set(false);
+    this.analyticService.isViewActive.set(false);
+
     if (this.timerId) {
       clearInterval(this.timerId);
-    }
-    if (this.pollTimerId) {
-      clearInterval(this.pollTimerId);
     }
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
@@ -589,26 +611,27 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     if (this.resizeSubscription) {
       this.resizeSubscription.unsubscribe();
     }
+    if (this.copiedTimeout) {
+      clearTimeout(this.copiedTimeout);
+    }
   }
 
   private adjustColumnsAndLimit(containerWidth: number): void {
-    const columnas = Math.floor((containerWidth + 24) / (420 + 24));
+    if (containerWidth <= 0) return;
+    const columnas = Math.floor((containerWidth + 24) / (335 + 24));
     const newCols = Math.max(1, columnas);
-    const newRows = Math.max(3, Math.floor((window.innerHeight - 300) / 280));
     const oldCols = this.columns();
-    const oldRows = this.rows();
 
-    if (newCols !== oldCols || newRows !== oldRows) {
-      const oldBase = oldCols * oldRows;
-      const currentLimit = this.limit();
-      const screens = Math.max(2, Math.min(4, Math.round(currentLimit / (oldBase || 1))));
-
+    if (newCols !== oldCols) {
       this.columns.set(newCols);
-      this.rows.set(newRows);
-
-      const newBase = newCols * newRows;
-      this.limit.set(newBase * screens);
-      this.currentPage.set(1);
+      if (this.viewMode() === 'cards') {
+        const currentLimit = this.limit();
+        const validOptions = [newCols * 10, newCols * 20, newCols * 30];
+        if (!validOptions.includes(currentLimit)) {
+          this.limit.set(newCols * 10);
+        }
+        this.currentPage.set(1);
+      }
     }
   }
 
@@ -833,6 +856,17 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
+  getHostName(fingerprint: string): string {
+    const host = this.hostService.allHosts().find(h => h.fingerprint === fingerprint);
+    return host ? host.hostname : fingerprint;
+  }
+
+  isCameraOnline(camera: Camera | null | undefined): boolean {
+    if (!camera || !camera.status) return false;
+    const st = camera.status.toLowerCase();
+    return st === 'online' || st === 'active';
+  }
+
   // ── Analíticas ──────────────────────────────────────────────────────────────
 
   /** Retorna las analíticas de IA asignadas a una cámara específica */
@@ -927,13 +961,13 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   getSchedulesForAnalytic(analyticId: string): Schedule[] {
     return this.schedules().filter(s =>
-      s.hostFingerprint === this.hostId() && s.analyticIds.includes(analyticId)
+      s.analyticIds.includes(analyticId)
     );
   }
 
   getUnassociatedSchedules(analyticId: string): Schedule[] {
     return this.schedules().filter(s =>
-      s.hostFingerprint === this.hostId() && !s.analyticIds.includes(analyticId)
+      !s.analyticIds.includes(analyticId) && s.status === 'activo'
     );
   }
 
@@ -966,7 +1000,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
     const payload = {
       nombre: schedule.name,
-      fingerprint_host: schedule.hostFingerprint,
+      fingerprint_host: '',
       analytics_ids: newAnalyticIds.map(id => ({ id_analytic: id })),
       timestamp_inicio: formatPayloadDate(schedule.start),
       timestamp_fin: formatPayloadDate(schedule.end),
@@ -976,7 +1010,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
     this.scheduleService.updateSchedule(schedule.id, payload).subscribe({
       next: () => {
-        this.scheduleService.getSchedulesByHost(this.hostId()!).subscribe();
+        this.scheduleService.getAllSchedules().subscribe();
       },
       error: (err) => {
         console.error('[CamarasComponent] toggleScheduleAssociation failed:', err);
@@ -1010,68 +1044,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     return now >= schedule.start && now <= schedule.end;
   }
 
-  getRemainingRepetitions(
-    start: Date,
-    end: Date,
-    frequency: 'diario' | 'semanal' | 'mensual',
-    referenceDate: Date = new Date()
-  ): number {
-    if (start > end) return 0;
 
-    const startHour = start.getHours();
-    const startMin = start.getMinutes();
-    const endHour = end.getHours();
-    const endMin = end.getMinutes();
-    const crossesMidnight = (endHour < startHour) || (endHour === startHour && endMin < startMin);
-
-    // Normalize dates to midnight to loop through dates easily
-    const getNormalizedDate = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const overallStartDate = getNormalizedDate(start);
-    const overallEndDate = getNormalizedDate(end);
-
-    let count = 0;
-    let i = 0;
-    while (true) {
-      let repDate: Date;
-      if (frequency === 'diario') {
-        repDate = new Date(overallStartDate.getTime() + i * 24 * 60 * 60 * 1000);
-      } else if (frequency === 'semanal') {
-        repDate = new Date(overallStartDate.getTime() + i * 7 * 24 * 60 * 60 * 1000);
-      } else { // mensual
-        repDate = new Date(overallStartDate.getFullYear(), overallStartDate.getMonth() + i, overallStartDate.getDate());
-      }
-
-      // Start time of this repetition
-      const repStart = new Date(repDate.getFullYear(), repDate.getMonth(), repDate.getDate(), startHour, startMin, 0, 0);
-      if (repStart > end) {
-        break; // Out of bounds
-      }
-
-      // End time of this repetition
-      let repEnd: Date;
-      if (crossesMidnight) {
-        repEnd = new Date(repDate.getTime() + 24 * 60 * 60 * 1000);
-        repEnd.setHours(endHour, endMin, 0, 0);
-      } else {
-        repEnd = new Date(repStart.getTime());
-        repEnd.setHours(endHour, endMin, 0, 0);
-      }
-
-      if (referenceDate <= repEnd) {
-        count++;
-      }
-
-      i++;
-      // Safety brake to prevent infinite loops if frequency calculation gets stuck
-      if (i > 10000) break;
-    }
-
-    return count;
-  }
-
-  getScheduleRemainingRepetitions(schedule: Schedule): number {
-    return this.getRemainingRepetitions(schedule.start, schedule.end, schedule.frequency as any, this.currentTime());
-  }
 
   getScheduleDateLabelCompact(sched: Schedule): string {
     const pad = (num: number) => num.toString().padStart(2, '0');
@@ -1180,732 +1153,6 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     return found?.type ?? '';
   }
 
-  // ── CRUD de Horarios en Desplegable ──────────────────────────────────────────
-  
-  // Variables del Formulario de Creación
-  readonly newScheduleName = signal('');
-  readonly newScheduleDateStart = signal('');
-  readonly newScheduleTimeStart = signal('');
-  readonly newScheduleDateEnd = signal('');
-  readonly newScheduleTimeEnd = signal('');
-  readonly newScheduleSelectedAnalyticIds = signal<string[]>([]);
-  readonly newScheduleFrequency = signal<'diario' | 'semanal' | 'mensual' | ''>('');
-  readonly showCreateForm = signal(false);
-
-  // Variables temporales para el selector de rango de fechas
-  readonly tempDateStart = signal<string>('');
-  readonly tempDateEnd = signal<string>('');
-  readonly isSelectingRange = signal<boolean>(false);
-
-  // Variables de Edición Inline
-  readonly editingScheduleId = signal<string | null>(null);
-  readonly editingScheduleName = signal('');
-  readonly editingScheduleDateStart = signal('');
-  readonly editingScheduleTimeStart = signal('');
-  readonly editingScheduleDateEnd = signal('');
-  readonly editingScheduleTimeEnd = signal('');
-  readonly editingScheduleFrequency = signal<'diario' | 'semanal' | 'mensual' | ''>('diario');
-  readonly editingScheduleSelectedAnalyticIds = signal<string[]>([]);
-
-  readonly newScheduleRemainingRepetitions = computed(() => {
-    const dStart = this.newScheduleDateStart();
-    const tStart = this.newScheduleTimeStart();
-    const dEnd = this.newScheduleDateEnd();
-    const tEnd = this.newScheduleTimeEnd();
-    const freq = this.newScheduleFrequency();
-    if (!dStart || !tStart || !dEnd || !tEnd || !freq) return 0;
-    try {
-      const start = new Date(`${dStart}T${tStart}:00`);
-      const end = new Date(`${dEnd}T${tEnd}:00`);
-      return this.getRemainingRepetitions(start, end, freq, this.currentTime());
-    } catch {
-      return 0;
-    }
-  });
-
-  readonly editingScheduleRemainingRepetitions = computed(() => {
-    const dStart = this.editingScheduleDateStart();
-    const tStart = this.editingScheduleTimeStart();
-    const dEnd = this.editingScheduleDateEnd();
-    const tEnd = this.editingScheduleTimeEnd();
-    const freq = this.editingScheduleFrequency();
-    if (!dStart || !tStart || !dEnd || !tEnd || !freq) return 0;
-    try {
-      const start = new Date(`${dStart}T${tStart}:00`);
-      const end = new Date(`${dEnd}T${tEnd}:00`);
-      return this.getRemainingRepetitions(start, end, freq, this.currentTime());
-    } catch {
-      return 0;
-    }
-  });
-
-  // Control del Calendario Customizado
-  readonly activeCalendarField = signal<'newRange' | 'editingRange' | null>(null);
-  readonly calendarViewMonth = signal<number>(new Date().getMonth());
-  readonly calendarViewYear = signal<number>(new Date().getFullYear());
-
-  // Control del Selector de Hora Customizado
-  readonly activeTimeField = signal<'newStart' | 'newEnd' | 'editingStart' | 'editingEnd' | null>(null);
-  readonly hoursList = Array.from({ length: 24 }, (_, i) => i);
-  readonly minutesList = Array.from({ length: 60 }, (_, i) => i);
-
-  readonly calendarGrid = computed(() => {
-    const month = this.calendarViewMonth();
-    const year = this.calendarViewYear();
-    
-    // Primer día del mes
-    const firstDay = new Date(year, month, 1);
-    const startDayOfWeek = firstDay.getDay(); // 0 = Domingo, 1 = Lunes, etc.
-    
-    // Total de días en el mes
-    const totalDays = new Date(year, month + 1, 0).getDate();
-    
-    const emptyDays = Array.from({ length: startDayOfWeek }, (_, i) => i);
-    const days = Array.from({ length: totalDays }, (_, i) => i + 1);
-    
-    return { emptyDays, days };
-  });
-
-  getMonths(): string[] {
-    return [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-    ];
-  }
-
-  openCalendar(field: 'newRange' | 'editingRange', event: Event): void {
-    event.stopPropagation();
-    
-    // Toggle close if already open
-    if (this.activeCalendarField() === field) {
-      this.activeCalendarField.set(null);
-      return;
-    }
-    
-    let dateStr = '';
-    if (field === 'newRange') {
-      dateStr = this.newScheduleDateStart();
-      this.tempDateStart.set(this.newScheduleDateStart());
-      this.tempDateEnd.set(this.newScheduleDateEnd());
-    } else if (field === 'editingRange') {
-      dateStr = this.editingScheduleDateStart();
-      this.tempDateStart.set(this.editingScheduleDateStart());
-      this.tempDateEnd.set(this.editingScheduleDateEnd());
-    }
-    this.isSelectingRange.set(false);
-
-    // Ajustar rango temporal si es inválido para la frecuencia activa al abrir el calendario
-    const freq = field === 'editingRange' ? this.editingScheduleFrequency() : this.newScheduleFrequency();
-    const tStart = this.tempDateStart();
-    const tEnd = this.tempDateEnd();
-    if (tStart && tEnd) {
-      const startDate = new Date(tStart);
-      const endDate = new Date(tEnd);
-      const diffTime = endDate.getTime() - startDate.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      
-      const pad = (num: number) => num.toString().padStart(2, '0');
-      const formatDate = (d: Date) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-      
-      if (freq === 'diario' && diffDays !== 1) {
-        this.tempDateEnd.set(tStart);
-      } else if (freq === 'semanal' && diffDays > 7) {
-        const adjustedEnd = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
-        this.tempDateEnd.set(formatDate(adjustedEnd));
-      } else if (freq === 'mensual') {
-        const daysInEndMonth = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() + 1, 0)).getUTCDate();
-        if (diffDays > daysInEndMonth) {
-          const daysInStartMonth = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + 1, 0)).getUTCDate();
-          const adjustedEnd = new Date(startDate.getTime() + (daysInStartMonth - 1) * 24 * 60 * 60 * 1000);
-          this.tempDateEnd.set(formatDate(adjustedEnd));
-        }
-      }
-    }
-    
-    if (dateStr) {
-      const parts = dateStr.split('-');
-      if (parts.length === 3) {
-        const y = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10) - 1;
-        if (!isNaN(y)) {
-          this.calendarViewYear.set(y);
-        }
-        if (!isNaN(m) && m >= 0 && m <= 11) {
-          this.calendarViewMonth.set(m);
-        }
-      }
-    } else {
-      this.calendarViewMonth.set(new Date().getMonth());
-      this.calendarViewYear.set(new Date().getFullYear());
-    }
-    
-    this.activeCalendarField.set(field);
-    this.activeTimeField.set(null); // Cerrar selectores de hora
-    this.activeDropdown.set(null); // Cerrar dropdowns de filtros
-  }
-
-  getActiveCalendarFrequency(): 'diario' | 'semanal' | 'mensual' {
-    const field = this.activeCalendarField();
-    const freq = field === 'editingRange' ? this.editingScheduleFrequency() : this.newScheduleFrequency();
-    return freq || 'diario';
-  }
-
-  isCalendarSelectionValid(): boolean {
-    const startStr = this.tempDateStart();
-    const endStr = this.tempDateEnd();
-    if (!startStr || !endStr) return false;
-    
-    const freq = this.getActiveCalendarFrequency();
-    const dStart = new Date(startStr);
-    const dEnd = new Date(endStr);
-    
-    if (dEnd < dStart) return false;
-    
-    const diffTime = dEnd.getTime() - dStart.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    
-    if (freq === 'diario') {
-      return diffDays === 1;
-    } else if (freq === 'semanal') {
-      return diffDays <= 7;
-    } else if (freq === 'mensual') {
-      const daysInEndMonth = new Date(Date.UTC(dEnd.getUTCFullYear(), dEnd.getUTCMonth() + 1, 0)).getUTCDate();
-      return diffDays <= daysInEndMonth;
-    }
-    return true;
-  }
-
-  getCalendarValidationWarning(): string {
-    const startStr = this.tempDateStart();
-    const endStr = this.tempDateEnd();
-    if (!startStr || !endStr) return '';
-    
-    const freq = this.getActiveCalendarFrequency();
-    const dStart = new Date(startStr);
-    const dEnd = new Date(endStr);
-    
-    if (dEnd < dStart) return 'La fecha de fin no puede ser anterior a la fecha de inicio.';
-    
-    const diffTime = dEnd.getTime() - dStart.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    
-    if (freq === 'diario') {
-      if (diffDays !== 1) {
-        return 'Frecuencia diaria requiere un rango de exactamente 1 día.';
-      }
-    } else if (freq === 'semanal') {
-      if (diffDays > 7) {
-        return `Frecuencia semanal permite un rango máximo de 7 días (seleccionado: ${diffDays} días).`;
-      }
-    } else if (freq === 'mensual') {
-      const daysInEndMonth = new Date(Date.UTC(dEnd.getUTCFullYear(), dEnd.getUTCMonth() + 1, 0)).getUTCDate();
-      if (diffDays > daysInEndMonth) {
-        return `Frecuencia mensual para el mes de ${this.getMonths()[dEnd.getUTCMonth()]} permite un rango máximo de ${daysInEndMonth} días (seleccionado: ${diffDays} días).`;
-      }
-    }
-    return '';
-  }
-
-  adjustRangeOnFrequencyChange(type: 'new' | 'editing', freq: 'diario' | 'semanal' | 'mensual'): void {
-    const dStart = type === 'new' ? this.newScheduleDateStart() : this.editingScheduleDateStart();
-    const dEnd = type === 'new' ? this.newScheduleDateEnd() : this.editingScheduleDateEnd();
-    
-    if (!dStart || !dEnd) return;
-    
-    const startDate = new Date(dStart);
-    const endDate = new Date(dEnd);
-    
-    const diffTime = endDate.getTime() - startDate.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const formatDate = (d: Date) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-    
-    if (freq === 'diario') {
-      if (diffDays !== 1) {
-        if (type === 'new') {
-          this.newScheduleDateEnd.set(dStart);
-        } else {
-          this.editingScheduleDateEnd.set(dStart);
-        }
-      }
-    } else if (freq === 'semanal') {
-      if (diffDays > 7) {
-        const adjustedEnd = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
-        if (type === 'new') {
-          this.newScheduleDateEnd.set(formatDate(adjustedEnd));
-        } else {
-          this.editingScheduleDateEnd.set(formatDate(adjustedEnd));
-        }
-      }
-    } else if (freq === 'mensual') {
-      const daysInEndMonth = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() + 1, 0)).getUTCDate();
-      if (diffDays > daysInEndMonth) {
-        const daysInStartMonth = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + 1, 0)).getUTCDate();
-        const adjustedEnd = new Date(startDate.getTime() + (daysInStartMonth - 1) * 24 * 60 * 60 * 1000);
-        if (type === 'new') {
-          this.newScheduleDateEnd.set(formatDate(adjustedEnd));
-        } else {
-          this.editingScheduleDateEnd.set(formatDate(adjustedEnd));
-        }
-      }
-    }
-  }
-
-  adjustTempRangeOnFrequencyChange(freq: 'diario' | 'semanal' | 'mensual'): void {
-    const tStart = this.tempDateStart();
-    const tEnd = this.tempDateEnd();
-    if (!tStart || !tEnd) return;
-    
-    const startDate = new Date(tStart);
-    const endDate = new Date(tEnd);
-    
-    const diffTime = endDate.getTime() - startDate.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const formatDate = (d: Date) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-    
-    if (freq === 'diario') {
-      if (diffDays !== 1) {
-        this.tempDateEnd.set(tStart);
-        this.isSelectingRange.set(false);
-      }
-    } else if (freq === 'semanal') {
-      if (diffDays > 7) {
-        const adjustedEnd = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
-        this.tempDateEnd.set(formatDate(adjustedEnd));
-        this.isSelectingRange.set(false);
-      }
-    } else if (freq === 'mensual') {
-      const daysInEndMonth = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() + 1, 0)).getUTCDate();
-      if (diffDays > daysInEndMonth) {
-        const daysInStartMonth = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + 1, 0)).getUTCDate();
-        const adjustedEnd = new Date(startDate.getTime() + (daysInStartMonth - 1) * 24 * 60 * 60 * 1000);
-        this.tempDateEnd.set(formatDate(adjustedEnd));
-        this.isSelectingRange.set(false);
-      }
-    }
-  }
-
-  onNewScheduleFrequencyChange(freq: 'diario' | 'semanal' | 'mensual'): void {
-    this.newScheduleFrequency.set(freq);
-    this.adjustRangeOnFrequencyChange('new', freq);
-    if (this.activeCalendarField() === 'newRange') {
-      this.adjustTempRangeOnFrequencyChange(freq);
-    }
-  }
-
-  onEditingScheduleFrequencyChange(freq: 'diario' | 'semanal' | 'mensual'): void {
-    this.editingScheduleFrequency.set(freq);
-    this.adjustRangeOnFrequencyChange('editing', freq);
-    if (this.activeCalendarField() === 'editingRange') {
-      this.adjustTempRangeOnFrequencyChange(freq);
-    }
-  }
-
-  selectCalendarDay(day: number): void {
-    const field = this.activeCalendarField();
-    if (!field) return;
-    
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const dateStr = `${this.calendarViewYear()}-${pad(this.calendarViewMonth() + 1)}-${pad(day)}`;
-    const freq = this.getActiveCalendarFrequency();
-    
-    if (freq === 'diario') {
-      this.tempDateStart.set(dateStr);
-      this.tempDateEnd.set(dateStr);
-      this.isSelectingRange.set(false);
-      this.applyCalendarSelection();
-      return;
-    }
-    
-    if (!this.isSelectingRange()) {
-      this.tempDateStart.set(dateStr);
-      this.tempDateEnd.set(dateStr);
-      this.isSelectingRange.set(true);
-    } else {
-      const startVal = this.tempDateStart();
-      if (startVal) {
-        const startTime = new Date(startVal).getTime();
-        const clickedTime = new Date(dateStr).getTime();
-        if (clickedTime < startTime) {
-          this.tempDateStart.set(dateStr);
-          this.tempDateEnd.set(startVal);
-        } else {
-          this.tempDateEnd.set(dateStr);
-        }
-      } else {
-        this.tempDateStart.set(dateStr);
-        this.tempDateEnd.set(dateStr);
-      }
-      this.isSelectingRange.set(false);
-    }
-  }
-
-  clearCalendarSelection(): void {
-    this.tempDateStart.set('');
-    this.tempDateEnd.set('');
-    this.isSelectingRange.set(false);
-  }
-
-  applyCalendarSelection(): void {
-    const field = this.activeCalendarField();
-    if (!field) return;
-    
-    if (field === 'newRange') {
-      this.newScheduleDateStart.set(this.tempDateStart());
-      this.newScheduleDateEnd.set(this.tempDateEnd());
-    } else if (field === 'editingRange') {
-      this.editingScheduleDateStart.set(this.tempDateStart());
-      this.editingScheduleDateEnd.set(this.tempDateEnd());
-    }
-    this.activeCalendarField.set(null);
-  }
-
-  isPrevCalendarMonthDisabled(): boolean {
-    const now = this.currentTime();
-    const startOfWeek = this.getStartOfCurrentWeekUTC(now);
-    const minYear = startOfWeek.getUTCFullYear();
-    const minMonth = startOfWeek.getUTCMonth();
-    
-    const currentYear = this.calendarViewYear();
-    const currentMonth = this.calendarViewMonth();
-    
-    if (currentYear < minYear) return true;
-    if (currentYear === minYear && currentMonth <= minMonth) return true;
-    return false;
-  }
-
-  prevCalendarMonth(event: Event): void {
-    event.stopPropagation();
-    if (this.isPrevCalendarMonthDisabled()) {
-      return;
-    }
-    if (this.calendarViewMonth() > 0) {
-      this.calendarViewMonth.update(m => m - 1);
-    } else {
-      this.calendarViewMonth.set(11);
-      this.calendarViewYear.update(y => y - 1);
-    }
-  }
-
-  nextCalendarMonth(event: Event): void {
-    event.stopPropagation();
-    if (this.calendarViewMonth() < 11) {
-      this.calendarViewMonth.update(m => m + 1);
-    } else {
-      this.calendarViewMonth.set(0);
-      this.calendarViewYear.update(y => y + 1);
-    }
-  }
-
-  isCalendarDateSelected(day: number): boolean {
-    const field = this.activeCalendarField();
-    if (!field) return false;
-    
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const target = `${this.calendarViewYear()}-${pad(this.calendarViewMonth() + 1)}-${pad(day)}`;
-    
-    return this.tempDateStart() === target || this.tempDateEnd() === target;
-  }
-
-  isCalendarDateInRange(day: number): boolean {
-    const field = this.activeCalendarField();
-    if (!field) return false;
-    
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const targetStr = `${this.calendarViewYear()}-${pad(this.calendarViewMonth() + 1)}-${pad(day)}`;
-    const targetTime = new Date(targetStr).getTime();
-    
-    const startStr = this.tempDateStart();
-    const endStr = this.tempDateEnd();
-    if (!startStr || !endStr || startStr === endStr) return false;
-    const startTime = new Date(startStr).getTime();
-    const endTime = new Date(endStr).getTime();
-    return targetTime > startTime && targetTime < endTime;
-  }
-
-  getStartOfCurrentWeekUTC(referenceDate: Date): Date {
-    const today = new Date(Date.UTC(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate()));
-    const day = today.getUTCDay(); // 0 = Domingo, 1 = Lunes, etc.
-    const daysToSubtract = day === 0 ? 6 : day - 1;
-    return new Date(today.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
-  }
-
-  isCalendarDayDisabled(day: number): boolean {
-    const field = this.activeCalendarField();
-    if (!field) return false;
-    
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const targetStr = `${this.calendarViewYear()}-${pad(this.calendarViewMonth() + 1)}-${pad(day)}`;
-    const dTarget = new Date(targetStr);
-    
-    // 1. Evitar mostrar/seleccionar fechas anteriores a la semana actual
-    const now = this.currentTime();
-    const startOfWeek = this.getStartOfCurrentWeekUTC(now);
-    if (dTarget < startOfWeek) {
-      return true;
-    }
-    
-    // 2. Si ya se comenzó la selección de un rango, limitar las opciones al máximo permitido
-    if (this.isSelectingRange()) {
-      const startStr = this.tempDateStart();
-      if (startStr) {
-        const dStart = new Date(startStr);
-        if (dTarget < dStart) {
-          return true; // No permitir seleccionar hacia atrás
-        }
-        
-        const diffTime = dTarget.getTime() - dStart.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-        const freq = this.getActiveCalendarFrequency();
-        
-        if (freq === 'diario') {
-          return diffDays > 1;
-        } else if (freq === 'semanal') {
-          return diffDays > 7;
-        } else if (freq === 'mensual') {
-          const daysInEndMonth = new Date(Date.UTC(dTarget.getUTCFullYear(), dTarget.getUTCMonth() + 1, 0)).getUTCDate();
-          return diffDays > daysInEndMonth;
-        }
-      }
-    }
-    
-    return false;
-  }
-
-  formatDateLabel(dateStr: string): string {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length !== 3) return dateStr;
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    const date = new Date(year, month, day);
-    
-    const formatter = new Intl.DateTimeFormat('es-ES', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'long'
-    });
-    return formatter.format(date);
-  }
-
-  // Métodos del Selector de Hora Customizado
-  getTimeParts(timeStr: string): { hour: number; minute: number } {
-    if (!timeStr) return { hour: 0, minute: 0 };
-    const parts = timeStr.split(':');
-    if (parts.length < 2) return { hour: 0, minute: 0 };
-    return {
-      hour: parseInt(parts[0], 10) || 0,
-      minute: parseInt(parts[1], 10) || 0
-    };
-  }
-
-  isTimeHourSelected(h: number): boolean {
-    const field = this.activeTimeField();
-    if (!field) return false;
-    let timeStr = '';
-    if (field === 'newStart') timeStr = this.newScheduleTimeStart();
-    else if (field === 'newEnd') timeStr = this.newScheduleTimeEnd();
-    else if (field === 'editingStart') timeStr = this.editingScheduleTimeStart();
-    else if (field === 'editingEnd') timeStr = this.editingScheduleTimeEnd();
-    
-    return this.getTimeParts(timeStr).hour === h;
-  }
-
-  isTimeMinuteSelected(m: number): boolean {
-    const field = this.activeTimeField();
-    if (!field) return false;
-    let timeStr = '';
-    if (field === 'newStart') timeStr = this.newScheduleTimeStart();
-    else if (field === 'newEnd') timeStr = this.newScheduleTimeEnd();
-    else if (field === 'editingStart') timeStr = this.editingScheduleTimeStart();
-    else if (field === 'editingEnd') timeStr = this.editingScheduleTimeEnd();
-    
-    return this.getTimeParts(timeStr).minute === m;
-  }
-
-  selectTimeHour(h: number): void {
-    const field = this.activeTimeField();
-    if (!field) return;
-    
-    let timeStr = '';
-    if (field === 'newStart') timeStr = this.newScheduleTimeStart();
-    else if (field === 'newEnd') timeStr = this.newScheduleTimeEnd();
-    else if (field === 'editingStart') timeStr = this.editingScheduleTimeStart();
-    else if (field === 'editingEnd') timeStr = this.editingScheduleTimeEnd();
-    
-    const parts = this.getTimeParts(timeStr);
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const newTimeStr = `${pad(h)}:${pad(parts.minute)}`;
-    
-    if (field === 'newStart') this.newScheduleTimeStart.set(newTimeStr);
-    else if (field === 'newEnd') this.newScheduleTimeEnd.set(newTimeStr);
-    else if (field === 'editingStart') this.editingScheduleTimeStart.set(newTimeStr);
-    else if (field === 'editingEnd') this.editingScheduleTimeEnd.set(newTimeStr);
-  }
-
-  selectTimeMinute(m: number): void {
-    const field = this.activeTimeField();
-    if (!field) return;
-    
-    let timeStr = '';
-    if (field === 'newStart') timeStr = this.newScheduleTimeStart();
-    else if (field === 'newEnd') timeStr = this.newScheduleTimeEnd();
-    else if (field === 'editingStart') timeStr = this.editingScheduleTimeStart();
-    else if (field === 'editingEnd') timeStr = this.editingScheduleTimeEnd();
-    
-    const parts = this.getTimeParts(timeStr);
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const newTimeStr = `${pad(parts.hour)}:${pad(m)}`;
-    
-    if (field === 'newStart') this.newScheduleTimeStart.set(newTimeStr);
-    else if (field === 'newEnd') this.newScheduleTimeEnd.set(newTimeStr);
-    else if (field === 'editingStart') this.editingScheduleTimeStart.set(newTimeStr);
-    else if (field === 'editingEnd') this.editingScheduleTimeEnd.set(newTimeStr);
-  }
-
-  openTimePicker(field: 'newStart' | 'newEnd' | 'editingStart' | 'editingEnd', event: Event): void {
-    event.stopPropagation();
-    
-    if (this.activeTimeField() === field) {
-      this.activeTimeField.set(null);
-      return;
-    }
-    
-    this.activeTimeField.set(field);
-    this.activeCalendarField.set(null); // Cerrar calendario
-    this.activeDropdown.set(null); // Cerrar dropdowns
-  }
-
-  toggleCreateForm(): void {
-    this.showCreateForm.update(v => !v);
-  }
-
-  toggleNewScheduleAnalytic(analyticId: string): void {
-    const current = this.newScheduleSelectedAnalyticIds();
-    if (current.includes(analyticId)) {
-      this.newScheduleSelectedAnalyticIds.set(current.filter(id => id !== analyticId));
-    } else {
-      this.newScheduleSelectedAnalyticIds.set([...current, analyticId]);
-    }
-  }
-
-  toggleEditingScheduleAnalytic(analyticId: string): void {
-    const current = this.editingScheduleSelectedAnalyticIds();
-    if (current.includes(analyticId)) {
-      this.editingScheduleSelectedAnalyticIds.set(current.filter(id => id !== analyticId));
-    } else {
-      this.editingScheduleSelectedAnalyticIds.set([...current, analyticId]);
-    }
-  }
-
-  createSchedule(): void {
-    if (!this.newScheduleName().trim() || !this.hostId()) return;
-
-    const payload = {
-      nombre: this.newScheduleName(),
-      fingerprint_host: this.hostId(),
-      analytics_ids: this.newScheduleSelectedAnalyticIds().map(id => ({ id_analytic: id })),
-      timestamp_inicio: new Date(`${this.newScheduleDateStart()}T${this.newScheduleTimeStart()}:00`).toISOString(),
-      timestamp_fin: new Date(`${this.newScheduleDateEnd()}T${this.newScheduleTimeEnd()}:00`).toISOString(),
-      frecuencia: this.newScheduleFrequency(),
-      estado: 'activo'
-    };
-
-    this.scheduleService.registerSchedule(payload).subscribe({
-      next: () => {
-        this.newScheduleName.set('');
-        this.newScheduleDateStart.set('');
-        this.newScheduleTimeStart.set('');
-        this.newScheduleDateEnd.set('');
-        this.newScheduleTimeEnd.set('');
-        this.newScheduleSelectedAnalyticIds.set([]);
-        this.newScheduleFrequency.set('');
-        this.showCreateForm.set(false);
-        // Recargar horarios del nodo
-        this.scheduleService.getSchedulesByHost(this.hostId()!).subscribe();
-      },
-      error: (err) => {
-        console.error('[CamarasComponent] createSchedule failed:', err);
-      }
-    });
-  }
-
-  openDeleteScheduleModal(schedule: Schedule): void {
-    this.scheduleToDelete.set(schedule);
-    this.showDeleteScheduleModal.set(true);
-  }
-
-  closeDeleteScheduleModal(): void {
-    this.scheduleToDelete.set(null);
-    this.showDeleteScheduleModal.set(false);
-  }
-
-  confirmDeleteSchedule(): void {
-    const sched = this.scheduleToDelete();
-    if (!sched) return;
-
-    this.isDeletingSchedule.set(true);
-    this.scheduleService.deleteSchedule(sched.id).subscribe({
-      next: () => {
-        this.isDeletingSchedule.set(false);
-        this.closeDeleteScheduleModal();
-        if (this.hostId()) {
-          this.scheduleService.getSchedulesByHost(this.hostId()!).subscribe();
-        }
-      },
-      error: () => {
-        this.isDeletingSchedule.set(false);
-        this.closeDeleteScheduleModal();
-        if (this.hostId()) {
-          this.scheduleService.getSchedulesByHost(this.hostId()!).subscribe();
-        }
-      }
-    });
-  }
-
-  startEditSchedule(schedule: Schedule): void {
-    this.editingScheduleId.set(schedule.id);
-    this.editingScheduleName.set(schedule.name);
-    this.editingScheduleDateStart.set(getDateString(schedule.start));
-    this.editingScheduleTimeStart.set(getTimeString(schedule.start));
-    this.editingScheduleDateEnd.set(getDateString(schedule.end));
-    this.editingScheduleTimeEnd.set(getTimeString(schedule.end));
-    this.editingScheduleFrequency.set(schedule.frequency as any);
-    this.editingScheduleSelectedAnalyticIds.set([...schedule.analyticIds]);
-  }
-
-  cancelEditSchedule(): void {
-    this.editingScheduleId.set(null);
-  }
-
-  saveScheduleEdit(): void {
-    if (!this.editingScheduleId() || !this.editingScheduleName().trim() || !this.hostId()) return;
-
-    const scheduleId = this.editingScheduleId()!;
-    const payload = {
-      nombre: this.editingScheduleName(),
-      fingerprint_host: this.hostId(),
-      analytics_ids: this.editingScheduleSelectedAnalyticIds().map(id => ({ id_analytic: id })),
-      timestamp_inicio: new Date(`${this.editingScheduleDateStart()}T${this.editingScheduleTimeStart()}:00`).toISOString(),
-      timestamp_fin: new Date(`${this.editingScheduleDateEnd()}T${this.editingScheduleTimeEnd()}:00`).toISOString(),
-      frecuencia: this.editingScheduleFrequency(),
-      estado: 'activo'
-    };
-
-    this.scheduleService.updateSchedule(scheduleId, payload).subscribe({
-      next: () => {
-        this.editingScheduleId.set(null);
-        this.scheduleService.getSchedulesByHost(this.hostId()!).subscribe();
-      },
-      error: (err) => {
-        console.error('[CamarasComponent] saveScheduleEdit failed:', err);
-      }
-    });
-  }
 
   mapAnalyticTypeToFeatureKey(type: string): string | null {
     const norm = this.normalizeAnalyticType(type);
@@ -1955,5 +1202,33 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     if (pct >= 75) return 'danger';
     if (pct >= 50) return 'warning';
     return 'success';
+  }
+
+  getRemainingAnalyticsTooltip(analytics: any[]): string {
+    return analytics.slice(3).map(a => this.getAnalyticLabel(a.type)).join(', ');
+  }
+
+  setViewMode(mode: 'cards' | 'list'): void {
+    this.viewMode.set(mode);
+    localStorage.setItem('camaras_view_mode', mode);
+    if (mode === 'list') {
+      this.limit.set(10);
+    } else {
+      this.limit.set(this.columns() * 10);
+    }
+    this.currentPage.set(1);
+  }
+
+  copyRowContent(value: string, uniqueKey: string): void {
+    if (!value) return;
+    copyToClipboard(value).then(() => {
+      this.copiedRowId.set(uniqueKey);
+      if (this.copiedTimeout) clearTimeout(this.copiedTimeout);
+      this.copiedTimeout = setTimeout(() => {
+        this.copiedRowId.set(null);
+      }, 2000);
+    }).catch(err => {
+      console.error('Error al copiar al portapapeles', err);
+    });
   }
 }

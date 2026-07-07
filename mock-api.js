@@ -29,7 +29,7 @@ const dbUsuarios = [
     usuario: 'admin',
     nombre: 'Administrador del Sistema',
     contrasena: 'admin123', // En producción se debe usar hashing (e.g. bcrypt)
-    rol: 'administrador',
+    rol_id: '73bd9b9e-53da-4901-8bd8-9a127081e61b',
     created_at: new Date('2026-01-01T08:00:00Z').toISOString()
   },
   {
@@ -37,8 +37,94 @@ const dbUsuarios = [
     usuario: 'operador',
     nombre: 'Operador de Control',
     contrasena: 'op123456',
-    rol: 'operador',
+    rol_id: 'd597024c-7362-4d41-a96b-a9321b8a0d77',
     created_at: new Date('2026-02-15T12:30:00Z').toISOString()
+  }
+];
+
+const dbPermisos = [
+  // Roles
+  { permiso_id: 'c3d434da-69ad-4ac1-a62f-ea197bfb4e44', codigo: 'roles.create', descripcion: 'Crear roles' },
+  { permiso_id: 'f8b19d93-50b8-4d46-b390-c212fed02e74', codigo: 'roles.read', descripcion: 'Consultar roles' },
+  { permiso_id: '40568360-d296-4555-a55f-492b8c48ce18', codigo: 'roles.update', descripcion: 'Editar roles' },
+  { permiso_id: '1bf2b38b-42a1-4762-b8b1-4fad8e3404a0', codigo: 'roles.delete', descripcion: 'Eliminar roles' },
+  // Usuarios
+  { permiso_id: '13b229dc-dedd-4fd1-b35d-ada91943860d', codigo: 'users.create', descripcion: 'Crear usuario' },
+  { permiso_id: '49085747-3dae-43bd-bde7-a78fb9ed5700', codigo: 'users.read', descripcion: 'Consultar usuarios' },
+  { permiso_id: 'd67f5f76-8ea4-4b1b-822c-74e4e848a48f', codigo: 'users.update', descripcion: 'Editar usuario' },
+  { permiso_id: '48cfc80f-f7d5-4ce5-b252-6c702504623d', codigo: 'users.delete', descripcion: 'Eliminar usuario' },
+  // Hosts
+  { permiso_id: '7fd341f6-88ee-459a-9630-ab13d3071096', codigo: 'hosts.read', descripcion: 'Consultar hosts' },
+  { permiso_id: '327495e2-5ff5-4f11-89fe-b56623ea2ec7', codigo: 'hosts.update', descripcion: 'Editar host' },
+  { permiso_id: '7d4eb63a-4243-4cde-ba85-849b1849a792', codigo: 'hosts.delete', descripcion: 'Eliminar host' },
+  // Cámaras
+  { permiso_id: '1f52266b-82ca-4c8d-a659-a090b800c122', codigo: 'cameras.read', descripcion: 'Consultar cámaras' },
+  { permiso_id: 'd8a72de3-a1f8-452a-850e-523d33dcfb2a', codigo: 'cameras.update', descripcion: 'Editar cámara' },
+  { permiso_id: '5b3fdd36-d9cb-429b-a8ba-be4b8e467216', codigo: 'cameras.delete', descripcion: 'Eliminar cámara' },
+  // Analíticas
+  { permiso_id: '4c330660-73a1-4358-95b1-fab115d24d2b', codigo: 'analytics.create', descripcion: 'Crear analítica' },
+  { permiso_id: '3f468734-193e-4f38-95ca-56617abf9014', codigo: 'analytics.read', descripcion: 'Consultar analíticas' },
+  { permiso_id: '4ab8e5e4-e4d4-4b7e-a013-a7f6bfb58781', codigo: 'analytics.update', descripcion: 'Editar/Activar analítica' },
+  { permiso_id: 'c8b9b9e1-3f4d-4b7e-a013-a7f6bfb58783', codigo: 'analytics.delete', descripcion: 'Eliminar analítica' },
+  // Horarios
+  { permiso_id: 'b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e', codigo: 'schedules.create', descripcion: 'Crear horario' },
+  { permiso_id: 'c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6e7f', codigo: 'schedules.read', descripcion: 'Consultar horarios' },
+  { permiso_id: 'd3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a', codigo: 'schedules.update', descripcion: 'Editar horario' },
+  { permiso_id: 'e4f5a6b7-c8d9-0e1f-2a3b-4c5d6e7f8a9b', codigo: 'schedules.delete', descripcion: 'Eliminar horario' },
+  // Listas
+  { permiso_id: 'f5a6b7c8-d9e0-1f2a-3b4c-5d6e7f8a9b0c', codigo: 'lists.create', descripcion: 'Crear lista' },
+  { permiso_id: 'a6b7c8d9-e0f1-2a3b-4c5d-6e7f8a9b0c1d', codigo: 'lists.read', descripcion: 'Consultar listas' },
+  { permiso_id: 'b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e', codigo: 'lists.update', descripcion: 'Editar lista' },
+  { permiso_id: 'c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f', codigo: 'lists.delete', descripcion: 'Eliminar lista' },
+  // Detalles de Listas
+  { permiso_id: 'd9e0f1a2-b3c4-5d6e-7f8a-9b0c1d2e3f4a', codigo: 'list_details.create', descripcion: 'Crear detalle de lista' },
+  { permiso_id: 'e0f1a2b3-c4d5-6e7f-8a9b-0c1d2e3f4a5b', codigo: 'list_details.read', descripcion: 'Consultar detalles de lista' },
+  { permiso_id: 'f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c', codigo: 'list_details.update', descripcion: 'Editar detalle de lista' },
+  { permiso_id: 'a2b3c4d5-e6f7-8a9b-0c1d-2e3f4a5b6c7d', codigo: 'list_details.delete', descripcion: 'Eliminar detalle de lista' }
+];
+
+const dbRoles = [
+  {
+    rol_id: '73bd9b9e-53da-4901-8bd8-9a127081e61b',
+    nombre: 'ADMIN',
+    descripcion: 'Acceso total al sistema',
+    id_permisos: dbPermisos.map(p => p.permiso_id)
+  },
+  {
+    rol_id: 'd597024c-7362-4d41-a96b-a9321b8a0d77',
+    nombre: 'SUPERVISOR',
+    descripcion: 'Gestión operativa',
+    id_permisos: [
+      '49085747-3dae-43bd-bde7-a78fb9ed5700', // users.read
+      '7fd341f6-88ee-459a-9630-ab13d3071096', // hosts.read
+      '1f52266b-82ca-4c8d-a659-a090b800c122', // cameras.read
+      'd8a72de3-a1f8-452a-850e-523d33dcfb2a', // cameras.update
+      '3f468734-193e-4f38-95ca-56617abf9014', // analytics.read
+      '4ab8e5e4-e4d4-4b7e-a013-a7f6bfb58781', // analytics.update
+      'b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e', // schedules.create
+      'c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6e7f', // schedules.read
+      'd3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a', // schedules.update
+      'e4f5a6b7-c8d9-0e1f-2a3b-4c5d6e7f8a9b', // schedules.delete
+      'a6b7c8d9-e0f1-2a3b-4c5d-6e7f8a9b0c1d', // lists.read
+      'b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e', // lists.update
+      'e0f1a2b3-c4d5-6e7f-8a9b-0c1d2e3f4a5b', // list_details.read
+      'f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c'  // list_details.update
+    ]
+  },
+  {
+    rol_id: 'e2fc9bc1-ab14-4cd4-8b16-492a2a5e8aec',
+    nombre: 'OPERADOR',
+    descripcion: 'Solo visualización y control básico',
+    id_permisos: [
+      '49085747-3dae-43bd-bde7-a78fb9ed5700', // users.read
+      '7fd341f6-88ee-459a-9630-ab13d3071096', // hosts.read
+      '1f52266b-82ca-4c8d-a659-a090b800c122', // cameras.read
+      '3f468734-193e-4f38-95ca-56617abf9014', // analytics.read
+      '4ab8e5e4-e4d4-4b7e-a013-a7f6bfb58781', // analytics.update (activar/desactivar)
+      'c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6e7f', // schedules.read
+      'a6b7c8d9-e0f1-2a3b-4c5d-6e7f8a9b0c1d', // lists.read
+      'e0f1a2b3-c4d5-6e7f-8a9b-0c1d2e3f4a5b'  // list_details.read
+    ]
   }
 ];
 
@@ -132,38 +218,76 @@ dbHosts.forEach((host, i) => {
   
   dbCameras.push(cam1, cam2);
 
-  // 1 Analítica por Host (alternando tipos)
-  const analytic = {
-    analytic_id: `analytic-uuid-${(i + 1).toString().padStart(3, '0')}`,
+  // Analíticas para cam1
+  const analytic1 = {
+    analytic_id: `analytic-uuid-${(i * 2 + 1).toString().padStart(3, '0')}`,
     fingerprint_host: hostFp,
-    analytic_type: i % 2 === 0 ? 'face_recognition' : 'license_plate_recognition',
+    analytic_type: i % 2 === 0 ? 'face_recognition' : 'intrusion_detection',
     analytic_status: 'active',
     target_cameras: [
-      { camera_id: cam1.camera_id, camera_name: cam1.camera_name },
-      { camera_id: cam2.camera_id, camera_name: cam2.camera_name }
+      { camera_id: cam1.camera_id, camera_name: cam1.camera_name }
     ],
     detection_classes: i % 2 === 0 
       ? [{ class_index: 0, class_name: 'face' }] 
-      : [{ class_index: 1, class_name: 'license_plate' }],
+      : [{ class_index: 10, class_name: 'person' }],
     parameters: { min_confidence: 0.75 },
     geometric_objects: {},
     acciones: {}
   };
-  dbAnalytics.push(analytic);
-
-  // 1 Horario por Host
-  const schedule = {
-    schedule_id: `sched-uuid-${(i + 1).toString().padStart(3, '0')}`,
-    nombre: `Horario-${host.hostname}`,
+  
+  // Analíticas para cam2
+  const analytic2 = {
+    analytic_id: `analytic-uuid-${(i * 2 + 2).toString().padStart(3, '0')}`,
     fingerprint_host: hostFp,
-    analytics_ids: [{ id_analytic: analytic.analytic_id }],
+    analytic_type: i % 2 === 0 ? 'license_plate_recognition' : 'people_counting',
+    analytic_status: 'active',
+    target_cameras: [
+      { camera_id: cam2.camera_id, camera_name: cam2.camera_name }
+    ],
+    detection_classes: i % 2 === 0 
+      ? [{ class_index: 1, class_name: 'license_plate' }] 
+      : [{ class_index: 11, class_name: 'person' }],
+    parameters: { min_confidence: 0.75 },
+    geometric_objects: {},
+    acciones: {}
+  };
+  dbAnalytics.push(analytic1, analytic2);
+
+});
+
+// Horarios globales heredados por todos los hosts
+dbSchedules.push(
+  {
+    schedule_id: 'sched-uuid-001',
+    nombre: 'Horario Comercial Diurno',
+    fingerprint_host: '',
+    analytics_ids: dbAnalytics.slice(0, 2).map(a => ({ id_analytic: a.analytic_id })),
     timestamp_inicio: new Date('2026-01-01T08:00:00Z').toISOString(),
-    timestamp_fin: new Date('2026-12-31T20:00:00Z').toISOString(),
+    timestamp_fin: new Date('2026-01-01T20:00:00Z').toISOString(),
     frecuencia: 'diario',
     estado: 'activo'
-  };
-  dbSchedules.push(schedule);
-});
+  },
+  {
+    schedule_id: 'sched-uuid-002',
+    nombre: 'Horario Nocturno Controlado',
+    fingerprint_host: '',
+    analytics_ids: dbAnalytics.slice(2, 4).map(a => ({ id_analytic: a.analytic_id })),
+    timestamp_inicio: new Date('2026-01-01T20:00:00Z').toISOString(),
+    timestamp_fin: new Date('2026-01-02T06:00:00Z').toISOString(),
+    frecuencia: 'diario',
+    estado: 'activo'
+  },
+  {
+    schedule_id: 'sched-uuid-003',
+    nombre: 'Horario Fin de Semana Completo',
+    fingerprint_host: '',
+    analytics_ids: [],
+    timestamp_inicio: new Date('2026-01-03T00:00:00Z').toISOString(),
+    timestamp_fin: new Date('2026-01-04T23:59:00Z').toISOString(),
+    frecuencia: 'semanal',
+    estado: 'activo'
+  }
+);
 
 // Listas de Control y Detalles simulados
 const dbLists = [
@@ -226,7 +350,8 @@ const dbOpenSearchDocs = {
   personas: [],
   vehiculos: [],
   rostros: [],
-  otros: []
+  otros: [],
+  eventos: []
 };
 
 const cameraNames = dbCameras.map(c => c.camera_name);
@@ -318,6 +443,50 @@ for (let i = 1; i <= 20; i++) {
   });
 }
 
+// Generar registros de eventos
+const analiticas = ['Detección de Intrusion', 'Cruce de Línea', 'Control de Aforo', 'Permanencia de Objetos', 'Análisis de Tráfico'];
+const objetos = ['Persona', 'Auto', 'Camion', 'Motocicleta', 'Bicicleta'];
+const detalles = [
+  'Persona ha cruzado la línea en sentido Entrada',
+  'Vehículo estacionado en área prohibida',
+  'Control de aforo: superado límite máximo',
+  'Objeto sospechoso detectado cerca del perímetro',
+  'Camion ha cruzado la linea en sentido De B a A'
+];
+
+for (let i = 1; i <= 35; i++) {
+  const analitica = analiticas[i % analiticas.length];
+  const objeto = objetos[i % objetos.length];
+  const detalle = detalles[i % detalles.length];
+  dbOpenSearchDocs.eventos.push({
+    _id: `event-doc-${i.toString().padStart(3, '0')}`,
+    _score: 1.0,
+    _source: {
+      timestamp: new Date(Date.now() - i * 1800000).toISOString(),
+      hora: Math.floor(Math.random() * 24),
+      dia_semana: ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'][new Date(Date.now() - i * 1800000).getDay()],
+      dia_mes: new Date(Date.now() - i * 1800000).getDate(),
+      mes: ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][new Date(Date.now() - i * 1800000).getMonth()],
+      nombre_camara: cameraNames[i % cameraNames.length],
+      id_camara: `camara-id-${i}`,
+      analitica: analitica,
+      location: {
+        lon: (-76.975727 - (Math.random() * 0.05)).toFixed(6),
+        lat: (-12.126308 + (Math.random() * 0.05)).toFixed(6)
+      },
+      objeto: objeto,
+      detalle_evento: detalle,
+      url_img: `https://images.unsplash.com/photo-${i % 2 === 0 ? '1488590528505-98d2b5aba04b' : '1518770660439-4636190af475'}?w=400&h=300&fit=crop`,
+      conteo_aforo: analitica === 'Control de Aforo' ? Math.floor(Math.random() * 50) + 10 : null,
+      tiempo_permanencia: analitica === 'Permanencia de Objetos' ? parseFloat((Math.random() * 120 + 10).toFixed(2)) : null,
+      objetos_en_area: analitica === 'Permanencia de Objetos' ? Math.floor(Math.random() * 10) + 1 : null,
+      espacios_libres: analitica === 'Análisis de Tráfico' ? Math.floor(Math.random() * 15) : null,
+      direccion: i % 2 === 0 ? 'Entrada' : 'Salida',
+      id_report_type: ""
+    }
+  });
+}
+
 // Almacén de sesiones en memoria
 const activeSessions = new Map();
 
@@ -372,7 +541,7 @@ const server = http.createServer((req, res) => {
     }
 
     // En caso de que no tenga prefijo en el request directo, detectar OpenSearch
-    if (!isOpenSearch && (pathname.startsWith('/_cat') || pathname.startsWith('/personas') || pathname.startsWith('/vehiculos') || pathname.startsWith('/rostros') || pathname.startsWith('/otros'))) {
+    if (!isOpenSearch && (pathname.startsWith('/_cat') || pathname.startsWith('/personas') || pathname.startsWith('/vehiculos') || pathname.startsWith('/rostros') || pathname.startsWith('/otros') || pathname.startsWith('/eventos'))) {
       isOpenSearch = true;
     }
 
@@ -428,6 +597,18 @@ const server = http.createServer((req, res) => {
               const vals = f.terms.camara;
               docs = docs.filter(d => vals.includes(d._source.camara));
             }
+            if (f.terms.nombre_camara) {
+              const vals = f.terms.nombre_camara;
+              docs = docs.filter(d => vals.includes(d._source.nombre_camara));
+            }
+            if (f.terms.analitica) {
+              const vals = f.terms.analitica;
+              docs = docs.filter(d => vals.includes(d._source.analitica));
+            }
+            if (f.terms.objeto) {
+              const vals = f.terms.objeto;
+              docs = docs.filter(d => vals.includes(d._source.objeto));
+            }
           }
           if (f.term) {
             if (f.term.edad) docs = docs.filter(d => d._source.edad === f.term.edad);
@@ -468,12 +649,22 @@ const server = http.createServer((req, res) => {
           }
           if (f.multi_match && f.multi_match.query) {
             const queryStr = f.multi_match.query.toLowerCase();
-            docs = docs.filter(d => 
-              String(d._id).toLowerCase().includes(queryStr) || 
-              String(d._source.camara).toLowerCase().includes(queryStr) || 
-              String(d._source.reconocimiento || '').toLowerCase().includes(queryStr) || 
-              String(d._source.tipo_objeto || '').toLowerCase().includes(queryStr)
-            );
+            if (index === 'eventos') {
+              docs = docs.filter(d => 
+                String(d._id).toLowerCase().includes(queryStr) || 
+                String(d._source.nombre_camara).toLowerCase().includes(queryStr) || 
+                String(d._source.objeto || '').toLowerCase().includes(queryStr) || 
+                String(d._source.detalle_evento || '').toLowerCase().includes(queryStr) ||
+                String(d._source.analitica || '').toLowerCase().includes(queryStr)
+              );
+            } else {
+              docs = docs.filter(d => 
+                String(d._id).toLowerCase().includes(queryStr) || 
+                String(d._source.camara).toLowerCase().includes(queryStr) || 
+                String(d._source.reconocimiento || '').toLowerCase().includes(queryStr) || 
+                String(d._source.tipo_objeto || '').toLowerCase().includes(queryStr)
+              );
+            }
           }
         });
 
@@ -525,6 +716,35 @@ const server = http.createServer((req, res) => {
         const paginatedHits = hits.slice(from, from + size);
 
         // Armar Agregaciones
+        if (index === 'eventos') {
+          const camaraCounts = {};
+          const analiticaCounts = {};
+          const objetoCounts = {};
+          hits.forEach(d => {
+            const s = d._source;
+            if (s.nombre_camara) camaraCounts[s.nombre_camara] = (camaraCounts[s.nombre_camara] || 0) + 1;
+            if (s.analitica) analiticaCounts[s.analitica] = (analiticaCounts[s.analitica] || 0) + 1;
+            if (s.objeto) objetoCounts[s.objeto] = (objetoCounts[s.objeto] || 0) + 1;
+          });
+
+          const aggregations = {
+            camara_vals: { buckets: Object.keys(camaraCounts).map(k => ({ key: k, doc_count: camaraCounts[k] })) },
+            analitica_vals: { buckets: Object.keys(analiticaCounts).map(k => ({ key: k, doc_count: analiticaCounts[k] })) },
+            objeto_vals: { buckets: Object.keys(objetoCounts).map(k => ({ key: k, doc_count: objetoCounts[k] })) }
+          };
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            hits: {
+              total: { value: hits.length, relation: 'eq' },
+              max_score: 1.0,
+              hits: paginatedHits
+            },
+            aggregations
+          }));
+          return;
+        }
+
         const tipoObjetoCounts = {};
         const edadCounts = {};
         const generoCounts = {};
@@ -600,13 +820,8 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({
           access_token: 'mock-jwt-token-xyz',
           token_type: 'bearer',
-          user: {
-            user_id: user.user_id,
-            usuario: user.usuario,
-            nombre: user.nombre,
-            rol: user.rol,
-            created_at: user.created_at
-          }
+          usuario: user.usuario,
+          rol_id: user.rol_id
         }));
       } else {
         res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -656,6 +871,199 @@ const server = http.createServer((req, res) => {
       const safeUsers = dbUsuarios.map(({ contrasena, ...rest }) => rest);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(safeUsers));
+      return;
+    }
+
+    // ---- RUTA: GET /frontend/users/ ----
+    if ((pathname === '/frontend/users/' || pathname === '/frontend/users') && req.method === 'GET') {
+      // Enriquecer cada usuario con el nombre del rol para la UI
+      const enriched = dbUsuarios.map(u => {
+        const rol = dbRoles.find(r => r.rol_id === u.rol_id);
+        return {
+          user_id: u.user_id,
+          email: u.usuario,
+          nombres: u.nombre.split(' ')[0] || u.nombre,
+          apellidos: u.nombre.split(' ').slice(1).join(' ') || '',
+          rol_id: u.rol_id,
+          created_at: u.created_at
+        };
+      });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(enriched));
+      return;
+    }
+
+    // ---- RUTA: POST /frontend/users/ ----
+    if ((pathname === '/frontend/users/' || pathname === '/frontend/users') && req.method === 'POST') {
+      const newUser = {
+        user_id: `user-${Math.random().toString(36).substring(2, 10)}`,
+        usuario: parsedBody.email || '',
+        nombre: `${parsedBody.nombres || ''} ${parsedBody.apellidos || ''}`.trim(),
+        contrasena: parsedBody.password || '',
+        rol_id: parsedBody.rol_id || dbRoles[dbRoles.length - 1].rol_id,
+        created_at: new Date().toISOString()
+      };
+      dbUsuarios.push(newUser);
+      res.writeHead(201, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        user_id: newUser.user_id,
+        email: newUser.usuario,
+        nombres: parsedBody.nombres || '',
+        apellidos: parsedBody.apellidos || '',
+        rol_id: newUser.rol_id,
+        created_at: newUser.created_at
+      }));
+      return;
+    }
+
+    // ---- RUTA: PUT /frontend/users/{user_id} ----
+    const putUserMatch = pathname.match(/^\/frontend\/users\/([^\/]+)$/);
+    if (putUserMatch && req.method === 'PUT') {
+      const userId = putUserMatch[1];
+      const idx = dbUsuarios.findIndex(u => u.user_id === userId);
+      if (idx !== -1) {
+        let mappedRolId = parsedBody.rol_id || dbUsuarios[idx].rol_id;
+        if (mappedRolId === 'ADMIN') {
+          mappedRolId = '73bd9b9e-53da-4901-8bd8-9a127081e61b';
+        } else if (mappedRolId === 'SUPERVISOR') {
+          mappedRolId = 'd597024c-7362-4d41-a96b-a9321b8a0d77';
+        } else if (mappedRolId === 'OPERADOR') {
+          mappedRolId = 'e2fc9bc1-ab14-4cd4-8b16-492a2a5e8aec';
+        }
+
+        dbUsuarios[idx] = {
+          ...dbUsuarios[idx],
+          usuario: parsedBody.email || dbUsuarios[idx].usuario,
+          nombre: `${parsedBody.nombres || ''} ${parsedBody.apellidos || ''}`.trim() || dbUsuarios[idx].nombre,
+          rol_id: mappedRolId
+        };
+        const u = dbUsuarios[idx];
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          user_id: u.user_id,
+          email: u.usuario,
+          nombres: u.nombre.split(' ')[0] || u.nombre,
+          apellidos: u.nombre.split(' ').slice(1).join(' ') || '',
+          rol_id: u.rol_id,
+          created_at: u.created_at
+        }));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Usuario no encontrado' }));
+      }
+      return;
+    }
+
+    // ---- RUTA: PATCH /frontend/users/{user_id} (cambio de contraseña) ----
+    const patchUserMatch = pathname.match(/^\/frontend\/users\/([^\/]+)$/);
+    if (patchUserMatch && req.method === 'PATCH') {
+      const userId = patchUserMatch[1];
+      const idx = dbUsuarios.findIndex(u => u.user_id === userId);
+      if (idx !== -1) {
+        if (dbUsuarios[idx].contrasena !== parsedBody.old_password) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ detail: 'La contraseña actual es incorrecta' }));
+        } else {
+          dbUsuarios[idx].contrasena = parsedBody.new_password;
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+        }
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Usuario no encontrado' }));
+      }
+      return;
+    }
+
+    // ---- RUTA: DELETE /frontend/users/{user_id} ----
+    const deleteUserMatch = pathname.match(/^\/frontend\/users\/([^\/]+)$/);
+    if (deleteUserMatch && req.method === 'DELETE') {
+      const userId = deleteUserMatch[1];
+      const idx = dbUsuarios.findIndex(u => u.user_id === userId);
+      if (idx !== -1) {
+        dbUsuarios.splice(idx, 1);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Usuario no encontrado' }));
+      }
+      return;
+    }
+
+    // ---- RUTA: GET /frontend/permisos/ ----
+    if ((pathname === '/frontend/permisos/' || pathname === '/frontend/permisos') && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(dbPermisos));
+      return;
+    }
+
+    // ---- RUTA: GET /frontend/roles/ ----
+    if ((pathname === '/frontend/roles/' || pathname === '/frontend/roles') && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(dbRoles));
+      return;
+    }
+
+    // ---- RUTA: POST /frontend/roles/ (crear rol) ----
+    if ((pathname === '/frontend/roles/' || pathname === '/frontend/roles') && req.method === 'POST') {
+      const newRole = {
+        rol_id: `role-uuid-${Math.random().toString(36).substring(2, 7)}`,
+        nombre: parsedBody.nombre || 'NUEVO_ROL',
+        descripcion: parsedBody.descripcion || '',
+        id_permisos: parsedBody.id_permisos || []
+      };
+      dbRoles.push(newRole);
+      res.writeHead(201, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(newRole));
+      return;
+    }
+
+    // ---- RUTA: PUT /frontend/roles/{rol_id} ----
+    const putRolMatch = pathname.match(/^\/frontend\/roles\/([^\/]+)$/);
+    if (putRolMatch && req.method === 'PUT') {
+      const rolId = putRolMatch[1];
+      const idx = dbRoles.findIndex(r => r.rol_id === rolId);
+      if (idx !== -1) {
+        const systemRoles = ['ADMIN', 'SUPERVISOR', 'OPERADOR'];
+        if (systemRoles.includes(dbRoles[idx].nombre.toUpperCase())) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ detail: 'System roles cannot be updated.' }));
+          return;
+        }
+        dbRoles[idx] = {
+          ...dbRoles[idx],
+          nombre: parsedBody.nombre || dbRoles[idx].nombre,
+          descripcion: parsedBody.descripcion || dbRoles[idx].descripcion,
+          id_permisos: parsedBody.id_permisos || dbRoles[idx].id_permisos
+        };
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(dbRoles[idx]));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Rol no encontrado' }));
+      }
+      return;
+    }
+
+    // ---- RUTA: DELETE /frontend/roles/{rol_id} ----
+    if (putRolMatch && req.method === 'DELETE') {
+      const rolId = putRolMatch[1];
+      const idx = dbRoles.findIndex(r => r.rol_id === rolId);
+      if (idx !== -1) {
+        const systemRoles = ['ADMIN', 'SUPERVISOR', 'OPERADOR'];
+        if (systemRoles.includes(dbRoles[idx].nombre.toUpperCase())) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ detail: 'System roles cannot be deleted.' }));
+          return;
+        }
+        dbRoles.splice(idx, 1);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Rol no encontrado' }));
+      }
       return;
     }
 
@@ -743,6 +1151,13 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ---- RUTA: GET /frontend/cameras/ (global) ----
+    if ((pathname === '/frontend/cameras/' || pathname === '/frontend/cameras') && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(dbCameras));
+      return;
+    }
+
     // ---- RUTA: GET /frontend/cameras/{fingerprint_host} ----
     const camsHostMatch = pathname.match(/^\/frontend\/cameras\/([^\/]+)$/);
     if (camsHostMatch && req.method === 'GET') {
@@ -753,37 +1168,43 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // ---- RUTA: POST /frontend/cameras/update/{camera_id} ----
-    const updateCamMatch = pathname.match(/^\/frontend\/cameras\/update\/([^\/]+)$/);
-    if (updateCamMatch && req.method === 'POST') {
-      const cameraId = updateCamMatch[1];
-      const index = dbCameras.findIndex(c => c.camera_id === cameraId);
-      if (index !== -1) {
-        if (parsedBody.camera_name) dbCameras[index].camera_name = parsedBody.camera_name;
-        if (parsedBody.location) dbCameras[index].location = parsedBody.location;
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(dbCameras[index]));
-      } else {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ detail: 'Cámara no encontrada' }));
+    // ---- RUTA: PATCH /frontend/cameras/{camera_id} o POST /frontend/cameras/update/{camera_id} (legacy) ----
+    const updateCamMatch = pathname.match(/^\/frontend\/cameras\/([^\/]+)$/);
+    const legacyUpdateCamMatch = pathname.match(/^\/frontend\/cameras\/update\/([^\/]+)$/);
+    if ((updateCamMatch && req.method === 'PATCH') || (legacyUpdateCamMatch && req.method === 'POST')) {
+      const cameraId = legacyUpdateCamMatch ? legacyUpdateCamMatch[1] : updateCamMatch[1];
+      if (cameraId !== 'update' && cameraId !== 'delete') {
+        const index = dbCameras.findIndex(c => c.camera_id === cameraId);
+        if (index !== -1) {
+          if (parsedBody.camera_name) dbCameras[index].camera_name = parsedBody.camera_name;
+          if (parsedBody.location) dbCameras[index].location = parsedBody.location;
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(dbCameras[index]));
+        } else {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ detail: 'Cámara no encontrada' }));
+        }
+        return;
       }
-      return;
     }
 
-    // ---- RUTA: DELETE /frontend/cameras/delete/{camera_id} ----
-    const deleteCamMatch = pathname.match(/^\/frontend\/cameras\/delete\/([^\/]+)$/);
-    if (deleteCamMatch && req.method === 'DELETE') {
-      const cameraId = deleteCamMatch[1];
-      const index = dbCameras.findIndex(c => c.camera_id === cameraId);
-      if (index !== -1) {
-        dbCameras.splice(index, 1);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true }));
-      } else {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ detail: 'Cámara no encontrada' }));
+    // ---- RUTA: DELETE /frontend/cameras/{camera_id} o DELETE /frontend/cameras/delete/{camera_id} (legacy) ----
+    const deleteCamMatch = pathname.match(/^\/frontend\/cameras\/([^\/]+)$/);
+    const legacyDeleteCamMatch = pathname.match(/^\/frontend\/cameras\/delete\/([^\/]+)$/);
+    if ((deleteCamMatch && req.method === 'DELETE') || (legacyDeleteCamMatch && req.method === 'DELETE')) {
+      const cameraId = legacyDeleteCamMatch ? legacyDeleteCamMatch[1] : deleteCamMatch[1];
+      if (cameraId !== 'update' && cameraId !== 'delete') {
+        const index = dbCameras.findIndex(c => c.camera_id === cameraId);
+        if (index !== -1) {
+          dbCameras.splice(index, 1);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+        } else {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ detail: 'Cámara no encontrada' }));
+        }
+        return;
       }
-      return;
     }
 
     // ---- RUTA: POST /cameras/update/ (legacy) ----
@@ -800,6 +1221,12 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ---- RUTA: GET /frontend/analytics/ (global) ----
+    if ((pathname === '/frontend/analytics/' || pathname === '/frontend/analytics') && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(dbAnalytics));
+      return;
+    }
 
     // ---- RUTA: GET /frontend/analytics/{fingerprint_host} ----
     const analyticsHostMatch = pathname.match(/^\/frontend\/analytics\/([^\/]+)$/);
@@ -811,9 +1238,9 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // ---- RUTA: POST /frontend/analytics/update_status/{analytic_id} ----
+    // ---- RUTA: PATCH /frontend/analytics/update_status/{analytic_id} o POST /frontend/analytics/update_status/{analytic_id} (legacy) ----
     const updateAnalyticMatch = pathname.match(/^\/frontend\/analytics\/update_status\/([^\/]+)$/);
-    if (updateAnalyticMatch && req.method === 'POST') {
+    if (updateAnalyticMatch && (req.method === 'PATCH' || req.method === 'POST')) {
       const analyticId = updateAnalyticMatch[1];
       const index = dbAnalytics.findIndex(a => a.analytic_id === analyticId);
       if (index !== -1) {
@@ -831,16 +1258,18 @@ const server = http.createServer((req, res) => {
     const deleteAnalyticMatch = pathname.match(/^\/frontend\/analytics\/([^\/]+)$/);
     if (deleteAnalyticMatch && req.method === 'DELETE') {
       const analyticId = deleteAnalyticMatch[1];
-      const index = dbAnalytics.findIndex(a => a.analytic_id === analyticId);
-      if (index !== -1) {
-        dbAnalytics.splice(index, 1);
-        res.writeHead(204);
-        res.end();
-      } else {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ detail: 'Analítica no encontrada' }));
+      if (analyticId !== 'update_status') {
+        const index = dbAnalytics.findIndex(a => a.analytic_id === analyticId);
+        if (index !== -1) {
+          dbAnalytics.splice(index, 1);
+          res.writeHead(204);
+          res.end();
+        } else {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ detail: 'Analítica no encontrada' }));
+        }
+        return;
       }
-      return;
     }
 
     // ---- RUTA: GET /frontend/schedules/ ----
@@ -850,8 +1279,9 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // ---- RUTA: POST /frontend/schedules/create ----
-    if (pathname === '/frontend/schedules/create' && req.method === 'POST') {
+    // ---- RUTA: POST /frontend/schedules/ o POST /frontend/schedules/create (legacy) ----
+    if (((pathname === '/frontend/schedules/' || pathname === '/frontend/schedules') && req.method === 'POST') ||
+        (pathname === '/frontend/schedules/create' && req.method === 'POST')) {
       const newSched = {
         schedule_id: `sched-uuid-${Math.random().toString(36).substring(2, 7)}`,
         nombre: parsedBody.nombre || 'Nuevo Horario',
@@ -860,7 +1290,7 @@ const server = http.createServer((req, res) => {
         timestamp_inicio: parsedBody.timestamp_inicio || new Date().toISOString(),
         timestamp_fin: parsedBody.timestamp_fin || new Date().toISOString(),
         frecuencia: parsedBody.frecuencia || 'diario',
-        estado: parsedBody.estado || 'activo'
+        estado: parsedBody.estado || 'active'
       };
       dbSchedules.push(newSched);
       res.writeHead(201, { 'Content-Type': 'application/json' });
@@ -868,29 +1298,32 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // ---- RUTA: PUT /frontend/schedules/update/{schedule_id} ----
-    const updateSchedMatch = pathname.match(/^\/frontend\/schedules\/update\/([^\/]+)$/);
-    if (updateSchedMatch && req.method === 'PUT') {
-      const schedId = updateSchedMatch[1];
-      const index = dbSchedules.findIndex(s => s.schedule_id === schedId);
-      if (index !== -1) {
-        dbSchedules[index] = { ...dbSchedules[index], ...parsedBody, schedule_id: schedId };
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(dbSchedules[index]));
-      } else {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ detail: 'Horario no encontrado' }));
+    // ---- RUTA: PUT /frontend/schedules/{schedule_id} o PUT /frontend/schedules/update/{schedule_id} (legacy) ----
+    const putSchedMatch = pathname.match(/^\/frontend\/schedules\/([^\/]+)$/);
+    const legacyPutSchedMatch = pathname.match(/^\/frontend\/schedules\/update\/([^\/]+)$/);
+    if ((putSchedMatch && req.method === 'PUT') || (legacyPutSchedMatch && req.method === 'PUT')) {
+      const schedId = legacyPutSchedMatch ? legacyPutSchedMatch[1] : putSchedMatch[1];
+      if (schedId !== 'create' && schedId !== 'update' && schedId !== 'update_state' && schedId !== 'delete') {
+        const index = dbSchedules.findIndex(s => s.schedule_id === schedId);
+        if (index !== -1) {
+          dbSchedules[index] = { ...dbSchedules[index], ...parsedBody, schedule_id: schedId };
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(dbSchedules[index]));
+        } else {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ detail: 'Horario no encontrado' }));
+        }
+        return;
       }
-      return;
     }
 
-    // ---- RUTA: POST /frontend/schedules/update_state/{schedule_id} ----
+    // ---- RUTA: PATCH /frontend/schedules/update_state/{schedule_id} o POST /frontend/schedules/update_state/{schedule_id} (legacy) ----
     const updateSchedStateMatch = pathname.match(/^\/frontend\/schedules\/update_state\/([^\/]+)$/);
-    if (updateSchedStateMatch && req.method === 'POST') {
+    if (updateSchedStateMatch && (req.method === 'PATCH' || req.method === 'POST')) {
       const schedId = updateSchedStateMatch[1];
       const index = dbSchedules.findIndex(s => s.schedule_id === schedId);
       if (index !== -1) {
-        dbSchedules[index].estado = parsedBody.status || 'inactivo';
+        dbSchedules[index].estado = parsedBody.status || 'inactive';
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(dbSchedules[index]));
       } else {
@@ -900,20 +1333,23 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // ---- RUTA: DELETE /frontend/schedules/delete/{schedule_id} ----
-    const deleteSchedMatch = pathname.match(/^\/frontend\/schedules\/delete\/([^\/]+)$/);
-    if (deleteSchedMatch && req.method === 'DELETE') {
-      const schedId = deleteSchedMatch[1];
-      const index = dbSchedules.findIndex(s => s.schedule_id === schedId);
-      if (index !== -1) {
-        dbSchedules.splice(index, 1);
-        res.writeHead(204);
-        res.end();
-      } else {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ detail: 'Horario no encontrado' }));
+    // ---- RUTA: DELETE /frontend/schedules/{schedule_id} o DELETE /frontend/schedules/delete/{schedule_id} (legacy) ----
+    const deleteSchedMatch = pathname.match(/^\/frontend\/schedules\/([^\/]+)$/);
+    const legacyDeleteSchedMatch = pathname.match(/^\/frontend\/schedules\/delete\/([^\/]+)$/);
+    if ((deleteSchedMatch && req.method === 'DELETE') || (legacyDeleteSchedMatch && req.method === 'DELETE')) {
+      const schedId = legacyDeleteSchedMatch ? legacyDeleteSchedMatch[1] : deleteSchedMatch[1];
+      if (schedId !== 'create' && schedId !== 'update' && schedId !== 'update_state' && schedId !== 'delete') {
+        const index = dbSchedules.findIndex(s => s.schedule_id === schedId);
+        if (index !== -1) {
+          dbSchedules.splice(index, 1);
+          res.writeHead(204);
+          res.end();
+        } else {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ detail: 'Horario no encontrado' }));
+        }
+        return;
       }
-      return;
     }
 
     // ---- RUTA: GET /frontend/lists / GET /lists ----
@@ -938,8 +1374,8 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // ---- RUTA: POST /frontend/lists/register / POST /lists/register ----
-    if ((pathname === '/frontend/lists/register' || pathname === '/lists/register') && req.method === 'POST') {
+    // ---- RUTA: POST /frontend/lists/register o POST /frontend/lists ----
+    if ((pathname === '/frontend/lists/register' || pathname === '/lists/register' || pathname === '/frontend/lists/' || pathname === '/frontend/lists' || pathname === '/lists/') && req.method === 'POST') {
       const newList = {
         list_id: `list-uuid-${Math.random().toString(36).substring(2, 7)}`,
         name: parsedBody.name,
@@ -949,6 +1385,22 @@ const server = http.createServer((req, res) => {
       dbLists.push(newList);
       res.writeHead(201, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(newList));
+      return;
+    }
+
+    // ---- RUTA: PUT /frontend/lists/{list_id} ----
+    const putListMatch = pathname.match(/^\/(?:frontend\/)?lists\/([^\/]+)$/);
+    if (putListMatch && req.method === 'PUT') {
+      const listId = putListMatch[1];
+      const index = dbLists.findIndex(l => l.list_id === listId);
+      if (index !== -1) {
+        dbLists[index] = { ...dbLists[index], ...parsedBody };
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(dbLists[index]));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Lista no encontrada' }));
+      }
       return;
     }
 
@@ -966,10 +1418,18 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // ---- RUTA: DELETE /frontend/lists/delete/{id} / DELETE /lists/delete/{id} ----
-    const deleteListMatch = pathname.match(/^\/(?:frontend\/)?lists\/delete\/([^\/]+)$/);
+    // ---- RUTA: DELETE /frontend/lists/{id} / DELETE /frontend/lists/delete/{id} ----
+    const deleteListMatch = pathname.match(/^\/(?:frontend\/)?lists\/(?:delete\/)?([^\/]+)$/);
     if (deleteListMatch && req.method === 'DELETE') {
       const listId = deleteListMatch[1];
+      
+      // Ignore if listId is a reserved route name
+      if (listId === 'register' || listId === 'update') {
+        res.writeHead(405, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Method not allowed' }));
+        return;
+      }
+
       const index = dbLists.findIndex(l => l.list_id === listId);
       if (index !== -1) {
         dbLists.splice(index, 1);
@@ -1073,10 +1533,18 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // ---- RUTA: DELETE /frontend/list_details/delete/{id} / DELETE /list_details/delete/{id} ----
-    const deleteDetailMatch = pathname.match(/^\/(?:frontend\/)?list_details\/delete\/([^\/]+)$/);
+    // ---- RUTA: DELETE /frontend/list_details/{id} / DELETE /list_details/delete/{id} ----
+    const deleteDetailMatch = pathname.match(/^\/(?:frontend\/)?list_details\/(?:delete\/)?([^\/]+)$/);
     if (deleteDetailMatch && req.method === 'DELETE') {
       const detailId = deleteDetailMatch[1];
+      
+      // Ignore if detailId matches a reserved route name
+      if (detailId === 'register_face' || detailId === 'register_plate') {
+        res.writeHead(405, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Method not allowed' }));
+        return;
+      }
+
       const index = dbListDetails.findIndex(d => d.detail_id === detailId);
       if (index !== -1) {
         dbListDetails.splice(index, 1);
@@ -1155,7 +1623,8 @@ server.listen(PORT, () => {
   console.log(`=======================================================`);
   console.log(`Usuarios Registrados para Pruebas:`);
   dbUsuarios.forEach(u => {
-    console.log(` - Usuario: '${u.usuario}' | Clave: '${u.contrasena}' | Rol: '${u.rol}'`);
+    const rol = dbRoles.find(r => r.rol_id === u.rol_id);
+    console.log(` - Usuario: '${u.usuario}' | Clave: '${u.contrasena}' | Rol: '${rol ? rol.nombre : u.rol_id}'`);
   });
   console.log(`=======================================================`);
 });

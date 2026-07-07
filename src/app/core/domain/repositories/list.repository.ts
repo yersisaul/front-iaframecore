@@ -10,4 +10,7 @@ export abstract class IListRepository {
   abstract deleteListDetail(detailId: string): Observable<void>;
   abstract querySubjectDetections(subjectName: string, type: 'face' | 'plate', documentId?: string): Observable<any[]>;
   abstract updateList(list: List): Observable<List>;
+  abstract updateFaceImg(detailId: string, file: File): Observable<ListDetail>;
+  abstract updateFaceDetail(detailId: string, payload: { nombre_asociado: string }): Observable<ListDetail>;
+  abstract updatePlateDetail(detailId: string, payload: { nombre_asociado?: string, plate_text: string }): Observable<ListDetail>;
 }

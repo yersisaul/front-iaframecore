@@ -1,0 +1,771 @@
+<div class="eventos-view-container container-fluid py-4 position-relative">
+  <!-- Header Section -->
+  <div class="eventos-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div class="d-flex align-items-center gap-3">
+      <!-- Botón de Collapse Sidebar (Ghost Button) -->
+      <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
+        (click)="toggleSidebar()" aria-label="Toggle Sidebar">
+        @if (isSidebarCollapsed()) {
+          <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
+        } @else {
+          <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
+        }
+      </button>
+      <div>
+        <h2 class="fw-bold mb-0 fs-3 text-body">Eventos y Alertas</h2>
+        <p class="text-muted mb-0 small mt-1">
+          Se encontraron <span class="fw-semibold text-primary">{{ formatTotalRecords(totalRecords()) }}</span> eventos registrados en el sistema.
+        </p>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-3">
+      <!-- Search and Page Size Selector -->
+      <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
+        <div class="search-input-wrapper position-relative d-flex align-items-center pl-1">
+          <span class="icon-svg icon-search search-icon-prefix text-muted" style="width: 18px; height: 18px; opacity: 0.5;"></span>
+          <input type="text" 
+                 [formControl]="searchControl"
+                 placeholder="Buscar eventos..."
+                 class="search-input-control border-0 ms-2" 
+                 style="font-size: 0.82rem; outline: none; width: 180px;" />
+        </div>
+
+        <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
+          (click)="toggleFiltersVisibility()" [class.active]="hasActiveFilters()" [class.open]="showFilters()"
+          title="Mostrar/ocultar filtros" aria-label="Mostrar/ocultar filtros">
+          <span class="icon-svg icon-filter filter-icon"></span>
+          @if (hasActiveFilters()) {
+            <span class="active-badge-dot"></span>
+          }
+        </button>
+      </div>
+
+      <!-- Selector de Registros por Página -->
+      <div class="d-flex align-items-center gap-2">
+        <label for="limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Registros por página:</label>
+        <select id="limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
+          (change)="onLimitChange($event)">
+          @for (opt of limitOptions(); track opt) {
+            <option [value]="opt" [selected]="pageSize() === opt">{{ opt }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Horizontal Filter Bar -->
+  <div class="horizontal-filters-bar mb-4" [class.hidden]="!showFilters()">
+    <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
+      
+      <!-- 1. FILTRO CÁMARAS -->
+      @if (filterOptions().camaras.length > 0) {
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilters().camaras.length > 0" (click)="toggleDropdown('camaras', $event)">
+          <span class="icon-svg icon-box" style="width: 14px; height: 14px;"></span>
+          <span>Cámara ({{ tempFilters().camaras.length || 'Todas' }})</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all" style="width: 10px; height: 10px;"
+            [class.rotated]="activeDropdown() === 'camaras'"></span>
+        </button>
+        @if (activeDropdown() === 'camaras') {
+        <div class="filter-dropdown-menu dropdown-camaras p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @for (cam of filterOptions().camaras; track cam) {
+          <label class="dropdown-item d-flex align-items-center gap-2 py-1.5 px-3 rounded select-none cursor-pointer">
+            <input type="checkbox" [checked]="tempFilters().camaras.includes(cam)"
+              (change)="toggleMultiSelectFilter('camaras', cam)" class="form-check-input flex-shrink-0" />
+            <span class="text-truncate">{{ cam }}</span>
+          </label>
+          }
+        </div>
+        }
+      </div>
+      }
+
+      <!-- 2. FILTRO ANALÍTICAS -->
+      @if (filterOptions().analiticas.length > 0) {
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilters().analiticas.length > 0" (click)="toggleDropdown('analiticas', $event)">
+          <span class="icon-svg icon-activity" style="width: 14px; height: 14px;"></span>
+          <span>Analítica ({{ tempFilters().analiticas.length || 'Todas' }})</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all" style="width: 10px; height: 10px;"
+            [class.rotated]="activeDropdown() === 'analiticas'"></span>
+        </button>
+        @if (activeDropdown() === 'analiticas') {
+        <div class="filter-dropdown-menu dropdown-analiticas p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @for (ana of filterOptions().analiticas; track ana) {
+          <label class="dropdown-item d-flex align-items-center gap-2 py-1.5 px-3 rounded select-none cursor-pointer">
+            <input type="checkbox" [checked]="tempFilters().analiticas.includes(ana)"
+              (change)="toggleMultiSelectFilter('analiticas', ana)" class="form-check-input flex-shrink-0" />
+            <span class="text-truncate text-capitalize">{{ ana }}</span>
+          </label>
+          }
+        </div>
+        }
+      </div>
+      }
+
+      <!-- 3. FILTRO OBJETOS -->
+      @if (filterOptions().objetos.length > 0) {
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilters().objetos.length > 0" (click)="toggleDropdown('objetos', $event)">
+          <span class="icon-svg icon-target" style="width: 14px; height: 14px;"></span>
+          <span>Objeto ({{ tempFilters().objetos.length || 'Todos' }})</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all" style="width: 10px; height: 10px;"
+            [class.rotated]="activeDropdown() === 'objetos'"></span>
+        </button>
+        @if (activeDropdown() === 'objetos') {
+        <div class="filter-dropdown-menu dropdown-objetos p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @for (obj of filterOptions().objetos; track obj) {
+          <label class="dropdown-item d-flex align-items-center gap-2 py-1.5 px-3 rounded select-none cursor-pointer">
+            <input type="checkbox" [checked]="tempFilters().objetos.includes(obj)"
+              (change)="toggleMultiSelectFilter('objetos', obj)" class="form-check-input flex-shrink-0" />
+            <span class="text-truncate text-capitalize">{{ obj }}</span>
+          </label>
+          }
+        </div>
+        }
+      </div>
+      }
+
+      <!-- 4. RANGO DE FECHAS -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilters().timestampDesde || tempFilters().timestampHasta"
+          (click)="toggleDropdown('fechas', $event)">
+          <span class="icon-svg icon-calendar" style="width: 14px; height: 14px;"></span>
+          <span>Rango de Fechas</span>
+          @if (tempFilters().timestampDesde || tempFilters().timestampHasta) {
+            <span class="badge-dot-active bg-primary animate-pulse" style="width: 6px; height: 6px; border-radius: 50%;"></span>
+          }
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all" style="width: 10px; height: 10px;"
+            [class.rotated]="activeDropdown() === 'fechas'"></span>
+        </button>
+        @if (activeDropdown() === 'fechas') {
+        <div class="filter-dropdown-menu dropdown-fechas p-3" (click)="$event.stopPropagation()">
+          <div class="dropdown-header-title mb-3 text-uppercase text-muted fw-bold">Rango de Fechas</div>
+
+          <!-- Presets -->
+          <div class="d-flex flex-wrap gap-2 mb-3 preset-buttons-row">
+            <button type="button" class="preset-btn" (click)="setDatePreset('24h')">24h</button>
+            <button type="button" class="preset-btn" (click)="setDatePreset('7d')">7 días</button>
+            <button type="button" class="preset-btn" (click)="setDatePreset('today')">Hoy</button>
+            <button type="button" class="preset-btn text-danger-hover" (click)="setDatePreset('clear')">Limpiar</button>
+          </div>
+
+          <!-- Desde -->
+          <div class="mb-3">
+            <label class="form-label small mb-2 fw-semibold text-muted d-block">Desde</label>
+            <div class="row g-2">
+              <div class="col-7 position-relative">
+                <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
+                  (click)="openCalendarField('desde', $event)">
+                  <span>{{ formatCalendarDateLabel(dateDesdeStr()) || 'Elegir fecha' }}</span>
+                  <span class="icon-svg icon-calendar text-muted" style="width: 13px; height: 13px; opacity: 0.75;"></span>
+                </button>
+
+                @if (activeCalendarField() === 'desde') {
+                <div class="custom-calendar-popover position-absolute top-100 start-0" (click)="$event.stopPropagation()">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <button type="button" class="calendar-header-btn btn-ghost" (click)="prevCalendarMonth($event)">&lt;</button>
+                    <span class="fw-bold text-capitalize" style="font-size: 0.85rem; color: var(--text-primary);">
+                      {{ getMonths()[calendarViewMonth()] }} {{ calendarViewYear() }}
+                    </span>
+                    <button type="button" class="calendar-header-btn btn-ghost" (click)="nextCalendarMonth($event)">&gt;</button>
+                  </div>
+                  <div class="d-grid text-center text-muted small mb-1" style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
+                    <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
+                  </div>
+                  <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
+                    @for (empty of calendarGrid().emptyDays; track empty) {
+                    <div style="width: 28px; height: 28px;"></div>
+                    }
+                    @for (day of calendarGrid().days; track day) {
+                    <button type="button" class="calendar-day-btn" [class.selected]="isCalendarDaySelected(day)"
+                      (click)="selectCalendarDay(day)">{{ day }}</button>
+                    }
+                  </div>
+                </div>
+                }
+              </div>
+
+              <div class="col-5 position-relative">
+                <button type="button" class="calendar-trigger-btn w-100 font-monospace"
+                  (click)="openTimePickerField('desde', $event)">
+                  <span>{{ timeDesdeStr() || '00:00' }}</span>
+                  <span class="icon-svg icon-clock text-muted" style="width: 13px; height: 13px; opacity: 0.75;"></span>
+                </button>
+
+                @if (activeTimeField() === 'desde') {
+                <div class="custom-time-popover position-absolute top-100 start-0" (click)="$event.stopPropagation()">
+                  <div class="time-picker-container">
+                    <div class="time-column-wrapper">
+                      <div class="time-column-header">Hora</div>
+                      <div class="time-column scroll-container">
+                        @for (h of hoursList; track h) {
+                        <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
+                          (click)="selectTimeHour(h)">{{ h | number:'2.0-0' }}</button>
+                        }
+                      </div>
+                    </div>
+                    <div class="time-separator">:</div>
+                    <div class="time-column-wrapper">
+                      <div class="time-column-header">Min</div>
+                      <div class="time-column scroll-container">
+                        @for (m of minutesList; track m) {
+                        <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
+                          (click)="selectTimeMinute(m)">{{ m | number:'2.0-0' }}</button>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Hasta -->
+          <div>
+            <label class="form-label small mb-2 fw-semibold text-muted d-block">Hasta</label>
+            <div class="row g-2">
+              <div class="col-7 position-relative">
+                <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
+                  (click)="openCalendarField('hasta', $event)">
+                  <span>{{ formatCalendarDateLabel(dateHastaStr()) || 'Elegir fecha' }}</span>
+                  <span class="icon-svg icon-calendar text-muted" style="width: 13px; height: 13px; opacity: 0.75;"></span>
+                </button>
+
+                @if (activeCalendarField() === 'hasta') {
+                <div class="custom-calendar-popover position-absolute top-100 start-0" (click)="$event.stopPropagation()">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <button type="button" class="calendar-header-btn btn-ghost" (click)="prevCalendarMonth($event)">&lt;</button>
+                    <span class="fw-bold text-capitalize" style="font-size: 0.85rem; color: var(--text-primary);">
+                      {{ getMonths()[calendarViewMonth()] }} {{ calendarViewYear() }}
+                    </span>
+                    <button type="button" class="calendar-header-btn btn-ghost" (click)="nextCalendarMonth($event)">&gt;</button>
+                  </div>
+                  <div class="d-grid text-center text-muted small mb-1" style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
+                    <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
+                  </div>
+                  <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
+                    @for (empty of calendarGrid().emptyDays; track empty) {
+                    <div style="width: 28px; height: 28px;"></div>
+                    }
+                    @for (day of calendarGrid().days; track day) {
+                    <button type="button" class="calendar-day-btn" [class.selected]="isCalendarDaySelected(day)"
+                      (click)="selectCalendarDay(day)">{{ day }}</button>
+                    }
+                  </div>
+                </div>
+                }
+              </div>
+
+              <div class="col-5 position-relative">
+                <button type="button" class="calendar-trigger-btn w-100 font-monospace"
+                  (click)="openTimePickerField('hasta', $event)">
+                  <span>{{ timeHastaStr() || '23:59' }}</span>
+                  <span class="icon-svg icon-clock text-muted" style="width: 13px; height: 13px; opacity: 0.75;"></span>
+                </button>
+
+                @if (activeTimeField() === 'hasta') {
+                <div class="custom-time-popover position-absolute top-100 start-0" (click)="$event.stopPropagation()">
+                  <div class="time-picker-container">
+                    <div class="time-column-wrapper">
+                      <div class="time-column-header">Hora</div>
+                      <div class="time-column scroll-container">
+                        @for (h of hoursList; track h) {
+                        <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
+                          (click)="selectTimeHour(h)">{{ h | number:'2.0-0' }}</button>
+                        }
+                      </div>
+                    </div>
+                    <div class="time-separator">:</div>
+                    <div class="time-column-wrapper">
+                      <div class="time-column-header">Min</div>
+                      <div class="time-column scroll-container">
+                        @for (m of minutesList; track m) {
+                        <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
+                          (click)="selectTimeMinute(m)">{{ m | number:'2.0-0' }}</button>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+          </div>
+
+        </div>
+        }
+      </div>
+
+      <!-- Apply / Clear buttons -->
+      <div class="filter-actions-group d-flex align-items-center gap-2">
+        @if (hasActiveFilters()) {
+        <button (click)="onResetFilters()"
+          class="btn btn-outline-secondary btn-premium-action d-flex align-items-center gap-2">
+          <span class="icon-svg icon-close" style="width: 14px; height: 14px;"></span>
+          Limpiar Filtros
+        </button>
+        }
+
+        @if (hasPendingFilterChanges()) {
+        <button (click)="onApplyFilters()" class="btn btn-primary btn-premium-action d-flex align-items-center gap-2">
+          <span class="icon-svg icon-check" style="width: 14px; height: 14px;"></span>
+          Aplicar Filtros
+        </button>
+        }
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Main Grid Content Area -->
+  <div class="main-content-layout position-relative">
+    <div #eventGrid class="grid-content-area position-relative">
+      
+      <!-- Loading Overlay -->
+      @if (isLoading()) {
+      <div class="loading-overlay d-flex justify-content-center align-items-center position-absolute w-100 h-100 bg-white bg-opacity-75"
+        style="z-index: 10;">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+      </div>
+      }
+
+      <!-- Banner de nuevos eventos bufferizados -->
+      @if (bufferedEvents().length > 0) {
+      <div class="alert alert-info py-2.5 px-4 mb-3 d-flex align-items-center justify-content-between animation-fade-in shadow-sm border-0"
+        style="border-radius: 12px; font-size: 0.85rem; background-color: var(--primary-light); color: var(--primary); border: 1.5px solid rgba(var(--primary-rgb), 0.15) !important;">
+        <div class="d-flex align-items-center gap-2">
+          <span class="icon-svg icon-activity animate-pulse" style="width: 16px; height: 16px;"></span>
+          <span class="fw-semibold">Hay {{ bufferedEvents().length }} nuevo(s) evento(s) disponible(s).</span>
+        </div>
+        <button class="btn btn-sm btn-primary py-1 px-3 fw-bold rounded-pill shadow-sm" (click)="applyBufferedEvents()">Ver nuevos eventos</button>
+      </div>
+      }
+
+      <!-- Empty State -->
+      @if (!isLoading() && records().length === 0) {
+      <div class="empty-state-view text-center py-5 rounded bg-white shadow-sm border">
+        <div class="empty-icon-wrapper mb-3 text-muted">
+          <span class="icon-svg icon-warning text-muted" style="width: 48px; height: 48px;"></span>
+        </div>
+        <h4 class="fw-bold">Sin Eventos</h4>
+        <p class="text-muted">No se encontraron registros de eventos para los filtros seleccionados.</p>
+        <button (click)="onResetFilters()" class="btn btn-primary btn-premium mt-2">Restablecer Filtros</button>
+      </div>
+      }
+
+      <!-- Events Cards Grid -->
+      @if (records().length > 0) {
+      <div class="eventos-grid">
+        @for (record of records(); track record.id) {
+        <div class="card event-card border-0 shadow-sm rounded-3 position-relative"
+          [class.event-card--live-new]="newRecordIds().has(record.id)"
+          style="overflow: visible !important;" 
+          (mousemove)="onCardMouseMove($event, record.id)"
+          (mouseleave)="onCardMouseLeave()">
+
+          <!-- Thumbnail Image -->
+          <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center"
+               (click)="openImageDetailsModal(record); $event.stopPropagation()">
+            <!-- Image Hover Overlay with Magnifying Glass Icon -->
+            <div class="image-hover-overlay d-flex align-items-center justify-content-center">
+              <span class="icon-svg icon-magnify magnify-icon" style="width: 32px; height: 32px;"></span>
+            </div>
+            @if (record.urlImg) {
+            <img [src]="record.urlImg" (error)="$event.target && ($event.target.style.display = 'none')"
+              class="card-img-top object-fit-contain w-100 h-100" alt="Event Thumbnail" />
+            } @else {
+            <div class="placeholder-img-icon position-absolute d-flex flex-column align-items-center">
+              <span class="icon-svg icon-box text-muted" style="width: 32px; height: 32px;"></span>
+              <span class="text-muted small mt-2">Sin Imagen</span>
+            </div>
+            }
+
+            <!-- Floating Analytic Type Badge -->
+            <div class="index-badge-overlay text-capitalize">
+              {{ record.analitica }}
+            </div>
+          </div>
+
+          <!-- Card Body Details -->
+          <div class="card-body p-3 d-flex flex-column justify-content-between">
+            <div>
+              <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
+                <h6 class="card-title fw-bold mb-0 text-truncate" [title]="record.nombreCamara" style="max-width: 60%;">
+                  {{ record.nombreCamara }}
+                </h6>
+                <div class="timestamp-row text-muted small mb-0 d-flex align-items-center gap-1 text-end flex-shrink-0">
+                  <span class="icon-svg icon-clock flex-shrink-0" style="width: 11px; height: 11px;"></span>
+                  <span style="font-size: 0.72rem;">{{ formatDate(record.timestamp) }}</span>
+                </div>
+              </div>
+
+              <!-- Main Detail Event -->
+              <p class="event-detail-text small mb-2 text-secondary text-truncate" [title]="record.detalleEvento">
+                {{ record.detalleEvento }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Hover attribute popover -->
+          @if (activeHoverCardId() === record.id) {
+          <div class="metadata-card-popover" [style.left.px]="mouseX()" [style.top.px]="mouseY()">
+            <div class="popover-header d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-1.5">
+                <span class="icon-svg icon-box text-primary popover-header-icon" style="width: 12px; height: 12px;"></span>
+                <span class="popover-header-title text-muted text-uppercase fw-bold">Atributos</span>
+              </div>
+              <span class="badge bg-secondary-light text-secondary text-capitalize" style="font-size: 0.65rem; padding: 2px 6px;">
+                Eventos
+              </span>
+            </div>
+
+            <!-- Sección Identificación -->
+            <div class="popover-section">
+              <div class="popover-section-title text-muted text-uppercase fw-bold">Identificación</div>
+              <div class="attributes-grid">
+                <span class="attribute-pill object-type-pill text-capitalize">
+                  <span class="pill-dot"></span>
+                  Objeto: {{ record.objeto }}
+                </span>
+                @if (record.direccion) {
+                <span class="attribute-pill text-capitalize">
+                  Dirección: {{ record.direccion }}
+                </span>
+                }
+              </div>
+            </div>
+
+            <!-- Sección Métricas -->
+            @if (record.conteoAforo !== null || record.tiempoPermanencia !== null || record.objetosEnArea !== null || record.espaciosLibres !== null) {
+            <div class="popover-section">
+              <div class="popover-section-title text-muted text-uppercase fw-bold">Métricas</div>
+              <div class="attributes-grid">
+                @if (record.conteoAforo !== null) {
+                <span class="attribute-pill text-capitalize">
+                  Aforo: {{ record.conteoAforo }}
+                </span>
+                }
+                @if (record.tiempoPermanencia !== null) {
+                <span class="attribute-pill text-capitalize">
+                  Permanencia: {{ record.tiempoPermanencia | number:'1.1-2' }}s
+                </span>
+                }
+                @if (record.objetosEnArea !== null) {
+                <span class="attribute-pill text-capitalize">
+                  Objetos en área: {{ record.objetosEnArea }}
+                </span>
+                }
+                @if (record.espaciosLibres !== null) {
+                <span class="attribute-pill text-capitalize">
+                  Espacios Libres: {{ record.espaciosLibres }}
+                </span>
+                }
+              </div>
+            </div>
+            }
+
+            <!-- Sección Localización -->
+            @if (record.location) {
+            <div class="popover-section">
+              <div class="popover-section-title text-muted text-uppercase fw-bold">Localización</div>
+              <div class="attributes-grid">
+                <span class="attribute-pill text-capitalize">
+                  Geo: {{ record.location.lat | number:'1.4-4' }}, {{ record.location.lon | number:'1.4-4' }}
+                </span>
+              </div>
+            </div>
+            }
+          </div>
+          }
+
+        </div>
+        }
+      </div>
+      }
+
+      <!-- Pagination -->
+      @if (totalPages() > 1) {
+      <div class="d-flex justify-content-center align-items-center mt-5 gap-4 flex-wrap">
+        <nav aria-label="Page navigation">
+          <ul class="pagination pagination-md align-items-center mb-0" style="gap: 6px; padding: 0; list-style: none;">
+            <li class="page-item" [class.disabled]="currentPage() === 1">
+              <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center"
+                (click)="prevPage()" aria-label="Previous">
+                <span class="icon-svg icon-chevron-left" style="width: 18px; height: 18px;"></span>
+              </button>
+            </li>
+            @for (page of visiblePages(); track page) {
+            <li class="page-item" [class.active]="currentPage() === page">
+              <button class="page-link-ghost" (click)="setPage(page)">
+                {{ page }}
+              </button>
+            </li>
+            }
+            <li class="page-item" [class.disabled]="currentPage() === totalPages()">
+              <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center"
+                (click)="nextPage()" aria-label="Next">
+                <span class="icon-svg icon-chevron-right" style="width: 18px; height: 18px;"></span>
+              </button>
+            </li>
+          </ul>
+        </nav>
+
+        <!-- Jump to Page -->
+        <div class="d-flex align-items-center gap-2 jump-to-page-container">
+          <span class="text-muted small fw-medium">Ir a:</span>
+          <input type="text" class="form-control form-control-sm text-center shadow-sm"
+            style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;"
+            [placeholder]="currentPage()"
+            inputmode="numeric" pattern="[0-9]*"
+            (input)="onPageInput($event)"
+            (keydown.enter)="jumpToPage($event)"
+            (blur)="jumpToPage($event)" />
+          <span class="text-muted small fw-medium">de {{ totalPages() }}</span>
+        </div>
+      </div>
+      }
+
+    </div>
+  </div>
+</div>
+
+<!-- Premium Image Detail Modal with 80% Image and 20% Info + Circular Lens Magnifier -->
+@if (selectedEventForModal(); as selectedEvent) {
+<div class="modal-backdrop-blur d-flex align-items-center justify-content-center" (click)="closeImageDetailsModal()">
+  <div class="premium-detail-modal d-flex flex-column flex-md-row overflow-hidden shadow-2xl" (click)="$event.stopPropagation()">
+    
+    <!-- Close Button -->
+    <button class="btn-close-modal d-flex align-items-center justify-content-center" (click)="closeImageDetailsModal()" aria-label="Close modal">
+      <span class="icon-svg icon-close" style="width: 18px; height: 18px;"></span>
+    </button>
+
+    <!-- Left side: Image (80%) -->
+    <div class="modal-image-panel d-flex align-items-center justify-content-center bg-dark position-relative overflow-hidden">
+      @if (selectedEvent.urlImg) {
+        <div class="modal-img-wrapper position-relative overflow-hidden shadow-lg"
+             (mousemove)="onZoomMouseMove($event)" 
+             (click)="toggleZoom($event)"
+             [class.zoom-active-cursor]="isZoomed()">
+          <!-- Normal image -->
+          <img [src]="selectedEvent.urlImg" 
+               class="w-100 h-100 select-none object-fit-cover transition-all" 
+               alt="Full screen preview" />
+          
+          <!-- Magnifier circular lens -->
+          @if (isZoomed()) {
+          <div class="magnifier-lens" 
+               [style.left.px]="zoomX()" 
+               [style.top.px]="zoomY()" 
+               [style.background-image]="'url(' + selectedEvent.urlImg + ')'"
+               [style.background-position]="zoomBgX() + 'px ' + zoomBgY() + 'px'"
+               [style.background-size]="zoomBgWidth() + 'px ' + zoomBgHeight() + 'px'">
+          </div>
+          }
+        </div>
+      } @else {
+        <div class="text-muted d-flex flex-column align-items-center">
+          <span class="icon-svg icon-box text-muted" style="width: 64px; height: 64px;"></span>
+          <span class="mt-3">Sin Imagen</span>
+        </div>
+      }
+    </div>
+
+    <!-- Right side: Event Detail Panel (20%) -->
+    <div class="modal-details-panel" [style.--edp-accent]="getAnalyticColor(selectedEvent.analitica)">
+
+      <!-- EDP Header -->
+      <div class="edp-header">
+        <div class="edp-analytic-badge">
+          <span class="edp-accent-dot"></span>
+          <span class="edp-analytic-name text-capitalize">{{ selectedEvent.analitica }}</span>
+        </div>
+        <h3 class="edp-camera-title" [title]="selectedEvent.nombreCamara">
+          {{ selectedEvent.nombreCamara }}
+        </h3>
+        <p class="edp-index-tag">
+          <span class="icon-svg icon-clock" style="width: 10px; height: 10px; margin-right: 4px; opacity: 0.6;"></span>
+          eventos
+        </p>
+      </div>
+
+      <!-- Scrollable body -->
+      <div class="scroll-details-content">
+
+        <!-- ZONA 1: Registro Temporal -->
+        <section class="edp-section">
+          <div class="edp-section-label">
+            <span class="icon-svg icon-calendar" style="width: 10px; height: 10px;"></span>
+            Registro Temporal
+          </div>
+          <div class="edp-time-primary">{{ formatDate(selectedEvent.timestamp) }}</div>
+          <div class="edp-time-pills">
+            <span class="edp-time-pill text-capitalize">{{ selectedEvent.diaSemana }}</span>
+            <span class="edp-time-pill text-capitalize">{{ selectedEvent.mes }}</span>
+            <span class="edp-time-pill edp-time-pill--highlight">{{ selectedEvent.hora }}:00h</span>
+          </div>
+        </section>
+
+        <!-- ZONA 2: Identificación de Cámara -->
+        <section class="edp-section">
+          <div class="edp-section-label">
+            <span class="icon-svg icon-camara" style="width: 10px; height: 10px;"></span>
+            Cámara
+          </div>
+          <div class="edp-camera-block">
+            <div class="edp-camera-name-row">
+              <span class="icon-svg icon-camara edp-field-icon" style="width: 13px; height: 13px;"></span>
+              <span class="edp-field-value">{{ selectedEvent.nombreCamara }}</span>
+            </div>
+            <div class="edp-id-row">
+              <div class="edp-id-content">
+                <span class="edp-id-label">UUID</span>
+                <span class="edp-id-value font-monospace" [title]="selectedEvent.idCamara">{{ selectedEvent.idCamara }}</span>
+              </div>
+              <button class="edp-copy-btn"
+                (click)="copyToClipboard(selectedEvent.idCamara, 'camId'); $event.stopPropagation()"
+                [class.edp-copy-btn--success]="copiedField() === 'camId'"
+                title="Copiar ID de cámara">
+                @if (copiedField() === 'camId') {
+                  <span class="icon-svg icon-check" style="width: 13px; height: 13px;"></span>
+                } @else {
+                  <span class="icon-svg icon-copy" style="width: 13px; height: 13px;"></span>
+                }
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ZONA 3: Evento Detectado -->
+        <section class="edp-section">
+          <div class="edp-section-label">
+            <span class="icon-svg icon-activity" style="width: 10px; height: 10px;"></span>
+            Evento Detectado
+          </div>
+
+          <!-- Objeto Badge -->
+          <div class="edp-object-row">
+            <div class="edp-object-badge">
+              <span class="icon-svg icon-target" style="width: 14px; height: 14px;"></span>
+              <span class="text-capitalize">{{ selectedEvent.objeto }}</span>
+            </div>
+
+            @if (selectedEvent.direccion) {
+              <div class="edp-direction-badge"
+                [class.edp-direction-badge--entrada]="selectedEvent.direccion.toLowerCase() === 'entrada'"
+                [class.edp-direction-badge--salida]="selectedEvent.direccion.toLowerCase() === 'salida'">
+                @if (selectedEvent.direccion.toLowerCase() === 'entrada') {
+                  <span class="icon-svg icon-arrow-up" style="width: 11px; height: 11px;"></span>
+                } @else {
+                  <span class="icon-svg icon-arrow-down" style="width: 11px; height: 11px;"></span>
+                }
+                {{ selectedEvent.direccion }}
+              </div>
+            }
+          </div>
+
+          <!-- Detalle completo -->
+          <p class="edp-detail-text">{{ selectedEvent.detalleEvento }}</p>
+        </section>
+
+        <!-- ZONA 4: Métricas (condicional) -->
+        @if (hasMetrics(selectedEvent)) {
+          <section class="edp-section">
+            <div class="edp-section-label">
+              <span class="icon-svg icon-activity" style="width: 10px; height: 10px;"></span>
+              Métricas
+            </div>
+            <div class="edp-metrics-grid">
+              @if (selectedEvent.conteoAforo !== null) {
+                <div class="edp-metric-widget edp-metric-widget--amber">
+                  <span class="edp-metric-value">{{ selectedEvent.conteoAforo }}</span>
+                  <span class="edp-metric-label">Aforo</span>
+                </div>
+              }
+              @if (selectedEvent.tiempoPermanencia !== null) {
+                <div class="edp-metric-widget edp-metric-widget--cyan">
+                  <span class="edp-metric-value">{{ selectedEvent.tiempoPermanencia | number:'1.1-1' }}<span class="edp-metric-unit">s</span></span>
+                  <span class="edp-metric-label">Permanencia</span>
+                </div>
+              }
+              @if (selectedEvent.objetosEnArea !== null) {
+                <div class="edp-metric-widget edp-metric-widget--blue">
+                  <span class="edp-metric-value">{{ selectedEvent.objetosEnArea }}</span>
+                  <span class="edp-metric-label">En Área</span>
+                </div>
+              }
+              @if (selectedEvent.espaciosLibres !== null) {
+                <div class="edp-metric-widget edp-metric-widget--green">
+                  <span class="edp-metric-value">{{ selectedEvent.espaciosLibres }}</span>
+                  <span class="edp-metric-label">Libres</span>
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        <!-- ZONA 5: Geolocalización -->
+        @if (selectedEvent.location) {
+          <section class="edp-section">
+            <div class="edp-section-label">
+              <span class="icon-svg icon-location-pin" style="width: 10px; height: 10px;"></span>
+              Geolocalización
+            </div>
+            <div class="edp-geo-card">
+              <div class="edp-geo-icon-wrap">
+                <span class="icon-svg icon-location-pin" style="width: 16px; height: 16px;"></span>
+              </div>
+              <div class="edp-geo-body">
+                <div class="edp-geo-coords font-monospace">
+                  <span>{{ selectedEvent.location.lat | number:'1.5-5' }}</span>
+                  <span class="edp-geo-sep">,</span>
+                  <span>{{ selectedEvent.location.lon | number:'1.5-5' }}</span>
+                </div>
+                <span class="edp-geo-sublabel">lat, lon</span>
+              </div>
+              <button class="edp-copy-btn"
+                (click)="copyToClipboard(selectedEvent.location.lat + ', ' + selectedEvent.location.lon, 'geo'); $event.stopPropagation()"
+                [class.edp-copy-btn--success]="copiedField() === 'geo'"
+                title="Copiar coordenadas">
+                @if (copiedField() === 'geo') {
+                  <span class="icon-svg icon-check" style="width: 13px; height: 13px;"></span>
+                } @else {
+                  <span class="icon-svg icon-copy" style="width: 13px; height: 13px;"></span>
+                }
+              </button>
+            </div>
+          </section>
+        }
+
+      </div><!-- /scroll-details-content -->
+
+      <!-- EDP Footer sticky -->
+      <div class="edp-footer">
+        @if (selectedEvent.location) {
+          <a class="edp-maps-link"
+            [href]="getGoogleMapsUrl(selectedEvent)"
+            target="_blank"
+            rel="noopener noreferrer"
+            (click)="$event.stopPropagation()">
+            <span class="icon-svg icon-location-pin" style="width: 13px; height: 13px;"></span>
+            Ver en Google Maps
+            <span class="icon-svg icon-external-link" style="width: 11px; height: 11px; opacity: 0.55;"></span>
+          </a>
+        } @else {
+          <span class="edp-footer-no-location">Sin coordenadas disponibles</span>
+        }
+      </div>
+
+    </div>
+    
+  </div>
+</div>
+}

@@ -32,6 +32,47 @@ export class HostService {
   readonly hosts = signal<Host[]>([]);
   readonly totalItems = signal(0);
 
+  readonly isViewActive = signal<boolean>(false);
+  readonly newHostIds = signal<Set<string>>(new Set());
+  readonly updatedHostIds = signal<Set<string>>(new Set());
+  readonly deletingHostIds = signal<Set<string>>(new Set());
+
+  markAsNewHost(id: string): void {
+    this.newHostIds.update(s => new Set([...s, id]));
+    setTimeout(() => {
+      this.newHostIds.update(s => { const next = new Set(s); next.delete(id); return next; });
+    }, 2000);
+  }
+
+  markAsUpdatedHost(id: string): void {
+    this.updatedHostIds.update(s => new Set([...s, id]));
+    setTimeout(() => {
+      this.updatedHostIds.update(s => { const next = new Set(s); next.delete(id); return next; });
+    }, 2000);
+  }
+
+  markAsDeletingHost(id: string): void {
+    this.deletingHostIds.update(s => new Set([...s, id]));
+    setTimeout(() => {
+      this.deletingHostIds.update(s => { const next = new Set(s); next.delete(id); return next; });
+    }, 1000);
+  }
+
+  deleteHostLocal(fingerprint: string): void {
+    this.allHosts.update(hosts => hosts.filter(h => h.fingerprint !== fingerprint));
+  }
+
+  migrateHostLocal(oldFingerprint: string, newFingerprint: string): void {
+    this.allHosts.update(hosts => 
+      hosts.map(h => {
+        if (h.fingerprint === oldFingerprint) {
+          return { ...h, fingerprint: newFingerprint };
+        }
+        return h;
+      })
+    );
+  }
+
   constructor(private hostRepository: IHostRepository) {}
 
   /**

@@ -934,11 +934,17 @@
 /* ═══════════════════════════════════════════════════════════════
    BASE
    ═══════════════════════════════════════════════════════════════ */
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   background-color: var(--bg-primary) !important;
   color: var(--text-primary) !important;
   transition: background-color 0.3s ease, color 0.3s ease;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
   font-family: var(--font-sans);
 }
 
@@ -1047,103 +1053,320 @@ select {
 }
 
 .icon-nodos {
-  -webkit-mask-image: url('/assets/icons/nodos.svg');
-  mask-image: url('/assets/icons/nodos.svg');
+  -webkit-mask-image: url('/assets/icons/views/app/nodos.svg');
+  mask-image: url('/assets/icons/views/app/nodos.svg');
 }
+
+.icon-camara {
+  -webkit-mask-image: url('/assets/icons/views/app/camara.svg');
+  mask-image: url('/assets/icons/views/app/camara.svg');
+}
+
+.icon-horarios {
+  -webkit-mask-image: url('/assets/icons/views/app/horarios.svg');
+  mask-image: url('/assets/icons/views/app/horarios.svg');
+}
+
 
 .icon-metadatos {
-  -webkit-mask-image: url('/assets/icons/metadatos.svg');
-  mask-image: url('/assets/icons/metadatos.svg');
+  -webkit-mask-image: url('/assets/icons/views/app/metadatos.svg');
+  mask-image: url('/assets/icons/views/app/metadatos.svg');
 }
 
-.icon-roles {
-  -webkit-mask-image: url('/assets/icons/roles.svg');
-  mask-image: url('/assets/icons/roles.svg');
+.icon-eventos {
+  -webkit-mask-image: url('/assets/icons/views/app/eventos.svg');
+  mask-image: url('/assets/icons/views/app/eventos.svg');
 }
+
+/* .icon-roles ELIMINADO — dead code, sin usar en HTML */
 
 .icon-listas {
-  -webkit-mask-image: url('/assets/icons/listas.svg');
-  mask-image: url('/assets/icons/listas.svg');
+  -webkit-mask-image: url('/assets/icons/views/app/listas.svg');
+  mask-image: url('/assets/icons/views/app/listas.svg');
 }
 
 .icon-usuarios {
-  -webkit-mask-image: url('/assets/icons/usuarios.svg');
-  mask-image: url('/assets/icons/usuarios.svg');
+  -webkit-mask-image: url('/assets/icons/views/app/usuarios.svg');
+  mask-image: url('/assets/icons/views/app/usuarios.svg');
 }
 
-.icon-info {
-  -webkit-mask-image: url('/assets/icons/info.svg');
-  mask-image: url('/assets/icons/info.svg');
-}
+/* .icon-info ELIMINADO — dead code, sin usar en HTML */
 
 .icon-search {
-  -webkit-mask-image: url('/assets/icons/search.svg');
-  mask-image: url('/assets/icons/search.svg');
+  -webkit-mask-image: url('/assets/icons/global/search.svg');
+  mask-image: url('/assets/icons/global/search.svg');
+  width: 18px;
+  height: 18px;
 }
 
 .icon-filter {
-  -webkit-mask-image: url('/assets/icons/filter.svg');
-  mask-image: url('/assets/icons/filter.svg');
+  -webkit-mask-image: url('/assets/icons/global/filter.svg');
+  mask-image: url('/assets/icons/global/filter.svg');
+  width: 22px;
+  height: 22px;
 }
 
 .icon-chevron-left {
-  -webkit-mask-image: url('/assets/icons/chevron-left.svg');
-  mask-image: url('/assets/icons/chevron-left.svg');
+  -webkit-mask-image: url('/assets/icons/navigation/chevron-left.svg');
+  mask-image: url('/assets/icons/navigation/chevron-left.svg');
 }
 
 .icon-chevron-right {
-  -webkit-mask-image: url('/assets/icons/chevron-right.svg');
-  mask-image: url('/assets/icons/chevron-right.svg');
+  -webkit-mask-image: url('/assets/icons/navigation/chevron-right.svg');
+  mask-image: url('/assets/icons/navigation/chevron-right.svg');
+}
+
+.icon-chevron-down {
+  -webkit-mask-image: url('/assets/icons/global/chevron-down.svg');
+  mask-image: url('/assets/icons/global/chevron-down.svg');
 }
 
 .icon-sidebar-expand {
-  -webkit-mask-image: url('/assets/icons/sidebar-expand.svg');
-  mask-image: url('/assets/icons/sidebar-expand.svg');
+  -webkit-mask-image: url('/assets/icons/navigation/sidebar-expand.svg');
+  mask-image: url('/assets/icons/navigation/sidebar-expand.svg');
 }
 
 .icon-sidebar-collapse {
-  -webkit-mask-image: url('/assets/icons/sidebar-collapse.svg');
-  mask-image: url('/assets/icons/sidebar-collapse.svg');
+  -webkit-mask-image: url('/assets/icons/navigation/sidebar-collapse.svg');
+  mask-image: url('/assets/icons/navigation/sidebar-collapse.svg');
 }
 
 .icon-theme-light {
-  -webkit-mask-image: url('/assets/icons/theme-light.svg');
-  mask-image: url('/assets/icons/theme-light.svg');
+  -webkit-mask-image: url('/assets/icons/navigation/theme-light.svg');
+  mask-image: url('/assets/icons/navigation/theme-light.svg');
 }
 
 .icon-theme-dark {
-  -webkit-mask-image: url('/assets/icons/theme-dark.svg');
-  mask-image: url('/assets/icons/theme-dark.svg');
+  -webkit-mask-image: url('/assets/icons/navigation/theme-dark.svg');
+  mask-image: url('/assets/icons/navigation/theme-dark.svg');
 }
 
 .icon-user {
-  -webkit-mask-image: url('/assets/icons/user.svg');
-  mask-image: url('/assets/icons/user.svg');
+  -webkit-mask-image: url('/assets/icons/navigation/user.svg');
+  mask-image: url('/assets/icons/navigation/user.svg');
 }
 
 .icon-logout {
-  -webkit-mask-image: url('/assets/icons/logout.svg');
-  mask-image: url('/assets/icons/logout.svg');
+  -webkit-mask-image: url('/assets/icons/navigation/logout.svg');
+  mask-image: url('/assets/icons/navigation/logout.svg');
 }
 
 .icon-ubuntu {
-  -webkit-mask-image: url('/assets/icons/ubuntu.svg');
-  mask-image: url('/assets/icons/ubuntu.svg');
+  -webkit-mask-image: url('/assets/icons/hardware/ubuntu.svg');
+  mask-image: url('/assets/icons/hardware/ubuntu.svg');
 }
 
 .icon-windows {
-  -webkit-mask-image: url('/assets/icons/windows.svg');
-  mask-image: url('/assets/icons/windows.svg');
+  -webkit-mask-image: url('/assets/icons/hardware/windows.svg');
+  mask-image: url('/assets/icons/hardware/windows.svg');
 }
 
 .icon-cpu {
-  -webkit-mask-image: url('/assets/icons/cpu.svg');
-  mask-image: url('/assets/icons/cpu.svg');
+  -webkit-mask-image: url('/assets/icons/hardware/cpu.svg');
+  mask-image: url('/assets/icons/hardware/cpu.svg');
 }
 
 .icon-gpu {
-  -webkit-mask-image: url('/assets/icons/gpu.svg');
-  mask-image: url('/assets/icons/gpu.svg');
+  -webkit-mask-image: url('/assets/icons/hardware/gpu.svg');
+  mask-image: url('/assets/icons/hardware/gpu.svg');
+}
+
+.icon-trash {
+  -webkit-mask-image: url('/assets/icons/crud/trash.svg');
+  mask-image: url('/assets/icons/crud/trash.svg');
+}
+
+.icon-edit {
+  -webkit-mask-image: url('/assets/icons/crud/pencil.svg');
+  mask-image: url('/assets/icons/crud/pencil.svg');
+}
+
+.icon-close {
+  -webkit-mask-image: url('/assets/icons/crud/close.svg');
+  mask-image: url('/assets/icons/crud/close.svg');
+}
+
+.icon-plus {
+  -webkit-mask-image: url('/assets/icons/crud/plus.svg');
+  mask-image: url('/assets/icons/crud/plus.svg');
+}
+
+.icon-save {
+  -webkit-mask-image: url('/assets/icons/crud/save.svg');
+  mask-image: url('/assets/icons/crud/save.svg');
+}
+
+.icon-webrtc {
+  -webkit-mask-image: url('/assets/icons/streams/webrtc.svg');
+  mask-image: url('/assets/icons/streams/webrtc.svg');
+}
+
+/* Alias semántico — mismo archivo que webrtc, usado en indicadores de stream */
+.icon-wifi {
+  -webkit-mask-image: url('/assets/icons/streams/webrtc.svg');
+  mask-image: url('/assets/icons/streams/webrtc.svg');
+}
+
+.icon-rtsp {
+  -webkit-mask-image: url('/assets/icons/streams/rtsp.svg');
+  mask-image: url('/assets/icons/streams/rtsp.svg');
+}
+
+.icon-play {
+  -webkit-mask-image: url('/assets/icons/streams/play.svg');
+  mask-image: url('/assets/icons/streams/play.svg');
+}
+
+.icon-upload {
+  -webkit-mask-image: url('/assets/icons/global/upload.svg');
+  mask-image: url('/assets/icons/global/upload.svg');
+}
+
+/* .icon-map-pin ELIMINADO — dead code, reemplazado por icon-location-pin */
+
+.icon-lock {
+  -webkit-mask-image: url('/assets/icons/forms/lock.svg');
+  mask-image: url('/assets/icons/forms/lock.svg');
+}
+
+.icon-email {
+  -webkit-mask-image: url('/assets/icons/forms/email.svg');
+  mask-image: url('/assets/icons/forms/email.svg');
+}
+
+.icon-user-plus {
+  -webkit-mask-image: url('/assets/icons/forms/user-plus.svg');
+  mask-image: url('/assets/icons/forms/user-plus.svg');
+}
+
+.icon-warning {
+  -webkit-mask-image: url('/assets/icons/global/warning.svg');
+  mask-image: url('/assets/icons/global/warning.svg');
+}
+
+.icon-migrate-arrows {
+  -webkit-mask-image: url('/assets/icons/navigation/migrate.svg');
+  mask-image: url('/assets/icons/navigation/migrate.svg');
+}
+
+.icon-clock {
+  -webkit-mask-image: url('/assets/icons/global/clock.svg');
+  mask-image: url('/assets/icons/global/clock.svg');
+}
+
+.icon-calendar {
+  -webkit-mask-image: url('/assets/icons/global/calendar.svg');
+  mask-image: url('/assets/icons/global/calendar.svg');
+}
+
+.icon-message-square {
+  -webkit-mask-image: url('/assets/icons/global/message-square.svg');
+  mask-image: url('/assets/icons/global/message-square.svg');
+}
+
+.icon-box {
+  -webkit-mask-image: url('/assets/icons/global/box.svg');
+  mask-image: url('/assets/icons/global/box.svg');
+}
+
+.icon-settings {
+  -webkit-mask-image: url('/assets/icons/global/settings.svg');
+  mask-image: url('/assets/icons/global/settings.svg');
+}
+
+.icon-grid {
+  -webkit-mask-image: url('/assets/icons/global/layout-grid.svg');
+  mask-image: url('/assets/icons/global/layout-grid.svg');
+}
+
+.icon-list {
+  -webkit-mask-image: url('/assets/icons/global/list.svg');
+  mask-image: url('/assets/icons/global/list.svg');
+}
+
+.icon-shield {
+  -webkit-mask-image: url('/assets/icons/global/shield.svg');
+  mask-image: url('/assets/icons/global/shield.svg');
+}
+
+.icon-arrow-right {
+  -webkit-mask-image: url('/assets/icons/global/arrow-right.svg');
+  mask-image: url('/assets/icons/global/arrow-right.svg');
+}
+
+.icon-info-circle {
+  -webkit-mask-image: url('/assets/icons/global/info-circle.svg');
+  mask-image: url('/assets/icons/global/info-circle.svg');
+}
+
+.icon-check {
+  -webkit-mask-image: url('/assets/icons/global/check.svg');
+  mask-image: url('/assets/icons/global/check.svg');
+}
+
+.icon-copy {
+  -webkit-mask-image: url('/assets/icons/crud/copy.svg');
+  mask-image: url('/assets/icons/crud/copy.svg');
+}
+
+.icon-eye {
+  -webkit-mask-image: url('/assets/icons/forms/eye.svg');
+  mask-image: url('/assets/icons/forms/eye.svg');
+}
+
+.icon-eye-off {
+  -webkit-mask-image: url('/assets/icons/forms/eye-off.svg');
+  mask-image: url('/assets/icons/forms/eye-off.svg');
+}
+
+.icon-external-link {
+  -webkit-mask-image: url('/assets/icons/navigation/external-link.svg');
+  mask-image: url('/assets/icons/navigation/external-link.svg');
+}
+
+.icon-activity {
+  -webkit-mask-image: url('/assets/icons/views/eventos/activity.svg');
+  mask-image: url('/assets/icons/views/eventos/activity.svg');
+}
+
+.icon-target {
+  -webkit-mask-image: url('/assets/icons/views/eventos/target.svg');
+  mask-image: url('/assets/icons/views/eventos/target.svg');
+}
+
+.icon-arrow-up {
+  -webkit-mask-image: url('/assets/icons/views/eventos/arrow-up.svg');
+  mask-image: url('/assets/icons/views/eventos/arrow-up.svg');
+}
+
+.icon-arrow-down {
+  -webkit-mask-image: url('/assets/icons/views/eventos/arrow-down.svg');
+  mask-image: url('/assets/icons/views/eventos/arrow-down.svg');
+}
+
+.icon-magnify {
+  -webkit-mask-image: url('/assets/icons/views/eventos/magnify.svg');
+  mask-image: url('/assets/icons/views/eventos/magnify.svg');
+}
+
+.icon-location-pin {
+  -webkit-mask-image: url('/assets/icons/views/eventos/location-pin.svg');
+  mask-image: url('/assets/icons/views/eventos/location-pin.svg');
+}
+
+.icon-server {
+  -webkit-mask-image: url('/assets/icons/views/camaras/server.svg');
+  mask-image: url('/assets/icons/views/camaras/server.svg');
+}
+
+.icon-layout-dashboard {
+  -webkit-mask-image: url('/assets/icons/views/camaras/layout-dashboard.svg');
+  mask-image: url('/assets/icons/views/camaras/layout-dashboard.svg');
+}
+
+.icon-login-arrow {
+  -webkit-mask-image: url('/assets/icons/views/login/login-arrow.svg');
+  mask-image: url('/assets/icons/views/login/login-arrow.svg');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1350,3 +1573,146 @@ main,
   width: 0 !important;
   height: 0 !important;
 }
+
+/* ── Global Premium Migrate Config Button Style ── */
+.btn-migrate-config {
+  background-color: rgba(var(--primary-rgb), 0.06) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.15) !important;
+  color: var(--primary) !important;
+  border-radius: 99px !important;
+  padding: 12px 18px !important;    /* 12px 18px para igualar el searchbar de 42px */
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.btn-migrate-config svg {
+  stroke: var(--primary) !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.btn-migrate-config:hover {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: var(--text-on-primary-btn, #ffffff) !important;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.24) !important;
+  transform: translateY(-1.5px) !important;
+}
+
+.btn-migrate-config:hover svg {
+  stroke: var(--text-on-primary-btn, #ffffff) !important;
+  transform: translateX(1.5px) rotate(12deg) scale(1.05);
+}
+
+.btn-migrate-config:active {
+  transform: translateY(-0.5px) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CRUD ANIMATIONS & TRANSITIONS (WEBSOCKET LIVE FEEDBACK)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 1. Entrada / Nuevos registros */
+@keyframes liveNewHighlight {
+  0% {
+    transform: scale(0.97);
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 4px rgba(43, 127, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+  50% {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 6px rgba(43, 127, 255, 0.15), 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+.card-crud-new {
+  animation: liveNewHighlight 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 2. Modificaciones y Actualizaciones */
+@keyframes liveUpdateFlash {
+  0% {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+.card-crud-updated {
+  animation: liveUpdateFlash 1s ease-out forwards;
+}
+
+/* 3. Cambios de Estado (Online/Activo o Offline/Inactivo) */
+@keyframes liveStatusActiveFlash {
+  0% {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.35);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+@keyframes liveStatusInactiveFlash {
+  0% {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.35);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+.card-crud-status-active {
+  animation: liveStatusActiveFlash 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.card-crud-status-inactive {
+  animation: liveStatusInactiveFlash 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 4. Salida / Eliminación física de registros */
+@keyframes liveDeleteCollapse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    max-height: 500px;
+    margin-bottom: inherit;
+    padding-top: inherit;
+    padding-bottom: inherit;
+  }
+  50% {
+    opacity: 0;
+    transform: scale(0.93);
+    max-height: 500px;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+    max-height: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border-top-width: 0 !important;
+    border-bottom-width: 0 !important;
+    overflow: hidden;
+  }
+}
+
+.card-crud-deleting {
+  animation: liveDeleteCollapse 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  pointer-events: none !important;
+}

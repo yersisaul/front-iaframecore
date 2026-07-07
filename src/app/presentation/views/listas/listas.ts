@@ -1,10 +1,11 @@
-import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime } from 'rxjs/operators';
 import { ListService } from '../../../core/services/list.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
+import { PermissionsService } from '../../../core/services/permissions.service';
 import { List, ListDetail } from '../../../core/domain/entities/list.models';
 
 export interface SubjectDetectionPostura {
@@ -42,10 +43,11 @@ export interface SubjectDetectionHit {
   templateUrl: './listas.html',
   styleUrl: './listas.css'
 })
-export class Listas implements OnInit {
+export class Listas implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private listService = inject(ListService);
   private sidebarService = inject(SidebarService);
+  public permissionsService = inject(PermissionsService);
 
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
 
@@ -55,6 +57,11 @@ export class Listas implements OnInit {
   });
 
   readonly selectedListId = signal<string | null>(null);
+  
+  readonly listNewIds = this.listService.newRecordIds;
+  readonly listUpdatedIds = this.listService.updatedRecordIds;
+  readonly listDeletingIds = this.listService.deletingRecordIds;
+
   readonly showListModal = signal<boolean>(false);
   readonly listModalMode = signal<'create' | 'edit'>('create');
   readonly listModalId = signal<string>('');
@@ -69,6 +76,13 @@ export class Listas implements OnInit {
   readonly subjectToDeleteId = signal<string | null>(null);
   readonly subjectToDeleteName = signal<string | null>(null);
   readonly isDeletingSubject = signal<boolean>(false);
+
+  readonly showEditSubjectModal = signal<boolean>(false);
+  readonly isUpdatingSubject = signal<boolean>(false);
+  readonly editSubjectName = signal<string>('');
+  readonly editSubjectPlate = signal<string>('');
+  readonly selectedEditFile = signal<File | null>(null);
+  readonly editImagePreviewUrl = signal<string | null>(null);
 
   readonly selectedSubjectDetailId = signal<string | null>(null);
   readonly selectedSubjectDetail = computed(() => {
@@ -186,7 +200,12 @@ export class Listas implements OnInit {
   }
 
   ngOnInit(): void {
+    this.listService.isViewActive.set(true);
     this.listService.loadLists().subscribe();
+  }
+
+  ngOnDestroy(): void {
+    this.listService.isViewActive.set(false);
   }
 
   onListSelected(listId: string): void {
@@ -317,6 +336,98 @@ export class Listas implements OnInit {
         URL.revokeObjectURL(preview);
       }
       this.imagePreviewUrl.set(URL.createObjectURL(file));
+    }
+  }
+
+  openEditSubjectModal(detail: ListDetail): void {
+    this.editSubjectName.set(detail.nombre_asociado || '');
+    this.editSubjectPlate.set(detail.metadata?.text_placa || '');
+    this.selectedEditFile.set(null);
+    this.editImagePreviewUrl.set(detail.metadata?.url_img || null);
+    this.showEditSubjectModal.set(true);
+  }
+
+  closeEditSubjectModal(): void {
+    const preview = this.editImagePreviewUrl();
+    if (preview && preview.startsWith('blob:')) {
+      URL.revokeObjectURL(preview);
+    }
+    this.showEditSubjectModal.set(false);
+    this.editSubjectName.set('');
+    this.editSubjectPlate.set('');
+    this.selectedEditFile.set(null);
+    this.editImagePreviewUrl.set(null);
+  }
+
+  onEditFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      this.selectedEditFile.set(file);
+
+      const preview = this.editImagePreviewUrl();
+      if (preview && preview.startsWith('blob:')) {
+        URL.revokeObjectURL(preview);
+      }
+      this.editImagePreviewUrl.set(URL.createObjectURL(file));
+    }
+  }
+
+  saveEditSubject(): void {
+    const detail = this.selectedSubjectDetail();
+    if (!detail) return;
+
+    this.isUpdatingSubject.set(true);
+    const listId = this.selectedListId()!;
+
+    if (this.listType() === 'face_recognition') {
+      const nameChanged = this.editSubjectName().trim() !== (detail.nombre_asociado || '');
+      const file = this.selectedEditFile();
+
+      const obs$: import('rxjs').Observable<any>[] = [];
+      if (nameChanged) {
+        obs$.push(this.listService.updateFaceDetail(detail.detail_id, this.editSubjectName().trim()));
+      }
+      if (file) {
+        obs$.push(this.listService.updateFaceImg(detail.detail_id, file));
+      }
+
+      if (obs$.length === 0) {
+        this.isUpdatingSubject.set(false);
+        this.closeEditSubjectModal();
+        return;
+      }
+
+      import('rxjs').then(({ forkJoin }) => {
+        forkJoin(obs$).subscribe({
+          next: () => {
+            this.isUpdatingSubject.set(false);
+            this.closeEditSubjectModal();
+            this.onListSelected(listId);
+          },
+          error: (err) => {
+            console.error('Error updating face subject:', err);
+            this.isUpdatingSubject.set(false);
+            alert('Error al actualizar los datos del sujeto.');
+          }
+        });
+      });
+    } else {
+      const name = this.editSubjectName().trim();
+      const plate = this.editSubjectPlate().trim();
+
+      this.listService.updatePlateDetail(detail.detail_id, plate, name).subscribe({
+        next: () => {
+          this.isUpdatingSubject.set(false);
+          this.closeEditSubjectModal();
+          this.onListSelected(listId);
+        },
+        error: (err) => {
+          console.error('Error updating plate subject:', err);
+          this.isUpdatingSubject.set(false);
+          alert('Error al actualizar la placa.');
+        }
+      });
     }
   }
 

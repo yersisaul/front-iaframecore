@@ -10,6 +10,32 @@ import { IScheduleRepository } from '../domain/repositories/schedule.repository'
 export class ScheduleService {
   readonly schedules = signal<Schedule[]>([]);
   readonly isLoading = signal(false);
+  readonly isViewActive = signal<boolean>(false);
+
+  readonly newRecordIds = signal<Set<string>>(new Set());
+  readonly updatedRecordIds = signal<Set<string>>(new Set());
+  readonly deletingRecordIds = signal<Set<string>>(new Set());
+
+  markAsNew(id: string): void {
+    this.newRecordIds.update(s => new Set([...s, id]));
+    setTimeout(() => {
+      this.newRecordIds.update(s => { const next = new Set(s); next.delete(id); return next; });
+    }, 1000);
+  }
+
+  markAsUpdated(id: string): void {
+    this.updatedRecordIds.update(s => new Set([...s, id]));
+    setTimeout(() => {
+      this.updatedRecordIds.update(s => { const next = new Set(s); next.delete(id); return next; });
+    }, 1000);
+  }
+
+  markAsDeleting(id: string): void {
+    this.deletingRecordIds.update(s => new Set([...s, id]));
+    setTimeout(() => {
+      this.deletingRecordIds.update(s => { const next = new Set(s); next.delete(id); return next; });
+    }, 1000);
+  }
 
   constructor(private scheduleRepository: IScheduleRepository) { }
 
@@ -68,5 +94,13 @@ export class ScheduleService {
 
   deleteSchedule(scheduleId: string): Observable<any> {
     return this.scheduleRepository.delete(scheduleId);
+  }
+
+  updateScheduleStatusLocal(scheduleId: string, status: 'activo' | 'inactivo'): void {
+    this.schedules.update(list => list.map(s => s.id === scheduleId ? { ...s, status } : s));
+  }
+
+  deleteScheduleLocal(scheduleId: string): void {
+    this.schedules.update(list => list.filter(s => s.id !== scheduleId));
   }
 }

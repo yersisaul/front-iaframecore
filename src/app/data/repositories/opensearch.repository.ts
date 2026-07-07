@@ -2,8 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, forkJoin } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
-import { MetaIndexName, MetaRecord, MetaIndexInfo, MetaRostro } from '../../core/domain/entities/metadata.models';
 import { MetaFilterState, MetaFilterOptions, defaultFilterOptions } from '../../core/domain/entities/metadata.filters.models';
+import { MetaIndexName, MetaRecord, MetaIndexInfo, MetaRostro } from '../../core/domain/entities/metadata.models';
 import { IMetadataRepository, MetadataSearchResult } from '../../core/domain/repositories/metadata.repository';
 import { MetadataMapper } from '../mappers/metadata.mapper';
 import { OsResponse, CatIndexResponse } from './dtos/opensearch-response.dto';
@@ -64,65 +64,69 @@ export class OpenSearchRepository implements IMetadataRepository {
     pageSize: number
   ): Observable<MetadataSearchResult> {
     const mustFilters: any[] = [];
+    const isRostros = index === 'rostros';
 
     // 1. tipo_objeto (Multi-select OR)
     if (filters.tipoObjeto && filters.tipoObjeto.length > 0) {
-      mustFilters.push({ terms: { tipo_objeto: filters.tipoObjeto } });
+      mustFilters.push(this.buildTermsFilter('tipo_objeto', filters.tipoObjeto));
     }
 
     // 2. edad (Single-select)
     if (filters.edad) {
-      mustFilters.push({ term: { edad: filters.edad } });
+      mustFilters.push(this.buildTermFilter('edad', filters.edad));
     }
 
     // 3. genero (Single-select)
     if (filters.genero) {
-      mustFilters.push({ term: { genero: filters.genero } });
+      mustFilters.push(this.buildTermFilter('genero', filters.genero));
     }
 
     // 4. reconocimiento (Single-select)
     if (filters.reconocimiento) {
-      mustFilters.push({ term: { reconocimiento: filters.reconocimiento } });
+      mustFilters.push(this.buildTermFilter('reconocimiento', filters.reconocimiento));
     }
 
-    // 5. colores (Multi-select OR - Nested)
+    // 5. colores (Multi-select OR - Nested for 'rostros', flat for others)
     if (filters.colores && filters.colores.length > 0) {
-      mustFilters.push({
-        nested: {
-          path: 'colores',
-          query: {
-            terms: { 'colores.color_text': filters.colores }
+      if (isRostros) {
+        mustFilters.push({
+          nested: {
+            path: 'colores',
+            query: this.buildTermsFilter('colores.color_text', filters.colores)
           }
-        }
-      });
+        });
+      } else {
+        mustFilters.push(this.buildTermsFilter('colores.color_text', filters.colores));
+      }
     }
 
-    // 6. posturas (Multi-select OR - Nested)
-    if (filters.posturas && filters.posturas.length > 0) {
+    // 6. posturas (Multi-select OR - Nested - Only for 'personas' if present)
+    if (filters.posturas && filters.posturas.length > 0 && index === 'personas') {
       mustFilters.push({
         nested: {
           path: 'posturas',
-          query: {
-            terms: { 'posturas.postura': filters.posturas }
-          }
+          query: this.buildTermsFilter('posturas.postura', filters.posturas)
         }
       });
     }
 
     // 7. camaras (Multi-select OR)
     if (filters.camaras && filters.camaras.length > 0) {
-      mustFilters.push({ terms: { camara: filters.camaras } });
+      mustFilters.push(this.buildTermsFilter('camara', filters.camaras));
     }
 
-    // 8. confiabilidad (Range)
-    mustFilters.push({
-      range: {
-        confiabilidad: {
-          gte: filters.confiabilidadMin,
-          lte: filters.confiabilidadMax
+    // 8. confiabilidad (Range) — solo se aplica si el usuario ajustó el rango (no es 0-100%)
+    const confiabilidadIsFiltered = filters.confiabilidadMin > 0 || filters.confiabilidadMax < 1;
+    if (confiabilidadIsFiltered) {
+      mustFilters.push({
+        range: {
+          confiabilidad: {
+            gte: filters.confiabilidadMin,
+            lte: filters.confiabilidadMax
+          }
         }
-      }
-    });
+      });
+    }
 
     // 9. timestamp (Range)
     const timestampRange: any = {};
@@ -141,7 +145,15 @@ export class OpenSearchRepository implements IMetadataRepository {
       mustFilters.push({
         multi_match: {
           query: filters.search.trim(),
-          fields: ['id^2', 'camara', 'reconocimiento^3', 'tipo_objeto'],
+          fields: [
+            'id^2',
+            'camara',
+            'camara.keyword',
+            'reconocimiento',
+            'reconocimiento.keyword^3',
+            'tipo_objeto',
+            'tipo_objeto.keyword'
+          ],
           type: 'best_fields',
           fuzziness: 'AUTO'
         }
@@ -160,20 +172,25 @@ export class OpenSearchRepository implements IMetadataRepository {
     // Build aggregations based on active index
     const aggs: any = {};
 
-    // Base aggs for all indexes
-    aggs.camara_vals = { terms: { field: 'camara', size: 100 } };
+    // Base aggs for all indexes (try both raw and keyword)
+    aggs.camara_vals = { terms: { field: 'camara.keyword', size: 100 } };
     aggs.confiabilidad_stats = { stats: { field: 'confiabilidad' } };
-    aggs.colores_agg = {
-      nested: { path: 'colores' },
-      aggs: {
-        color_vals: { terms: { field: 'colores.color_text', size: 100 } }
-      }
-    };
+
+    if (isRostros) {
+      aggs.colores_agg = {
+        nested: { path: 'colores' },
+        aggs: {
+          color_vals: { terms: { field: 'colores.color_text', size: 100 } }
+        }
+      };
+    } else {
+      aggs.colores_vals = { terms: { field: 'colores.color_text.keyword', size: 100 } };
+    }
 
     if (index === 'personas') {
-      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
-      aggs.edad_vals = { terms: { field: 'edad', size: 50 } };
-      aggs.genero_vals = { terms: { field: 'genero', size: 10 } };
+      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto.keyword', size: 100 } };
+      aggs.edad_vals = { terms: { field: 'edad.keyword', size: 50 } };
+      aggs.genero_vals = { terms: { field: 'genero.keyword', size: 10 } };
       aggs.posturas_agg = {
         nested: { path: 'posturas' },
         aggs: {
@@ -181,14 +198,13 @@ export class OpenSearchRepository implements IMetadataRepository {
         }
       };
     } else if (index === 'vehiculos') {
-      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
-      aggs.reconocimiento_vals = { terms: { field: 'reconocimiento', size: 50 } };
+      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto.keyword', size: 100 } };
     } else if (index === 'rostros') {
       aggs.edad_vals = { terms: { field: 'edad', size: 50 } };
       aggs.genero_vals = { terms: { field: 'genero', size: 10 } };
       aggs.reconocimiento_vals = { terms: { field: 'reconocimiento', size: 50 } };
     } else if (index === 'otros') {
-      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
+      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto.keyword', size: 100 } };
     }
 
     let queryBody: any;
@@ -197,14 +213,11 @@ export class OpenSearchRepository implements IMetadataRepository {
         track_total_hits: true,
         from: (page - 1) * pageSize,
         size: pageSize,
-        _source: {
-          excludes: ['embedding']
-        },
         query: {
           knn: {
             embedding: {
               vector: filters.imageEmbedding,
-              k: pageSize,
+              k: pageSize * 3,
               ...(mustFilters.length > 0 ? { filter: { bool: { filter: mustFilters } } } : {})
             }
           }
@@ -216,9 +229,6 @@ export class OpenSearchRepository implements IMetadataRepository {
         track_total_hits: true,
         from: (page - 1) * pageSize,
         size: pageSize,
-        _source: {
-          excludes: ['embedding']
-        },
         sort: [
           { timestamp: { order: 'desc' } }
         ],
@@ -227,23 +237,38 @@ export class OpenSearchRepository implements IMetadataRepository {
       };
     }
 
+    // Fallback query sin aggregations (usada si la query principal falla, ej. campos no-nested)
+    const fallbackQuery = {
+      track_total_hits: true,
+      from: (page - 1) * pageSize,
+      size: pageSize,
+      sort: [{ timestamp: { order: 'desc' } }],
+      query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} }
+    };
+
+    const parseResult = (res: OsResponse<any>): MetadataSearchResult => {
+      const hits = res.hits?.hits || [];
+      const records = hits.map((h: any) => MetadataMapper.toDomain(index, h));
+      let total = 0;
+      if (res.hits?.total) {
+        total = typeof res.hits.total === 'number' ? res.hits.total : res.hits.total.value;
+      }
+      return { records, total, filterOptions: this.parseFilterOptions(res.aggregations) };
+    };
+
     return this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/${index}/_search`, queryBody).pipe(
-      map(res => {
-        const hits = res.hits?.hits || [];
-        const records = hits.map(h => MetadataMapper.toDomain(index, h));
-        
-        let total = 0;
-        if (res.hits?.total) {
-          total = typeof res.hits.total === 'number' ? res.hits.total : res.hits.total.value;
-        }
-
-        const filterOptions = this.parseFilterOptions(res.aggregations);
-
-        return {
-          records,
-          total,
-          filterOptions
-        };
+      map(res => parseResult(res)),
+      catchError(err => {
+        // La query principal falló (probablemente por mappings nested incompatibles).
+        // Reintentamos con una query mínima sin aggregations.
+        console.warn(`[OpenSearch] Query completa falló en índice "${index}" (${err?.status || err?.message}). Reintentando sin aggregations...`);
+        return this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/${index}/_search`, fallbackQuery).pipe(
+          map(res => ({ ...parseResult(res), filterOptions: defaultFilterOptions() })),
+          catchError(err2 => {
+            console.error(`[OpenSearch] Query mínima también falló en índice "${index}":`, err2?.error || err2);
+            return of<MetadataSearchResult>({ records: [], total: 0, filterOptions: defaultFilterOptions() });
+          })
+        );
       })
     );
   }
@@ -269,6 +294,8 @@ export class OpenSearchRepository implements IMetadataRepository {
     }
     if (aggs.colores_agg && aggs.colores_agg.color_vals && aggs.colores_agg.color_vals.buckets) {
       options.colores = aggs.colores_agg.color_vals.buckets.map((b: any) => b.key);
+    } else if (aggs.colores_vals && aggs.colores_vals.buckets) {
+      options.colores = aggs.colores_vals.buckets.map((b: any) => b.key);
     }
     if (aggs.posturas_agg && aggs.posturas_agg.postura_vals && aggs.posturas_agg.postura_vals.buckets) {
       options.posturas = aggs.posturas_agg.postura_vals.buckets.map((b: any) => b.key);
@@ -300,5 +327,35 @@ export class OpenSearchRepository implements IMetadataRepository {
         reconocimiento: item.reconocimiento || ''
       } as MetaRostro)))
     );
+  }
+
+  getById(index: MetaIndexName, docId: string): Observable<MetaRecord> {
+    return this.http.get<any>(`${AppEnvironment.openSearchBaseUrl}/${index}/_doc/${docId}`).pipe(
+      map(res => MetadataMapper.toDomain(index, res))
+    );
+  }
+
+  private buildTermFilter(field: string, value: any): any {
+    return {
+      bool: {
+        should: [
+          { term: { [field]: value } },
+          { term: { [`${field}.keyword`]: value } }
+        ],
+        minimum_should_match: 1
+      }
+    };
+  }
+
+  private buildTermsFilter(field: string, values: any[]): any {
+    return {
+      bool: {
+        should: [
+          { terms: { [field]: values } },
+          { terms: { [`${field}.keyword`]: values } }
+        ],
+        minimum_should_match: 1
+      }
+    };
   }
 }

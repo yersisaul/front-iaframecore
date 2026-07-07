@@ -2,7 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { AuthService } from './auth.service';
-import { AppRole } from '../domain/entities/role.enum';
 import { AppEnvironment } from '../config/app-environment';
 import { LoginRequestDTO } from '../../data/repositories/dtos/login-request.dto';
 import { AuthResponseDTO } from '../../data/repositories/dtos/auth-response.dto';
@@ -17,8 +16,8 @@ describe('AuthService', () => {
   const mockAuthResponse: AuthResponseDTO = {
     access_token: 'mock-jwt-token-xyz',
     token_type: 'bearer',
-    usuario: 'testadmin',
-    rol: 'ADMIN'
+    usuario: 'testadmin@iaframecore.com',
+    rol_id: '73bd9b9e-53da-4901-8bd8-9a127081e61b'
   };
 
   beforeEach(() => {
@@ -51,29 +50,39 @@ describe('AuthService', () => {
 
   describe('login', () => {
     it('should authenticate user, store token and update signals on success', () => {
-      const credentials: LoginRequestDTO = { username: 'testadmin', contrasena: 'secret' };
+      const credentials: LoginRequestDTO = { email: 'testadmin@iaframecore.com', password: 'secret' };
 
       service.login(credentials).subscribe(user => {
         expect(user).toBeTruthy();
-        expect(user.username).toBe('testadmin');
-        expect(user.role).toBe(AppRole.ADMIN);
-        
+        expect(user.email).toBe('testadmin@iaframecore.com');
         expect(service.currentUser()).toEqual(user);
         expect(service.isAuthenticated()).toBe(true);
-        expect(service.isAdmin()).toBe(true);
+        // isAdmin ahora depende del permiso 'roles.create' que fue cargado desde el backend
 
         expect(sessionStorage.getItem('auth_token')).toBe('mock-jwt-token-xyz');
-        expect(sessionStorage.getItem('auth_user')).toContain('testadmin');
+        expect(sessionStorage.getItem('auth_user')).toContain('testadmin@iaframecore.com');
       });
 
       const req = httpMock.expectOne(`${AppEnvironment.apiUrl}/auth/login`);
       expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ usuario: 'testadmin', password: 'secret' });
+      expect(req.request.body).toEqual({ email: 'testadmin@iaframecore.com', password: 'secret' });
       req.flush(mockAuthResponse);
+
+      const rolesReq = httpMock.expectOne(`${AppEnvironment.apiUrl}/frontend/roles/`);
+      expect(rolesReq.request.method).toBe('GET');
+      rolesReq.flush([
+        { rol_id: '73bd9b9e-53da-4901-8bd8-9a127081e61b', nombre: 'ADMIN', descripcion: 'Admin role', id_permisos: ['p1'] }
+      ]);
+
+      const permissionsReq = httpMock.expectOne(`${AppEnvironment.apiUrl}/frontend/permisos/`);
+      expect(permissionsReq.request.method).toBe('GET');
+      permissionsReq.flush([
+        { permiso_id: 'p1', codigo: 'roles.create', descripcion: 'Crear roles' }
+      ]);
     });
 
     it('should clear local storage, user signal and throw error on failed login', () => {
-      const credentials: LoginRequestDTO = { username: 'testadmin', contrasena: 'wrong' };
+      const credentials: LoginRequestDTO = { email: 'testadmin@iaframecore.com', password: 'wrong' };
 
       service.login(credentials).subscribe({
         next: () => expect.fail('should have failed'),
@@ -93,12 +102,12 @@ describe('AuthService', () => {
   describe('logout', () => {
     it('should clear user signal and remove token from local storage', () => {
       sessionStorage.setItem('auth_token', 'token');
-      sessionStorage.setItem('auth_user', JSON.stringify({ username: 'user' }));
+      sessionStorage.setItem('auth_user', JSON.stringify({ email: 'user@iaframecore.com' }));
       service.currentUser.set({
         id: 'testadmin',
-        username: 'testadmin',
+        email: 'testadmin@iaframecore.com',
         name: 'Test Admin',
-        role: AppRole.ADMIN,
+        role: 'ADMIN',
         createdAt: new Date()
       });
 
@@ -114,19 +123,20 @@ describe('AuthService', () => {
   describe('checkSession', () => {
     it('should restore user state from local storage if data exists', () => {
       const userDate = new Date();
+      sessionStorage.setItem('mock-jwt-token-xyz', 'mock-jwt-token-xyz'); // Wait, checkSession uses sessionStorage auth_token
       sessionStorage.setItem('auth_token', 'mock-jwt-token-xyz');
       sessionStorage.setItem('auth_user', JSON.stringify({
         id: 'testadmin',
-        username: 'testadmin',
+        email: 'testadmin@iaframecore.com',
         name: 'Test Admin',
-        role: AppRole.ADMIN,
+        role: 'ADMIN',
         createdAt: userDate.toISOString()
       }));
 
       service.checkSession().subscribe(user => {
         expect(user).toBeTruthy();
-        expect(user?.username).toBe('testadmin');
-        expect(user?.role).toBe(AppRole.ADMIN);
+        expect(user?.email).toBe('testadmin@iaframecore.com');
+        expect(user?.role).toBe('ADMIN');
         expect(service.currentUser()).toEqual(user);
         expect(service.isAuthenticated()).toBe(true);
       });

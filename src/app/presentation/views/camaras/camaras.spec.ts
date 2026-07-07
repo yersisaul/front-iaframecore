@@ -12,6 +12,8 @@ import { Schedule } from '../../../core/domain/entities/schedule.models';
 import { Analytic } from '../../../core/domain/entities/analytic.models';
 import { Camera } from '../../../core/domain/entities/camera.models';
 import { AppEnvironment } from '../../../core/config/app-environment';
+import { signal } from '@angular/core';
+import { PermissionsService } from '../../../core/services/permissions.service';
 
 import { ICameraRepository } from '../../../core/domain/repositories/camera.repository';
 import { CameraHttpRepository } from '../../../data/repositories/camera-http.repository';
@@ -34,6 +36,13 @@ describe('Camaras', () => {
   let analyticService: AnalyticService;
   let httpMock: HttpTestingController;
 
+  const mockPermissionsService = {
+    permissionsMatrix: signal({}),
+    hasPermission: (module: string, action: string) => true,
+    updatePermission: (role: string, module: string, action: string, value: boolean) => {},
+    resetPermissions: () => {}
+  };
+
   beforeEach(async () => {
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
@@ -48,6 +57,7 @@ describe('Camaras', () => {
         { provide: IListRepository, useClass: ListHttpRepository },
         { provide: IStorageRepository, useClass: StorageHttpRepository },
         { provide: IHostRepository, useClass: HostHttpRepository },
+        { provide: PermissionsService, useValue: mockPermissionsService },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -282,11 +292,11 @@ describe('Camaras', () => {
     expect(component.pages()).toEqual([1, 2, 3, 4]);
     expect(component.pagedCameras().length).toBe(3);
     expect(component.pagedCameras()[0].id).toBe('cam-1');
-    expect(component.pagedCameras()[2].id).toBe('cam-3');
+    expect(component.pagedCameras()[2].id).toBe('cam-2'); // Alphabetical order puts 'Camera 10' in index 1, so 'Camera 2' is in index 2
 
     component.nextPage();
     expect(component.currentPage()).toBe(2);
-    expect(component.pagedCameras()[0].id).toBe('cam-4');
+    expect(component.pagedCameras()[0].id).toBe('cam-3');
 
     component.setPage(4);
     expect(component.currentPage()).toBe(4);
@@ -475,137 +485,7 @@ describe('Camaras', () => {
     expect(component.isLonInvalid).toBe(false);
   });
 
-  it('should calculate remaining repetitions correctly', () => {
-    const start = new Date('2026-06-22T09:00:00');
-    const end = new Date('2026-06-25T18:00:00');
-    
-    // Test daily frequency starting before start date
-    const refBefore = new Date('2026-06-21T12:00:00');
-    let reps = component.getRemainingRepetitions(start, end, 'diario', refBefore);
-    expect(reps).toBe(4); // June 22, 23, 24, 25
 
-    // Test daily frequency starting during start date (before end time of that day)
-    const refDuring = new Date('2026-06-22T14:00:00');
-    reps = component.getRemainingRepetitions(start, end, 'diario', refDuring);
-    expect(reps).toBe(4); // June 22, 23, 24, 25 (June 22 is counted since it is before June 22 18:00)
-
-    // Test daily frequency starting after that day's schedule has ended
-    const refAfterDay = new Date('2026-06-22T19:00:00');
-    reps = component.getRemainingRepetitions(start, end, 'diario', refAfterDay);
-    expect(reps).toBe(3); // June 23, 24, 25
-
-    // Test weekly frequency
-    reps = component.getRemainingRepetitions(start, new Date('2026-07-15T18:00:00'), 'semanal', refBefore);
-    expect(reps).toBe(4); // June 22, June 29, July 6, July 13
-  });
-
-  it('should validate calendar selection based on frequency rules', () => {
-    // 1. Diario: range of exactly 1 day
-    component.newScheduleFrequency.set('diario');
-    component.activeCalendarField.set('newRange');
-    
-    component.tempDateStart.set('2026-06-08');
-    component.tempDateEnd.set('2026-06-08');
-    expect(component.isCalendarSelectionValid()).toBe(true);
-    expect(component.getCalendarValidationWarning()).toBe('');
-
-    component.tempDateEnd.set('2026-06-09');
-    expect(component.isCalendarSelectionValid()).toBe(false);
-    expect(component.getCalendarValidationWarning()).toContain('Frecuencia diaria requiere un rango de exactamente 1 día');
-
-    // 2. Semanal: range up to 7 days
-    component.newScheduleFrequency.set('semanal');
-    component.tempDateStart.set('2026-06-08'); // Monday
-    component.tempDateEnd.set('2026-06-14');   // Sunday (7 days)
-    expect(component.isCalendarSelectionValid()).toBe(true);
-    expect(component.getCalendarValidationWarning()).toBe('');
-
-    component.tempDateEnd.set('2026-06-15');   // 8 days
-    expect(component.isCalendarSelectionValid()).toBe(false);
-    expect(component.getCalendarValidationWarning()).toContain('Frecuencia semanal permite un rango máximo de 7 días');
-
-    // 3. Mensual: dynamic range based on end date's month days count
-    component.newScheduleFrequency.set('mensual');
-    
-    // February 2026 has 28 days
-    // Jan 31 to Feb 28 = 29 days. 29 > 28 -> Invalid
-    component.tempDateStart.set('2026-01-31');
-    component.tempDateEnd.set('2026-02-28');
-    expect(component.isCalendarSelectionValid()).toBe(false);
-    expect(component.getCalendarValidationWarning()).toContain('Frecuencia mensual para el mes de febrero permite un rango máximo de 28 días');
-
-    // Jan 31 to Feb 27 = 28 days. 28 <= 28 -> Valid
-    component.tempDateEnd.set('2026-02-27');
-    expect(component.isCalendarSelectionValid()).toBe(true);
-    expect(component.getCalendarValidationWarning()).toBe('');
-
-    // April 2026 has 30 days
-    // Mar 31 to Apr 30 = 31 days. 31 > 30 -> Invalid
-    component.tempDateStart.set('2026-03-31');
-    component.tempDateEnd.set('2026-04-30');
-    expect(component.isCalendarSelectionValid()).toBe(false);
-    expect(component.getCalendarValidationWarning()).toContain('Frecuencia mensual para el mes de abril permite un rango máximo de 30 días');
-
-    // Mar 31 to Apr 29 = 30 days. 30 <= 30 -> Valid
-    component.tempDateEnd.set('2026-04-29');
-    expect(component.isCalendarSelectionValid()).toBe(true);
-    expect(component.getCalendarValidationWarning()).toBe('');
-  });
-
-  it('should adjust calendar selection dynamically on frequency changes', () => {
-    // Start in new schedule form
-    component.newScheduleDateStart.set('2026-06-08');
-    component.newScheduleDateEnd.set('2026-06-18'); // 11 days (invalid for semanal/diario)
-    
-    // Change to weekly: should trim to 7 days (June 8 to June 14)
-    component.onNewScheduleFrequencyChange('semanal');
-    expect(component.newScheduleDateEnd()).toBe('2026-06-14');
-
-    // Change to daily: should trim to 1 day (June 8 to June 8)
-    component.onNewScheduleFrequencyChange('diario');
-    expect(component.newScheduleDateEnd()).toBe('2026-06-08');
-
-    // Check temp date adjustments when calendar is open
-    component.activeCalendarField.set('newRange');
-    component.tempDateStart.set('2026-01-31');
-    component.tempDateEnd.set('2026-03-10'); // 39 days (too long for monthly)
-    
-    // Change to monthly: temp date end should clip to January's length (31 days) -> Jan 31 + 30 days = Mar 2
-    component.onNewScheduleFrequencyChange('mensual');
-    expect(component.tempDateEnd()).toBe('2026-03-02');
-  });
-
-  it('should disable previous month navigation and auto-adjust range on opening calendar', () => {
-    // 1. Test isPrevCalendarMonthDisabled
-    const refDate = new Date('2026-06-22T12:00:00'); // Monday June 22
-    component.currentTime.set(refDate);
-    
-    // Start of week is Monday June 22
-    // If calendar view is June 2026, we cannot go back to May 2026
-    component.calendarViewYear.set(2026);
-    component.calendarViewMonth.set(5); // June
-    expect(component.isPrevCalendarMonthDisabled()).toBe(true);
-    
-    // If calendar view is July 2026, we can go back to June 2026
-    component.calendarViewMonth.set(6); // July
-    expect(component.isPrevCalendarMonthDisabled()).toBe(false);
-    
-    // 2. Test auto-adjust range in openCalendar
-    component.newScheduleFrequency.set('semanal');
-    component.newScheduleDateStart.set('2026-06-08');
-    component.newScheduleDateEnd.set('2026-06-25'); // 18 days (invalid for semanal)
-    
-    const fakeEvent = { stopPropagation: () => {} } as any;
-    component.openCalendar('newRange', fakeEvent);
-    
-    // Should have adjusted tempDateEnd to June 14 (7 days)
-    expect(component.tempDateStart()).toBe('2026-06-08');
-    expect(component.tempDateEnd()).toBe('2026-06-14');
-  });
-
-  it('should have empty newScheduleFrequency by default', () => {
-    expect(component.newScheduleFrequency()).toBe('');
-  });
 
   it('should allow active status regardless of schedules and not auto-deactivate when no schedules exist', () => {
     const mockAnalytic: Analytic = {

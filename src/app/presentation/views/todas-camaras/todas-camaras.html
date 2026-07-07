@@ -1,0 +1,711 @@
+<div class="nodos-container container-fluid py-4 position-relative">
+
+  <!-- ══════════════════════════════════════════════════════
+       CABECERA — 2 FILAS (Mismo formato que Nodos)
+       ══════════════════════════════════════════════════════ -->
+  <div class="view-header mb-4">
+
+    <!-- ─── FILA 1: Identidad + Controles principales ─── -->
+    <div class="header-row-top d-flex align-items-center justify-content-between gap-3">
+
+      <!-- IZQUIERDA: Sidebar toggle + Identidad de página -->
+      <div class="d-flex align-items-center gap-3">
+
+        <!-- Botón de Collapse Sidebar -->
+        <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
+          (click)="toggleSidebar()" aria-label="Toggle Sidebar">
+          @if (isSidebarCollapsed()) {
+          <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
+          } @else {
+          <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
+          }
+        </button>
+
+        <!-- Bloque de identidad: título + subtítulo -->
+        <div class="header-identity">
+          <h2 class="fw-bold mb-0 header-page-title">
+            Todas las Cámaras
+          </h2>
+          <p class="text-muted mb-0 header-page-subtitle mt-1">
+            Se encontraron <span class="fw-semibold text-primary">{{ filteredCameras().length }}</span> cámaras en el sistema.
+          </p>
+        </div>
+      </div>
+
+      <!-- DERECHA: Búsqueda + Paginación en la misma fila -->
+      <div class="d-flex align-items-center gap-3">
+        <!-- Barra de Búsqueda + Botón de Filtros -->
+        <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
+          <div class="search-input-wrapper d-flex align-items-center flex-grow-1">
+            <span class="icon-svg icon-search search-icon-prefix text-muted flex-shrink-0" style="width: 18px; height: 18px; opacity: 0.5;"></span>
+            <input type="text" [formControl]="searchControl" placeholder="Buscar cámara..."
+              class="search-input-control border-0 ms-2" style="outline: none; flex: 1; min-width: 0;" />
+          </div>
+          <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
+            (click)="toggleFilterPanel()" [class.active]="hasActiveFilters()" [class.open]="showFilterPanel()"
+            title="Filtros avanzados" aria-label="Filtros avanzados">
+            <span class="icon-svg icon-filter filter-icon"></span>
+            @if (hasActiveFilters()) {
+            <span class="active-badge-dot"></span>
+            }
+          </button>
+        </div>
+
+        <!-- Selector de Cámaras por Página -->
+        <div class="d-flex align-items-center gap-2">
+          <label for="cam-limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Cámaras por página:</label>
+          <select id="cam-limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
+            (change)="onLimitChange($event)">
+            @for (opt of limitOptions(); track $index) {
+            <option [value]="opt" [selected]="limit() === opt">{{ opt }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+    </div>
+    <!-- /FILA 1 -->
+
+  </div>
+  <!-- /view-header -->
+
+  <!-- Backdrop Overlay para el Drawer Superior -->
+  @if (showFilterPanel()) {
+  <div class="drawer-backdrop" (click)="toggleFilterPanel()"></div>
+  }
+
+  <!-- Modal / Drawer Superior Deslizable -->
+  <div class="top-drawer" [class.open]="showFilterPanel()">
+    <div class="drawer-content p-4">
+      <div class="container-fluid">
+        <!-- Drawer Header -->
+        <div class="d-flex justify-content-between align-items-start mb-3 pb-3">
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="icon-svg drawer-header-icon icon-filter"></span>
+              <h5 class="fw-bold mb-0">Filtros de Cámaras</h5>
+            </div>
+            <p class="text-muted small mb-0" style="margin-top: 2px;">Filtra y organiza los canales de cámaras del nodo
+              en tiempo real.</p>
+          </div>
+          <button class="btn-ghost close-drawer-btn" (click)="toggleFilterPanel()" aria-label="Cerrar filtros">
+            <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
+          </button>
+        </div>
+
+        <!-- Cuadrícula de Filtros Bento Style -->
+        <div class="filters-bento-grid">
+          <div class="filter-cell position-relative" (click)="toggleDropdown('status', $event)">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="icon-svg filter-cell-icon icon-activity"></span>
+              <span class="filter-lbl mb-0">Estado de Actividad</span>
+            </div>
+            <div class="filter-display-val">
+              <span class="filter-current-value">
+                {{ tempFilterStatus() === 'all' ? 'Todos los Estados' : (tempFilterStatus() === 'active' ||
+                tempFilterStatus() === 'online' ? 'Activo (Online)' : 'Inactivo (Offline)') }}
+              </span>
+              <span class="icon-svg filter-chevron icon-chevron-right"
+                [class.rotated]="activeDropdown() === 'status'"></span>
+            </div>
+            @if (activeDropdown() === 'status') {
+            <div class="custom-dropdown-options-menu">
+              <div class="custom-dropdown-option" [class.active]="tempFilterStatus() === 'all'"
+                (click)="selectFilterValue('status', 'all', $event)">
+                Todos los Estados
+              </div>
+              <div class="custom-dropdown-option"
+                [class.active]="tempFilterStatus() === 'active' || tempFilterStatus() === 'online'"
+                (click)="selectFilterValue('status', 'active', $event)">
+                Activo (Online)
+              </div>
+              <div class="custom-dropdown-option"
+                [class.active]="tempFilterStatus() === 'inactive' || tempFilterStatus() === 'offline'"
+                (click)="selectFilterValue('status', 'inactive', $event)">
+                Inactivo (Offline)
+              </div>
+            </div>
+            }
+          </div>
+
+          <div class="filter-cell position-relative" (click)="toggleDropdown('streamType', $event)">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="icon-svg filter-cell-icon icon-wifi"></span>
+              <span class="filter-lbl mb-0">Tipo de Stream</span>
+            </div>
+            <div class="filter-display-val">
+              <span class="filter-current-value text-uppercase">{{ tempFilterStreamType() === 'all' ? 'Todos los
+                Streams' : tempFilterStreamType() }}</span>
+              <span class="icon-svg filter-chevron icon-chevron-right"
+                [class.rotated]="activeDropdown() === 'streamType'"></span>
+            </div>
+            @if (activeDropdown() === 'streamType') {
+            <div class="custom-dropdown-options-menu">
+              <div class="custom-dropdown-option" [class.active]="tempFilterStreamType() === 'all'"
+                (click)="selectFilterValue('streamType', 'all', $event)">
+                Todos los Streams
+              </div>
+              @for (st of filterOptions().streamType; track st) {
+              <div class="custom-dropdown-option text-uppercase" [class.active]="tempFilterStreamType() === st"
+                (click)="selectFilterValue('streamType', st, $event)">
+                {{ st }}
+              </div>
+              }
+            </div>
+            }
+          </div>
+
+          <div class="filter-cell position-relative" (click)="toggleDropdown('decoder', $event)">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="icon-svg filter-cell-icon icon-settings"></span>
+              <span class="filter-lbl mb-0">Decodificador</span>
+            </div>
+            <div class="filter-display-val">
+              <span class="filter-current-value text-uppercase">{{ tempFilterDecoder() === 'all' ? 'Todos los
+                Decodificadores' : tempFilterDecoder() }}</span>
+              <span class="icon-svg filter-chevron icon-chevron-right"
+                [class.rotated]="activeDropdown() === 'decoder'"></span>
+            </div>
+            @if (activeDropdown() === 'decoder') {
+            <div class="custom-dropdown-options-menu">
+              <div class="custom-dropdown-option" [class.active]="tempFilterDecoder() === 'all'"
+                (click)="selectFilterValue('decoder', 'all', $event)">
+                Todos los Decodificadores
+              </div>
+              @for (dec of filterOptions().decoder; track dec) {
+              <div class="custom-dropdown-option text-uppercase" [class.active]="tempFilterDecoder() === dec"
+                (click)="selectFilterValue('decoder', dec, $event)">
+                {{ dec }}
+              </div>
+              }
+            </div>
+            }
+          </div>
+
+          <div class="filter-cell position-relative" (click)="toggleDropdown('analyticType', $event)">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="icon-svg filter-cell-icon icon-info-circle"></span>
+              <span class="filter-lbl mb-0">Analítica de IA</span>
+            </div>
+            <div class="filter-display-val">
+              <span class="filter-current-value">
+                {{ tempFilterAnalyticType() === 'all' ? 'Todas las Analíticas' :
+                getAnalyticLabel(tempFilterAnalyticType()) }}
+              </span>
+              <span class="icon-svg filter-chevron icon-chevron-right"
+                [class.rotated]="activeDropdown() === 'analyticType'"></span>
+            </div>
+            @if (activeDropdown() === 'analyticType') {
+            <div class="custom-dropdown-options-menu">
+              <div class="custom-dropdown-option" [class.active]="tempFilterAnalyticType() === 'all'"
+                (click)="selectFilterValue('analyticType', 'all', $event)">
+                Todas las Analíticas
+              </div>
+              @for (type of filterOptions().analyticType; track type) {
+              <div class="custom-dropdown-option" [class.active]="tempFilterAnalyticType() === type"
+                (click)="selectFilterValue('analyticType', type, $event)">
+                {{ getAnalyticLabel(type) }}
+              </div>
+              }
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- Acciones del Modal: Limpiar y Aplicar -->
+        <div class="d-flex gap-3 mt-4 pt-3 w-100">
+          <button class="btn btn-clear-filters flex-fill py-2.5" (click)="resetFilters()">
+            Limpiar Filtros
+          </button>
+          <button class="btn btn-apply-filters flex-fill py-2.5" (click)="applyFilters()">
+            Aplicar Cambios
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estado de carga -->
+  @if (isLoading()) {
+  <div class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando cámaras...</span>
+    </div>
+  </div>
+  }
+
+  <!-- Lista vacía -->
+  @if (!isLoading() && filteredCameras().length === 0) {
+  <div class="card border-0 shadow-sm rounded-3 p-5 text-center mb-4 bg-card">
+    <div class="py-4">
+      <span class="icon-svg icon-camara text-muted" style="width: 48px; height: 48px; opacity: 0.5; margin-bottom: 1rem;"></span>
+      <h5 class="fw-bold">No se encontraron cámaras</h5>
+      <p class="text-muted">
+        @if (cameras().length === 0) {
+        Este nodo no tiene canales de cámaras registrados actualmente.
+        } @else {
+        No hay cámaras registradas que coincidan con los filtros aplicados en la página actual.
+        }
+      </p>
+    </div>
+  </div>
+  }
+
+  <!-- Tabla Premium de Cámaras -->
+  @if (!isLoading() && cameras().length > 0) {
+  <div class="border shadow-sm rounded-4 mb-4 bg-card overflow-hidden">
+    <div class="nm-table-container">
+      <table class="table nm-table align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">ESTADO</th>
+            <th scope="col">NOMBRE DE CÁMARA</th>
+            <th scope="col">NODO ASOCIADO</th>
+            <th scope="col">STREAM</th>
+            <th scope="col">DECODIFICADOR</th>
+            <th scope="col">COORDENADAS</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (camera of pagedCameras(); track camera.id) {
+          <tr class="nm-table-tr align-middle" [class.card-crud-new]="cameraNewIds().has(camera.id)"
+            [class.card-crud-updated]="cameraUpdatedIds().has(camera.id)"
+            [class.card-crud-deleting]="cameraDeletingIds().has(camera.id)" (click)="openAiPanel(camera)">
+            <!-- Estado -->
+            <td class="ps-3">
+              <span class="d-inline-flex align-items-center gap-2">
+                <span class="status-dot" [class.online]="isCameraOnline(camera)"></span>
+                <span class="fw-semibold" style="font-size: 0.88rem;" [class.text-success]="isCameraOnline(camera)"
+                  [class.text-danger]="!isCameraOnline(camera)">
+                  {{ isCameraOnline(camera) ? 'Online' : 'Offline' }}
+                </span>
+              </span>
+            </td>
+            <!-- Nombre -->
+            <td>
+              <div class="camera-name-marquee-container">
+                <span class="camera-name-marquee-text fw-bold text-body" style="font-size: 0.88rem;">{{ camera.name }}</span>
+              </div>
+            </td>
+            <!-- Nodo / Host -->
+            <td>
+              <span class="text-body text-truncate d-inline-block" style="font-size: 0.88rem;"
+                [title]="camera.hostFingerprint">
+                {{ getHostName(camera.hostFingerprint) }}
+              </span>
+            </td>
+            <!-- Stream -->
+            <td>
+              <div class="d-inline-flex align-items-center gap-2 text-uppercase font-monospace text-body"
+                style="font-size: 0.85rem; font-weight: 600;">
+                @if (camera.streamType.toLowerCase().includes('webrtc')) {
+                <span class="icon-svg icon-webrtc" style="width: 15px; height: 15px; background-color: #0ea5e9;"></span>
+                } @else if (camera.streamType.toLowerCase().includes('rtsp')) {
+                <span class="icon-svg icon-rtsp" style="width: 15px; height: 15px; background-color: #10b981;"></span>
+                } @else {
+                <span class="icon-svg icon-play" style="width: 15px; height: 15px; background-color: #f97316;"></span>
+                }
+                <span>{{ camera.streamType }}</span>
+              </div>
+            </td>
+            <!-- Decodificador -->
+            <td>
+              <span class="text-body font-monospace text-uppercase" style="font-size: 0.85rem; font-weight: 500;">{{
+                camera.decoder }}</span>
+            </td>
+            <!-- Coordenadas -->
+            <td>
+              <a [href]="'https://www.google.com/maps/search/?api=1&query=' + camera.location.lat + ',' + camera.location.lon"
+                target="_blank" rel="noopener noreferrer" class="coords-map-btn" (click)="$event.stopPropagation()"
+                title="Ver ubicación en Google Maps"
+                style="font-size: 0.82rem; gap: 6px; padding: 6px 12px; border-radius: 6px;">
+                <span class="icon-svg icon-location-pin coords-pin-svg" style="width: 16px; height: 16px;"></span>
+                <span class="font-monospace">{{ camera.location.lat | number:'1.1-2' }}, {{ camera.location.lon |
+                  number:'1.1-2' }}</span>
+              </a>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  }
+
+  <!-- Paginación -->
+  @if (totalPages() > 1) {
+  <div class="d-flex justify-content-center align-items-center gap-4 mt-5">
+    <nav aria-label="Page navigation">
+      <ul class="pagination pagination-md align-items-center" style="gap: 6px;">
+        <li class="page-item" [class.disabled]="currentPage() === 1">
+          <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center" (click)="prevPage()"
+            aria-label="Previous">
+            <span class="icon-svg icon-chevron-left" style="width: 18px; height: 18px;"></span>
+          </button>
+        </li>
+        @for (page of visiblePages(); track page) {
+        <li class="page-item" [class.active]="currentPage() === page">
+          <button class="page-link-ghost" (click)="setPage(page)">
+            {{ page }}
+          </button>
+        </li>
+        }
+        <li class="page-item" [class.disabled]="currentPage() === totalPages()">
+          <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center" (click)="nextPage()"
+            aria-label="Next">
+            <span class="icon-svg icon-chevron-right" style="width: 18px; height: 18px;"></span>
+          </button>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Jump to Page Input Container -->
+    <div class="d-flex align-items-center gap-2 jump-to-page-container">
+      <span class="text-muted small fw-medium">Ir a:</span>
+      <input type="text" class="form-control form-control-sm text-center shadow-sm"
+        style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;" [placeholder]="currentPage()"
+        inputmode="numeric" pattern="[0-9]*" (input)="onPageInput($event)" (keydown.enter)="jumpToPage($event)"
+        (blur)="jumpToPage($event)" />
+      <span class="text-muted small fw-medium">de {{ totalPages() }}</span>
+    </div>
+  </div>
+  }
+
+  <!-- Backdrop Overlay para el Drawer Lateral Derecho -->
+  @if (showAiPanel()) {
+  <div class="drawer-backdrop" (click)="closeAiPanel()"></div>
+  }
+
+  <!-- Drawer Lateral Derecho -->
+  <div class="right-drawer" [class.open]="showAiPanel()">
+    <div class="drawer-content p-4 h-100 d-flex flex-column justify-content-between">
+      @if (selectedCamera(); as camera) {
+      <div class="drawer-scroll-area">
+        <!-- Cabecera del Drawer -->
+        <div class="d-flex justify-content-between align-items-start mb-4 pb-3">
+          <div class="d-flex align-items-center gap-3 w-100 me-2" style="min-width: 0;">
+            <span class="icon-svg icon-camara drawer-header-icon" style="width: 28px; height: 28px; flex-shrink: 0; color: var(--primary);"></span>
+            <div style="min-width: 0; flex: 1;">
+              <h5 class="fw-bold mb-0 text-truncate" style="font-size: 1.15rem;" [title]="camera.name">
+                {{ camera.name }}
+              </h5>
+              <p class="text-muted small mb-0 mt-1 d-flex align-items-center gap-2">
+                <span>ID:</span>
+                <code class="code-badge text-truncate" style="max-width: 250px;" [title]="camera.id">
+                  {{ camera.id }}
+                </code>
+              </p>
+            </div>
+
+            <!-- Grupo de Acciones (Editar / Eliminar) - visible solo cuando no se está editando -->
+            @if (!isEditingCamera()) {
+            <div class="camera-action-btn-group d-flex align-items-center gap-1 flex-shrink-0">
+              <!-- Botón Editar -->
+              @if (permissionsService.hasPermission('Cámaras', 'editar')) {
+              <button class="cam-icon-btn cam-icon-btn-edit d-flex align-items-center justify-content-center"
+                (click)="startEditingCamera(camera)" title="Editar Información" aria-label="Editar cámara">
+                <span class="icon-svg icon-edit" style="width: 15px; height: 15px;"></span>
+              </button>
+              }
+              <!-- Botón Eliminar -->
+              @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
+              <button class="cam-icon-btn cam-icon-btn-delete d-flex align-items-center justify-content-center"
+                (click)="openDeleteModal(camera)" title="Eliminar Cámara" aria-label="Eliminar cámara">
+                <span class="icon-svg icon-trash" style="width: 15px; height: 15px;"></span>
+              </button>
+              }
+            </div>
+            }
+          </div>
+
+          <button class="btn-ghost close-drawer-btn flex-shrink-0" (click)="closeAiPanel()" aria-label="Cerrar panel">
+            <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
+          </button>
+        </div>
+
+        @if (isEditingCamera()) {
+        <!-- Formulario de Edición (Estilo Premium) -->
+        <div class="edit-camera-form-container mb-4 shadow-sm" style="animation: slideDown 0.25s ease-out;">
+          <h6 class="text-uppercase fw-bold text-muted mb-3" style="font-size: 0.68rem; letter-spacing: 0.08em;">Editar
+            Configuración</h6>
+
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-semibold">Nombre de la Cámara</label>
+            <input type="text" class="form-control" [class.is-invalid]="isNameInvalid" [(ngModel)]="editCameraName"
+              placeholder="Ingrese el nombre de la cámara" />
+            @if (isNameInvalid) {
+            <div class="invalid-feedback">
+              El nombre de la cámara es obligatorio.
+            </div>
+            }
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label text-muted small fw-semibold">Latitud</label>
+              <input type="number" step="any" min="-90" max="90" class="form-control" [class.is-invalid]="isLatInvalid"
+                [(ngModel)]="editCameraLat" placeholder="Latitud" />
+              @if (isLatInvalid) {
+              <div class="invalid-feedback">
+                Rango: -90 a 90.
+              </div>
+              }
+            </div>
+            <div class="col-6">
+              <label class="form-label text-muted small fw-semibold">Longitud</label>
+              <input type="number" step="any" min="-180" max="180" class="form-control"
+                [class.is-invalid]="isLonInvalid" [(ngModel)]="editCameraLon" placeholder="Longitud" />
+              @if (isLonInvalid) {
+              <div class="invalid-feedback">
+                Rango: -180 a 180.
+              </div>
+              }
+            </div>
+          </div>
+          <div class="d-flex gap-3 mt-4 pt-3 w-100">
+            <button type="button" class="btn btn-clear-filters flex-fill py-2.5" (click)="cancelEditingCamera()">
+              Cancelar
+            </button>
+            <button type="button" class="btn btn-apply-filters flex-fill py-2.5" (click)="saveCameraInfo(camera)"
+              [disabled]="isFormInvalid">
+              Guardar
+            </button>
+          </div>
+        </div>
+        } @else {
+        <!-- Información Rápida del Dispositivo -->
+        <div class="quick-device-info p-3 rounded-3 border mb-4 bg-light-translucent">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 0.05em;">LATITUD</span>
+            <span class="text-body fw-medium" style="font-size: 0.8rem;">
+              {{ camera.location.lat }}
+            </span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 0.05em;">LONGITUD</span>
+            <span class="text-body fw-medium" style="font-size: 0.8rem;">
+              {{ camera.location.lon }}
+            </span>
+          </div>
+        </div>
+        }
+
+        <!-- Analíticas de IA asignadas a esta cámara -->
+        <div class="ai-control-panel-drawer mb-4">
+          <h6 class="text-muted text-uppercase fw-bold mb-3" style="font-size: 0.7rem; letter-spacing: 0.05em;">Sistemas
+            de IA</h6>
+
+          @if (getAnalyticsForCamera(camera.id).length === 0) {
+          <div class="text-muted small text-center p-3 border rounded bg-light-translucent" style="font-style: italic;">
+            No hay analíticas configuradas para esta cámara
+          </div>
+          }
+
+          <div class="d-flex flex-column gap-2">
+            @for (analytic of getAnalyticsForCamera(camera.id); track analytic.id) {
+            <div class="ai-control-card-wrapper mb-2" [class.ai-active]="analytic.status === 'active'"
+              [class.expanded]="isAnalyticDetailsExpanded(analytic.id)"
+              [class.card-crud-new]="analyticNewIds().has(analytic.id)"
+              [class.card-crud-updated]="analyticUpdatedIds().has(analytic.id)"
+              [class.card-crud-deleting]="analyticDeletingIds().has(analytic.id)">
+              <div class="ai-control-header" (click)="toggleAnalyticDetails(analytic.id)">
+                <div class="d-flex align-items-center gap-3">
+                  <span class="analytic-color-dot shadow-sm"
+                    [style.background-color]="getAnalyticColor(analytic.type)"></span>
+                  <div>
+                    <span class="fw-bold d-block" style="font-size: 0.85rem;">{{ getAnalyticLabel(analytic.type)
+                      }}</span>
+                    @if (analytic.detectionClasses.length > 0) {
+                    <span class="text-muted" style="font-size: 0.72rem;">
+                      {{ analytic.detectionClasses.slice(0, 3).join(', ') }}{{ analytic.detectionClasses.length > 3 ?
+                      '...' : '' }}
+                    </span>
+                    }
+                  </div>
+                </div>
+                <!-- Contenedor de acciones en cabecera: Switch, Eliminar y Chevron Toggle -->
+                <div class="d-flex align-items-center gap-2">
+                  <!-- Control de estado por switch -->
+                  <div class="form-check form-switch m-0 d-flex align-items-center" (click)="$event.stopPropagation()">
+                    <input class="form-check-input" type="checkbox" role="switch" [id]="'switch-' + analytic.id"
+                      [checked]="analytic.status === 'active'"
+                      [disabled]="!permissionsService.hasPermission('Analíticas', 'activar_desactivar')"
+                      (change)="toggleAnalyticStatus(analytic)">
+                  </div>
+                  <!-- Botón Eliminar Analítica -->
+                  @if (permissionsService.hasPermission('Analíticas', 'eliminar')) {
+                  <button class="cam-icon-btn cam-icon-btn-delete d-flex align-items-center justify-content-center"
+                    (click)="openDeleteAnalyticModal(analytic); $event.stopPropagation()" title="Eliminar Analítica"
+                    aria-label="Eliminar analítica">
+                    <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+                  </button>
+                  }
+                  <!-- Chevron decorativo para indicar expansión -->
+                  <div class="btn-toggle-details transition-all d-flex align-items-center justify-content-center"
+                    [class.open]="isAnalyticDetailsExpanded(analytic.id)">
+                    <span class="icon-svg icon-chevron-down" style="width: 14px; height: 14px; transition: transform 0.2s ease;"></span>
+                  </div>
+                </div>
+              </div>
+
+              @if (isAnalyticDetailsExpanded(analytic.id)) {
+              <div class="analytic-details-expanded" style="animation: slideDown 0.2s ease-out;">
+                <!-- Lista vertical de horarios asociados -->
+                <div class="d-flex flex-column gap-2 mb-3">
+                  @for (sched of getSchedulesForAnalytic(analytic.id); track sched.id) {
+                  <!-- Tarjeta de Horario estilo Bento -->
+                  <div class="schedule-bento-card" [class]="'freq-' + sched.frequency"
+                    [class.schedule-bento-card--desactivado]="sched.status !== 'activo'"
+                    (click)="toggleScheduleAssociation(sched, analytic.id, false)"
+                    title="Click para remover este horario de la analítica">
+                    <div class="card-left-section">
+                      <span class="schedule-name">{{ sched.name }}</span>
+                      <span class="schedule-meta-frequency">{{ sched.frequency | titlecase }}</span>
+                    </div>
+                    <div class="card-right-section">
+                      <span class="schedule-meta-date">{{ getScheduleDateLabelCompact(sched) }}</span>
+                      <span class="schedule-meta-time">{{ getScheduleTimeLabelCompact(sched) }}</span>
+                    </div>
+                    @if (sched.status !== 'activo') {
+                    <div class="schedule-deactivated-overlay">
+                      <span class="schedule-deactivated-overlay-badge">Desactivado</span>
+                    </div>
+                    }
+                    <div class="card-delete-hover">
+                      <span class="icon-svg icon-trash text-danger" style="width: 14px; height: 14px;"></span>
+                    </div>
+                  </div>
+                  } @empty {
+                  <span class="text-muted small italic" style="font-size: 0.72rem; padding-left: 4px;">Sin horarios
+                    programados (opera 24/7)</span>
+                  }
+                </div>
+
+                <!-- Botón/Dropdown para añadir horario (siempre visible) -->
+                <div class="position-relative w-100 d-block">
+                  <button class="btn-add-schedule-dashed" (click)="toggleAddScheduleDropdown(analytic.id, $event)">
+                    <span class="icon-svg icon-plus" style="width: 12px; height: 12px;"></span>
+                    <span>Añadir Horario</span>
+                  </button>
+
+                  @if (activeAddScheduleDropdown() === analytic.id) {
+                  <div class="add-schedule-dropdown-menu shadow" (click)="$event.stopPropagation()">
+                    <div class="dropdown-header-title">Asociar Horario</div>
+                    @for (sched of getUnassociatedSchedules(analytic.id); track sched.id) {
+                    <div class="add-schedule-dropdown-item"
+                      (click)="toggleScheduleAssociation(sched, analytic.id, true); toggleAddScheduleDropdown(analytic.id, $event)">
+                      <span class="item-name">{{ sched.name }}</span>
+                      <span class="item-meta">{{ sched.frequency | titlecase }}</span>
+                    </div>
+                    } @empty {
+                    <div class="dropdown-empty-state">No hay más horarios disponibles</div>
+                    }
+                    <div class="dropdown-divider"></div>
+                    <a [routerLink]="['/dashboard/horarios']" class="dropdown-manage-link"
+                      (click)="toggleAddScheduleDropdown(analytic.id, $event)">
+                      <span class="icon-svg icon-settings" style="width: 12px; height: 12px;"></span>
+                      <span>Gestionar Horarios</span>
+                    </a>
+                  </div>
+                  }
+                </div>
+              </div>
+              }
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Botón de Cerrar -->
+      <div class="mt-4 pt-3">
+        <button class="btn btn-clear-filters w-100 py-2" (click)="closeAiPanel()">
+          Cerrar Panel
+        </button>
+      </div>
+      }
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+  Modal de Confirmación: Eliminar Cámara
+══════════════════════════════════════════════════════════════════════════ -->
+@if (showDeleteModal()) {
+<div class="delete-camera-modal-overlay" (click)="closeDeleteModal()" aria-modal="true" role="dialog">
+  <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
+
+    <!-- Icono de advertencia -->
+    <div class="delete-modal-icon-wrap">
+      <span class="icon-svg icon-warning" style="width: 28px; height: 28px; color: var(--color-warning);"></span>
+    </div>
+
+    <!-- Título y mensaje -->
+    <h5 class="delete-modal-title">Eliminar cámara</h5>
+    <p class="delete-modal-message">
+      ¿Estás seguro de que deseas eliminar la cámara
+      <strong class="delete-modal-camera-name">{{ cameraToDelete()?.name }}</strong>?
+      Esta acción no se puede deshacer.
+    </p>
+
+    <!-- Acciones -->
+    <div class="delete-modal-actions">
+      <button class="delete-modal-btn-cancel" (click)="closeDeleteModal()" [disabled]="isDeletingCamera()">
+        Cancelar
+      </button>
+      <button class="delete-modal-btn-confirm" (click)="confirmDeleteCamera()" [disabled]="isDeletingCamera()">
+        @if (isDeletingCamera()) {
+        <span class="delete-modal-spinner"></span>
+        Eliminando...
+        } @else {
+        <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+        Eliminar
+        }
+      </button>
+    </div>
+
+  </div>
+</div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+  Modal de Confirmación: Eliminar Analítica
+══════════════════════════════════════════════════════════════════════════ -->
+@if (showDeleteAnalyticModal()) {
+<div class="delete-camera-modal-overlay" (click)="closeDeleteAnalyticModal()" aria-modal="true" role="dialog">
+  <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
+
+    <!-- Icono de advertencia -->
+    <div class="delete-modal-icon-wrap">
+      <span class="icon-svg icon-warning" style="width: 28px; height: 28px; color: var(--color-warning);"></span>
+    </div>
+
+    <!-- Título y mensaje -->
+    <h5 class="delete-modal-title">Eliminar analítica</h5>
+    <p class="delete-modal-message">
+      ¿Estás seguro de que deseas eliminar la analítica
+      <strong class="delete-modal-camera-name">{{ getAnalyticLabel(analyticToDelete()?.type || '') }}</strong>?
+      Esta acción no se puede deshacer.
+    </p>
+
+    <!-- Acciones -->
+    <div class="delete-modal-actions">
+      <button class="delete-modal-btn-cancel" (click)="closeDeleteAnalyticModal()" [disabled]="isDeletingAnalytic()">
+        Cancelar
+      </button>
+      <button class="delete-modal-btn-confirm" (click)="confirmDeleteAnalytic()" [disabled]="isDeletingAnalytic()">
+        @if (isDeletingAnalytic()) {
+        <span class="delete-modal-spinner"></span>
+        Eliminando...
+        } @else {
+        <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+        Eliminar
+        }
+      </button>
+    </div>
+
+  </div>
+</div>
+}
+
+
