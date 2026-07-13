@@ -9,7 +9,7 @@ export function parseUtcDate(value: any): Date {
   if (typeof value === 'string') {
     let str = value.trim();
     
-    // Soporte para formato DD/MM/YYYY HH:mm(:ss)
+    // Soporte para formato DD/MM/YYYY HH:mm(:ss) — el backend devuelve hora LOCAL en este formato
     const slashRegex = /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(:(\d{2}))?$/;
     const match = str.match(slashRegex);
     if (match) {
@@ -19,7 +19,8 @@ export function parseUtcDate(value: any): Date {
       const hour = parseInt(match[4], 10);
       const minute = parseInt(match[5], 10);
       const second = match[7] ? parseInt(match[7], 10) : 0;
-      return new Date(Date.UTC(year, month, day, hour, minute, second));
+      // Usar constructor LOCAL (no UTC) porque el backend devuelve hora local del servidor
+      return new Date(year, month, day, hour, minute, second);
     }
 
     const tzRegex = /(Z|([+-]\d{2}(:?\d{2})?))$/;
@@ -47,3 +48,22 @@ export function parseLocalDate(value: any): Date {
   return new Date(value);
 }
 
+/**
+ * Extracts HH:mm from a Date object using UTC methods.
+ * Use this when the Date was parsed from a UTC backend timestamp (via parseUtcDate)
+ * and you need to display the original UTC time regardless of the browser's local timezone.
+ */
+export function getUtcTimeString(d: Date): string {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+}
+
+/**
+ * Extracts YYYY-MM-DD from a Date object using UTC methods.
+ * Use this when the Date was parsed from a UTC backend timestamp (via parseUtcDate)
+ * and you need to display the original UTC date regardless of the browser's local timezone.
+ */
+export function getUtcDateString(d: Date): string {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+}

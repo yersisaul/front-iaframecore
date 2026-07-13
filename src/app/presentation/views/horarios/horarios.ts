@@ -19,11 +19,14 @@ import { Analytic } from '../../../core/domain/entities/analytic.models';
 
 function getDateString(d: Date): string {
   const pad = (num: number) => num.toString().padStart(2, '0');
+  // Mostrar en hora LOCAL del usuario (el backend almacena UTC con Z,
+  // parseUtcDate lo convierte correctamente, y getFullYear/Month/Date devuelven hora local)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 function getTimeString(d: Date): string {
   const pad = (num: number) => num.toString().padStart(2, '0');
+  // Mostrar en hora LOCAL del usuario
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
@@ -357,6 +360,8 @@ export class Horarios implements OnInit, OnDestroy {
     const now = this.currentTime();
     
     if (schedule.frequency === 'diario') {
+      // Comparar ambos en hora LOCAL: la hora actual local vs la hora almacenada en UTC
+      // (convertida a local por JS al usar getHours/getMinutes)
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
       const startMinutes = schedule.start.getHours() * 60 + schedule.start.getMinutes();
       const endMinutes = schedule.end.getHours() * 60 + schedule.end.getMinutes();
@@ -995,8 +1000,9 @@ export class Horarios implements OnInit, OnDestroy {
       nombre: this.newScheduleName(),
       fingerprint_host: '',
       analytics_ids: [], // Se asocian en la vista de Cámaras
-      timestamp_inicio: new Date(`${this.newScheduleDateStart()}T${this.newScheduleTimeStart()}:00`).toISOString(),
-      timestamp_fin: new Date(`${this.newScheduleDateEnd()}T${this.newScheduleTimeEnd()}:00`).toISOString(),
+      // El backend espera formato DD/MM/YYYY HH:mm en hora local (no ISO UTC)
+      timestamp_inicio: this.formatTimestampForBackend(this.newScheduleDateStart(), this.newScheduleTimeStart()),
+      timestamp_fin: this.formatTimestampForBackend(this.newScheduleDateEnd(), this.newScheduleTimeEnd()),
       frecuencia: this.newScheduleFrequency(),
       estado: 'activo'
     };
@@ -1015,6 +1021,7 @@ export class Horarios implements OnInit, OnDestroy {
   startEditSchedule(schedule: Schedule): void {
     this.editingScheduleId.set(schedule.id);
     this.editingScheduleName.set(schedule.name);
+    // Usar getDateString/getTimeString (ya corregidos a UTC) para pre-cargar el formulario
     this.editingScheduleDateStart.set(getDateString(schedule.start));
     this.editingScheduleTimeStart.set(getTimeString(schedule.start));
     this.editingScheduleDateEnd.set(getDateString(schedule.end));
@@ -1057,8 +1064,9 @@ export class Horarios implements OnInit, OnDestroy {
       nombre: this.editingScheduleName(),
       fingerprint_host: '',
       analytics_ids: this.editingScheduleSelectedAnalyticIds().map(id => ({ id_analytic: id })),
-      timestamp_inicio: new Date(`${this.editingScheduleDateStart()}T${this.editingScheduleTimeStart()}:00`).toISOString(),
-      timestamp_fin: new Date(`${this.editingScheduleDateEnd()}T${this.editingScheduleTimeEnd()}:00`).toISOString(),
+      // El backend espera formato DD/MM/YYYY HH:mm en hora local (no ISO UTC)
+      timestamp_inicio: this.formatTimestampForBackend(this.editingScheduleDateStart(), this.editingScheduleTimeStart()),
+      timestamp_fin: this.formatTimestampForBackend(this.editingScheduleDateEnd(), this.editingScheduleTimeEnd()),
       frecuencia: this.editingScheduleFrequency(),
       estado: 'activo'
     };
@@ -1227,11 +1235,23 @@ export class Horarios implements OnInit, OnDestroy {
 
   getDateString(d: Date): string {
     const pad = (num: number) => num.toString().padStart(2, '0');
+    // Mostrar en hora LOCAL del usuario
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
   getTimeString(d: Date): string {
     const pad = (num: number) => num.toString().padStart(2, '0');
+    // Mostrar en hora LOCAL del usuario
     return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  /**
+   * Convierte fecha (YYYY-MM-DD) y hora (HH:mm) al formato DD/MM/YYYY HH:mm
+   * que es el formato que espera el backend en sus peticiones.
+   */
+  private formatTimestampForBackend(dateStr: string, timeStr: string): string {
+    if (!dateStr || !timeStr) return '';
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year} ${timeStr}`;
   }
 }
