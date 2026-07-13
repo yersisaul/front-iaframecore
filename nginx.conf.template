@@ -6,7 +6,7 @@ server {
     add_header X-Frame-Options "DENY" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Content-Security-Policy "default-src 'self'; connect-src 'self' ${API_TARGET} http://localhost:8000 http://localhost:* https://picsum.photos https://fastly.picsum.photos https://*.picsum.photos https://*.unsplash.com https://randomuser.me; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: ${API_TARGET} http://localhost:8000 http://localhost:* https://picsum.photos https://fastly.picsum.photos https://*.picsum.photos https://*.unsplash.com https://randomuser.me; frame-ancestors 'none';" always;
+    add_header Content-Security-Policy "default-src 'self'; connect-src 'self' ${API_HOST} http://localhost:8000 http://localhost:* https://picsum.photos https://fastly.picsum.photos https://*.picsum.photos https://*.unsplash.com https://randomuser.me; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: ${API_HOST} http://localhost:8000 http://localhost:* https://picsum.photos https://fastly.picsum.photos https://*.picsum.photos https://*.unsplash.com https://randomuser.me; frame-ancestors 'none';" always;
 
     # Serve compiled static Angular SPA files
     location / {
@@ -19,7 +19,7 @@ server {
         # Limit login requests to prevent force brute (requires limit_req_zone inside http context in main nginx.conf)
         # limit_req zone=login_limit burst=5 nodelay;
 
-        proxy_pass ${API_TARGET}/;
+        proxy_pass ${API_HOST}/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -35,7 +35,7 @@ server {
             deny all;
         }
         rewrite ^/opensearch/(.*)$ /$1 break;
-        proxy_pass ${OPENSEARCH_TARGET};
+        proxy_pass ${OPENSEARCH_HOST};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -48,7 +48,7 @@ server {
             deny all;
         }
         rewrite ^/opensearch/(.*)$ /$1 break;
-        proxy_pass ${OPENSEARCH_TARGET};
+        proxy_pass ${OPENSEARCH_HOST};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -61,7 +61,7 @@ server {
             deny all;
         }
         rewrite ^/opensearch/(.*)$ /$1 break;
-        proxy_pass ${OPENSEARCH_TARGET};
+        proxy_pass ${OPENSEARCH_HOST};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -93,7 +93,7 @@ server {
 #     add_header X-Frame-Options "DENY" always;
 #     add_header X-Content-Type-Options "nosniff" always;
 #     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-#     add_header Content-Security-Policy "default-src 'self'; connect-src 'self' ${API_TARGET} ws://localhost:* https://localhost:*; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: ${API_TARGET} https://fastly.picsum.photos https://*.picsum.photos https://*.unsplash.com; frame-ancestors 'none';" always;
+#     add_header Content-Security-Policy "default-src 'self'; connect-src 'self' ${API_HOST} ws://localhost:* https://localhost:*; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: ${API_HOST} https://fastly.picsum.photos https://*.picsum.photos https://*.unsplash.com; frame-ancestors 'none';" always;
 # 
 #     location / {
 #         root /usr/share/nginx/html;
@@ -101,7 +101,7 @@ server {
 #     }
 # 
 #     location /api/ {
-#         proxy_pass ${API_TARGET}/;
+#         proxy_pass ${API_HOST}/;
 #         proxy_set_header Host $host;
 #         proxy_set_header X-Real-IP $remote_addr;
 #         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -111,19 +111,19 @@ server {
 #     location ~ ^/opensearch/([a-z]+)/_search$ {
 #         limit_except POST { deny all; }
 #         rewrite ^/opensearch/(.*)$ /$1 break;
-#         proxy_pass ${OPENSEARCH_TARGET};
+#         proxy_pass ${OPENSEARCH_HOST};
 #     }
 # 
 #     location ~ ^/opensearch/([a-z]+)/_count$ {
 #         limit_except GET { deny all; }
 #         rewrite ^/opensearch/(.*)$ /$1 break;
-#         proxy_pass ${OPENSEARCH_TARGET};
+#         proxy_pass ${OPENSEARCH_HOST};
 #     }
 # 
 #     location = /opensearch/_cat/indices {
 #         limit_except GET { deny all; }
 #         rewrite ^/opensearch/(.*)$ /$1 break;
-#         proxy_pass ${OPENSEARCH_TARGET};
+#         proxy_pass ${OPENSEARCH_HOST};
 #     }
 # 
 #     location /opensearch/ {

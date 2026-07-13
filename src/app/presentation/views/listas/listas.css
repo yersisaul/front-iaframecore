@@ -1001,8 +1001,8 @@
 }
 
 .identity-avatar {
-  width: 90px;
-  height: 90px;
+  width: 150px;
+  height: 150px;
   object-fit: cover;
   border: 2.5px solid var(--border-color);
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
@@ -2290,4 +2290,520 @@
 .identity-title-row {
   margin-top: 0.5rem;
   margin-bottom: 0.75rem !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   REDISEÑO DE MODAL PREMIUM - IMPORTACIÓN DE ROSTROS
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* 1. Backdrop Glassmorphism */
+.glass-overlay {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+/* 2. Tarjeta del Modal (Totalmente Adaptable y Responsivo) */
+.modal-card-premium {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: var(--bg-modal);
+  border-radius: 24px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35) !important;
+  width: min(95%, 85rem) !important;
+  /* Dimensionamiento ultra fluido */
+  max-width: none !important;
+  /* Anular limitador max-width heredado */
+  transform-origin: center;
+  animation: scaleUpModalPremium 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes scaleUpModalPremium {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(15px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 3. Drag & Drop Zone */
+.drag-drop-zone {
+  border: 2px dashed var(--border-color) !important;
+  border-radius: 20px !important;
+  background-color: rgba(var(--primary-rgb), 0.01) !important;
+  min-height: 180px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.drag-drop-zone:hover {
+  border-color: var(--primary) !important;
+  background-color: rgba(var(--primary-rgb), 0.03) !important;
+}
+
+.drag-drop-zone.drag-over {
+  border-color: var(--primary) !important;
+  border-style: solid !important;
+  background-color: rgba(var(--primary-rgb), 0.08) !important;
+  box-shadow: 0 0 0 4px var(--primary-light), inset 0 0 12px rgba(var(--primary-rgb), 0.15);
+  transform: scale(0.99);
+}
+
+.drag-drop-zone.has-preview {
+  border-style: solid !important;
+  background-color: var(--bg-surface) !important;
+  cursor: default;
+}
+
+.drag-drop-zone.has-preview:hover {
+  transform: none;
+}
+
+/* 4. Pulse Animation para Iconos */
+.pulse-animation {
+  animation: svgPulse 2.5s infinite ease-in-out;
+}
+
+@keyframes svgPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+    filter: drop-shadow(0 0 6px var(--primary));
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+}
+
+/* 5. Grid Adaptativo Responsivo sin anchos fijos */
+.import-drafts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 11.5rem), 1fr));
+  gap: 1.5rem;
+  width: 100%;
+  max-height: 380px;
+  padding: 10px 4px;
+}
+
+/* 6. Tarjetas de Vista Previa Premium */
+.preview-card-premium {
+  border: 1px solid var(--border-color) !important;
+  background-color: var(--bg-surface) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03) !important;
+  animation: cardScaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.preview-card-premium:hover {
+  border-color: var(--primary) !important;
+  box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.08) !important;
+  transform: translateY(-3px);
+}
+
+@keyframes cardScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 7. Contenedor de Imagen y Overlay de Eliminación en Hover */
+.draft-avatar-wrapper {
+  position: relative;
+  width: 80%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50% !important;
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+.draft-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.draft-remove-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(10, 15, 30, 0.8) !important;
+  /* Capa oscura translúcida densa para contraste */
+  backdrop-filter: blur(4px) !important;
+  /* Desenfoque más pronunciado */
+  opacity: 0;
+  transition: opacity 0.25s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.draft-avatar-wrapper:hover .draft-remove-overlay {
+  opacity: 1;
+}
+
+.draft-avatar-wrapper:hover .draft-avatar {
+  transform: scale(1.08);
+}
+
+/* Icono de aspa blanca (X) de eliminación directa */
+.draft-remove-icon {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, filter 0.25s ease;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.draft-remove-icon:hover {
+  transform: scale(1.2) rotate(90deg);
+  background-color: #ffffff !important;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5)) !important;
+}
+
+/* 8. Notion-style In-situ Name Editor */
+.name-edit-container {
+  width: 100%;
+  min-height: 2.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.name-display-inline {
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.name-display-inline:hover {
+  background-color: var(--border-color-translucent);
+  color: var(--primary);
+}
+
+.input-edit-inline {
+  width: 100%;
+  border: none !important;
+  border-bottom: 2px solid var(--primary) !important;
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  border-radius: 0 !important;
+  padding: 0.125rem 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  transition: border-bottom-color 0.2s ease;
+}
+
+.input-edit-inline:focus {
+  border-bottom-color: var(--primary-hover) !important;
+}
+
+/* 9. Tarjeta Especial de Carga (Integrada en el Grid) */
+.add-more-card-premium {
+  border: 2px dashed var(--border-color) !important;
+  background-color: rgba(var(--primary-rgb), 0.01) !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+}
+
+.add-more-card-premium:hover {
+  border-color: var(--primary) !important;
+  background-color: rgba(var(--primary-rgb), 0.03) !important;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.04) !important;
+}
+
+.add-icon-circle {
+  width: 2.5rem;
+  height: 2.5rem;
+  transition: transform 0.25s ease;
+}
+
+.add-more-card-premium:hover .add-icon-circle {
+  transform: scale(1.15) rotate(90deg);
+}
+
+/* Botón Flotante para Desplazamiento y Carga de Fotos */
+.btn-scroll-add-premium {
+  position: absolute;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99;
+  background-color: var(--primary) !important;
+  color: var(--white, #ffffff) !important;
+  border: none !important;
+  border-radius: 30px !important;
+  padding: 0.6rem 1.25rem !important;
+  box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.35) !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, box-shadow 0.25s ease !important;
+}
+
+.btn-scroll-add-premium:hover {
+  background-color: var(--primary-hover) !important;
+  transform: translateX(-50%) scale(1.05);
+  box-shadow: 0 10px 28px rgba(var(--primary-rgb), 0.45) !important;
+}
+
+.btn-scroll-add-premium:active {
+  transform: translateX(-50%) scale(0.98);
+}
+
+.animate-fade-in {
+  animation: fadeInScrollBtn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInScrollBtn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* 10. Rediseño del Header y Contenedores */
+.header-icon-wrapper {
+  background-color: rgba(var(--primary-rgb), 0.08) !important;
+  color: var(--primary) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.15) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 11. Cápsula de Resumen Premium Minimalista */
+.import-status-bar-linear {
+  background-color: rgba(var(--primary-rgb), 0.035) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.08) !important;
+  border-radius: 12px !important;
+  padding: 0.65rem 1.25rem !important;
+}
+
+.status-icon-circle {
+  width: 1.6rem;
+  height: 1.6rem;
+  background-color: rgba(var(--primary-rgb), 0.08) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.12) !important;
+}
+
+.badge-status-pill-premium {
+  background-color: rgba(16, 185, 129, 0.06) !important;
+  border: 1px solid rgba(16, 185, 129, 0.15) !important;
+  border-radius: 30px !important;
+  padding: 0.25rem 0.75rem !important;
+}
+
+.status-text-premium {
+  color: #10b981 !important;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
+}
+
+.badge-status-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+  display: inline-block;
+}
+
+/* 12. Pestañas de Navegación Segmentada (Segmented Control) */
+.premium-tab-nav {
+  background-color: rgba(var(--primary-rgb), 0.02) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  padding: 4px !important;
+}
+
+.tab-nav-btn {
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  border-radius: 8px !important;
+  font-size: 0.75rem !important;
+  border: none;
+}
+
+.tab-nav-btn.active {
+  background-color: var(--primary) !important;
+  color: var(--white, #ffffff) !important;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.15);
+}
+
+.tab-nav-btn:hover:not(.active):not(:disabled) {
+  background-color: rgba(var(--primary-rgb), 0.05) !important;
+  color: var(--primary) !important;
+}
+
+/* 13. Tarjeta de Archivo CSV Cargado */
+.csv-file-card {
+  background-color: rgba(var(--primary-rgb), 0.015) !important;
+  border-color: var(--border-color) !important;
+}
+
+.csv-icon-wrapper {
+  background-color: rgba(var(--primary-rgb), 0.08) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.12) !important;
+}
+
+/* 14. Filas Leídas del CSV */
+.csv-row-item {
+  border-color: rgba(0, 0, 0, 0.05) !important;
+  background-color: rgba(0, 0, 0, 0.005) !important;
+}
+
+/* 15. Vista Fullscreen de Imagen estilo Redes Sociales (Instagram) */
+.fullscreen-image-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeInFullscreen 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInFullscreen {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.fullscreen-image {
+  max-width: 90%;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  animation: scaleUpFullscreen 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes scaleUpFullscreen {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.btn-close-fullscreen {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 1.5rem;
+  line-height: 1;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease-in-out;
+  z-index: 10000;
+}
+
+.btn-close-fullscreen:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.btn-close-fullscreen:active {
+  transform: scale(0.95);
+}
+
+/* Hover style on the avatar to make it look clickable */
+.identity-avatar {
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), filter 0.25s ease;
+}
+
+.identity-avatar:hover {
+  transform: scale(1.04);
+  filter: brightness(0.85);
+}
+
+/* 16. Diseño en 2 Columnas para Ficha de Información */
+.identity-columns-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 32px;
+}
+
+.identity-column-left {
+  flex: 0 0 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.identity-column-right {
+  flex: 1;
+}
+
+.identity-card.p-4 {
+  padding: 1.5rem !important;
+}
+
+.identity-avatar-header {
+  padding: 0 !important;
+}
+
+/* Responsividad para pantallas pequeñas */
+@media (max-width: 576px) {
+  .identity-columns-container {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .identity-column-left {
+    flex: 1;
+    width: 100%;
+  }
 }

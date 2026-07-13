@@ -134,7 +134,7 @@
               <div class="search-input-wrapper position-relative d-flex align-items-center ps-1">
                 <span class="icon-svg icon-search search-icon-prefix text-muted"
                   style="width: 18px; height: 18px; opacity: 0.5;"></span>
-                <input type="text" [formControl]="searchControl" placeholder="Buscar sujeto..."
+                <input type="text" [formControl]="searchControl" [placeholder]="listType() === 'plate_recognition' ? 'Buscar placa...' : 'Buscar sujeto...'"
                   class="search-input-control border-0 ms-2" style="font-size: 0.82rem; outline: none; width: 180px;" />
               </div>
 
@@ -151,7 +151,7 @@
             @if (permissionsService.hasPermission('Detalles Listas', 'crear')) {
             <button class="btn-migrate-config" (click)="openAddSubjectModal()">
               <span class="icon-svg icon-plus" style="width: 14px; height: 14px;"></span>
-              <span>Agregar Sujeto</span>
+              <span>{{ listType() === 'plate_recognition' ? 'Agregar Placa' : 'Agregar Sujeto' }}</span>
             </button>
             }
           </div>
@@ -385,105 +385,116 @@
   <!-- Sighting Inspector Drawer -->
   <div class="inspector-drawer" [class.open]="selectedSubjectDetailId()">
     @if (selectedSubjectDetail(); as activeDetail) {
-    <div class="drawer-header d-flex align-items-center justify-content-between border-bottom p-4">
-      <h5 class="fw-bold mb-0 text-body fs-5">Ficha de Información</h5>
-      <button class="btn-close-details" (click)="selectSubjectDetail(null); $event.stopPropagation()"
-        title="Cerrar Detalles">
-        <span class="icon-svg icon-close" style="width: 14px; height: 14px;"></span>
-      </button>
-    </div>
-
-    <!-- Scroll hint wrapper -->
+    <!-- Scroll hint wrapper unifying header and scrollable body -->
     <div class="drawer-scroll-wrapper position-relative flex-grow-1 d-flex flex-column overflow-hidden">
+      
       <div class="drawer-body p-4 scroll-container flex-grow-1 overflow-y-auto" (scroll)="onDrawerScroll($event)">
-        <!-- Premium Identity Card -->
-        <div class="identity-card mb-4">
+        <!-- Header inside the scrollable body to unify paddings -->
+        <div class="drawer-header d-flex align-items-center justify-content-between p-0 mb-4">
+          <h5 class="fw-bold mb-0 text-body fs-5">Ficha de Información</h5>
+          <button class="btn-close-details" (click)="selectSubjectDetail(null); $event.stopPropagation()"
+            title="Cerrar Detalles">
+            <span class="icon-svg icon-close" style="width: 14px; height: 14px;"></span>
+          </button>
+        </div>
 
-          <!-- Clean Avatar Header (no banner, no animation) -->
-          <div class="identity-avatar-header">
-            <img [src]="activeDetail.metadata?.url_img || 'logo.svg'" class="identity-avatar object-fit-cover bg-body"
-              [class.rounded-circle]="listType() === 'face_recognition'"
-              [class.rounded-3]="listType() !== 'face_recognition'" />
-          </div>
+        <!-- Premium Identity Card (Refactored to 2 columns) -->
+        <div class="identity-card mb-4 p-4">
+          <div class="identity-columns-container">
 
-          <!-- Identity Info -->
-          <div class="identity-info px-4 pb-4">
+            <!-- Columna Izquierda: Foto y Nombre/Identidad -->
+            <div class="identity-column-left">
+              <!-- Clean Avatar Header -->
+              <div class="identity-avatar-header">
+                <img [src]="activeDetail.metadata?.url_img || 'logo.svg'"
+                  class="identity-avatar object-fit-cover bg-body"
+                  [class.rounded-circle]="listType() === 'face_recognition'"
+                  [class.rounded-3]="listType() !== 'face_recognition'"
+                  (click)="openFullscreenImage(activeDetail.metadata?.url_img || 'logo.svg', $event)" />
+              </div>
 
-            <!-- Name / Plate with Edit Trigger -->
-            <div class="d-flex align-items-center justify-content-center gap-2 mb-2 identity-title-row">
-              @if (listType() === 'face_recognition') {
-              <h3 class="identity-name fw-bold mb-0 text-truncate" style="max-width: 85%;">{{
-                activeDetail.nombre_asociado }}</h3>
-              } @else {
-              <h3 class="identity-plate fw-bold font-monospace mb-0 text-truncate" style="max-width: 85%;">{{
-                activeDetail.metadata?.text_placa || 'DESCONOCIDA' }}</h3>
-              }
+              <!-- Name / Plate with Edit Trigger -->
+              <div class="d-flex align-items-center justify-content-center gap-2 mt-3 identity-title-row w-100">
+                @if (listType() === 'face_recognition') {
+                <h3 class="identity-name fw-bold mb-0 text-truncate" [title]="activeDetail.nombre_asociado"
+                  style="max-width: 85%;">{{
+                  activeDetail.nombre_asociado }}</h3>
+                } @else {
+                <h3 class="identity-plate fw-bold font-monospace mb-0 text-truncate"
+                  [title]="activeDetail.metadata?.text_placa || 'DESCONOCIDA'" style="max-width: 85%;">{{
+                  activeDetail.metadata?.text_placa || 'DESCONOCIDA' }}</h3>
+                }
 
-              @if (permissionsService.hasPermission('Detalles Listas', 'editar')) {
-              <button
-                class="btn-ghost p-1 text-primary-hover rounded-circle edit-subject-icon-btn d-flex align-items-center justify-content-center"
-                (click)="openEditSubjectModal(activeDetail)" title="Editar Sujeto">
-                <span class="icon-svg icon-edit text-muted opacity-60" style="width: 14px; height: 14px;"></span>
-              </button>
-              }
+                @if (permissionsService.hasPermission('Detalles Listas', 'editar')) {
+                <button
+                  class="btn-ghost p-1 text-primary-hover rounded-circle edit-subject-icon-btn d-flex align-items-center justify-content-center"
+                  (click)="openEditSubjectModal(activeDetail)" title="Editar Sujeto">
+                  <span class="icon-svg icon-edit text-muted opacity-60" style="width: 14px; height: 14px;"></span>
+                </button>
+                }
+              </div>
             </div>
 
-            <!-- Metadata Rows -->
-            <div class="identity-meta-list">
+            <!-- Columna Derecha: Metadatos -->
+            <div class="identity-column-right">
+              <!-- Metadata Rows -->
+              <div class="identity-meta-list">
 
-              <!-- Propietario (Vehicle only) -->
-              @if (listType() !== 'face_recognition') {
-              <div class="identity-meta-row">
-                <div class="identity-meta-icon identity-meta-icon--primary">
-                  <span class="icon-svg icon-user" style="width: 13px; height: 13px;"></span>
+                <!-- Propietario (Vehicle only) -->
+                @if (listType() !== 'face_recognition') {
+                <div class="identity-meta-row">
+                  <div class="identity-meta-icon identity-meta-icon--primary">
+                    <span class="icon-svg icon-user" style="width: 13px; height: 13px;"></span>
+                  </div>
+                  <div class="identity-meta-body">
+                    <span class="identity-meta-label">Propietario</span>
+                    <span class="identity-meta-value" [title]="activeDetail.nombre_asociado">{{
+                      activeDetail.nombre_asociado || 'No asignado' }}</span>
+                  </div>
                 </div>
-                <div class="identity-meta-body">
-                  <span class="identity-meta-label">Propietario</span>
-                  <span class="identity-meta-value" [title]="activeDetail.nombre_asociado">{{
-                    activeDetail.nombre_asociado || 'No asignado' }}</span>
+                }
+
+                <!-- ID de Registro -->
+                <div class="identity-meta-row">
+                  <div class="identity-meta-icon identity-meta-icon--secondary">
+                    <span class="icon-svg icon-box" style="width: 13px; height: 13px;"></span>
+                  </div>
+                  <div class="identity-meta-body">
+                    <span class="identity-meta-label">ID Registro</span>
+                    <span class="identity-meta-value font-monospace text-truncate d-block"
+                      [title]="activeDetail.detail_id">{{ activeDetail.detail_id }}</span>
+                  </div>
                 </div>
+
+                <!-- Lista de Control -->
+                <div class="identity-meta-row">
+                  <div class="identity-meta-icon identity-meta-icon--info">
+                    <span class="icon-svg icon-list" style="width: 13px; height: 13px;"></span>
+                  </div>
+                  <div class="identity-meta-body">
+                    <span class="identity-meta-label">Lista de Control</span>
+                    <span class="identity-meta-value text-truncate d-block" [title]="activeList()?.name">{{
+                      activeList()?.name }}</span>
+                  </div>
+                </div>
+
+                <!-- Descripción -->
+                @if (activeList()?.description) {
+                <div class="identity-meta-row identity-meta-row--last">
+                  <div class="identity-meta-icon identity-meta-icon--muted">
+                    <span class="icon-svg icon-message-square" style="width: 13px; height: 13px;"></span>
+                  </div>
+                  <div class="identity-meta-body">
+                    <span class="identity-meta-label">Descripción</span>
+                    <span class="identity-meta-value text-truncate d-block" [title]="activeList()?.description">{{
+                      activeList()?.description }}</span>
+                  </div>
+                </div>
+                }
+
               </div>
-              }
-
-              <!-- ID de Registro -->
-              <div class="identity-meta-row">
-                <div class="identity-meta-icon identity-meta-icon--secondary">
-                  <span class="icon-svg icon-box" style="width: 13px; height: 13px;"></span>
-                </div>
-                <div class="identity-meta-body">
-                  <span class="identity-meta-label">ID Registro</span>
-                  <span class="identity-meta-value font-monospace text-truncate d-block"
-                    [title]="activeDetail.detail_id">{{ activeDetail.detail_id }}</span>
-                </div>
-              </div>
-
-              <!-- Lista de Control -->
-              <div class="identity-meta-row">
-                <div class="identity-meta-icon identity-meta-icon--info">
-                  <span class="icon-svg icon-list" style="width: 13px; height: 13px;"></span>
-                </div>
-                <div class="identity-meta-body">
-                  <span class="identity-meta-label">Lista de Control</span>
-                  <span class="identity-meta-value text-truncate d-block" [title]="activeList()?.name">{{
-                    activeList()?.name }}</span>
-                </div>
-              </div>
-
-              <!-- Descripción -->
-              @if (activeList()?.description) {
-              <div class="identity-meta-row identity-meta-row--last">
-                <div class="identity-meta-icon identity-meta-icon--muted">
-                  <span class="icon-svg icon-message-square" style="width: 13px; height: 13px;"></span>
-                </div>
-                <div class="identity-meta-body">
-                  <span class="identity-meta-label">Descripción</span>
-                  <span class="identity-meta-value text-truncate d-block" [title]="activeList()?.description">{{
-                    activeList()?.description }}</span>
-                </div>
-              </div>
-              }
-
             </div>
+
           </div>
         </div>
 
@@ -743,61 +754,221 @@
   </div>
   }
 
-  <!-- Modal Agregar Persona/Placa a Lista (Estilo Premium) -->
-  @if (showAddSubjectModal()) {
-  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center" (click)="closeAddSubjectModal()">
-    <div class="modal-card-custom p-5 shadow-lg border" (click)="$event.stopPropagation()">
+  <!-- Modal Agregar Personas a Lista (Rostros - Multi-file) -->
+  @if (showAddFaceSubjectModal()) {
+  <div class="modal-backdrop-custom glass-overlay d-flex align-items-center justify-content-center"
+    (click)="closeAddFaceSubjectModal()">
+    <div class="modal-card-custom modal-card-premium p-5 shadow-lg border" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h5 class="fw-bold mb-0 text-body fs-5">
-          Agregar a la Lista de {{ listType() === 'face_recognition' ? 'Rostros' : 'Placas' }}
-        </h5>
-        <button class="btn-ghost p-1" (click)="closeAddSubjectModal()" aria-label="Cerrar modal"
-          [disabled]="isSavingSubject()">
-          <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
+      <div class="d-flex justify-content-between align-items-start mb-4">
+        <div class="d-flex align-items-start gap-3">
+          <div
+            class="header-icon-wrapper d-flex align-items-center justify-content-center rounded-3 bg-primary-light text-primary"
+            style="width: 40px; height: 40px; flex-shrink: 0; padding: 10px;">
+            <span class="icon-svg icon-user" style="width: 20px; height: 20px; background-color: currentColor;"></span>
+          </div>
+          <div>
+            <h4 class="fw-bold mb-1 text-body fs-5" style="letter-spacing: -0.02em;">Agregar sujeto a Lista de Rostros
+            </h4>
+            <p class="text-muted extra-small mb-0">Arrastra archivos o selecciona múltiples fotos para prerregistrar
+              sujetos en lote.</p>
+          </div>
+        </div>
+        <button class="btn-ghost rounded-circle shadow-sm border p-1" (click)="closeAddFaceSubjectModal()"
+          aria-label="Cerrar modal" [disabled]="isSavingSubject()" style="width: 32px; height: 32px;">
+          <span class="icon-svg icon-close text-muted" style="width: 16px; height: 16px;"></span>
         </button>
       </div>
 
       <!-- Modal Body -->
       <div class="modal-body-custom">
-        @if (listType() === 'face_recognition') {
-        <!-- Nombre del Sujeto -->
+        <!-- Zona de Carga con Drag & Drop -->
         <div class="mb-4">
-          <label class="form-label mb-1">Nombre Completo</label>
-          <input type="text" class="form-control" placeholder="Ej. Juan Pérez" [value]="subjectName()"
-            (input)="subjectName.set($any($event.target).value)" [disabled]="isSavingSubject()" />
-        </div>
-
-        <!-- Carga de Imagen -->
-        <div class="mb-4">
-          <label class="form-label mb-2">Foto de la Persona</label>
-
           <div
-            class="image-upload-zone p-4 border rounded-3 text-center position-relative transition-all d-flex flex-column align-items-center justify-content-center"
-            [class.has-preview]="imagePreviewUrl()" (click)="fileInput.click()">
+            class="image-upload-zone drag-drop-zone p-4 border rounded-4 text-center position-relative transition-all d-flex flex-column align-items-center justify-content-center"
+            [class.drag-over]="isDraggingOver()" [class.has-preview]="faceImportDrafts().length > 0"
+            (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)"
+            (click)="faceImportDrafts().length === 0 ? fileInput.click() : $event.stopPropagation()">
 
-            <input type="file" #fileInput class="d-none" accept="image/*" (change)="onFileSelected($event)" />
+            <input type="file" #fileInput class="d-none" accept="image/*" multiple (change)="onFilesSelected($event)" />
 
-            @if (!imagePreviewUrl()) {
-            <div class="upload-icon mb-2 text-primary opacity-75">
-              <span class="icon-svg icon-box" style="width: 32px; height: 32px;"></span>
+            @if (faceImportDrafts().length === 0) {
+            <div class="upload-illustration mb-3">
+              <span class="icon-svg icon-box text-primary opacity-75 pulse-animation"
+                style="width: 44px; height: 44px;"></span>
             </div>
-            <span class="fw-semibold text-body small">Haz clic para seleccionar una foto</span>
-            <span class="text-muted extra-small mt-1">Formatos recomendados: JPG, PNG</span>
+            <span class="fw-bold text-body fs-normal-label d-block">Arrastra tus fotos aquí o haz clic para
+              explorar</span>
+            <span class="text-muted extra-small mt-1">Soporta JPG y PNG. Los nombres se extraerán automáticamente de los
+              archivos.</span>
             } @else {
-            <div class="preview-container position-relative w-100">
-              <img [src]="imagePreviewUrl()" class="img-preview rounded shadow-sm max-preview-img" />
-              <button
-                class="btn-ghost remove-preview-btn position-absolute p-1 rounded-circle shadow border bg-body modal-remove-btn"
-                (click)="selectedFile.set(null); imagePreviewUrl.set(null); $event.stopPropagation()"
-                title="Eliminar Foto" [disabled]="isSavingSubject()">
-                <span class="icon-svg icon-close text-danger" style="width: 14px; height: 14px;"></span>
-              </button>
+            <!-- Grid Premium de Borradores de Importación (Responsivo) -->
+            <div class="import-drafts-grid w-100 mt-2 overflow-y-auto scroll-container pe-1"
+              (scroll)="onDraftsScroll($event)" (click)="$event.stopPropagation()">
+              @for (draft of faceImportDrafts(); track draft.previewUrl; let idx = $index) {
+              <div
+                class="preview-card-premium position-relative d-flex flex-column align-items-center p-3 rounded-4 border bg-surface-card transition-all">
+
+                <!-- Imagen de Previsualización con Overlay de Eliminación -->
+                <div class="draft-avatar-wrapper position-relative w-100 mb-3 overflow-hidden rounded-3 border">
+                  <img [src]="draft.previewUrl" class="draft-avatar object-fit-cover w-100 h-100" />
+
+                  <!-- Overlay de eliminación (Oscurecimiento + aspa blanca de cierre) -->
+                  <div class="draft-remove-overlay d-flex align-items-center justify-content-center cursor-pointer"
+                    (click)="removeFile(idx)" title="Quitar sujeto">
+                    <span class="icon-svg icon-close draft-remove-icon" style="width: 2.25rem; height: 2.25rem;"></span>
+                  </div>
+                </div>
+
+                <!-- Insignia de Peso -->
+                <span class="badge bg-light text-muted border extra-small mb-2"
+                  style="font-size: 0.62rem; font-weight: 600; padding: 0.15rem 0.4rem; border-radius: 4px;">
+                  {{ formatFileSize(draft.file.size) }}
+                </span>
+
+                <!-- Nombre Asociado (Editable Inline Notion-style) -->
+                <div class="name-edit-container w-100 text-center">
+                  @if (!draft.isEditingName) {
+                  <div
+                    class="name-display-inline d-flex align-items-center justify-content-center cursor-pointer py-1 px-2 rounded"
+                    (click)="toggleEditDraftName(idx); $event.stopPropagation()" title="Haz clic para editar el nombre">
+                    <span class="d-block extra-small text-truncate fw-bold text-body text-center flex-grow-1"
+                      [title]="draft.name">
+                      {{ draft.name }}
+                    </span>
+                  </div>
+                  } @else {
+                  <div class="name-input-inline-wrapper w-100" (click)="$event.stopPropagation()">
+                    <input type="text" #nameInput [value]="draft.name" autofocus
+                      class="form-control form-control-sm text-center input-edit-inline border-0 p-0"
+                      (blur)="updateDraftName(idx, nameInput.value)"
+                      (keyup.enter)="updateDraftName(idx, nameInput.value)" (keyup.escape)="cancelEditDraftName(idx)" />
+                  </div>
+                  }
+                </div>
+
+              </div>
+              }
+
+              <!-- Tarjeta Especial de Carga (Integrada en el Grid) -->
+              <div
+                class="add-more-card-premium d-flex flex-column align-items-center justify-content-center rounded-4 border-dashed cursor-pointer transition-all"
+                (click)="fileInput.click()">
+                <div
+                  class="add-icon-circle d-flex align-items-center justify-content-center mb-2 shadow-sm rounded-circle bg-primary-light text-primary">
+                  <span class="icon-svg icon-plus"
+                    style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                </div>
+                <span class="text-primary fw-bold" style="font-size: 0.75rem;">Añadir Fotos</span>
+              </div>
             </div>
+
+            <!-- Botón flotante para scroll/añadir fotos (Premium FAB) -->
+            @if (showFloatingAddButton() && faceImportDrafts().length > 0) {
+            <button
+              class="btn-scroll-add-premium d-flex align-items-center gap-2 cursor-pointer shadow-lg animate-fade-in"
+              (click)="scrollToBottom()" title="Desplazarse abajo">
+              <span class="icon-svg icon-close"
+                style="width: 12px; height: 12px; transform: rotate(45deg); background-color: currentColor;"></span>
+              <span class="extra-small fw-bold">Añadir más fotos</span>
+            </button>
+            }
             }
           </div>
         </div>
-        } @else {
+
+        <!-- Indicador de Resumen de Carga (Premium Minimal Capsule Card) -->
+        @if (faceImportDrafts().length > 0) {
+        <div class="import-status-bar-linear d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-3">
+            <div
+              class="status-icon-circle d-flex align-items-center justify-content-center rounded-circle text-primary">
+              <span class="icon-svg icon-user"
+                style="width: 12px; height: 12px; background-color: currentColor;"></span>
+            </div>
+            <div class="d-flex align-items-center gap-2" style="font-size: 0.75rem;">
+              <span class="text-muted fw-semibold">Sujetos preparados:</span>
+              <span class="font-monospace fw-bold text-primary" style="font-size: 0.85rem;">{{ faceImportDrafts().length
+                }}</span>
+            </div>
+          </div>
+
+          <div class="badge-status-pill-premium d-flex align-items-center gap-2">
+            <span class="badge-status-dot"></span>
+            <span class="status-text-premium">Listo para importar</span>
+          </div>
+        </div>
+        }
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="d-flex gap-3 pt-4 mt-2">
+        <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
+          (click)="closeAddFaceSubjectModal()" [disabled]="isSavingSubject()">
+          Cancelar
+        </button>
+        <button
+          class="btn btn-primary flex-fill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 border-radius-8 fs-btn-save"
+          (click)="saveFaceSubjects()" [disabled]="isSavingSubject() || faceImportDrafts().length === 0">
+          @if (isSavingSubject()) {
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <span>Importando (1 de {{ faceImportDrafts().length }})...</span>
+          } @else {
+          <span class="icon-svg icon-save" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+          <span>Importar</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Modal Agregar Placa a Lista (Dual Mode: Individual y CSV) -->
+  @if (showAddPlateSubjectModal()) {
+  <div class="modal-backdrop-custom glass-overlay d-flex align-items-center justify-content-center"
+    (click)="closeAddPlateSubjectModal()">
+    <div class="modal-card-custom modal-card-premium p-5 shadow-lg border" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="d-flex justify-content-between align-items-start mb-4">
+        <div class="d-flex align-items-start gap-3">
+          <div
+            class="header-icon-wrapper d-flex align-items-center justify-content-center rounded-3 bg-primary-light text-primary"
+            style="width: 40px; height: 40px; flex-shrink: 0; padding: 10px;">
+            <span class="icon-svg icon-box" style="width: 20px; height: 20px; background-color: currentColor;"></span>
+          </div>
+          <div>
+            <h4 class="fw-bold mb-1 text-body fs-5" style="letter-spacing: -0.02em;">Agregar Placas a Lista de Control
+            </h4>
+            <p class="text-muted extra-small mb-0">Registra una placa de forma manual o importa múltiples placas usando
+              un archivo CSV.</p>
+          </div>
+        </div>
+        <button class="btn-ghost rounded-circle shadow-sm border p-1" (click)="closeAddPlateSubjectModal()"
+          aria-label="Cerrar modal" [disabled]="isSavingSubject()" style="width: 32px; height: 32px;">
+          <span class="icon-svg icon-close text-muted" style="width: 16px; height: 16px;"></span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body-custom">
+        <!-- Control de Pestañas Segmentadas -->
+        <div class="premium-tab-nav d-flex p-1 rounded-3 mb-4 bg-light-translucent">
+          <button
+            class="tab-nav-btn flex-fill py-2 text-center border-0 rounded-2 fw-semibold extra-small transition-all cursor-pointer"
+            [class.active]="activePlateTab() === 'individual'" [disabled]="isSavingSubject()"
+            (click)="activePlateTab.set('individual')">
+            Registro Individual
+          </button>
+          <button
+            class="tab-nav-btn flex-fill py-2 text-center border-0 rounded-2 fw-semibold extra-small transition-all cursor-pointer"
+            [class.active]="activePlateTab() === 'masivo'" [disabled]="isSavingSubject()"
+            (click)="activePlateTab.set('masivo')">
+            Importación Masiva (CSV)
+          </button>
+        </div>
+
+        <!-- Pestaña 1: Registro Individual -->
+        @if (activePlateTab() === 'individual') {
         <!-- Placa (Texto) -->
         <div class="mb-4">
           <label class="form-label mb-1">Texto de la Placa</label>
@@ -812,22 +983,116 @@
             (input)="subjectOwnerName.set($any($event.target).value)" [disabled]="isSavingSubject()" />
         </div>
         }
+
+        <!-- Pestaña 2: Importación Masiva (CSV) -->
+        @if (activePlateTab() === 'masivo') {
+        @if (!selectedCsvFile()) {
+        <!-- Dropzone para Archivo CSV -->
+        <div class="mb-4">
+          <div
+            class="image-upload-zone drag-drop-zone p-5 border rounded-4 text-center position-relative transition-all d-flex flex-column align-items-center justify-content-center"
+            [class.drag-over]="isDraggingOverCsv()" (dragover)="onCsvDragOver($event)"
+            (dragleave)="onCsvDragLeave($event)" (drop)="onCsvDrop($event)" (click)="csvFileInput.click()">
+
+            <input type="file" #csvFileInput class="d-none" accept=".csv" (change)="onCsvFileSelected($event)" />
+
+            <div class="upload-illustration mb-3">
+              <span class="icon-svg icon-box text-primary opacity-75 pulse-animation"
+                style="width: 44px; height: 44px; background-color: currentColor;"></span>
+            </div>
+            <span class="fw-bold text-body fs-normal-label d-block">Arrastra tu archivo CSV aquí o haz clic para
+              explorar</span>
+            <span class="text-muted extra-small mt-1">El archivo debe contener el formato: placa, propietario
+              (opcional)</span>
+          </div>
+        </div>
+        } @else {
+        <!-- Detalle de Archivo CSV Seleccionado -->
+        <div
+          class="csv-file-card d-flex align-items-center justify-content-between p-3 rounded-4 border mb-3 bg-surface-card transition-all">
+          <div class="d-flex align-items-center gap-3">
+            <div
+              class="csv-icon-wrapper d-flex align-items-center justify-content-center rounded-3 bg-primary-light text-primary"
+              style="width: 40px; height: 40px; padding: 10px;">
+              <span class="icon-svg icon-box" style="width: 20px; height: 20px; background-color: currentColor;"></span>
+            </div>
+            <div>
+              <span class="d-block fw-bold text-body extra-small text-truncate" style="max-width: 220px;"
+                [title]="selectedCsvFile()?.name">
+                {{ selectedCsvFile()?.name }}
+              </span>
+              <span class="text-muted extra-small d-block mt-0.5">{{ formatFileSize(selectedCsvFile()?.size || 0) }} •
+                {{ parsedCsvRows().length }} registros válidos</span>
+            </div>
+          </div>
+          <button class="btn-ghost rounded-circle p-1" (click)="removeCsvFile()" title="Remover archivo"
+            style="width: 28px; height: 28px;" [disabled]="isSavingSubject()">
+            <span class="icon-svg icon-close text-danger" style="width: 14px; height: 14px;"></span>
+          </button>
+        </div>
+
+        <!-- Vista Previa de Filas Cargadas -->
+        <div class="csv-preview-container overflow-y-auto mb-3 scroll-container pe-1" style="max-height: 180px;">
+          <span class="extra-small text-muted fw-semibold d-block mb-2">Vista previa de registros leídos:</span>
+          <div class="d-flex flex-column gap-2">
+            @for (row of parsedCsvRows(); track $index) {
+            <div
+              class="csv-row-item d-flex justify-content-between align-items-center p-2.5 rounded-3 border bg-light-translucent"
+              style="font-size: 0.72rem;">
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary text-white font-monospace rounded px-2 py-1"
+                  style="font-size: 0.68rem; letter-spacing: 0.05em;">{{ row.plate }}</span>
+                @if (row.owner) {
+                <span class="text-body fw-medium">{{ row.owner }}</span>
+                } @else {
+                <span class="text-muted italic">Propietario no registrado</span>
+                }
+              </div>
+              <span class="badge bg-light text-muted border"
+                style="font-size: 0.62rem; padding: 0.15rem 0.4rem; border-radius: 4px;">Fila {{ $index + 1 }}</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- Resumen de Placas a Importar (Premium Capsule Card) -->
+        <div class="import-status-bar-linear d-flex align-items-center justify-content-between mb-3">
+          <div class="d-flex align-items-center gap-3">
+            <div
+              class="status-icon-circle d-flex align-items-center justify-content-center rounded-circle text-primary">
+              <span class="icon-svg icon-box" style="width: 12px; height: 12px; background-color: currentColor;"></span>
+            </div>
+            <div class="d-flex align-items-center gap-2" style="font-size: 0.75rem;">
+              <span class="text-muted fw-semibold">Placas leídas:</span>
+              <span class="font-monospace fw-bold text-primary" style="font-size: 0.85rem;">{{ parsedCsvRows().length
+                }}</span>
+            </div>
+          </div>
+          <div class="badge-status-pill-premium d-flex align-items-center gap-2">
+            <span class="badge-status-dot"></span>
+            <span class="status-text-premium">Listo para importar</span>
+          </div>
+        </div>
+        }
+        }
       </div>
 
       <!-- Modal Footer -->
       <div class="d-flex gap-3 pt-4 mt-2">
         <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
-          (click)="closeAddSubjectModal()" [disabled]="isSavingSubject()">
+          (click)="closeAddPlateSubjectModal()" [disabled]="isSavingSubject()">
           Cancelar
         </button>
         <button
           class="btn btn-primary flex-fill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 border-radius-8 fs-btn-save"
-          (click)="saveSubject()" [disabled]="isSaveDisabled()">
+          (click)="activePlateTab() === 'individual' ? savePlateSubject() : savePlateSubjectsBulk()"
+          [disabled]="isSavingSubject() || (activePlateTab() === 'individual' ? !subjectName().trim() : parsedCsvRows().length === 0)">
           @if (isSavingSubject()) {
           <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-          <span>Guardando...</span>
+          <span>{{ activePlateTab() === 'individual' ? 'Guardando...' : 'Importando...' }}</span>
           } @else {
-          <span>Guardar Registro</span>
+          <span class="icon-svg icon-save" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+          <span>{{ activePlateTab() === 'individual' ? 'Guardar Registro' : 'Importar' }}</span>
           }
         </button>
       </div>
@@ -951,16 +1216,17 @@
     </div>
   </div>
   }
-  <!-- Modal Editar Persona/Placa (Estilo Premium Unificado) -->
-  @if (showEditSubjectModal()) {
-  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center" (click)="closeEditSubjectModal()">
+  <!-- Modal Editar Persona (Rostros) -->
+  @if (showEditFaceSubjectModal()) {
+  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center"
+    (click)="closeEditFaceSubjectModal()">
     <div class="modal-card-custom p-5 shadow-lg border" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h5 class="fw-bold mb-0 text-body fs-5">
-          Editar Sujeto de {{ listType() === 'face_recognition' ? 'Rostros' : 'Placas' }}
+          Editar Sujeto de Rostros
         </h5>
-        <button class="btn-ghost p-1" (click)="closeEditSubjectModal()" aria-label="Cerrar modal"
+        <button class="btn-ghost p-1" (click)="closeEditFaceSubjectModal()" aria-label="Cerrar modal"
           [disabled]="isUpdatingSubject()">
           <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
         </button>
@@ -968,12 +1234,11 @@
 
       <!-- Modal Body -->
       <div class="modal-body-custom">
-        @if (listType() === 'face_recognition') {
         <!-- Nombre del Sujeto -->
         <div class="mb-4">
           <label class="form-label mb-1">Nombre Completo</label>
-          <input type="text" class="form-control" placeholder="Ej. Juan Pérez" [value]="editSubjectName()"
-            (input)="editSubjectName.set($any($event.target).value)" [disabled]="isUpdatingSubject()" />
+          <input type="text" class="form-control" placeholder="Ej. Juan Pérez" [value]="editFaceSubjectName()"
+            (input)="editFaceSubjectName.set($any($event.target).value)" [disabled]="isUpdatingSubject()" />
         </div>
 
         <!-- Carga/Reemplazo de Imagen -->
@@ -981,15 +1246,17 @@
           <label class="form-label mb-2">Reemplazar Foto (Opcional)</label>
           <div
             class="image-upload-zone p-4 border rounded-3 text-center position-relative transition-all d-flex flex-column align-items-center justify-content-center has-preview"
-            (click)="editFileInput.click()">
-            <input type="file" #editFileInput class="d-none" accept="image/*" (change)="onEditFileSelected($event)" />
+            (click)="editFaceFileInput.click()">
+            <input type="file" #editFaceFileInput class="d-none" accept="image/*"
+              (change)="onEditFaceFileSelected($event)" />
 
             <div class="preview-container position-relative w-100">
-              <img [src]="editImagePreviewUrl() || 'logo.svg'" class="img-preview rounded shadow-sm max-preview-img" />
-              @if (selectedEditFile()) {
+              <img [src]="editFaceImagePreviewUrl() || 'logo.svg'"
+                class="img-preview rounded shadow-sm max-preview-img" />
+              @if (selectedEditFaceFile()) {
               <button
                 class="btn-ghost remove-preview-btn position-absolute p-1 rounded-circle shadow border bg-body modal-remove-btn"
-                (click)="selectedEditFile.set(null); editImagePreviewUrl.set(selectedSubjectDetail()?.metadata?.url_img || null); $event.stopPropagation()"
+                (click)="selectedEditFaceFile.set(null); editFaceImagePreviewUrl.set(selectedSubjectDetail()?.metadata?.url_img || null); $event.stopPropagation()"
                 title="Deshacer Cambio" [disabled]="isUpdatingSubject()">
                 <span class="icon-svg icon-close text-danger" style="width: 14px; height: 14px;"></span>
               </button>
@@ -997,33 +1264,17 @@
             </div>
           </div>
         </div>
-        } @else {
-        <!-- Placa (Texto) -->
-        <div class="mb-4">
-          <label class="form-label mb-1">Texto de la Placa</label>
-          <input type="text" class="form-control" placeholder="Ej. ABC123" [value]="editSubjectPlate()"
-            (input)="editSubjectPlate.set($any($event.target).value)" [disabled]="isUpdatingSubject()" />
-        </div>
-
-        <!-- Nombre del Propietario (Opcional) -->
-        <div class="mb-4">
-          <label class="form-label mb-1">Nombre del Propietario</label>
-          <input type="text" class="form-control" placeholder="Ej. Juan Pérez" [value]="editSubjectName()"
-            (input)="editSubjectName.set($any($event.target).value)" [disabled]="isUpdatingSubject()" />
-        </div>
-        }
       </div>
 
       <!-- Modal Footer -->
       <div class="d-flex gap-3 pt-4 mt-2">
         <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
-          (click)="closeEditSubjectModal()" [disabled]="isUpdatingSubject()">
+          (click)="closeEditFaceSubjectModal()" [disabled]="isUpdatingSubject()">
           Cancelar
         </button>
         <button
           class="btn btn-primary flex-fill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 border-radius-8 fs-btn-save"
-          (click)="saveEditSubject()"
-          [disabled]="isUpdatingSubject() || (listType() === 'face_recognition' ? !editSubjectName().trim() : !editSubjectPlate().trim())">
+          (click)="saveEditFaceSubject()" [disabled]="isUpdatingSubject() || !editFaceSubjectName().trim()">
           @if (isUpdatingSubject()) {
           <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
           <span>Guardando...</span>
@@ -1033,6 +1284,69 @@
         </button>
       </div>
     </div>
+  </div>
+  }
+
+  <!-- Modal Editar Placa -->
+  @if (showEditPlateSubjectModal()) {
+  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center"
+    (click)="closeEditPlateSubjectModal()">
+    <div class="modal-card-custom p-5 shadow-lg border" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold mb-0 text-body fs-5">
+          Editar Registro de Placa
+        </h5>
+        <button class="btn-ghost p-1" (click)="closeEditPlateSubjectModal()" aria-label="Cerrar modal"
+          [disabled]="isUpdatingSubject()">
+          <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body-custom">
+        <!-- Placa (Texto) -->
+        <div class="mb-4">
+          <label class="form-label mb-1">Texto de la Placa</label>
+          <input type="text" class="form-control" placeholder="Ej. ABC123" [value]="editPlateSubjectPlate()"
+            (input)="editPlateSubjectPlate.set($any($event.target).value)" [disabled]="isUpdatingSubject()" />
+        </div>
+
+        <!-- Nombre del Propietario -->
+        <div class="mb-4">
+          <label class="form-label mb-1">Nombre del Propietario</label>
+          <input type="text" class="form-control" placeholder="Ej. Juan Pérez" [value]="editPlateSubjectName()"
+            (input)="editPlateSubjectName.set($any($event.target).value)" [disabled]="isUpdatingSubject()" />
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="d-flex gap-3 pt-4 mt-2">
+        <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
+          (click)="closeEditPlateSubjectModal()" [disabled]="isUpdatingSubject()">
+          Cancelar
+        </button>
+        <button
+          class="btn btn-primary flex-fill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 border-radius-8 fs-btn-save"
+          (click)="saveEditPlateSubject()" [disabled]="isUpdatingSubject() || !editPlateSubjectPlate().trim()">
+          @if (isUpdatingSubject()) {
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <span>Guardando...</span>
+          } @else {
+          <span>Guardar Cambios</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Vista Fullscreen de Imagen estilo Redes Sociales -->
+  @if (fullscreenImgUrl()) {
+  <div class="fullscreen-image-overlay" (click)="closeFullscreenImage()" role="dialog" aria-modal="true">
+    <button class="btn-close-fullscreen" (click)="closeFullscreenImage()" aria-label="Cerrar imagen completa">✕</button>
+    <img [src]="fullscreenImgUrl()!" class="fullscreen-image" (click)="$event.stopPropagation()"
+      alt="Imagen completa" />
   </div>
   }
 </div>

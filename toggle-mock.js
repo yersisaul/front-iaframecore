@@ -25,15 +25,15 @@ try {
     return null;
   }
 
-  const currentApiTarget = getEnvValue(envContent, 'API_TARGET');
-  const realApiTarget = getEnvValue(envContent, 'API_TARGET_REAL');
-  const realOpenSearchTarget = getEnvValue(envContent, 'OPENSEARCH_TARGET_REAL');
-  const mockApiTarget = getEnvValue(envContent, 'API_TARGET_MOCK');
-  const mockOpenSearchTarget = getEnvValue(envContent, 'OPENSEARCH_TARGET_MOCK');
+  const currentApiTarget = getEnvValue(envContent, 'API_HOST');
+  const realApiTarget = getEnvValue(envContent, 'API_HOST_REAL');
+  const realOpenSearchTarget = getEnvValue(envContent, 'OPENSEARCH_HOST_REAL');
+  const mockApiTarget = getEnvValue(envContent, 'API_HOST_MOCK');
+  const mockOpenSearchTarget = getEnvValue(envContent, 'OPENSEARCH_HOST_MOCK');
 
   if (!realApiTarget || !realOpenSearchTarget || !mockApiTarget || !mockOpenSearchTarget) {
     console.error('❌ Error: Faltan variables obligatorias en el archivo .env.');
-    console.error('Asegúrese de definir: API_TARGET_REAL, OPENSEARCH_TARGET_REAL, API_TARGET_MOCK, OPENSEARCH_TARGET_MOCK');
+    console.error('Asegúrese de definir: API_HOST_REAL, OPENSEARCH_HOST_REAL, API_HOST_MOCK, OPENSEARCH_HOST_MOCK');
     process.exit(1);
   }
 
@@ -71,19 +71,19 @@ try {
     return newLines.join('\n');
   }
 
-  envContent = setEnvValue(envContent, 'API_TARGET', newApiTarget);
-  envContent = setEnvValue(envContent, 'OPENSEARCH_TARGET', newOpenSearchTarget);
+  envContent = setEnvValue(envContent, 'API_HOST', newApiTarget);
+  envContent = setEnvValue(envContent, 'OPENSEARCH_HOST', newOpenSearchTarget);
 
   fs.writeFileSync(envPath, envContent, 'utf8');
 
   console.log('================================================================');
   if (isMockMode) {
     console.log(`🔄 Conexión configurada a: MOCK SIMULADO (${newApiTarget})`);
-    console.log('📌 NOTA: Tanto API_TARGET como OPENSEARCH_TARGET apuntan al mock.');
+    console.log('📌 NOTA: Tanto API_HOST como OPENSEARCH_HOST apuntan al mock.');
     console.log('📌 Ejecuta: "npm run mock-server" para iniciar el servidor de mock.');
   } else {
     console.log(`🔄 Conexión configurada a: BACKEND REAL (${newApiTarget})`);
-    console.log(`📌 NOTA: API_TARGET va a ${newApiTarget} y OPENSEARCH_TARGET a ${newOpenSearchTarget}.`);
+    console.log(`📌 NOTA: API_HOST va a ${newApiTarget} y OPENSEARCH_HOST a ${newOpenSearchTarget}.`);
   }
   console.log('⚠️ IMPORTANTE: Si tenías la aplicación corriendo, detén "npm start"');
   console.log('   (Ctrl+C) y vuelve a ejecutar para aplicar los cambios del proxy.');

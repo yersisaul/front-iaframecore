@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, ActivatedRoute } from '@angular/router';
+import { provideRouter, ActivatedRoute, Router } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { of } from 'rxjs';
@@ -8,6 +8,7 @@ import { Camaras } from './camaras';
 import { CameraService } from '../../../core/services/camera.service';
 import { ScheduleService } from '../../../core/services/schedule.service';
 import { AnalyticService } from '../../../core/services/analytic.service';
+import { HostService } from '../../../core/services/host.service';
 import { Schedule } from '../../../core/domain/entities/schedule.models';
 import { Analytic } from '../../../core/domain/entities/analytic.models';
 import { Camera } from '../../../core/domain/entities/camera.models';
@@ -221,6 +222,7 @@ describe('Camaras', () => {
   });
 
   it('should return analytics for a specific camera', () => {
+    component.hostId.set('HOST-ABC123XYZ');
     const mockAnalytic: Analytic = {
       id: 'analytic-1',
       hostFingerprint: 'HOST-ABC123XYZ',
@@ -273,6 +275,7 @@ describe('Camaras', () => {
   });
 
   it('should calculate client-side pagination correctly', () => {
+    component.hostId.set('HOST-ABC123XYZ');
     const mockCameras = Array.from({ length: 10 }, (_, i) => ({
       id: `cam-${i + 1}`,
       name: `Camera ${i + 1}`,
@@ -338,6 +341,7 @@ describe('Camaras', () => {
   });
 
   it('should search cameras by name/id using startsWith and filter by advanced filters (status, streamType, decoder, analyticType)', async () => {
+    component.hostId.set('HOST-ABC123XYZ');
     const mockCameras: Camera[] = [
       {
         id: 'cam-001',
@@ -514,6 +518,7 @@ describe('Camaras', () => {
   });
 
   it('should calculate visiblePages correctly and support page jumping in Camaras', () => {
+    component.hostId.set('HOST-ABC123XYZ');
     component.limit.set(3);
     const mockCameras: Camera[] = Array.from({ length: 12 }, (_, i) => ({
       id: `cam-${i + 1}`,
@@ -543,5 +548,59 @@ describe('Camaras', () => {
     component.jumpToPage(mockJumpInput);
     expect(component.currentPage()).toBe(3);
     expect(mockJumpInput.target.value).toBe('');
+  });
+
+  it('should open delete host modal and confirm deletion successfully', async () => {
+    vi.useFakeTimers();
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    component.hostId.set('HOST-ABC123XYZ');
+
+    component.openDeleteHostModal();
+    expect(component.showDeleteHostModal()).toBe(true);
+
+    component.confirmDeleteHost();
+    expect(component.isDeletingHost()).toBe(true);
+
+    const reqDel = httpMock.expectOne(`${AppEnvironment.apiUrl}/frontend/hosts/HOST-ABC123XYZ`);
+    expect(reqDel.request.method).toBe('DELETE');
+    reqDel.flush({});
+
+    vi.runAllTimers();
+    expect(component.isDeletingHost()).toBe(false);
+    expect(component.showDeleteHostModal()).toBe(false);
+    expect(navigateSpy).toHaveBeenCalledWith(['/dashboard/nodos']);
+    vi.useRealTimers();
+  });
+
+  it('should filter out cameras that are migrated to another host fingerprint', async () => {
+    const cameraService = TestBed.inject(CameraService);
+
+    component.hostId.set('HOST-ABC123XYZ');
+
+    const mockCameras: Camera[] = [
+      {
+        id: 'cam-001',
+        name: 'Front Door Camera',
+        hostFingerprint: 'HOST-ABC123XYZ',
+        streamType: 'rtsp',
+        status: 'online',
+        decoder: 'opencv',
+        location: { lat: 10, lon: 20 },
+        createdAt: new Date()
+      }
+    ];
+    cameraService.cameras.set(mockCameras);
+
+    // Initially should be visible
+    expect(component.filteredCameras().length).toBe(1);
+    expect(component.filteredCameras()[0].id).toBe('cam-001');
+
+    // Simulate migration
+    cameraService.migrateHostLocal('HOST-ABC123XYZ', 'HOST-NEW456');
+
+    // Should no longer match active hostFingerprint, so it disappears in real time
+    expect(component.filteredCameras().length).toBe(0);
   });
 });

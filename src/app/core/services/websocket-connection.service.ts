@@ -1,13 +1,16 @@
-import { Injectable, inject, effect } from '@angular/core';
+import { Injectable, inject, effect, computed } from '@angular/core';
 import { Subject } from 'rxjs';
 import { AuthService } from './auth.service';
 import { ApiKeyConfig } from '../config/api-key.config';
+import { HttpClient } from '@angular/common/http';
+import { AppEnvironment } from '../config/app-environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class WebsocketConnectionService {
   private authService = inject(AuthService);
+  private http = inject(HttpClient);
 
   private socket: WebSocket | null = null;
   private reconnectTimeout: any = null;
@@ -18,17 +21,35 @@ export class WebsocketConnectionService {
   // Stream expuesto para que los despachadores (handlers) consuman los mensajes del WebSocket
   readonly messages$ = new Subject<any>();
 
+  // Computed que rastrea solo el ID del usuario.
+  // Evita reconexiones innecesarias cuando el objeto currentUser se actualiza (ej. al agregar el roleId).
+  private currentUserId = computed(() => {
+    const id = this.authService.currentUser()?.id;
+    console.log('[WebSocket Connection] currentUserId evaluado:', id);
+    return id;
+  });
+
   constructor() {
+    console.log('[WebSocket Connection] Servicio instanciado');
     // Escuchar cambios de sesión de usuario de forma reactiva
     effect(() => {
-      const user = this.authService.currentUser();
+      const userId = this.currentUserId();
+      console.log('[WebSocket Connection] Effect ejecutado, userId:', userId);
       // Limpiar cualquier conexión o intento previo antes de conectar para evitar bloqueos por tokens obsoletos
       this.disconnect();
       
-      if (user) {
+      if (userId) {
         this.connect();
       }
     });
+
+    // Debugger periódico del token en sessionStorage (cada 5 segundos)
+    setInterval(() => {
+      const activeToken = sessionStorage.getItem('auth_token');
+      const currentUser = this.authService.currentUser();
+      console.warn('[WS Debugger] Token activo en sessionStorage:', activeToken);
+      console.warn('[WS Debugger] Usuario activo en señal:', currentUser);
+    }, 5000);
   }
 
   private buildWsUrl(token: string): string {
@@ -38,6 +59,7 @@ export class WebsocketConnectionService {
   }
 
   private connect(): void {
+    console.log('[WebSocket Connection] Intentando conectar. isConnecting:', this.isConnecting, 'socket:', !!this.socket);
     if (this.socket || this.isConnecting) return;
 
     const token = sessionStorage.getItem('auth_token');
@@ -78,9 +100,15 @@ export class WebsocketConnectionService {
           console.log('[WebSocket Connection] Conexión cerrada de un socket antiguo (ignorado)');
           return;
         }
-        console.log('[WebSocket Connection] Conexión cerrada:', event.reason);
+        const handshakeFailed = this.isConnecting;
+        console.log('[WebSocket Connection] Conexión cerrada. Handshake fallido:', handshakeFailed, 'razón:', event.reason);
         this.socket = null;
         this.isConnecting = false;
+
+        if (handshakeFailed) {
+          this.validateSessionToken();
+        }
+
         this.scheduleReconnect();
       };
 
@@ -95,12 +123,38 @@ export class WebsocketConnectionService {
     }
   }
 
+  private validateSessionToken(): void {
+    const token = sessionStorage.getItem('auth_token');
+    if (!token) return;
+
+    console.log('[WebSocket Connection] Lanzando petición HTTP de verificación de sesión...');
+    // Realizamos una petición simple que requiera autenticación.
+    // Si la petición retorna 401/403, el errorInterceptor del HTTP se encargará
+    // automáticamente de cerrar la sesión, limpiar sessionStorage y desactivar la señal currentUser.
+    this.http.get(`${AppEnvironment.apiUrl}/frontend/permisos/`).subscribe({
+      next: () => {
+        console.log('[WebSocket Connection] El token sigue siendo válido según la API HTTP.');
+      },
+      error: (err) => {
+        console.warn('[WebSocket Connection] La validación HTTP del token falló.', err);
+        // Si el servidor HTTP retorna 401 (Token inválido o expirado), forzamos el logout
+        // para limpiar la sesión en sessionStorage y en la señal currentUser, deteniendo así el bucle de reconexión.
+        if (err.status === 401) {
+          console.warn('[WebSocket Connection] Token inválido detectado (401). Forzando logout local.');
+          this.authService.logout().subscribe();
+        }
+      }
+    });
+  }
+
   private disconnect(): void {
+    console.log('[WebSocket Connection] disconnect() llamado');
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
     if (this.socket) {
+      console.log('[WebSocket Connection] Cerrando socket existente');
       this.socket.close();
       this.socket = null;
     }

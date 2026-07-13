@@ -23,13 +23,13 @@ function getEnvValue(key) {
   return null;
 }
 
-const apiTarget = getEnvValue('API_TARGET');
-const openSearchTarget = getEnvValue('OPENSEARCH_TARGET');
+const apiTarget = getEnvValue('API_HOST');
+const openSearchTarget = getEnvValue('OPENSEARCH_HOST');
 
 const wsTarget = apiTarget ? apiTarget.replace(/^http/, 'ws') : '';
 
 if (!apiTarget || !openSearchTarget) {
-  console.error('❌ Error: API_TARGET u OPENSEARCH_TARGET no están definidos en el archivo .env.');
+  console.error('❌ Error: API_HOST u OPENSEARCH_HOST no están definidos en el archivo .env.');
   process.exit(1);
 }
 
@@ -84,6 +84,21 @@ module.exports = {
     "logLevel": "debug",
     "headers": {
       "Origin": apiTarget
+    },
+    configure: (proxy, options) => {
+      proxy.on('proxyReqWs', (proxyReq, req, socket, options, head) => {
+        console.log(`\n🔌 [Proxy WS Configure] Conexión detectada a las: ${new Date().toISOString()}`);
+        console.log(`   - IP Cliente: ${req.socket.remoteAddress}:${req.socket.remotePort}`);
+        console.log(`   - URL: ${req.url}`);
+        console.log(`   - User-Agent: ${req.headers['user-agent']}`);
+        console.log(`   - Origin: ${req.headers['origin'] || 'N/A'}\n`);
+      });
+      proxy.on('open', (proxySocket) => {
+        console.log('🔌 [Proxy WS Configure] Canal WebSocket abierto');
+      });
+      proxy.on('error', (err, req, res) => {
+        console.error('❌ [Proxy WS Configure Error]', err);
+      });
     }
   }
 };

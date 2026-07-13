@@ -3,7 +3,6 @@ import { Observable, throwError, of } from 'rxjs';
 import { tap, map, catchError, switchMap } from 'rxjs/operators';
 import { User } from '../domain/entities/user.entity';
 import { LoginRequestDTO } from '../../data/repositories/dtos/login-request.dto';
-import { ApiKeyConfig } from '../config/api-key.config';
 import { IAuthRepository } from '../domain/repositories/auth.repository';
 import { AppEnvironment } from '../config/app-environment';
 import { PermissionsService } from './permissions.service';
@@ -96,29 +95,6 @@ export class AuthService {
       // Ignorar errores de parseo y limpiar
       sessionStorage.removeItem('auth_token');
       sessionStorage.removeItem('auth_user');
-    }
-
-    // 2. Si no hay sesión activa, verificar si hay una clave estática configurada en api-key.config.ts
-    const isDevMode = !AppEnvironment.production;
-    const configKey = ApiKeyConfig?.apiKey;
-    const hasConfigKey = isDevMode &&
-      configKey &&
-      configKey !== 'REPLACE_WITH_YOUR_JWT_API_KEY' &&
-      configKey !== 'INSERTAR_AQUI_TU_JWT_API_KEY' &&
-      configKey.trim() !== '';
-
-    if (hasConfigKey) {
-      const staticUser: User = {
-        id: 'api_key_user',
-        email: 'apikeyuser@iaframecore.com',
-        name: 'API Key User',
-        role: 'ADMIN',
-        createdAt: new Date()
-      };
-      this.currentUser.set(staticUser);
-      // Para el usuario de API Key, cargamos todos los permisos del sistema
-      this.permissionsService.setAdminPermissions();
-      return of(staticUser);
     }
 
     this.currentUser.set(null);

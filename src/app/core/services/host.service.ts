@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable, of, Subject } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { Host, HostMetrics } from '../domain/entities/host.models';
 import { IHostRepository } from '../domain/repositories/host.repository';
@@ -36,6 +36,7 @@ export class HostService {
   readonly newHostIds = signal<Set<string>>(new Set());
   readonly updatedHostIds = signal<Set<string>>(new Set());
   readonly deletingHostIds = signal<Set<string>>(new Set());
+  readonly hostMigrated = new Subject<{ oldFingerprint: string; newFingerprint: string }>();
 
   markAsNewHost(id: string): void {
     this.newHostIds.update(s => new Set([...s, id]));
@@ -63,14 +64,9 @@ export class HostService {
   }
 
   migrateHostLocal(oldFingerprint: string, newFingerprint: string): void {
-    this.allHosts.update(hosts => 
-      hosts.map(h => {
-        if (h.fingerprint === oldFingerprint) {
-          return { ...h, fingerprint: newFingerprint };
-        }
-        return h;
-      })
-    );
+    // No cambiamos la huella del host físico, ya que ambos hosts siguen existiendo.
+    // Solo se migra su contenido (cámaras, analíticas, horarios) de forma local.
+    this.hostMigrated.next({ oldFingerprint, newFingerprint });
   }
 
   constructor(private hostRepository: IHostRepository) {}
@@ -182,5 +178,9 @@ export class HostService {
         this.loadAllHosts().subscribe();
       })
     );
+  }
+
+  deleteHost(fingerprint: string): Observable<void> {
+    return this.hostRepository.delete(fingerprint);
   }
 }

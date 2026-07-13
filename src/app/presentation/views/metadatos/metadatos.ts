@@ -14,7 +14,8 @@ import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 
 import { ListService } from '../../../core/services/list.service';
 import { CameraService } from '../../../core/services/camera.service';
-
+import { PermissionsService } from '../../../core/services/permissions.service';
+ 
 @Component({
   selector: 'app-metadatos',
   standalone: true,
@@ -31,6 +32,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   private destroyRef = inject(DestroyRef);
   private listService = inject(ListService);
   private cameraService = inject(CameraService);
+  public permissionsService = inject(PermissionsService);
 
   // Watchlist Modal Integration
   readonly showAddToWatchlistModal = signal<boolean>(false);
@@ -504,6 +506,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnInit(): void {
+    this.metadataService.isViewActive.set(true);
     // Load watchlists globally
     this.listService.loadLists().subscribe();
 
@@ -561,6 +564,8 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnDestroy(): void {
+    this.metadataService.isViewActive.set(false);
+    this.metadataService.activeIndex.set(null);
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }

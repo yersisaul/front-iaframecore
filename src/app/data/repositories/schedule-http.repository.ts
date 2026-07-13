@@ -24,6 +24,16 @@ export class ScheduleHttpRepository implements IScheduleRepository {
     );
   }
 
+  getById(scheduleId: string): Observable<Schedule> {
+    return this.http.get<ScheduleDTO>(`${this.apiUrl}/${scheduleId}`).pipe(
+      map(ScheduleMapper.toDomain),
+      catchError(err => {
+        console.error('Error in ScheduleHttpRepository.getById:', err);
+        throw err;
+      })
+    );
+  }
+
   register(dto: any): Observable<any> {
     // POST /frontend/schedules/
     const mappedDto = this.mapDtoForBackend(dto);

@@ -252,6 +252,30 @@ export class ListService {
     }
   }
 
+  addOrUpdateListLocal(list: List): void {
+    this.lists.update(arr => {
+      const idx = arr.findIndex(l => l.list_id === list.list_id);
+      if (idx !== -1) {
+        const updated = [...arr];
+        updated[idx] = list;
+        return updated;
+      }
+      return [...arr, list];
+    });
+  }
+
+  addOrUpdateListDetailLocal(detail: ListDetail): void {
+    this.listDetails.update(arr => {
+      const idx = arr.findIndex(d => d.detail_id === detail.detail_id);
+      if (idx !== -1) {
+        const updated = [...arr];
+        updated[idx] = detail;
+        return updated;
+      }
+      return [...arr, detail];
+    });
+  }
+
   deleteSubjectLocal(detailId: string): void {
     this.listDetails.update(current => current.filter(d => d.detail_id !== detailId));
   }
@@ -270,9 +294,9 @@ export class ListService {
     );
   }
 
-  updateFaceDetail(detailId: string, nombreAsociado: string): Observable<ListDetail> {
+  updateFaceDetail(detailId: string, listId: string, nombreAsociado: string): Observable<ListDetail> {
     this.isLoading.set(true);
-    return this.listRepository.updateFaceDetail(detailId, { nombre_asociado: nombreAsociado }).pipe(
+    return this.listRepository.updateFaceDetail(detailId, listId, { nombre_asociado: nombreAsociado }).pipe(
       tap(res => {
         this.listDetails.update(current => current.map(d => d.detail_id === detailId ? { ...d, nombre_asociado: res.nombre_asociado } : d));
         this.isLoading.set(false);
@@ -284,9 +308,9 @@ export class ListService {
     );
   }
 
-  updatePlateDetail(detailId: string, plateText: string, nombreAsociado?: string): Observable<ListDetail> {
+  updatePlateDetail(detailId: string, listId: string, plateText: string, nombreAsociado?: string): Observable<ListDetail> {
     this.isLoading.set(true);
-    return this.listRepository.updatePlateDetail(detailId, { nombre_asociado: nombreAsociado, plate_text: plateText }).pipe(
+    return this.listRepository.updatePlateDetail(detailId, listId, { nombre_asociado: nombreAsociado, plate_text: plateText }).pipe(
       tap(res => {
         this.listDetails.update(current => current.map(d => d.detail_id === detailId ? { 
           ...d, 

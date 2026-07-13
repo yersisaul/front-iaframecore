@@ -83,6 +83,8 @@
                 [class.card-crud-new]="scheduleNewIds().has(sched.id)"
                 [class.card-crud-updated]="scheduleUpdatedIds().has(sched.id)"
                 [class.card-crud-deleting]="scheduleDeletingIds().has(sched.id)"
+                [class.card-crud-status-active]="scheduleActiveStatusIds().has(sched.id)"
+                [class.card-crud-status-inactive]="scheduleInactiveStatusIds().has(sched.id)"
                 (click)="selectScheduleForDetails(sched)" style="cursor: pointer;">
                 
                 <!-- Contenedor vertical de 2 filas -->
@@ -166,9 +168,9 @@
             <span>Detalles del Horario</span>
           </h5>
           <div class="d-flex align-items-center gap-2 text-muted small">
-            <span class="status-dot" [class.pulse]="isScheduleActive(activeSched)"></span>
-            <span class="small font-monospace fw-semibold" [class.text-success]="isScheduleActive(activeSched)">
-              {{ isScheduleActive(activeSched) ? 'Activo' : 'Inactivo' }}
+            <span class="status-dot" [class.pulse]="activeSched.status === 'activo'"></span>
+            <span class="small font-monospace fw-semibold" [class.text-success]="activeSched.status === 'activo'">
+              {{ activeSched.status === 'activo' ? 'Activo' : 'Inactivo' }}
             </span>
           </div>
         </div>

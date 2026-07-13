@@ -295,11 +295,15 @@ describe('Usuarios', () => {
     expect(component.activeTab()).toBe('roles');
   });
 
-  it('should return correct badge class for roles', () => {
-    expect(component.getRoleBadgeClass('ADMIN')).toBe('role-admin');
-    expect(component.getRoleBadgeClass('SUPERVISOR')).toBe('role-supervisor');
-    expect(component.getRoleBadgeClass('OPERADOR')).toBe('role-operador');
-    expect(component.getRoleBadgeClass('DESCONOCIDO')).toBe('role-default');
+  it('should return correct style properties for roles', () => {
+    const adminStyle = component.getRoleStyle('ADMIN');
+    expect(adminStyle['--role-color']).toContain('211');
+
+    const supervisorStyle = component.getRoleStyle('SUPERVISOR');
+    expect(supervisorStyle['--role-color']).toContain('258');
+
+    const customStyle = component.getRoleStyle('INVITADO');
+    expect(customStyle['--role-color']).toBeDefined();
   });
 
   it('should select role for editing and set editing permissions', () => {

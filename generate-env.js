@@ -20,11 +20,11 @@ function getEnvValue(key) {
   return null;
 }
 
-const jwtKey = getEnvValue('JWT_API_KEY');
-const apiTarget = getEnvValue('API_TARGET') || 'http://localhost:8000';
+const jwtKey = getEnvValue('JWT_SECRET_KEY');
+const apiTarget = getEnvValue('API_HOST') || 'http://localhost:8000';
 
 if (!jwtKey) {
-  console.error('❌ Error: JWT_API_KEY no está definido en el archivo .env.');
+  console.error('❌ Error: JWT_SECRET_KEY no está definido en el archivo .env.');
   process.exit(1);
 }
 

@@ -81,20 +81,17 @@ describe('Listas', () => {
       }
     };
     component.openEditSubjectModal(detail);
-    expect(component.showEditSubjectModal()).toBe(true);
-    expect(component.editSubjectName()).toBe('John Doe');
-    expect(component.editSubjectPlate()).toBe('XYZ123');
-    expect(component.editImagePreviewUrl()).toBe('http://face.jpg');
+    expect(component.showEditFaceSubjectModal()).toBe(true);
+    expect(component.editFaceSubjectName()).toBe('John Doe');
+    expect(component.editFaceImagePreviewUrl()).toBe('http://face.jpg');
   });
 
   it('should close edit subject modal and clean properties', () => {
-    component.editSubjectName.set('John Doe');
-    component.editSubjectPlate.set('XYZ123');
-    component.showEditSubjectModal.set(true);
+    component.editFaceSubjectName.set('John Doe');
+    component.showEditFaceSubjectModal.set(true);
 
-    component.closeEditSubjectModal();
-    expect(component.showEditSubjectModal()).toBe(false);
-    expect(component.editSubjectName()).toBe('');
-    expect(component.editSubjectPlate()).toBe('');
+    component.closeEditFaceSubjectModal();
+    expect(component.showEditFaceSubjectModal()).toBe(false);
+    expect(component.editFaceSubjectName()).toBe('');
   });
 });

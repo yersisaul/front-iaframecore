@@ -44,10 +44,14 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly cameraNewIds = this.cameraService.newRecordIds;
   readonly cameraUpdatedIds = this.cameraService.updatedRecordIds;
   readonly cameraDeletingIds = this.cameraService.deletingRecordIds;
+  readonly cameraActiveStatusIds = this.cameraService.activeStatusIds;
+  readonly cameraInactiveStatusIds = this.cameraService.inactiveStatusIds;
 
   readonly analyticNewIds = this.analyticService.newRecordIds;
   readonly analyticUpdatedIds = this.analyticService.updatedRecordIds;
   readonly analyticDeletingIds = this.analyticService.deletingRecordIds;
+  readonly analyticActiveStatusIds = this.analyticService.activeStatusIds;
+  readonly analyticInactiveStatusIds = this.analyticService.inactiveStatusIds;
 
   readonly isLoading = computed(() =>
     this.cameraService.isLoading() || this.scheduleService.isLoading()
@@ -61,6 +65,40 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   readonly activeAddScheduleDropdown = signal<string | null>(null);
   readonly expandedAnalyticIds = signal<Set<string>>(new Set());
+
+  readonly showDeleteHostModal = signal<boolean>(false);
+  readonly isDeletingHost = signal<boolean>(false);
+  readonly isHostDeleting = computed(() => this.hostId() ? this.hostService.deletingHostIds().has(this.hostId()!) : false);
+
+  openDeleteHostModal(): void {
+    this.showDeleteHostModal.set(true);
+  }
+
+  closeDeleteHostModal(): void {
+    this.showDeleteHostModal.set(false);
+  }
+
+  confirmDeleteHost(): void {
+    const fingerprint = this.hostId();
+    if (!fingerprint) return;
+
+    this.isDeletingHost.set(true);
+    this.hostService.deleteHost(fingerprint).subscribe({
+      next: () => {
+        this.hostService.markAsDeletingHost(fingerprint);
+        setTimeout(() => {
+          this.isDeletingHost.set(false);
+          this.closeDeleteHostModal();
+          this.router.navigate(['/dashboard/nodos']);
+        }, 450);
+      },
+      error: (err) => {
+        this.isDeletingHost.set(false);
+        console.error('Error deleting host:', err);
+        alert('Error al eliminar el nodo. Por favor, intente de nuevo.');
+      }
+    });
+  }
 
   openLicenseModal(): void {
     this.licenseScrolledToBottom.set(false);
@@ -95,7 +133,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       });
     }
 
-    this.analytics().forEach(analytic => {
+    this.analytics().filter(analytic => !this.hostId() || analytic.hostFingerprint === this.hostId()).forEach(analytic => {
       if (analytic.status === 'active') {
         const featureKey = this.mapAnalyticTypeToFeatureKey(analytic.type);
         if (featureKey && usage[featureKey] !== undefined) {
@@ -145,7 +183,9 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   // Opciones de filtro dinámicas (construidas a partir de las cámaras y analíticas cargadas)
   readonly filterOptions = computed(() => {
-    const list = this.cameras();
+    const list = this.hostId()
+      ? this.cameras().filter(c => c.hostFingerprint === this.hostId())
+      : this.cameras();
     const statuses = new Set<string>();
     const streams = new Set<string>();
     const decoders = new Set<string>();
@@ -157,7 +197,10 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     });
 
     const uniqueAnalytics = new Set<string>();
-    this.analytics().forEach(a => {
+    const analyticsList = this.hostId()
+      ? this.analytics().filter(a => a.hostFingerprint === this.hostId())
+      : this.analytics();
+    analyticsList.forEach(a => {
       if (a.type) {
         uniqueAnalytics.add(this.normalizeAnalyticType(a.type));
       }
@@ -181,6 +224,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const analyticType = this.filterAnalyticType();
 
     const filtered = list.filter(c => {
+      if (this.hostId() && c.hostFingerprint !== this.hostId()) return false;
       // Search only by camera name or camera ID (prefix matching)
       if (term) {
         const matchesName = c.name.toLowerCase().startsWith(term);
@@ -296,6 +340,11 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly showAiPanel = signal<boolean>(false);
   // Cámara seleccionada para el panel lateral
   readonly selectedCamera = signal<Camera | null>(null);
+  readonly activeCamera = computed(() => {
+    const selected = this.selectedCamera();
+    if (!selected) return null;
+    return this.cameras().find(c => c.id === selected.id) || selected;
+  });
   readonly pendingCameraId = signal<string | null>(null);
   readonly pendingAnalyticId = signal<string | null>(null);
 
@@ -409,6 +458,14 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
         }
       }
     }, { allowSignalWrites: true });
+
+    effect(() => {
+      if (this.isHostDeleting()) {
+        setTimeout(() => {
+          this.router.navigate(['/dashboard/nodos']);
+        }, 450);
+      }
+    });
 
     // Wire searchControl -> searchTerm signal with debounce
     this.searchControl.valueChanges.pipe(
@@ -553,6 +610,8 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   ngOnInit(): void {
     this.cameraService.isViewActive.set(true);
     this.analyticService.isViewActive.set(true);
+    this.scheduleService.isViewActive.set(true);
+    this.hostService.isViewActive.set(true);
 
     const savedMode = localStorage.getItem('camaras_view_mode') as 'cards' | 'list';
     if (savedMode) this.viewMode.set(savedMode);
@@ -572,6 +631,15 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
       // Cargar las analíticas de IA del nodo
       this.analyticService.getAnalyticsByHost(fingerprint).subscribe();
+    } else {
+      // Cargar todas las cámaras del sistema
+      this.cameraService.getAllCameras().subscribe();
+
+      // Cargar TODOS los horarios globales
+      this.scheduleService.getAllSchedules().subscribe();
+
+      // Cargar las analíticas de IA globales
+      this.analyticService.getAllAnalytics().subscribe();
     }
 
     // Reloj para verificar horarios activos cada segundo y transiciones
@@ -601,6 +669,8 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   ngOnDestroy(): void {
     this.cameraService.isViewActive.set(false);
     this.analyticService.isViewActive.set(false);
+    this.scheduleService.isViewActive.set(false);
+    this.hostService.isViewActive.set(false);
 
     if (this.timerId) {
       clearInterval(this.timerId);
@@ -735,17 +805,6 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
     this.cameraService.updateCamera(camera.id, body).subscribe({
       next: () => {
-        const hostFingerprint = this.hostId();
-        if (hostFingerprint) {
-          this.cameraService.getCamerasByHost(hostFingerprint).subscribe({
-            next: (updatedCameras) => {
-              const updated = updatedCameras.find(c => c.id === camera.id);
-              if (updated) {
-                this.selectedCamera.set(updated);
-              }
-            }
-          });
-        }
         this.isEditingCamera.set(false);
       },
       error: (err) => {
@@ -758,10 +817,6 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
           // 5xx: la operación se aplicó en el backend, tratamos como éxito
           console.warn('[camaras] update 5xx swallowed, reloading cameras:', err?.status);
           this.isEditingCamera.set(false);
-          const hostFingerprint = this.hostId();
-          if (hostFingerprint) {
-            this.cameraService.getCamerasByHost(hostFingerprint).subscribe();
-          }
         }
       }
     });
@@ -787,10 +842,6 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
         this.isDeletingCamera.set(false);
         this.closeDeleteModal();
         this.closeAiPanel();
-        const hostFingerprint = this.hostId();
-        if (hostFingerprint) {
-          this.cameraService.getCamerasByHost(hostFingerprint).subscribe();
-        }
       },
       error: (err) => {
         // El backend puede retornar 500 incluso cuando el delete se completó exitosamente.
@@ -805,10 +856,6 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
           this.isDeletingCamera.set(false);
           this.closeDeleteModal();
           this.closeAiPanel();
-          const hostFingerprint = this.hostId();
-          if (hostFingerprint) {
-            this.cameraService.getCamerasByHost(hostFingerprint).subscribe();
-          }
         }
       }
     });
@@ -833,10 +880,6 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       next: () => {
         this.isDeletingAnalytic.set(false);
         this.closeDeleteAnalyticModal();
-        const hostFingerprint = this.hostId();
-        if (hostFingerprint) {
-          this.analyticService.getAnalyticsByHost(hostFingerprint).subscribe();
-        }
       },
       error: (err) => {
         if (err?.status >= 400 && err?.status < 500) {
@@ -847,10 +890,6 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
           console.warn('[camaras] delete analytic 5xx swallowed, closing modal:', err?.status);
           this.isDeletingAnalytic.set(false);
           this.closeDeleteAnalyticModal();
-          const hostFingerprint = this.hostId();
-          if (hostFingerprint) {
-            this.analyticService.getAnalyticsByHost(hostFingerprint).subscribe();
-          }
         }
       }
     });
@@ -871,7 +910,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   /** Retorna las analíticas de IA asignadas a una cámara específica */
   getAnalyticsForCamera(cameraId: string): Analytic[] {
-    return this.analytics().filter(a => a.targetCameraIds.includes(cameraId));
+    return this.analytics().filter(a => (!this.hostId() || a.hostFingerprint === this.hostId()) && a.targetCameraIds.includes(cameraId));
   }
 
   /** Normaliza el tipo de analítica para soportar variaciones del backend */
@@ -1010,7 +1049,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
     this.scheduleService.updateSchedule(schedule.id, payload).subscribe({
       next: () => {
-        this.scheduleService.getAllSchedules().subscribe();
+        // Success
       },
       error: (err) => {
         console.error('[CamarasComponent] toggleScheduleAssociation failed:', err);
@@ -1064,14 +1103,19 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     return `${tStart} a ${tEnd}`;
   }
 
+  toggleSidebar(): void {
+    this.sidebarService.toggleSidebar();
+  }
+
   // ── Sincronización de Horarios y Control Manual ──────────────────────────────
   private previousScheduledActiveStates = new Map<string, boolean>();
 
   private checkScheduleTransitions(): void {
     const hostFingerprint = this.hostId();
-    if (!hostFingerprint) return;
 
-    const listAnalytics = this.analytics();
+    const listAnalytics = hostFingerprint
+      ? this.analytics().filter(a => a.hostFingerprint === hostFingerprint)
+      : this.analytics();
     const listSchedules = this.schedules();
 
     listAnalytics.forEach(analytic => {

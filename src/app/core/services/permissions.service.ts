@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { AppEnvironment } from '../config/app-environment';
 import { forkJoin, Observable, of } from 'rxjs';
 import { tap, map, catchError } from 'rxjs/operators';
+import { Router } from '@angular/router';
 
 // Interfaz para un permiso del backend
 export interface BackendPermiso {
@@ -26,6 +27,7 @@ export interface BackendRol {
 export class PermissionsService {
   private injector = inject(Injector);
   private http = inject(HttpClient);
+  private router = inject(Router);
 
   private get authService(): AuthService {
     return this.injector.get(AuthService);
@@ -70,6 +72,18 @@ export class PermissionsService {
     this.allRoles.update(roles => roles.filter(r => r.rol_id !== id));
   }
 
+  addOrUpdateRoleLocal(role: BackendRol): void {
+    this.allRoles.update(roles => {
+      const idx = roles.findIndex(r => r.rol_id === role.rol_id);
+      if (idx !== -1) {
+        const updated = [...roles];
+        updated[idx] = role;
+        return updated;
+      }
+      return [...roles, role];
+    });
+  }
+
   private loadCachedPermissions(): Set<string> {
     try {
       const cached = localStorage.getItem('azor_active_permissions');
@@ -103,12 +117,25 @@ export class PermissionsService {
           return;
         }
 
+        // Obtener permisos virtualmente deshabilitados de la descripción
+        let disabledVirtuals: string[] = [];
+        if (userRole.descripcion && userRole.descripcion.includes(' || disabled:')) {
+          const parts = userRole.descripcion.split(' || disabled:');
+          if (parts[1]) {
+            disabledVirtuals = parts[1].split(',').map(s => s.trim().toLowerCase());
+          }
+        }
+
         // Construir el set de códigos de permiso activos
         const codes = new Set<string>();
         userRole.id_permisos.forEach((pId: string) => {
           const match = permisos.find(p => p.permiso_id === pId);
           if (match && match.codigo) {
-            codes.add(match.codigo.toLowerCase());
+            const lowerCode = match.codigo.toLowerCase();
+            // Filtrar los permisos virtualmente desactivados
+            if (!disabledVirtuals.includes(lowerCode)) {
+              codes.add(lowerCode);
+            }
           }
         });
         
@@ -134,10 +161,23 @@ export class PermissionsService {
             sessionStorage.setItem('auth_user', JSON.stringify(parsed));
           }
         }
+
+        // Validar si el usuario actual sigue teniendo acceso a la ruta activa tras el cambio de permisos
+        this.checkCurrentRoutePermissions();
       }),
       catchError(err => {
         console.error('Error loading dynamic permissions:', err);
-        this.clearPermissions();
+        const cached = this.loadCachedPermissions();
+        // Solo usar permisos cacheados en caso de un fallo genuino de conexión a la red (status 0).
+        // Si el servidor responde con 401/403, significa que la sesión es inválida o el rol no tiene permisos,
+        // por lo que debemos limpiar los permisos cacheados inmediatamente.
+        if (err.status === 0 && cached && cached.size > 0) {
+          console.warn('[Permissions Service] Usando permisos cacheados debido a fallo de conexión de red.');
+          this.activePermissionCodes.set(cached);
+        } else {
+          console.warn('[Permissions Service] Error de autorización o servidor. Limpiando permisos.');
+          this.clearPermissions();
+        }
         return of(undefined);
       })
     );
@@ -304,5 +344,43 @@ export class PermissionsService {
 
   getRoleById(rolId: string): Observable<BackendRol> {
     return this.http.get<BackendRol>(`${AppEnvironment.apiUrl}/frontend/roles/${rolId}`);
+  }
+
+  getDefaultRedirectRoute(): string {
+    const active = this.activePermissionCodes();
+    const isAdmin = active.has('roles.create');
+
+    if (isAdmin || active.has('hosts.read')) return '/dashboard/nodos';
+    if (active.has('cameras.read')) return '/dashboard/camaras';
+    if (active.has('schedules.read')) return '/dashboard/horarios';
+    if (active.has('lists.read')) return '/dashboard/listas';
+    if (active.has('users.read') || active.has('roles.read')) return '/dashboard/usuarios';
+    return '/dashboard/eventos';
+  }
+
+  checkCurrentRoutePermissions(): void {
+    try {
+      let route = this.router.routerState.snapshot.root;
+      while (route.firstChild) {
+        route = route.firstChild;
+      }
+      const requiredPermissions = route.data?.['permissions'] as string[];
+      if (requiredPermissions && requiredPermissions.length > 0) {
+        const activeCodes = this.activePermissionCodes();
+        const anyPermission = route.data?.['anyPermission'] as boolean;
+
+        const hasMatch = anyPermission
+          ? requiredPermissions.some(p => activeCodes.has(p))
+          : requiredPermissions.every(p => activeCodes.has(p));
+
+        if (!hasMatch) {
+          const fallback = this.getDefaultRedirectRoute();
+          console.warn(`[Permissions Service] El usuario actual ha perdido el acceso a esta ruta en caliente. Redirigiendo a ${fallback}.`);
+          this.router.navigate([fallback]);
+        }
+      }
+    } catch (e) {
+      console.error('[Permissions Service] Error al comprobar los permisos de la ruta activa:', e);
+    }
   }
 }

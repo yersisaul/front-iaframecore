@@ -6,15 +6,16 @@
       <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
         (click)="toggleSidebar()" aria-label="Toggle Sidebar">
         @if (isSidebarCollapsed()) {
-          <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
+        <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
         } @else {
-          <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
+        <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
         }
       </button>
       <div>
         <h2 class="fw-bold mb-0 fs-3 text-body">Eventos y Alertas</h2>
         <p class="text-muted mb-0 small mt-1">
-          Se encontraron <span class="fw-semibold text-primary">{{ formatTotalRecords(totalRecords()) }}</span> eventos registrados en el sistema.
+          Se encontraron <span class="fw-semibold text-primary">{{ formatTotalRecords(totalRecords()) }}</span> eventos
+          registrados en el sistema.
         </p>
       </div>
     </div>
@@ -23,12 +24,10 @@
       <!-- Search and Page Size Selector -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
         <div class="search-input-wrapper position-relative d-flex align-items-center pl-1">
-          <span class="icon-svg icon-search search-icon-prefix text-muted" style="width: 18px; height: 18px; opacity: 0.5;"></span>
-          <input type="text" 
-                 [formControl]="searchControl"
-                 placeholder="Buscar eventos..."
-                 class="search-input-control border-0 ms-2" 
-                 style="font-size: 0.82rem; outline: none; width: 180px;" />
+          <span class="icon-svg icon-search search-icon-prefix text-muted"
+            style="width: 18px; height: 18px; opacity: 0.5;"></span>
+          <input type="text" [formControl]="searchControl" placeholder="Buscar eventos..."
+            class="search-input-control border-0 ms-2" style="font-size: 0.82rem; outline: none; width: 180px;" />
         </div>
 
         <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
@@ -36,7 +35,7 @@
           title="Mostrar/ocultar filtros" aria-label="Mostrar/ocultar filtros">
           <span class="icon-svg icon-filter filter-icon"></span>
           @if (hasActiveFilters()) {
-            <span class="active-badge-dot"></span>
+          <span class="active-badge-dot"></span>
           }
         </button>
       </div>
@@ -47,7 +46,7 @@
         <select id="limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
           (change)="onLimitChange($event)">
           @for (opt of limitOptions(); track opt) {
-            <option [value]="opt" [selected]="pageSize() === opt">{{ opt }}</option>
+          <option [value]="opt" [selected]="pageSize() === opt">{{ opt }}</option>
           }
         </select>
       </div>
@@ -57,7 +56,7 @@
   <!-- Horizontal Filter Bar -->
   <div class="horizontal-filters-bar mb-4" [class.hidden]="!showFilters()">
     <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
-      
+
       <!-- 1. FILTRO CÁMARAS -->
       @if (filterOptions().camaras.length > 0) {
       <div class="filter-dropdown-wrapper position-relative">
@@ -138,7 +137,8 @@
           <span class="icon-svg icon-calendar" style="width: 14px; height: 14px;"></span>
           <span>Rango de Fechas</span>
           @if (tempFilters().timestampDesde || tempFilters().timestampHasta) {
-            <span class="badge-dot-active bg-primary animate-pulse" style="width: 6px; height: 6px; border-radius: 50%;"></span>
+          <span class="badge-dot-active bg-primary animate-pulse"
+            style="width: 6px; height: 6px; border-radius: 50%;"></span>
           }
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all" style="width: 10px; height: 10px;"
             [class.rotated]="activeDropdown() === 'fechas'"></span>
@@ -163,19 +163,24 @@
                 <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
                   (click)="openCalendarField('desde', $event)">
                   <span>{{ formatCalendarDateLabel(dateDesdeStr()) || 'Elegir fecha' }}</span>
-                  <span class="icon-svg icon-calendar text-muted" style="width: 13px; height: 13px; opacity: 0.75;"></span>
+                  <span class="icon-svg icon-calendar text-muted"
+                    style="width: 13px; height: 13px; opacity: 0.75;"></span>
                 </button>
 
                 @if (activeCalendarField() === 'desde') {
-                <div class="custom-calendar-popover position-absolute top-100 start-0" (click)="$event.stopPropagation()">
+                <div class="custom-calendar-popover position-absolute top-100 start-0"
+                  (click)="$event.stopPropagation()">
                   <div class="d-flex justify-content-between align-items-center mb-2">
-                    <button type="button" class="calendar-header-btn btn-ghost" (click)="prevCalendarMonth($event)">&lt;</button>
+                    <button type="button" class="calendar-header-btn btn-ghost"
+                      (click)="prevCalendarMonth($event)">&lt;</button>
                     <span class="fw-bold text-capitalize" style="font-size: 0.85rem; color: var(--text-primary);">
                       {{ getMonths()[calendarViewMonth()] }} {{ calendarViewYear() }}
                     </span>
-                    <button type="button" class="calendar-header-btn btn-ghost" (click)="nextCalendarMonth($event)">&gt;</button>
+                    <button type="button" class="calendar-header-btn btn-ghost"
+                      (click)="nextCalendarMonth($event)">&gt;</button>
                   </div>
-                  <div class="d-grid text-center text-muted small mb-1" style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
+                  <div class="d-grid text-center text-muted small mb-1"
+                    style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
                     <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
                   </div>
                   <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
@@ -235,19 +240,24 @@
                 <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
                   (click)="openCalendarField('hasta', $event)">
                   <span>{{ formatCalendarDateLabel(dateHastaStr()) || 'Elegir fecha' }}</span>
-                  <span class="icon-svg icon-calendar text-muted" style="width: 13px; height: 13px; opacity: 0.75;"></span>
+                  <span class="icon-svg icon-calendar text-muted"
+                    style="width: 13px; height: 13px; opacity: 0.75;"></span>
                 </button>
 
                 @if (activeCalendarField() === 'hasta') {
-                <div class="custom-calendar-popover position-absolute top-100 start-0" (click)="$event.stopPropagation()">
+                <div class="custom-calendar-popover position-absolute top-100 start-0"
+                  (click)="$event.stopPropagation()">
                   <div class="d-flex justify-content-between align-items-center mb-2">
-                    <button type="button" class="calendar-header-btn btn-ghost" (click)="prevCalendarMonth($event)">&lt;</button>
+                    <button type="button" class="calendar-header-btn btn-ghost"
+                      (click)="prevCalendarMonth($event)">&lt;</button>
                     <span class="fw-bold text-capitalize" style="font-size: 0.85rem; color: var(--text-primary);">
                       {{ getMonths()[calendarViewMonth()] }} {{ calendarViewYear() }}
                     </span>
-                    <button type="button" class="calendar-header-btn btn-ghost" (click)="nextCalendarMonth($event)">&gt;</button>
+                    <button type="button" class="calendar-header-btn btn-ghost"
+                      (click)="nextCalendarMonth($event)">&gt;</button>
                   </div>
-                  <div class="d-grid text-center text-muted small mb-1" style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
+                  <div class="d-grid text-center text-muted small mb-1"
+                    style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
                     <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
                   </div>
                   <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
@@ -327,10 +337,11 @@
   <!-- Main Grid Content Area -->
   <div class="main-content-layout position-relative">
     <div #eventGrid class="grid-content-area position-relative">
-      
+
       <!-- Loading Overlay -->
       @if (isLoading()) {
-      <div class="loading-overlay d-flex justify-content-center align-items-center position-absolute w-100 h-100 bg-white bg-opacity-75"
+      <div
+        class="loading-overlay d-flex justify-content-center align-items-center position-absolute w-100 h-100 bg-white bg-opacity-75"
         style="z-index: 10;">
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Cargando...</span>
@@ -340,13 +351,15 @@
 
       <!-- Banner de nuevos eventos bufferizados -->
       @if (bufferedEvents().length > 0) {
-      <div class="alert alert-info py-2.5 px-4 mb-3 d-flex align-items-center justify-content-between animation-fade-in shadow-sm border-0"
+      <div
+        class="alert alert-info py-2.5 px-4 mb-3 d-flex align-items-center justify-content-between animation-fade-in shadow-sm border-0"
         style="border-radius: 12px; font-size: 0.85rem; background-color: var(--primary-light); color: var(--primary); border: 1.5px solid rgba(var(--primary-rgb), 0.15) !important;">
         <div class="d-flex align-items-center gap-2">
           <span class="icon-svg icon-activity animate-pulse" style="width: 16px; height: 16px;"></span>
           <span class="fw-semibold">Hay {{ bufferedEvents().length }} nuevo(s) evento(s) disponible(s).</span>
         </div>
-        <button class="btn btn-sm btn-primary py-1 px-3 fw-bold rounded-pill shadow-sm" (click)="applyBufferedEvents()">Ver nuevos eventos</button>
+        <button class="btn btn-sm btn-primary py-1 px-3 fw-bold rounded-pill shadow-sm"
+          (click)="applyBufferedEvents()">Ver nuevos eventos</button>
       </div>
       }
 
@@ -367,14 +380,12 @@
       <div class="eventos-grid">
         @for (record of records(); track record.id) {
         <div class="card event-card border-0 shadow-sm rounded-3 position-relative"
-          [class.event-card--live-new]="newRecordIds().has(record.id)"
-          style="overflow: visible !important;" 
-          (mousemove)="onCardMouseMove($event, record.id)"
-          (mouseleave)="onCardMouseLeave()">
+          [class.event-card--live-new]="newRecordIds().has(record.id)" style="overflow: visible !important;"
+          (mousemove)="onCardMouseMove($event, record.id)" (mouseleave)="onCardMouseLeave()">
 
           <!-- Thumbnail Image -->
           <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center"
-               (click)="openImageDetailsModal(record); $event.stopPropagation()">
+            (click)="openImageDetailsModal(record); $event.stopPropagation()">
             <!-- Image Hover Overlay with Magnifying Glass Icon -->
             <div class="image-hover-overlay d-flex align-items-center justify-content-center">
               <span class="icon-svg icon-magnify magnify-icon" style="width: 32px; height: 32px;"></span>
@@ -420,10 +431,12 @@
           <div class="metadata-card-popover" [style.left.px]="mouseX()" [style.top.px]="mouseY()">
             <div class="popover-header d-flex align-items-center justify-content-between">
               <div class="d-flex align-items-center gap-1.5">
-                <span class="icon-svg icon-box text-primary popover-header-icon" style="width: 12px; height: 12px;"></span>
+                <span class="icon-svg icon-box text-primary popover-header-icon"
+                  style="width: 12px; height: 12px;"></span>
                 <span class="popover-header-title text-muted text-uppercase fw-bold">Atributos</span>
               </div>
-              <span class="badge bg-secondary-light text-secondary text-capitalize" style="font-size: 0.65rem; padding: 2px 6px;">
+              <span class="badge bg-secondary-light text-secondary text-capitalize"
+                style="font-size: 0.65rem; padding: 2px 6px;">
                 Eventos
               </span>
             </div>
@@ -437,7 +450,7 @@
                   Objeto: {{ record.objeto }}
                 </span>
                 @if (record.direccion) {
-                <span class="attribute-pill text-capitalize">
+                <span class="attribute-pill gender-pill text-capitalize">
                   Dirección: {{ record.direccion }}
                 </span>
                 }
@@ -445,27 +458,28 @@
             </div>
 
             <!-- Sección Métricas -->
-            @if (record.conteoAforo !== null || record.tiempoPermanencia !== null || record.objetosEnArea !== null || record.espaciosLibres !== null) {
+            @if (record.conteoAforo !== null || record.tiempoPermanencia !== null || record.objetosEnArea !== null ||
+            record.espaciosLibres !== null) {
             <div class="popover-section">
               <div class="popover-section-title text-muted text-uppercase fw-bold">Métricas</div>
               <div class="attributes-grid">
                 @if (record.conteoAforo !== null) {
-                <span class="attribute-pill text-capitalize">
+                <span class="attribute-pill age-pill text-capitalize">
                   Aforo: {{ record.conteoAforo }}
                 </span>
                 }
                 @if (record.tiempoPermanencia !== null) {
-                <span class="attribute-pill text-capitalize">
+                <span class="attribute-pill gender-pill text-capitalize">
                   Permanencia: {{ record.tiempoPermanencia | number:'1.1-2' }}s
                 </span>
                 }
                 @if (record.objetosEnArea !== null) {
-                <span class="attribute-pill text-capitalize">
+                <span class="attribute-pill object-type-pill text-capitalize">
                   Objetos en área: {{ record.objetosEnArea }}
                 </span>
                 }
                 @if (record.espaciosLibres !== null) {
-                <span class="attribute-pill text-capitalize">
+                <span class="attribute-pill recognition-pill text-capitalize">
                   Espacios Libres: {{ record.espaciosLibres }}
                 </span>
                 }
@@ -478,7 +492,7 @@
             <div class="popover-section">
               <div class="popover-section-title text-muted text-uppercase fw-bold">Localización</div>
               <div class="attributes-grid">
-                <span class="attribute-pill text-capitalize">
+                <span class="attribute-pill posture-pill text-capitalize">
                   Geo: {{ record.location.lat | number:'1.4-4' }}, {{ record.location.lon | number:'1.4-4' }}
                 </span>
               </div>
@@ -523,11 +537,8 @@
         <div class="d-flex align-items-center gap-2 jump-to-page-container">
           <span class="text-muted small fw-medium">Ir a:</span>
           <input type="text" class="form-control form-control-sm text-center shadow-sm"
-            style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;"
-            [placeholder]="currentPage()"
-            inputmode="numeric" pattern="[0-9]*"
-            (input)="onPageInput($event)"
-            (keydown.enter)="jumpToPage($event)"
+            style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;" [placeholder]="currentPage()"
+            inputmode="numeric" pattern="[0-9]*" (input)="onPageInput($event)" (keydown.enter)="jumpToPage($event)"
             (blur)="jumpToPage($event)" />
           <span class="text-muted small fw-medium">de {{ totalPages() }}</span>
         </div>
@@ -541,231 +552,220 @@
 <!-- Premium Image Detail Modal with 80% Image and 20% Info + Circular Lens Magnifier -->
 @if (selectedEventForModal(); as selectedEvent) {
 <div class="modal-backdrop-blur d-flex align-items-center justify-content-center" (click)="closeImageDetailsModal()">
-  <div class="premium-detail-modal d-flex flex-column flex-md-row overflow-hidden shadow-2xl" (click)="$event.stopPropagation()">
-    
-    <!-- Close Button -->
-    <button class="btn-close-modal d-flex align-items-center justify-content-center" (click)="closeImageDetailsModal()" aria-label="Close modal">
-      <span class="icon-svg icon-close" style="width: 18px; height: 18px;"></span>
-    </button>
+  <div class="premium-detail-modal d-flex flex-column flex-md-row overflow-hidden shadow-2xl"
+    (click)="$event.stopPropagation()">
 
     <!-- Left side: Image (80%) -->
-    <div class="modal-image-panel d-flex align-items-center justify-content-center bg-dark position-relative overflow-hidden">
+    <div
+      class="modal-image-panel d-flex align-items-center justify-content-center bg-dark position-relative overflow-hidden">
       @if (selectedEvent.urlImg) {
-        <div class="modal-img-wrapper position-relative overflow-hidden shadow-lg"
-             (mousemove)="onZoomMouseMove($event)" 
-             (click)="toggleZoom($event)"
-             [class.zoom-active-cursor]="isZoomed()">
-          <!-- Normal image -->
-          <img [src]="selectedEvent.urlImg" 
-               class="w-100 h-100 select-none object-fit-cover transition-all" 
-               alt="Full screen preview" />
-          
-          <!-- Magnifier circular lens -->
-          @if (isZoomed()) {
-          <div class="magnifier-lens" 
-               [style.left.px]="zoomX()" 
-               [style.top.px]="zoomY()" 
-               [style.background-image]="'url(' + selectedEvent.urlImg + ')'"
-               [style.background-position]="zoomBgX() + 'px ' + zoomBgY() + 'px'"
-               [style.background-size]="zoomBgWidth() + 'px ' + zoomBgHeight() + 'px'">
-          </div>
-          }
+      <div class="modal-img-wrapper position-relative overflow-hidden shadow-lg" (mousemove)="onZoomMouseMove($event)"
+        (click)="toggleZoom($event)" [class.zoom-active-cursor]="isZoomed()">
+        <!-- Normal image -->
+        <img [src]="selectedEvent.urlImg" class="w-100 h-100 select-none object-fit-cover transition-all"
+          alt="Full screen preview" />
+
+        <!-- Magnifier circular lens -->
+        @if (isZoomed()) {
+        <div class="magnifier-lens" [style.left.px]="zoomX()" [style.top.px]="zoomY()"
+          [style.background-image]="'url(' + selectedEvent.urlImg + ')'"
+          [style.background-position]="zoomBgX() + 'px ' + zoomBgY() + 'px'"
+          [style.background-size]="zoomBgWidth() + 'px ' + zoomBgHeight() + 'px'">
         </div>
+        }
+      </div>
       } @else {
-        <div class="text-muted d-flex flex-column align-items-center">
-          <span class="icon-svg icon-box text-muted" style="width: 64px; height: 64px;"></span>
-          <span class="mt-3">Sin Imagen</span>
-        </div>
+      <div class="text-muted d-flex flex-column align-items-center">
+        <span class="icon-svg icon-box text-muted" style="width: 64px; height: 64px;"></span>
+        <span class="mt-3">Sin Imagen</span>
+      </div>
       }
     </div>
 
     <!-- Right side: Event Detail Panel (20%) -->
-    <div class="modal-details-panel" [style.--edp-accent]="getAnalyticColor(selectedEvent.analitica)">
+    <div class="modal-details-panel">
 
-      <!-- EDP Header -->
-      <div class="edp-header">
-        <div class="edp-analytic-badge">
-          <span class="edp-accent-dot"></span>
-          <span class="edp-analytic-name text-capitalize">{{ selectedEvent.analitica }}</span>
+      <!-- Sighting Preview Header (Clean, No bottom border) -->
+      <div class="sighting-preview-body-header p-4 pb-2 d-flex justify-content-between align-items-start">
+        <div>
+          <h5 class="sighting-preview-title fw-bold mb-1">Detalle del Evento</h5>
+          <p class="text-muted small mb-0">Información capturada en el evento de detección</p>
         </div>
-        <h3 class="edp-camera-title" [title]="selectedEvent.nombreCamara">
-          {{ selectedEvent.nombreCamara }}
-        </h3>
-        <p class="edp-index-tag">
-          <span class="icon-svg icon-clock" style="width: 10px; height: 10px; margin-right: 4px; opacity: 0.6;"></span>
-          eventos
-        </p>
+        <!-- Close Button (Ghost Style) -->
+        <button class="btn-ghost d-flex align-items-center justify-content-center"
+          style="width: 32px; height: 32px; border-radius: 50%; margin-top: -4px; margin-right: -8px;"
+          (click)="closeImageDetailsModal()" aria-label="Cerrar modal">
+          <span class="icon-svg icon-close text-muted" style="width: 16px; height: 16px;"></span>
+        </button>
       </div>
 
       <!-- Scrollable body -->
-      <div class="scroll-details-content">
-
-        <!-- ZONA 1: Registro Temporal -->
-        <section class="edp-section">
-          <div class="edp-section-label">
-            <span class="icon-svg icon-calendar" style="width: 10px; height: 10px;"></span>
-            Registro Temporal
-          </div>
-          <div class="edp-time-primary">{{ formatDate(selectedEvent.timestamp) }}</div>
-          <div class="edp-time-pills">
-            <span class="edp-time-pill text-capitalize">{{ selectedEvent.diaSemana }}</span>
-            <span class="edp-time-pill text-capitalize">{{ selectedEvent.mes }}</span>
-            <span class="edp-time-pill edp-time-pill--highlight">{{ selectedEvent.hora }}:00h</span>
-          </div>
-        </section>
-
-        <!-- ZONA 2: Identificación de Cámara -->
-        <section class="edp-section">
-          <div class="edp-section-label">
-            <span class="icon-svg icon-camara" style="width: 10px; height: 10px;"></span>
-            Cámara
-          </div>
-          <div class="edp-camera-block">
-            <div class="edp-camera-name-row">
-              <span class="icon-svg icon-camara edp-field-icon" style="width: 13px; height: 13px;"></span>
-              <span class="edp-field-value">{{ selectedEvent.nombreCamara }}</span>
+      <div class="scroll-details-content"> <!-- Meta list -->
+        <div class="sighting-preview-meta">
+          <!-- Cámara -->
+          <div class="sighting-preview-row">
+            <div class="sighting-preview-icon sp-icon--camera">
+              <span class="icon-svg icon-camara"
+                style="width: 14px; height: 14px; background-color: currentColor;"></span>
             </div>
-            <div class="edp-id-row">
-              <div class="edp-id-content">
-                <span class="edp-id-label">UUID</span>
-                <span class="edp-id-value font-monospace" [title]="selectedEvent.idCamara">{{ selectedEvent.idCamara }}</span>
-              </div>
-              <button class="edp-copy-btn"
-                (click)="copyToClipboard(selectedEvent.idCamara, 'camId'); $event.stopPropagation()"
-                [class.edp-copy-btn--success]="copiedField() === 'camId'"
-                title="Copiar ID de cámara">
-                @if (copiedField() === 'camId') {
-                  <span class="icon-svg icon-check" style="width: 13px; height: 13px;"></span>
-                } @else {
-                  <span class="icon-svg icon-copy" style="width: 13px; height: 13px;"></span>
-                }
-              </button>
+            <div class="sighting-preview-field">
+              <span class="sp-label">Cámara</span>
+              <span class="sp-value">{{ selectedEvent.nombreCamara }}</span>
             </div>
           </div>
-        </section>
 
-        <!-- ZONA 3: Evento Detectado -->
-        <section class="edp-section">
-          <div class="edp-section-label">
-            <span class="icon-svg icon-activity" style="width: 10px; height: 10px;"></span>
-            Evento Detectado
+          <!-- ID Cámara (Click to copy) -->
+          <div class="sighting-preview-row" [class.copied-flash]="copiedField() === 'camId'"
+            (click)="copyToClipboard(selectedEvent.idCamara, 'camId'); $event.stopPropagation()"
+            style="cursor: pointer;">
+            <div class="sighting-preview-icon sp-icon--id">
+              <span class="icon-svg icon-box" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+            </div>
+            <div class="sighting-preview-field">
+              <span class="sp-label">ID Cámara</span>
+              @if (copiedField() === 'camId') {
+              <span class="text-success fw-bold font-monospace" style="font-size: 0.875rem;">¡Copiado!</span>
+              } @else {
+              <span class="sp-value font-monospace text-truncate d-block" [title]="selectedEvent.idCamara">
+                {{ selectedEvent.idCamara }}
+              </span>
+              }
+            </div>
           </div>
 
-          <!-- Objeto Badge -->
-          <div class="edp-object-row">
-            <div class="edp-object-badge">
-              <span class="icon-svg icon-target" style="width: 14px; height: 14px;"></span>
-              <span class="text-capitalize">{{ selectedEvent.objeto }}</span>
+          <!-- Fecha y Hora -->
+          <div class="sighting-preview-row">
+            <div class="sighting-preview-icon sp-icon--time">
+              <span class="icon-svg icon-clock"
+                style="width: 14px; height: 14px; background-color: currentColor;"></span>
             </div>
-
-            @if (selectedEvent.direccion) {
-              <div class="edp-direction-badge"
-                [class.edp-direction-badge--entrada]="selectedEvent.direccion.toLowerCase() === 'entrada'"
-                [class.edp-direction-badge--salida]="selectedEvent.direccion.toLowerCase() === 'salida'">
-                @if (selectedEvent.direccion.toLowerCase() === 'entrada') {
-                  <span class="icon-svg icon-arrow-up" style="width: 11px; height: 11px;"></span>
-                } @else {
-                  <span class="icon-svg icon-arrow-down" style="width: 11px; height: 11px;"></span>
-                }
-                {{ selectedEvent.direccion }}
-              </div>
-            }
+            <div class="sighting-preview-field">
+              <span class="sp-label">Fecha y Hora</span>
+              <span class="sp-value font-monospace">{{ selectedEvent.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
+            </div>
           </div>
 
-          <!-- Detalle completo -->
-          <p class="edp-detail-text">{{ selectedEvent.detalleEvento }}</p>
-        </section>
-
-        <!-- ZONA 4: Métricas (condicional) -->
-        @if (hasMetrics(selectedEvent)) {
-          <section class="edp-section">
-            <div class="edp-section-label">
-              <span class="icon-svg icon-activity" style="width: 10px; height: 10px;"></span>
-              Métricas
+          <!-- Sistema de IA -->
+          <div class="sighting-preview-row">
+            <div class="sighting-preview-icon sp-icon--subject"
+              [style.color]="getAnalyticColor(selectedEvent.analitica)"
+              style="background-color: var(--color-primary-light-bg);">
+              <span class="icon-svg icon-activity"
+                style="width: 14px; height: 14px; background-color: currentColor;"></span>
             </div>
-            <div class="edp-metrics-grid">
+            <div class="sighting-preview-field">
+              <span class="sp-label">Sistema de IA</span>
+              <span class="sp-value text-capitalize">{{ selectedEvent.analitica }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Atributos Detallados Section -->
+        <h6 class="sighting-preview-section-title fw-bold text-uppercase"
+          style="font-size: 0.75rem; letter-spacing: 0.08em; color: var(--text-muted);">Atributos Detectados</h6>
+
+        <div class="sighting-attributes-container d-flex flex-column gap-3">
+          <!-- Identificación -->
+          <div class="popover-section">
+            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
+              style="font-size: 0.65rem; letter-spacing: 0.05em;">Identificación</div>
+            <div class="attributes-grid">
+              <span class="attribute-pill object-type-pill text-capitalize">
+                <span class="pill-dot"></span>
+                Objeto: {{ selectedEvent.objeto }}
+              </span>
+              @if (selectedEvent.direccion) {
+              <span class="attribute-pill recognition-pill text-capitalize"
+                [class.gender-pill]="selectedEvent.direccion.toLowerCase() === 'entrada'"
+                [class.posture-pill]="selectedEvent.direccion.toLowerCase() === 'salida'">
+                Dirección: {{ selectedEvent.direccion }}
+              </span>
+              }
+            </div>
+          </div>
+
+          <!-- Métricas -->
+          @if (hasMetrics(selectedEvent)) {
+          <div class="popover-section">
+            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
+              style="font-size: 0.65rem; letter-spacing: 0.05em;">Métricas</div>
+            <div class="attributes-grid">
               @if (selectedEvent.conteoAforo !== null) {
-                <div class="edp-metric-widget edp-metric-widget--amber">
-                  <span class="edp-metric-value">{{ selectedEvent.conteoAforo }}</span>
-                  <span class="edp-metric-label">Aforo</span>
-                </div>
+              <span class="attribute-pill age-pill text-capitalize">
+                Aforo: {{ selectedEvent.conteoAforo }}
+              </span>
               }
               @if (selectedEvent.tiempoPermanencia !== null) {
-                <div class="edp-metric-widget edp-metric-widget--cyan">
-                  <span class="edp-metric-value">{{ selectedEvent.tiempoPermanencia | number:'1.1-1' }}<span class="edp-metric-unit">s</span></span>
-                  <span class="edp-metric-label">Permanencia</span>
-                </div>
+              <span class="attribute-pill gender-pill text-capitalize">
+                Permanencia: {{ selectedEvent.tiempoPermanencia | number:'1.1-1' }}s
+              </span>
               }
               @if (selectedEvent.objetosEnArea !== null) {
-                <div class="edp-metric-widget edp-metric-widget--blue">
-                  <span class="edp-metric-value">{{ selectedEvent.objetosEnArea }}</span>
-                  <span class="edp-metric-label">En Área</span>
-                </div>
+              <span class="attribute-pill object-type-pill text-capitalize">
+                En Área: {{ selectedEvent.objetosEnArea }}
+              </span>
               }
               @if (selectedEvent.espaciosLibres !== null) {
-                <div class="edp-metric-widget edp-metric-widget--green">
-                  <span class="edp-metric-value">{{ selectedEvent.espaciosLibres }}</span>
-                  <span class="edp-metric-label">Libres</span>
-                </div>
+              <span class="attribute-pill recognition-pill text-capitalize">
+                Libres: {{ selectedEvent.espaciosLibres }}
+              </span>
               }
             </div>
-          </section>
-        }
+          </div>
+          }
 
-        <!-- ZONA 5: Geolocalización -->
-        @if (selectedEvent.location) {
-          <section class="edp-section">
-            <div class="edp-section-label">
-              <span class="icon-svg icon-location-pin" style="width: 10px; height: 10px;"></span>
-              Geolocalización
-            </div>
-            <div class="edp-geo-card">
-              <div class="edp-geo-icon-wrap">
-                <span class="icon-svg icon-location-pin" style="width: 16px; height: 16px;"></span>
-              </div>
-              <div class="edp-geo-body">
-                <div class="edp-geo-coords font-monospace">
-                  <span>{{ selectedEvent.location.lat | number:'1.5-5' }}</span>
-                  <span class="edp-geo-sep">,</span>
-                  <span>{{ selectedEvent.location.lon | number:'1.5-5' }}</span>
-                </div>
-                <span class="edp-geo-sublabel">lat, lon</span>
-              </div>
-              <button class="edp-copy-btn"
-                (click)="copyToClipboard(selectedEvent.location.lat + ', ' + selectedEvent.location.lon, 'geo'); $event.stopPropagation()"
-                [class.edp-copy-btn--success]="copiedField() === 'geo'"
-                title="Copiar coordenadas">
+          <!-- Localización -->
+          @if (selectedEvent.location) {
+          <div class="popover-section">
+            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
+              style="font-size: 0.65rem; letter-spacing: 0.05em;">Localización</div>
+            <div class="attributes-grid">
+              <span class="attribute-pill recognition-pill font-monospace"
+                (click)="copyToClipboard(selectedEvent.location.lat + ', ' + selectedEvent.location.lon, 'geo')"
+                [class.copied-flash]="copiedField() === 'geo'" style="cursor: pointer;">
+                <span class="pill-dot"></span>
                 @if (copiedField() === 'geo') {
-                  <span class="icon-svg icon-check" style="width: 13px; height: 13px;"></span>
+                <span class="text-success fw-bold">¡Copiado!</span>
                 } @else {
-                  <span class="icon-svg icon-copy" style="width: 13px; height: 13px;"></span>
+                Geo: {{ selectedEvent.location.lat | number:'1.5-5' }}, {{ selectedEvent.location.lon | number:'1.5-5'
+                }}
                 }
-              </button>
+              </span>
             </div>
-          </section>
-        }
+          </div>
+          }
+
+          <!-- Descripción -->
+          <div class="popover-section">
+            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
+              style="font-size: 0.65rem; letter-spacing: 0.05em;">Descripción</div>
+            <p class="text-secondary small mb-0" style="line-height: 1.5; word-break: break-word;">
+              {{ selectedEvent.detalleEvento }}
+            </p>
+          </div>
+        </div>
 
       </div><!-- /scroll-details-content -->
 
-      <!-- EDP Footer sticky -->
-      <div class="edp-footer">
+      <!-- Footer Action -->
+      <div class="modal-footer-action p-3 bg-transparent">
         @if (selectedEvent.location) {
-          <a class="edp-maps-link"
-            [href]="getGoogleMapsUrl(selectedEvent)"
-            target="_blank"
-            rel="noopener noreferrer"
-            (click)="$event.stopPropagation()">
-            <span class="icon-svg icon-location-pin" style="width: 13px; height: 13px;"></span>
-            Ver en Google Maps
-            <span class="icon-svg icon-external-link" style="width: 11px; height: 11px; opacity: 0.55;"></span>
-          </a>
+        <a class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 py-2 px-3 rounded-3"
+          [href]="getGoogleMapsUrl(selectedEvent)" target="_blank" rel="noopener noreferrer"
+          (click)="$event.stopPropagation()"
+          style="font-size: 0.8rem; font-weight: 600; width: 100%; justify-content: center;">
+          <span class="icon-svg icon-location-pin"
+            style="width: 13px; height: 13px; background-color: currentColor;"></span>
+          Ver en Google Maps
+          <span class="icon-svg icon-external-link" style="width: 11px; height: 11px; opacity: 0.55;"></span>
+        </a>
         } @else {
-          <span class="edp-footer-no-location">Sin coordenadas disponibles</span>
+        <span class="text-muted small w-100 text-center">Sin localización disponible</span>
         }
       </div>
 
     </div>
-    
+
   </div>
 </div>
 }

@@ -50,6 +50,65 @@ export class Usuarios implements OnInit, OnDestroy {
   readonly rolePermissionsEditing = signal<Set<string>>(new Set());
   readonly isSavingRole = signal<boolean>(false);
 
+  // Agrupamiento y jerarquía de permisos
+  readonly expandedGroups = signal<Set<string>>(new Set());
+
+  private readonly resourceNames: Record<string, string> = {
+    'users': 'Gestión de Usuarios',
+    'roles': 'Gestión de Roles',
+    'hosts': 'Gestión de Nodos / Servidores',
+    'cameras': 'Gestión de Cámaras',
+    'analytics': 'Gestión de Analíticas',
+    'schedules': 'Gestión de Horarios',
+    'lists': 'Listas de Control',
+    'list_details': 'Sujetos en Listas de Control'
+  };
+
+  readonly groupedPermissions = computed(() => {
+    const rawPermissions = this.permissionsService.availablePermissions();
+    if (!rawPermissions || rawPermissions.length === 0) return [];
+
+    const groupsMap = new Map<string, { read: any; others: any[] }>();
+
+    rawPermissions.forEach(p => {
+      const parts = p.codigo.split('.');
+      const resource = parts[0];
+      const action = parts[1];
+
+      if (!groupsMap.has(resource)) {
+        groupsMap.set(resource, { read: null, others: [] });
+      }
+
+      const group = groupsMap.get(resource)!;
+      if (action === 'read') {
+        group.read = p;
+      } else {
+        group.others.push(p);
+      }
+    });
+
+    return Array.from(groupsMap.entries()).map(([resource, group]) => {
+      const actionOrder = ['create', 'update', 'delete'];
+      group.others.sort((a, b) => {
+        const actionA = a.codigo.split('.')[1];
+        const actionB = b.codigo.split('.')[1];
+        return actionOrder.indexOf(actionA) - actionOrder.indexOf(actionB);
+      });
+
+      return {
+        resource,
+        displayName: this.resourceNames[resource] || resource,
+        read: group.read,
+        others: group.others
+      };
+    }).sort((a, b) => {
+      const resourceOrder = ['hosts', 'cameras', 'analytics', 'schedules', 'lists', 'list_details', 'users', 'roles'];
+      const idxA = resourceOrder.indexOf(a.resource);
+      const idxB = resourceOrder.indexOf(b.resource);
+      return idxA - idxB;
+    });
+  });
+
   constructor() {
     // Sincronizar matriz de permisos de la interfaz en tiempo real cuando allRoles cambia por WebSocket
     effect(() => {
@@ -61,6 +120,23 @@ export class Usuarios implements OnInit, OnDestroy {
       if (updatedRole) {
         const currentSet = this.rolePermissionsEditing();
         const incomingSet = new Set(updatedRole.id_permisos);
+
+        // Filtrar permisos virtualmente desactivados
+        let disabledVirtuals: string[] = [];
+        if (updatedRole.descripcion && updatedRole.descripcion.includes(' || disabled:')) {
+          const parts = updatedRole.descripcion.split(' || disabled:');
+          if (parts[1]) {
+            disabledVirtuals = parts[1].split(',').map(s => s.trim().toLowerCase());
+          }
+        }
+
+        const allPerms = this.permissionsService.availablePermissions();
+        disabledVirtuals.forEach(code => {
+          const match = allPerms.find(p => p.codigo.toLowerCase() === code);
+          if (match) {
+            incomingSet.delete(match.permiso_id);
+          }
+        });
 
         // Verificar si los conjuntos de permisos difieren
         let isDifferent = currentSet.size !== incomingSet.size;
@@ -77,6 +153,19 @@ export class Usuarios implements OnInit, OnDestroy {
           this.rolePermissionsEditing.set(incomingSet);
           this.selectedRoleForEdit.set(updatedRole);
         }
+      }
+    }, { allowSignalWrites: true });
+
+    // Sincronizar pestaña activa en base a los permisos del usuario en tiempo real
+    effect(() => {
+      const hasUsersRead = this.permissionsService.hasPermission('Usuarios', 'ver');
+      const hasRolesRead = this.permissionsService.hasPermission('Roles', 'ver');
+      
+      const currentTab = this.activeTab();
+      if (currentTab === 'usuarios' && !hasUsersRead && hasRolesRead) {
+        this.activeTab.set('roles');
+      } else if (currentTab === 'roles' && !hasRolesRead && hasUsersRead) {
+        this.activeTab.set('usuarios');
       }
     }, { allowSignalWrites: true });
   }
@@ -136,7 +225,7 @@ export class Usuarios implements OnInit, OnDestroy {
   readonly filteredUsers = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
     const role = this.selectedRoleFilter();
-    return this.enrichedUsers().filter(u => {
+    const filtered = this.enrichedUsers().filter(u => {
       const matchesQuery = !query ||
         (u.name || '').toLowerCase().includes(query) ||
         (u.firstName || '').toLowerCase().includes(query) ||
@@ -145,25 +234,53 @@ export class Usuarios implements OnInit, OnDestroy {
       const matchesRole = role === 'TODOS' || u.role === role;
       return matchesQuery && matchesRole;
     });
+    return [...filtered].sort((a, b) => {
+      const roleCompare = (a.role || '').localeCompare(b.role || '');
+      if (roleCompare !== 0) return roleCompare;
+      return (a.name || '').localeCompare(b.name || '');
+    });
   });
 
-  getRoleBadgeClass(role: string): string {
-    const upper = (role || '').toUpperCase();
-    if (upper === 'ADMIN') return 'role-admin';
-    if (upper === 'SUPERVISOR') return 'role-supervisor';
-    if (upper === 'OPERADOR') return 'role-operador';
-    return 'role-default';
-  }
+  getRoleStyle(role: string): Record<string, string> {
+    const upper = (role || '').toUpperCase().trim();
+    if (!upper) {
+      return {
+        '--role-color': '#64748b',
+        '--role-bg': 'rgba(100, 116, 139, 0.12)',
+        '--role-border': 'rgba(100, 116, 139, 0.2)'
+      };
+    }
 
-  /**
-   * Devuelve la clase CSS para la card de usuario según el nombre del rol.
-   */
-  getRoleCardClass(role: string): string {
-    const upper = (role || '').toUpperCase();
-    if (upper === 'ADMIN') return 'admin-card';
-    if (upper === 'SUPERVISOR') return 'supervisor-card';
-    if (upper === 'OPERADOR') return 'operador-card';
-    return '';
+    let hue = 210;
+    let saturation = 65;
+    let lightness = 50;
+
+    if (upper === 'ADMIN') {
+      hue = 211;
+      saturation = 100;
+      lightness = 50;
+    } else if (upper === 'SUPERVISOR') {
+      hue = 258;
+      saturation = 90;
+      lightness = 66;
+    } else if (upper === 'OPERADOR') {
+      hue = 158;
+      saturation = 82;
+      lightness = 47;
+    } else {
+      // Generación determinista para roles personalizados
+      let hash = 0;
+      for (let i = 0; i < upper.length; i++) {
+        hash = upper.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      hue = Math.abs(hash) % 360;
+    }
+
+    return {
+      '--role-color': `hsl(${hue}, ${saturation}%, ${lightness}%)`,
+      '--role-bg': `hsla(${hue}, ${saturation}%, ${lightness}%, 0.12)`,
+      '--role-border': `hsla(${hue}, ${saturation}%, ${lightness}%, 0.2)`
+    };
   }
 
   // Modal States
@@ -296,7 +413,6 @@ export class Usuarios implements OnInit, OnDestroy {
       next: () => {
         this.showToast('Usuario registrado con éxito', 'success');
         this.closeRegisterModal();
-        this.loadUsers();
         this.isSaving.set(false);
       },
       error: (err) => {
@@ -344,7 +460,6 @@ export class Usuarios implements OnInit, OnDestroy {
       next: () => {
         this.showToast('Usuario actualizado con éxito', 'success');
         this.closeEditModal();
-        this.loadUsers();
         this.isSaving.set(false);
       },
       error: (err) => {
@@ -409,7 +524,6 @@ export class Usuarios implements OnInit, OnDestroy {
       next: () => {
         this.showToast('Usuario eliminado con éxito', 'success');
         this.closeDeleteModal();
-        this.loadUsers();
         this.isSaving.set(false);
       },
       error: (err) => {
@@ -446,7 +560,6 @@ export class Usuarios implements OnInit, OnDestroy {
         if (this.selectedRoleForEdit()?.rol_id === rol.rol_id) {
           this.clearRoleSelection();
         }
-        this.permissionsService.loadAllRoles().subscribe();
       },
       error: (err) => {
         console.error('Error deleting role:', err);
@@ -463,66 +576,250 @@ export class Usuarios implements OnInit, OnDestroy {
 
   selectRoleForEdit(rol: BackendRol): void {
     this.selectedRoleForEdit.set(rol);
-    this.rolePermissionsEditing.set(new Set(rol.id_permisos));
+    
+    const currentSet = new Set(rol.id_permisos);
+    let disabledVirtuals: string[] = [];
+    if (rol.descripcion && rol.descripcion.includes(' || disabled:')) {
+      const parts = rol.descripcion.split(' || disabled:');
+      if (parts[1]) {
+        disabledVirtuals = parts[1].split(',').map(s => s.trim().toLowerCase());
+      }
+    }
+
+    const allPerms = this.permissionsService.availablePermissions();
+    disabledVirtuals.forEach(code => {
+      const match = allPerms.find(p => p.codigo.toLowerCase() === code);
+      if (match) {
+        currentSet.delete(match.permiso_id);
+      }
+    });
+
+    this.rolePermissionsEditing.set(currentSet);
   }
 
   isSystemRole(roleName: string): boolean {
     if (!roleName) return false;
     return ['ADMIN', 'SUPERVISOR', 'OPERADOR'].includes(roleName.trim().toUpperCase());
   }
+ 
+  getActivePermissionsCount(rol: BackendRol): number {
+    const rawPerms = rol.id_permisos;
+    if (!rawPerms || rawPerms.length === 0) return 0;
+ 
+    let disabledVirtuals: string[] = [];
+    if (rol.descripcion && rol.descripcion.includes(' || disabled:')) {
+      const parts = rol.descripcion.split(' || disabled:');
+      if (parts[1]) {
+        disabledVirtuals = parts[1].split(',').map(s => s.trim().toLowerCase());
+      }
+    }
+ 
+    const allPerms = this.permissionsService.availablePermissions();
+    let count = 0;
+    rawPerms.forEach(pId => {
+      const match = allPerms.find(p => p.permiso_id === pId);
+      if (match && match.codigo) {
+        if (!disabledVirtuals.includes(match.codigo.toLowerCase())) {
+          count++;
+        }
+      }
+    });
+    return count;
+  }
 
   clearRoleSelection(): void {
     this.selectedRoleForEdit.set(null);
     this.rolePermissionsEditing.set(new Set());
+    this.expandedGroups.set(new Set());
+  }
+
+  isGroupExpanded(resource: string): boolean {
+    return this.expandedGroups().has(resource);
+  }
+
+  toggleGroupExpansion(resource: string): void {
+    this.expandedGroups.update(s => {
+      const next = new Set(s);
+      if (next.has(resource)) {
+        next.delete(resource);
+      } else {
+        next.add(resource);
+      }
+      return next;
+    });
   }
 
   isPermissionSelected(permisoId: string): boolean {
     return this.rolePermissionsEditing().has(permisoId);
   }
 
-  togglePermissionForRole(permisoId: string): void {
+  isListsReadActive(): boolean {
+    const listsReadPerm = this.permissionsService.availablePermissions().find(p => p.codigo === 'lists.read');
+    return listsReadPerm ? this.rolePermissionsEditing().has(listsReadPerm.permiso_id) : false;
+  }
+ 
+  isCamerasReadActive(): boolean {
+    const camerasReadPerm = this.permissionsService.availablePermissions().find(p => p.codigo === 'cameras.read');
+    return camerasReadPerm ? this.rolePermissionsEditing().has(camerasReadPerm.permiso_id) : false;
+  }
+
+  togglePermissionForRole(permisoId: string, isReadPermission: boolean = false, resourcePrefix?: string): void {
     const rol = this.selectedRoleForEdit();
     if (!rol || this.isSystemRole(rol.nombre)) return;
 
     // Calcular el nuevo conjunto de permisos
     const currentPermisos = new Set(this.rolePermissionsEditing());
-    if (currentPermisos.has(permisoId)) {
-      currentPermisos.delete(permisoId);
-    } else {
-      currentPermisos.add(permisoId);
-    }
-    const newPermisos = Array.from(currentPermisos);
+    const isAdding = !currentPermisos.has(permisoId);
 
+    if (isAdding) {
+      currentPermisos.add(permisoId);
+      // Si activamos el permiso de lectura, expandir automáticamente el grupo
+      if (isReadPermission && resourcePrefix) {
+        this.expandedGroups.update(s => {
+          const next = new Set(s);
+          next.add(resourcePrefix);
+          return next;
+        });
+      }
+    } else {
+      currentPermisos.delete(permisoId);
+
+      // Si se desactiva el permiso de consulta (read), se desactivan en cascada todos los demás
+      if (isReadPermission && resourcePrefix) {
+        const rawPermissions = this.permissionsService.availablePermissions();
+        rawPermissions.forEach(p => {
+          if (p.codigo.startsWith(resourcePrefix + '.')) {
+            currentPermisos.delete(p.permiso_id);
+          }
+        });
+
+        // Regla de negocio especial: si se desactiva listas.read, también se desactiva list_details en cascada
+        if (resourcePrefix === 'lists') {
+          rawPermissions.forEach(p => {
+            if (p.codigo.startsWith('list_details.')) {
+              currentPermisos.delete(p.permiso_id);
+            }
+          });
+          // También colapsar list_details en la UI
+          this.expandedGroups.update(s => {
+            const next = new Set(s);
+            next.delete('list_details');
+            return next;
+          });
+        }
+ 
+        // Regla de negocio especial: si se desactiva cameras.read, también se desactiva analytics en cascada
+        if (resourcePrefix === 'cameras') {
+          rawPermissions.forEach(p => {
+            if (p.codigo.startsWith('analytics.')) {
+              currentPermisos.delete(p.permiso_id);
+            }
+          });
+          // También colapsar analytics en la UI
+          this.expandedGroups.update(s => {
+            const next = new Set(s);
+            next.delete('analytics');
+            return next;
+          });
+        }
+
+        // Colapsar el panel en la UI
+        this.expandedGroups.update(s => {
+          const next = new Set(s);
+          next.delete(resourcePrefix);
+          return next;
+        });
+      }
+    }
     // Actualizar el estado local de forma optimista
     this.rolePermissionsEditing.set(currentPermisos);
+
+    // Obtener la descripción limpia (sin metadata de virtuals)
+    let cleanDesc = rol.descripcion || '';
+    if (cleanDesc.includes(' || disabled:')) {
+      cleanDesc = cleanDesc.split(' || disabled:')[0];
+    }
+
+    const allPerms = this.permissionsService.availablePermissions();
+    const usersReadPerm = allPerms.find(p => p.codigo.toLowerCase() === 'users.read');
+    const rolesReadPerm = allPerms.find(p => p.codigo.toLowerCase() === 'roles.read');
+
+    const disabledVirtuals: string[] = [];
+    const physicalPermisos = new Set(currentPermisos);
+
+    if (usersReadPerm) {
+      if (!currentPermisos.has(usersReadPerm.permiso_id)) {
+        disabledVirtuals.push('users.read');
+      }
+      physicalPermisos.add(usersReadPerm.permiso_id);
+    }
+    if (rolesReadPerm) {
+      if (!currentPermisos.has(rolesReadPerm.permiso_id)) {
+        disabledVirtuals.push('roles.read');
+      }
+      physicalPermisos.add(rolesReadPerm.permiso_id);
+    }
+
+    const finalDesc = disabledVirtuals.length > 0
+      ? `${cleanDesc} || disabled:${disabledVirtuals.join(',')}`
+      : cleanDesc;
+
+    const physicalPermisosList = Array.from(physicalPermisos);
 
     // Guardar en el backend inmediatamente en tiempo real
     this.permissionsService.updateRolePermissions(
       rol.rol_id,
       rol.nombre,
-      rol.descripcion,
-      newPermisos
+      finalDesc,
+      physicalPermisosList
     ).subscribe({
       next: () => {
-        this.showToast(`Permiso actualizado con éxito`, 'success');
-        // Recargar la lista global de roles para sincronizar estados
-        this.permissionsService.loadAllRoles().subscribe();
+        this.showToast('Permisos actualizados con éxito', 'success');
+        this.isSavingRole.set(false);
       },
       error: (err) => {
         console.error('Error updating role permission in real-time:', err);
         this.showToast('Error al actualizar el permiso.', 'error');
-        // Revertir el estado local optimista ante un error de red
-        this.rolePermissionsEditing.update(current => {
-          const reverted = new Set(current);
-          if (reverted.has(permisoId)) {
-            reverted.delete(permisoId);
-          } else {
-            reverted.add(permisoId);
-          }
-          return reverted;
-        });
+        // Revertir el estado local en caso de error
+        this.selectRoleForEdit(rol);
       }
     });
+  }
+
+  onHeaderClick(group: any): void {
+    const rol = this.selectedRoleForEdit();
+    if (!rol) return;
+    if (group.resource === 'list_details' && !this.isListsReadActive()) return;
+    if (group.resource === 'analytics' && !this.isCamerasReadActive()) return;
+    this.toggleGroupExpansion(group.resource);
+  }
+
+  getResourceIcon(resource: string): string {
+    const icons: Record<string, string> = {
+      'users': 'icon-usuarios',
+      'roles': 'icon-usuarios',
+      'hosts': 'icon-nodos',
+      'cameras': 'icon-camara',
+      'analytics': 'icon-camara',
+      'schedules': 'icon-horarios',
+      'lists': 'icon-listas',
+      'list_details': 'icon-listas'
+    };
+    return icons[resource] || 'icon-usuarios';
+  }
+
+  getResourceColor(resource: string): string {
+    const colors: Record<string, string> = {
+      'users': '#0d6efd',
+      'roles': '#4f46e5',
+      'hosts': '#10b981',
+      'cameras': '#8b5cf6',
+      'analytics': '#d946ef',
+      'schedules': '#f59e0b',
+      'lists': '#ec4899',
+      'list_details': '#f43f5e'
+    };
+    return colors[resource] || '#64748b';
   }
 
   openCreateRoleModal(): void {
@@ -544,12 +841,18 @@ export class Usuarios implements OnInit, OnDestroy {
     const { nombre, descripcion } = this.createRoleForm.value;
     const permissions: string[] = [];
 
+    // Agregar físicamente los permisos requeridos para inicializar sin bloqueos 403
+    const allPerms = this.permissionsService.availablePermissions();
+    const usersReadPerm = allPerms.find(p => p.codigo.toLowerCase() === 'users.read');
+    const rolesReadPerm = allPerms.find(p => p.codigo.toLowerCase() === 'roles.read');
+    if (usersReadPerm) permissions.push(usersReadPerm.permiso_id);
+    if (rolesReadPerm) permissions.push(rolesReadPerm.permiso_id);
+
     this.permissionsService.createRole(nombre, descripcion, permissions).subscribe({
       next: () => {
         this.showToast('Rol creado con éxito', 'success');
         this.closeCreateRoleModal();
         this.isSaving.set(false);
-        this.permissionsService.loadAllRoles().subscribe();
       },
       error: (err) => {
         console.error('Error creating role:', err);

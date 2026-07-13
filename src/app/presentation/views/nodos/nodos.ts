@@ -11,9 +11,10 @@ import { Subject, Subscription, interval } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { HostService, HostFilterOptions } from '../../../core/services/host.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
+import { PermissionsService } from '../../../core/services/permissions.service';
 import { Host } from '../../../core/domain/entities/host.models';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
-
+ 
 @Component({
   selector: 'app-nodos',
   imports: [CommonModule, ReactiveFormsModule],
@@ -22,6 +23,7 @@ import { copyToClipboard } from '../../../core/utils/clipboard.util';
 })
 export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   public hostService = inject(HostService);
+  public permissionsService = inject(PermissionsService);
   private sidebarService = inject(SidebarService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);

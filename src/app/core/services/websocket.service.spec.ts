@@ -16,6 +16,8 @@ import { PermissionsService } from './permissions.service';
 import { IMetadataRepository } from '../domain/repositories/metadata.repository';
 import { IEventRepository } from '../domain/repositories/event.repository';
 import { IUserRepository } from '../domain/repositories/user.repository';
+import { IScheduleRepository } from '../domain/repositories/schedule.repository';
+import { IListRepository } from '../domain/repositories/list.repository';
 
 describe('WebsocketService Handlers', () => {
   let service: WebsocketService;
@@ -34,6 +36,8 @@ describe('WebsocketService Handlers', () => {
   let metadataRepoSpy: any;
   let eventRepoSpy: any;
   let userRepoSpy: any;
+  let scheduleRepoSpy: any;
+  let listRepoSpy: any;
   let websocketConnectionServiceSpy: any;
 
   beforeEach(() => {
@@ -70,7 +74,10 @@ describe('WebsocketService Handlers', () => {
       isViewActive: vi.fn().mockReturnValue(true),
       markAsNew: vi.fn(),
       markAsUpdated: vi.fn(),
-      markAsDeleting: vi.fn()
+      markAsDeleting: vi.fn(),
+      markAsStatusActive: vi.fn(),
+      markAsStatusInactive: vi.fn(),
+      migrateHostLocal: vi.fn()
     };
 
     analyticServiceSpy = {
@@ -82,7 +89,10 @@ describe('WebsocketService Handlers', () => {
       isViewActive: vi.fn().mockReturnValue(true),
       markAsNew: vi.fn(),
       markAsUpdated: vi.fn(),
-      markAsDeleting: vi.fn()
+      markAsDeleting: vi.fn(),
+      markAsStatusActive: vi.fn(),
+      markAsStatusInactive: vi.fn(),
+      migrateHostLocal: vi.fn()
     };
 
     scheduleServiceSpy = {
@@ -90,10 +100,14 @@ describe('WebsocketService Handlers', () => {
       getAllSchedules: vi.fn().mockReturnValue(of([])),
       updateScheduleStatusLocal: vi.fn(),
       deleteScheduleLocal: vi.fn(),
+      addOrUpdateScheduleLocal: vi.fn(),
       isViewActive: vi.fn().mockReturnValue(true),
       markAsNew: vi.fn(),
       markAsUpdated: vi.fn(),
-      markAsDeleting: vi.fn()
+      markAsDeleting: vi.fn(),
+      markAsStatusActive: vi.fn(),
+      markAsStatusInactive: vi.fn(),
+      migrateHostLocal: vi.fn()
     };
 
     listServiceSpy = {
@@ -104,6 +118,8 @@ describe('WebsocketService Handlers', () => {
       loadListDetails: vi.fn().mockReturnValue(of([])),
       deleteListLocal: vi.fn(),
       deleteSubjectLocal: vi.fn(),
+      addOrUpdateListLocal: vi.fn(),
+      addOrUpdateListDetailLocal: vi.fn(),
       isViewActive: vi.fn().mockReturnValue(true),
       markAsNew: vi.fn(),
       markAsUpdated: vi.fn(),
@@ -120,6 +136,7 @@ describe('WebsocketService Handlers', () => {
       markAsUpdatedRole: vi.fn(),
       markAsDeletingRole: vi.fn(),
       deleteRoleLocal: vi.fn(),
+      addOrUpdateRoleLocal: vi.fn(),
       getRoleById: vi.fn().mockReturnValue(of({ rol_id: 'role-new', nombre: 'NEW_ROLE', descripcion: 'test' })),
       loadAllRoles: vi.fn().mockReturnValue(of(undefined)),
       loadUserPermissions: vi.fn().mockReturnValue(of(undefined))
@@ -154,6 +171,15 @@ describe('WebsocketService Handlers', () => {
       getById: vi.fn().mockReturnValue(of({ id: 'u111', roleId: 'role-new' }))
     };
 
+    scheduleRepoSpy = {
+      getById: vi.fn().mockReturnValue(of({ id: 's111', name: 'Sched 1', hostFingerprint: 'h1' }))
+    };
+
+    listRepoSpy = {
+      getListById: vi.fn().mockReturnValue(of({ list_id: 'l111', name: 'List 1' })),
+      getListDetailById: vi.fn().mockReturnValue(of({ detail_id: 'd111', list_id: 'l111', nombre_asociado: 'Name' }))
+    };
+
     metadataRepoSpy = {
       getById: vi.fn().mockReturnValue(of({ id: 'm123' }))
     };
@@ -182,7 +208,9 @@ describe('WebsocketService Handlers', () => {
         { provide: PermissionsService, useValue: permissionsServiceSpy },
         { provide: IMetadataRepository, useValue: metadataRepoSpy },
         { provide: IEventRepository, useValue: eventRepoSpy },
-        { provide: IUserRepository, useValue: userRepoSpy }
+        { provide: IUserRepository, useValue: userRepoSpy },
+        { provide: IScheduleRepository, useValue: scheduleRepoSpy },
+        { provide: IListRepository, useValue: listRepoSpy }
       ]
     });
 
@@ -295,7 +323,7 @@ describe('WebsocketService Handlers', () => {
     (service as any).handleMessage(payload);
 
     expect(cameraServiceSpy.updateCameraStatusLocal).toHaveBeenCalledWith('cam-xyz', 'online');
-    expect(cameraServiceSpy.markAsUpdated).toHaveBeenCalledWith('cam-xyz');
+    expect(cameraServiceSpy.markAsStatusActive).toHaveBeenCalledWith('cam-xyz');
     expect(cameraServiceSpy.getCamerasByHost).not.toHaveBeenCalled();
   });
 
@@ -349,21 +377,26 @@ describe('WebsocketService Handlers', () => {
     (service as any).handleMessage(payload);
 
     expect(analyticServiceSpy.updateAnalyticStatusLocal).toHaveBeenCalledWith('an-789', 'active');
-    expect(analyticServiceSpy.markAsUpdated).toHaveBeenCalledWith('an-789');
+    expect(analyticServiceSpy.markAsStatusActive).toHaveBeenCalledWith('an-789');
   });
 
-  it('should process "schedule_created" and "schedule_updated" by triggering a schedule refresh if active', () => {
+  it('should process "schedule_created" and "schedule_updated" by fetching individual schedule if active', () => {
     const payload = {
       action: 'schedule_created',
       body: { schedule_id: 'sch-555' }
     };
 
+    const mockSchedule = { id: 'sch-555', name: 'New Sched', hostFingerprint: 'host-123' };
+    scheduleRepoSpy.getById.mockReturnValue(of(mockSchedule));
+
     (service as any).handleMessage(payload);
 
-    expect(scheduleServiceSpy.getAllSchedules).toHaveBeenCalled();
+    expect(scheduleRepoSpy.getById).toHaveBeenCalledWith('sch-555');
+    expect(scheduleServiceSpy.addOrUpdateScheduleLocal).toHaveBeenCalledWith(mockSchedule);
+    expect(scheduleServiceSpy.markAsNew).toHaveBeenCalledWith('sch-555');
   });
 
-  it('should ignore "schedule_created" if schedule view is inactive', () => {
+  it('should ignore visual updates of "schedule_created" if schedule view is inactive', () => {
     scheduleServiceSpy.isViewActive.mockReturnValue(false);
 
     const payload = {
@@ -371,9 +404,13 @@ describe('WebsocketService Handlers', () => {
       body: { schedule_id: 'sch-555' }
     };
 
+    const mockSchedule = { id: 'sch-555', name: 'New Sched', hostFingerprint: 'host-123' };
+    scheduleRepoSpy.getById.mockReturnValue(of(mockSchedule));
+
     (service as any).handleMessage(payload);
 
-    expect(scheduleServiceSpy.getAllSchedules).toHaveBeenCalled();
+    expect(scheduleRepoSpy.getById).toHaveBeenCalledWith('sch-555');
+    expect(scheduleServiceSpy.addOrUpdateScheduleLocal).toHaveBeenCalledWith(mockSchedule);
     expect(scheduleServiceSpy.markAsNew).not.toHaveBeenCalled();
   });
 
@@ -400,21 +437,26 @@ describe('WebsocketService Handlers', () => {
     (service as any).handleMessage(payload);
 
     expect(scheduleServiceSpy.updateScheduleStatusLocal).toHaveBeenCalledWith('sch-555', 'activo');
-    expect(scheduleServiceSpy.markAsUpdated).toHaveBeenCalledWith('sch-555');
+    expect(scheduleServiceSpy.markAsStatusActive).toHaveBeenCalledWith('sch-555');
   });
 
-  it('should process "list_created" and "list_updated" by triggering a list load if active', () => {
+  it('should process "list_created" and "list_updated" by fetching individual list if active', () => {
     const payload = {
       action: 'list_created',
       body: { list_id: 'lst-111' }
     };
 
+    const mockList = { list_id: 'lst-111', name: 'New List' };
+    listRepoSpy.getListById.mockReturnValue(of(mockList));
+
     (service as any).handleMessage(payload);
 
-    expect(listServiceSpy.loadLists).toHaveBeenCalled();
+    expect(listRepoSpy.getListById).toHaveBeenCalledWith('lst-111');
+    expect(listServiceSpy.addOrUpdateListLocal).toHaveBeenCalledWith(mockList);
+    expect(listServiceSpy.markAsNew).toHaveBeenCalledWith('lst-111');
   });
 
-  it('should ignore "list_created" if list view is inactive', () => {
+  it('should ignore visual updates of "list_created" if list view is inactive', () => {
     listServiceSpy.isViewActive.mockReturnValue(false);
 
     const payload = {
@@ -422,9 +464,13 @@ describe('WebsocketService Handlers', () => {
       body: { list_id: 'lst-111' }
     };
 
+    const mockList = { list_id: 'lst-111', name: 'New List' };
+    listRepoSpy.getListById.mockReturnValue(of(mockList));
+
     (service as any).handleMessage(payload);
 
-    expect(listServiceSpy.loadLists).toHaveBeenCalled();
+    expect(listRepoSpy.getListById).toHaveBeenCalledWith('lst-111');
+    expect(listServiceSpy.addOrUpdateListLocal).toHaveBeenCalledWith(mockList);
     expect(listServiceSpy.markAsNew).not.toHaveBeenCalled();
   });
 
@@ -441,20 +487,23 @@ describe('WebsocketService Handlers', () => {
     vi.runAllTimers();
     expect(listServiceSpy.deleteListLocal).toHaveBeenCalledWith('lst-111');
   });
-
-  it('should process "list_detail_created" and "list_detail_updated" by triggering a detail list refresh if active', () => {
+  it('should process "list_detail_created" / "list_detail_updated" by fetching individual detail and syncing active list detail state', () => {
     const payload = {
       action: 'list_detail_created',
       body: { detail_id: 'det-222' }
     };
 
+    const mockDetail = { detail_id: 'det-222', list_id: 'list-999', nombre_asociado: 'Test' };
+    listRepoSpy.getListDetailById.mockReturnValue(of(mockDetail));
+
     (service as any).handleMessage(payload);
 
-    expect(listServiceSpy.activeListId).toHaveBeenCalled();
-    expect(listServiceSpy.loadListDetails).toHaveBeenCalledWith('list-999');
+    expect(listRepoSpy.getListDetailById).toHaveBeenCalledWith('det-222');
+    expect(listServiceSpy.addOrUpdateListDetailLocal).toHaveBeenCalledWith(mockDetail);
+    expect(listServiceSpy.markAsNew).toHaveBeenCalledWith('det-222');
   });
 
-  it('should ignore "list_detail_created" if view is inactive', () => {
+  it('should ignore visual updates of "list_detail_created" if view is inactive', () => {
     listServiceSpy.isViewActive.mockReturnValue(false);
 
     const payload = {
@@ -462,9 +511,13 @@ describe('WebsocketService Handlers', () => {
       body: { detail_id: 'det-222' }
     };
 
+    const mockDetail = { detail_id: 'det-222', list_id: 'list-999', nombre_asociado: 'Test' };
+    listRepoSpy.getListDetailById.mockReturnValue(of(mockDetail));
+
     (service as any).handleMessage(payload);
 
-    expect(listServiceSpy.loadListDetails).toHaveBeenCalledWith('list-999');
+    expect(listRepoSpy.getListDetailById).toHaveBeenCalledWith('det-222');
+    expect(listServiceSpy.addOrUpdateListDetailLocal).toHaveBeenCalledWith(mockDetail);
     expect(listServiceSpy.markAsNew).not.toHaveBeenCalled();
   });
 
@@ -515,6 +568,8 @@ describe('WebsocketService Handlers', () => {
 
   it('should process "role_updated" and sync permissions if role matches', () => {
     authServiceSpy.currentUser.mockReturnValue({ id: 'u111', roleId: 'role-match' });
+    const mockRole = { rol_id: 'role-match', nombre: 'ROLE_MATCH', id_permisos: [] };
+    permissionsServiceSpy.getRoleById.mockReturnValue(of(mockRole));
 
     const payload = {
       action: 'role_updated',
@@ -523,7 +578,8 @@ describe('WebsocketService Handlers', () => {
 
     (service as any).handleMessage(payload);
 
-    expect(permissionsServiceSpy.loadAllRoles).toHaveBeenCalled();
+    expect(permissionsServiceSpy.getRoleById).toHaveBeenCalledWith('role-match');
+    expect(permissionsServiceSpy.addOrUpdateRoleLocal).toHaveBeenCalledWith(mockRole);
     expect(permissionsServiceSpy.loadUserPermissions).toHaveBeenCalledWith('role-match');
   });
 
@@ -543,6 +599,9 @@ describe('WebsocketService Handlers', () => {
   });
 
   it('should process "role_created" and add to roles list in memory', () => {
+    const mockRole = { rol_id: 'r555', nombre: 'R555', id_permisos: [] };
+    permissionsServiceSpy.getRoleById.mockReturnValue(of(mockRole));
+
     const payload = {
       action: 'role_created',
       body: { rol_id: 'r555' }
@@ -550,11 +609,13 @@ describe('WebsocketService Handlers', () => {
 
     (service as any).handleMessage(payload);
 
-    expect(permissionsServiceSpy.loadAllRoles).toHaveBeenCalled();
+    expect(permissionsServiceSpy.getRoleById).toHaveBeenCalledWith('r555');
+    expect(permissionsServiceSpy.addOrUpdateRoleLocal).toHaveBeenCalledWith(mockRole);
     expect(permissionsServiceSpy.markAsNewRole).toHaveBeenCalledWith('r555');
   });
 
-  it('should process "host_migrated" locally in memory', () => {
+  it('should process "host_migrated" instantly in memory if active view fingerprint is not source host', () => {
+    cameraServiceSpy.activeHostFingerprint.mockReturnValue('other-host');
     const payload = {
       action: 'host_migrated',
       body: { old_fingerprint: 'fp-old', new_fingerprint: 'fp-new' }
@@ -563,7 +624,55 @@ describe('WebsocketService Handlers', () => {
     (service as any).handleMessage(payload);
 
     expect(hostServiceSpy.migrateHostLocal).toHaveBeenCalledWith('fp-old', 'fp-new');
+    expect(cameraServiceSpy.migrateHostLocal).toHaveBeenCalledWith('fp-old', 'fp-new');
+    expect(analyticServiceSpy.migrateHostLocal).toHaveBeenCalledWith('fp-old', 'fp-new');
+    expect(scheduleServiceSpy.migrateHostLocal).toHaveBeenCalledWith('fp-old', 'fp-new');
     expect(hostServiceSpy.markAsUpdatedHost).toHaveBeenCalledWith('fp-new');
+  });
+
+  it('should delay local "host_migrated" migration if active view fingerprint is source host to allow exit animation', () => {
+    cameraServiceSpy.activeHostFingerprint.mockReturnValue('fp-old');
+    cameraServiceSpy.cameras.mockReturnValue([{ id: 'c1', hostFingerprint: 'fp-old' }]);
+    analyticServiceSpy.analytics.mockReturnValue([{ id: 'a1', hostFingerprint: 'fp-old' }]);
+
+    const payload = {
+      action: 'host_migrated',
+      body: { old_fingerprint: 'fp-old', new_fingerprint: 'fp-new' }
+    };
+
+    (service as any).handleMessage(payload);
+
+    // Should mark as deleting first
+    expect(cameraServiceSpy.markAsDeleting).toHaveBeenCalledWith('c1');
+    expect(analyticServiceSpy.markAsDeleting).toHaveBeenCalledWith('a1');
+
+    // Should NOT have run migration methods yet
+    expect(hostServiceSpy.migrateHostLocal).not.toHaveBeenCalled();
+
+    // Fast-forward timers
+    vi.runAllTimers();
+
+    // Now should run migration methods
+    expect(hostServiceSpy.migrateHostLocal).toHaveBeenCalledWith('fp-old', 'fp-new');
+    expect(cameraServiceSpy.migrateHostLocal).toHaveBeenCalledWith('fp-old', 'fp-new');
+    expect(analyticServiceSpy.migrateHostLocal).toHaveBeenCalledWith('fp-old', 'fp-new');
+    expect(scheduleServiceSpy.migrateHostLocal).toHaveBeenCalledWith('fp-old', 'fp-new');
+    expect(hostServiceSpy.markAsUpdatedHost).toHaveBeenCalledWith('fp-new');
+  });
+
+  it('should trigger animated refresh of destination host elements on "host_migrated" if destination host is active', () => {
+    cameraServiceSpy.activeHostFingerprint.mockReturnValue('fp-new');
+
+    const payload = {
+      action: 'host_migrated',
+      body: { old_fingerprint: 'fp-old', new_fingerprint: 'fp-new' }
+    };
+
+    (service as any).handleMessage(payload);
+
+    expect(cameraServiceSpy.getCamerasByHost).toHaveBeenCalledWith('fp-new', true);
+    expect(analyticServiceSpy.getAnalyticsByHost).toHaveBeenCalledWith('fp-new', true);
+    expect(scheduleServiceSpy.getAllSchedules).toHaveBeenCalled();
   });
 
   it('should process "host_deleted" using transitions in memory', () => {

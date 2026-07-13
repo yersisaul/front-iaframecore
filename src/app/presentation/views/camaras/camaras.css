@@ -496,6 +496,11 @@ code.code-badge {
   overflow: visible !important;
 }
 
+.ai-control-card-wrapper.dropdown-open {
+  position: relative !important;
+  z-index: 50 !important;
+}
+
 .ai-control-card-wrapper.expanded .analytic-details-expanded {
   overflow: visible !important;
 }
@@ -3467,4 +3472,76 @@ code.code-badge {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.btn-delete-host {
+  background-color: rgba(239, 68, 68, 0.06) !important;
+  border: 1px solid rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+  border-radius: 99px !important;
+  padding: 12px 18px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.btn-delete-host:hover {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.24) !important;
+  transform: translateY(-1.5px) !important;
+}
+
+.btn-delete-host:active {
+  transform: translateY(-0.5px) !important;
+}
+
+.host-page--deleting {
+  animation: hostDeletedPageCollapse 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  pointer-events: none !important;
+}
+
+@keyframes hostDeletedPageCollapse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Analytic Status Pills (Camaras List View Column)
+   ═══════════════════════════════════════════════════════════ */
+.analytic-status-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  border: 1.5px solid transparent;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.analytic-status-pill--active {
+  background-color: var(--color-online-bg, rgba(16, 185, 129, 0.1));
+  color: var(--color-online, #10b981);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.analytic-status-pill--inactive {
+  background-color: var(--bg-primary, rgba(100, 116, 139, 0.08));
+  color: var(--text-secondary, #64748b);
+  border-color: var(--border-color, rgba(100, 116, 139, 0.15));
 }

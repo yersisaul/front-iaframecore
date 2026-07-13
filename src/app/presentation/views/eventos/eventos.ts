@@ -174,11 +174,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnInit(): void {
-    // Check permission to view Events
-    if (!this.permissionsService.hasPermission('Eventos', 'ver')) {
-      this.router.navigate(['/dashboard']);
-      return;
-    }
+    this.eventService.isViewActive.set(true);
 
     // Handle initialization from route parameters
     this.route.queryParams.pipe(
@@ -226,6 +222,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnDestroy(): void {
+    this.eventService.isViewActive.set(false);
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }

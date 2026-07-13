@@ -16,6 +16,8 @@ export class AnalyticService {
   readonly newRecordIds = signal<Set<string>>(new Set());
   readonly updatedRecordIds = signal<Set<string>>(new Set());
   readonly deletingRecordIds = signal<Set<string>>(new Set());
+  readonly activeStatusIds = signal<Set<string>>(new Set());
+  readonly inactiveStatusIds = signal<Set<string>>(new Set());
 
   markAsNew(id: string): void {
     this.newRecordIds.update(s => new Set([...s, id]));
@@ -38,15 +40,37 @@ export class AnalyticService {
     }, 1000);
   }
 
+  markAsStatusActive(id: string): void {
+    this.activeStatusIds.update(s => new Set([...s, id]));
+    setTimeout(() => {
+      this.activeStatusIds.update(s => { const next = new Set(s); next.delete(id); return next; });
+    }, 1200);
+  }
+
+  markAsStatusInactive(id: string): void {
+    this.inactiveStatusIds.update(s => new Set([...s, id]));
+    setTimeout(() => {
+      this.inactiveStatusIds.update(s => { const next = new Set(s); next.delete(id); return next; });
+    }, 1200);
+  }
+
   constructor(private analyticRepository: IAnalyticRepository) { }
 
-  getAnalyticsByHost(hostFingerprint: string): Observable<Analytic[]> {
+  getAnalyticsByHost(hostFingerprint: string, animateNew = false): Observable<Analytic[]> {
     this.isLoading.set(true);
     this.activeHostFingerprint.set(hostFingerprint);
+    const oldIds = new Set(this.analytics().map(a => a.id));
     return this.analyticRepository.getByHost(hostFingerprint).pipe(
       tap(analytics => {
         this.analytics.set(analytics);
         this.isLoading.set(false);
+        if (animateNew) {
+          analytics.forEach(a => {
+            if (!oldIds.has(a.id)) {
+              this.markAsNew(a.id);
+            }
+          });
+        }
       }),
       catchError(() => {
         this.analytics.set([]);
@@ -86,5 +110,14 @@ export class AnalyticService {
 
   deleteAnalyticLocal(analyticId: string): void {
     this.analytics.update(list => list.filter(a => a.id !== analyticId));
+  }
+
+  migrateHostLocal(oldFingerprint: string, newFingerprint: string): void {
+    if (this.activeHostFingerprint() === oldFingerprint) {
+      this.activeHostFingerprint.set(newFingerprint);
+    }
+    this.analytics.update(list =>
+      list.map(a => a.hostFingerprint === oldFingerprint ? { ...a, hostFingerprint: newFingerprint } : a)
+    );
   }
 }

@@ -57,16 +57,8 @@
 }
 
 /* Role-specific highlights */
-.user-card.admin-card {
-  border-left: 4px solid var(--primary, #0d6efd);
-}
-
-.user-card.supervisor-card {
-  border-left: 4px solid #8b5cf6;
-}
-
-.user-card.operador-card {
-  border-left: 4px solid #10b981;
+.user-card {
+  border-left: 4px solid var(--role-color, var(--border-color)) !important;
 }
 
 /* AVATAR */
@@ -74,27 +66,9 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background-color: var(--border-color);
-  color: var(--text-secondary);
-  border: 2px solid transparent;
-}
-
-.admin-card .avatar-initials-wrap {
-  background-color: rgba(13, 110, 253, 0.1);
-  color: var(--primary, #0d6efd);
-  border-color: rgba(13, 110, 253, 0.2);
-}
-
-.supervisor-card .avatar-initials-wrap {
-  background-color: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
-  border-color: rgba(139, 92, 246, 0.2);
-}
-
-.operador-card .avatar-initials-wrap {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-  border-color: rgba(16, 185, 129, 0.2);
+  background-color: var(--role-bg, var(--border-color));
+  color: var(--role-color, var(--text-secondary));
+  border: 2px solid var(--role-border, transparent);
 }
 
 .user-name {
@@ -109,21 +83,8 @@
   border-radius: 20px;
   font-weight: 700;
   letter-spacing: 0.05em;
-}
-
-.role-badge.role-admin {
-  background-color: rgba(13, 110, 253, 0.15);
-  color: var(--primary, #0d6efd);
-}
-
-.role-badge.role-supervisor {
-  background-color: rgba(139, 92, 246, 0.15);
-  color: #8b5cf6;
-}
-
-.role-badge.role-operador {
-  background-color: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  background-color: var(--role-bg, rgba(100, 116, 139, 0.15));
+  color: var(--role-color, var(--text-secondary));
 }
 
 /* USER INFO */
@@ -1387,5 +1348,59 @@ input:checked + .switch-slider:before {
 .user-card--deleting, .role-card--deleting {
   animation: cardDeletedCollapse 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   pointer-events: none !important;
+}
+
+/* GRUPOS DE PERMISOS JERÁRQUICOS (DISEÑO PLANO PREMIUM) */
+.permissions-groups-container {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-card, #ffffff);
+  width: 100%;
+}
+
+.permission-group-row {
+  border-bottom: none !important;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.permission-group-row:hover {
+  background-color: var(--bg-filter-dropdown-item-hover, rgba(13, 110, 253, 0.04)) !important;
+}
+
+.permission-group-children {
+  display: flex;
+  flex-direction: column;
+  animation: slideDownChildren 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.permission-child-row {
+  border-bottom: none !important;
+  background-color: var(--bg-card, #ffffff);
+  transition: background-color 0.2s ease-in-out;
+}
+
+.permission-child-row:hover {
+  background-color: var(--bg-header-light, #f8fafc) !important;
+}
+
+.permission-code-badge {
+  font-family: var(--font-monospace, monospace);
+  font-size: 0.72rem;
+  background-color: var(--bg-header-light, #f8fafc);
+  color: var(--text-secondary, #475569);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+@keyframes slideDownChildren {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 

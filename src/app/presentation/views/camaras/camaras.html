@@ -1,4 +1,4 @@
-<div class="nodos-container container-fluid py-4 position-relative">
+<div class="nodos-container container-fluid py-4 position-relative" [class.host-page--deleting]="isHostDeleting()">
 
   <!-- ══════════════════════════════════════════════════════
        CABECERA — 2 FILAS (Mismo formato que Nodos)
@@ -8,32 +8,47 @@
     <!-- ─── FILA 1: Identidad + Controles principales ─── -->
     <div class="header-row-top d-flex align-items-center justify-content-between gap-3">
 
-      <!-- IZQUIERDA: Botón volver + Identidad de página -->
+      <!-- IZQUIERDA: Botón volver/sidebar + Identidad de página -->
       <div class="d-flex align-items-center gap-3">
-
-        <!-- Botón de volver a Nodos (sin cambios) -->
+        @if (hostId()) {
+        <!-- Botón de volver a Nodos -->
         <a routerLink="/dashboard/nodos"
           class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
           aria-label="Volver a Nodos" title="Volver a Nodos">
           <span class="icon-svg icon-chevron-left" style="width: 24px; height: 24px;"></span>
         </a>
+        } @else {
+        <!-- Botón de Collapse Sidebar -->
+        <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
+          (click)="toggleSidebar()" aria-label="Toggle Sidebar">
+          @if (isSidebarCollapsed()) {
+          <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
+          } @else {
+          <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
+          }
+        </button>
+        }
 
         <!-- Bloque de identidad: título + subtítulo -->
         <div class="header-identity">
           <h2 class="fw-bold mb-0 header-page-title">
+            @if (hostId()) {
             Cámaras del Nodo{{ currentHost()?.hostname ? ' "' + currentHost()?.hostname + '"' : '' }}
+            } @else {
+            Todas las Cámaras
+            }
           </h2>
           <p class="text-muted mb-0 header-page-subtitle mt-1">
-            Se encontraron <span class="fw-semibold text-primary">{{ filteredCameras().length }}</span> cámaras en este
-            nodo.
+            Se encontraron <span class="fw-semibold text-primary">{{ filteredCameras().length }}</span> cámaras
+            @if (hostId()) { en este nodo. } @else { en el sistema. }
           </p>
         </div>
       </div>
 
-      <!-- DERECHA: Botón Horarios + Tabs de vista + Separador + Botón Licencia -->
+      <!-- DERECHA: Acciones (Modo Nodo) o Buscador/Filtros (Modo Global) -->
       <div class="d-flex align-items-center gap-3">
 
-
+        @if (hostId()) {
         <!-- Tabs de Vista (Tarjetas / Lista) -->
         <div class="view-tabs-group d-flex align-items-center gap-1">
           <button class="btn-premium-tab" [class.active]="viewMode() === 'cards'" (click)="setViewMode('cards')">
@@ -56,22 +71,74 @@
         </button>
         }
 
+        @if (permissionsService.hasPermission('Hosts', 'eliminar')) {
+        <button class="btn-delete-host ms-2" (click)="openDeleteHostModal()">
+          <span class="icon-svg icon-trash" style="width: 15px; height: 15px;"></span>
+          <span>Eliminar Nodo</span>
+        </button>
+        }
+        } @else {
+        <!-- Tabs de Vista (Tarjetas / Lista) -->
+        <div class="view-tabs-group d-flex align-items-center gap-1">
+          <button class="btn-premium-tab" [class.active]="viewMode() === 'cards'" (click)="setViewMode('cards')">
+            <span class="icon-svg icon-grid" style="width: 14px; height: 14px;"></span>
+            <span>Tarjetas</span>
+          </button>
+          <button class="btn-premium-tab" [class.active]="viewMode() === 'list'" (click)="setViewMode('list')">
+            <span class="icon-svg icon-list" style="width: 14px; height: 14px;"></span>
+            <span>Lista</span>
+          </button>
+        </div>
+
+        <div class="header-separator"></div>
+
+        <!-- Barra de Búsqueda + Botón de Filtros -->
+        <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
+          <div class="search-input-wrapper d-flex align-items-center flex-grow-1">
+            <span class="icon-svg icon-search search-icon-prefix text-muted flex-shrink-0"
+              style="width: 18px; height: 18px; opacity: 0.5;"></span>
+            <input type="text" [formControl]="searchControl" placeholder="Buscar cámara..."
+              class="search-input-control border-0 ms-2" style="outline: none; flex: 1; min-width: 0;" />
+          </div>
+          <button
+            class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
+            (click)="toggleFilterPanel()" [class.active]="hasActiveFilters()" [class.open]="showFilterPanel()"
+            title="Filtros avanzados" aria-label="Filtros avanzados">
+            <span class="icon-svg icon-filter filter-icon"></span>
+            @if (hasActiveFilters()) {
+            <span class="active-badge-dot"></span>
+            }
+          </button>
+        </div>
+
+        <!-- Selector de Cámaras por Página -->
+        <div class="d-flex align-items-center gap-2">
+          <label for="cam-limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Cámaras/Pág:</label>
+          <select id="cam-limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
+            (change)="onLimitChange($event)">
+            @for (opt of limitOptions(); track $index) {
+            <option [value]="opt" [selected]="limit() === opt">{{ opt }}</option>
+            }
+          </select>
+        </div>
+        }
+
       </div>
     </div>
     <!-- /FILA 1 -->
 
-    <!-- ─── FILA 2: Búsqueda + Paginación ─── -->
+    <!-- ─── FILA 2: Búsqueda + Paginación (Solo en Modo Nodo) ─── -->
+    @if (hostId()) {
     <div class="header-row-bottom d-flex align-items-center gap-3 mt-3">
 
       <!-- Barra de Búsqueda + Botón de Filtros -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
-        <!-- Input wrapper ocupa todo el espacio libre, empujando el filtro al extremo -->
         <div class="search-input-wrapper d-flex align-items-center flex-grow-1">
-          <span class="icon-svg icon-search search-icon-prefix text-muted flex-shrink-0" style="width: 18px; height: 18px; opacity: 0.5;"></span>
+          <span class="icon-svg icon-search search-icon-prefix text-muted flex-shrink-0"
+            style="width: 18px; height: 18px; opacity: 0.5;"></span>
           <input type="text" [formControl]="searchControl" placeholder="Buscar cámara..."
             class="search-input-control border-0 ms-2" style="outline: none; flex: 1; min-width: 0;" />
         </div>
-        <!-- Botón filtro al extremo derecho del searchbar -->
         <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
           (click)="toggleFilterPanel()" [class.active]="hasActiveFilters()" [class.open]="showFilterPanel()"
           title="Filtros avanzados" aria-label="Filtros avanzados">
@@ -97,6 +164,7 @@
       </div>
 
     </div>
+    }
     <!-- /FILA 2 -->
 
   </div>
@@ -275,7 +343,8 @@
   @if (!isLoading() && filteredCameras().length === 0) {
   <div class="card border-0 shadow-sm rounded-3 p-5 text-center mb-4 bg-card">
     <div class="py-4">
-      <span class="icon-svg icon-camara text-muted" style="width: 48px; height: 48px; opacity: 0.5; margin-bottom: 1rem;"></span>
+      <span class="icon-svg icon-camara text-muted"
+        style="width: 48px; height: 48px; opacity: 0.5; margin-bottom: 1rem;"></span>
       <h5 class="fw-bold">No se encontraron cámaras</h5>
       <p class="text-muted">
         @if (cameras().length === 0) {
@@ -296,7 +365,9 @@
     <div class="card host-card h-100" [class.is-active]="isCameraOnline(camera)"
       [class.card-crud-new]="cameraNewIds().has(camera.id)"
       [class.card-crud-updated]="cameraUpdatedIds().has(camera.id)"
-      [class.card-crud-deleting]="cameraDeletingIds().has(camera.id)" (click)="openAiPanel(camera)">
+      [class.card-crud-deleting]="cameraDeletingIds().has(camera.id)"
+      [class.card-crud-status-active]="cameraActiveStatusIds().has(camera.id)"
+      [class.card-crud-status-inactive]="cameraInactiveStatusIds().has(camera.id)" (click)="openAiPanel(camera)">
       <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
         <div>
           <!-- Cabecera: Icono + Nombre + Decoder + Estado -->
@@ -392,13 +463,16 @@
             <th scope="col">STREAM</th>
             <th scope="col">DECODIFICADOR</th>
             <th scope="col">COORDENADAS</th>
+            <th scope="col" class="pe-3">SISTEMAS DE IA</th>
           </tr>
         </thead>
         <tbody>
           @for (camera of pagedCameras(); track camera.id) {
           <tr class="nm-table-tr align-middle" [class.card-crud-new]="cameraNewIds().has(camera.id)"
             [class.card-crud-updated]="cameraUpdatedIds().has(camera.id)"
-            [class.card-crud-deleting]="cameraDeletingIds().has(camera.id)" (click)="openAiPanel(camera)">
+            [class.card-crud-deleting]="cameraDeletingIds().has(camera.id)"
+            [class.card-crud-status-active]="cameraActiveStatusIds().has(camera.id)"
+            [class.card-crud-status-inactive]="cameraInactiveStatusIds().has(camera.id)" (click)="openAiPanel(camera)">
             <!-- Estado -->
             <td class="ps-3">
               <span class="d-inline-flex align-items-center gap-2">
@@ -412,7 +486,8 @@
             <!-- Nombre -->
             <td>
               <div class="camera-name-marquee-container">
-                <span class="camera-name-marquee-text fw-bold text-body" style="font-size: 0.88rem;">{{ camera.name }}</span>
+                <span class="camera-name-marquee-text fw-bold text-body" style="font-size: 0.88rem;">{{ camera.name
+                  }}</span>
               </div>
             </td>
             <!-- Nodo / Host -->
@@ -451,6 +526,26 @@
                 <span class="font-monospace">{{ camera.location.lat | number:'1.1-2' }}, {{ camera.location.lon |
                   number:'1.1-2' }}</span>
               </a>
+            </td>
+            <!-- Analíticas de IA -->
+            <td class="pe-3" (click)="$event.stopPropagation()">
+              <div class="d-flex flex-wrap gap-1.5 align-items-center">
+                @if (getAnalyticsForCamera(camera.id); as cameraAnalytics) {
+                  @if (cameraAnalytics.length > 0) {
+                    @for (analytic of cameraAnalytics; track analytic.id) {
+                      <span class="analytic-status-pill text-capitalize"
+                        [class.analytic-status-pill--active]="analytic.status === 'active' || analytic.status === 'online'"
+                        [class.analytic-status-pill--inactive]="analytic.status !== 'active' && analytic.status !== 'online'"
+                        [title]="getAnalyticLabel(analytic.type)">
+                        <span class="pill-dot" style="width: 5px; height: 5px; border-radius: 50%; display: inline-block; background-color: currentColor; margin-right: 6px;"></span>
+                        {{ getAnalyticLabel(analytic.type) }}
+                      </span>
+                    }
+                  } @else {
+                    <span class="text-muted small font-monospace" style="font-size: 0.8rem; opacity: 0.6;">Ninguna</span>
+                  }
+                }
+              </div>
             </td>
           </tr>
           }
@@ -508,48 +603,39 @@
   <!-- Drawer Lateral Derecho -->
   <div class="right-drawer" [class.open]="showAiPanel()">
     <div class="drawer-content p-4 h-100 d-flex flex-column justify-content-between">
-      @if (selectedCamera(); as camera) {
+      @if (activeCamera(); as camera) {
       <div class="drawer-scroll-area">
-        <!-- Cabecera del Drawer -->
-        <div class="d-flex justify-content-between align-items-start mb-4 pb-3">
-          <div class="d-flex align-items-center gap-3 w-100 me-2" style="min-width: 0;">
-            <span class="icon-svg icon-camara drawer-header-icon" style="width: 28px; height: 28px; flex-shrink: 0; color: var(--primary);"></span>
-            <div style="min-width: 0; flex: 1;">
-              <h5 class="fw-bold mb-0 text-truncate" style="font-size: 1.15rem;" [title]="camera.name">
-                {{ camera.name }}
-              </h5>
-              <p class="text-muted small mb-0 mt-1 d-flex align-items-center gap-2">
-                <span>ID:</span>
-                <code class="code-badge text-truncate" style="max-width: 250px;" [title]="camera.id">
-                  {{ camera.id }}
-                </code>
-              </p>
-            </div>
+        <!-- Cabecera del Drawer (Estilo Consistente) -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-uppercase fw-bold text-muted"
+              style="font-size: 0.72rem; letter-spacing: 0.08em;">Información de Cámara</span>
+          </div>
 
-            <!-- Grupo de Acciones (Editar / Eliminar) - visible solo cuando no se está editando -->
+          <div class="d-flex align-items-center gap-2">
             @if (!isEditingCamera()) {
-            <div class="camera-action-btn-group d-flex align-items-center gap-1 flex-shrink-0">
-              <!-- Botón Editar -->
+            <div class="d-flex align-items-center gap-1">
               @if (permissionsService.hasPermission('Cámaras', 'editar')) {
-              <button class="cam-icon-btn cam-icon-btn-edit d-flex align-items-center justify-content-center"
-                (click)="startEditingCamera(camera)" title="Editar Información" aria-label="Editar cámara">
-                <span class="icon-svg icon-edit" style="width: 15px; height: 15px;"></span>
+              <button class="btn-ghost d-flex align-items-center justify-content-center"
+                style="width: 32px; height: 32px; border-radius: 50%;" (click)="startEditingCamera(camera)"
+                title="Editar Información">
+                <span class="icon-svg icon-edit" style="width: 14px; height: 14px;"></span>
               </button>
               }
-              <!-- Botón Eliminar -->
               @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
-              <button class="cam-icon-btn cam-icon-btn-delete d-flex align-items-center justify-content-center"
-                (click)="openDeleteModal(camera)" title="Eliminar Cámara" aria-label="Eliminar cámara">
-                <span class="icon-svg icon-trash" style="width: 15px; height: 15px;"></span>
+              <button class="btn-ghost d-flex align-items-center justify-content-center text-danger"
+                style="width: 32px; height: 32px; border-radius: 50%;" (click)="openDeleteModal(camera)"
+                title="Eliminar Cámara">
+                <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
               </button>
               }
             </div>
             }
+            <button class="btn-ghost close-drawer-btn d-flex align-items-center justify-content-center"
+              style="width: 32px; height: 32px; border-radius: 50%;" (click)="closeAiPanel()" aria-label="Cerrar panel">
+              <span class="icon-svg icon-close text-muted" style="width: 16px; height: 16px;"></span>
+            </button>
           </div>
-
-          <button class="btn-ghost close-drawer-btn flex-shrink-0" (click)="closeAiPanel()" aria-label="Cerrar panel">
-            <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
-          </button>
         </div>
 
         @if (isEditingCamera()) {
@@ -601,19 +687,68 @@
           </div>
         </div>
         } @else {
-        <!-- Información Rápida del Dispositivo -->
-        <div class="quick-device-info p-3 rounded-3 border mb-4 bg-light-translucent">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 0.05em;">LATITUD</span>
-            <span class="text-body fw-medium" style="font-size: 0.8rem;">
-              {{ camera.location.lat }}
-            </span>
+        <!-- Tarjeta de Información de la Cámara (Cohesiva con el Sistema) -->
+        <div class="card p-3 mb-4"
+          style="background-color: var(--bg-card); border: 1px solid var(--border-color); box-shadow: var(--card-shadow); border-radius: var(--radius-lg);">
+          <!-- Fila Superior: Icono de Cámara, Nombre y Estado -->
+          <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center justify-content-center rounded-circle border"
+              [style.border-color]="isCameraOnline(camera) ? 'var(--color-online)' : 'var(--border-color)'"
+              [style.color]="isCameraOnline(camera) ? 'var(--color-online)' : 'var(--text-secondary)'"
+              [style.background-color]="isCameraOnline(camera) ? 'var(--color-online-bg)' : 'var(--bg-primary)'"
+              style="width: 38px; height: 38px; flex-shrink: 0; border-width: 1.5px !important; border-radius: 50%;">
+              <span class="icon-svg icon-camara"
+                style="width: 18px; height: 18px; color: inherit; background-color: currentColor;"></span>
+            </div>
+
+            <div class="overflow-hidden" style="flex: 1;">
+              <div class="d-flex align-items-center gap-2">
+                <h5 class="fw-bold mb-0 text-truncate text-body" style="font-size: 1.05rem;" [title]="camera.name">
+                  {{ camera.name }}
+                </h5>
+              </div>
+            </div>
           </div>
-          <div class="d-flex justify-content-between align-items-center">
-            <span class="text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 0.05em;">LONGITUD</span>
-            <span class="text-body fw-medium" style="font-size: 0.8rem;">
-              {{ camera.location.lon }}
-            </span>
+
+          <!-- Fila de Detalles Técnicos en Lista (Idéntico a Nodos) -->
+          <div class="specs-list d-flex flex-column gap-1">
+            <div class="spec-row" [class.copied-flash]="copiedRowId() === camera.id + '-drawer-id'"
+              (click)="copyRowContent(camera.id, camera.id + '-drawer-id'); $event.stopPropagation()">
+              <span class="spec-lbl">Camera ID</span>
+              @if (copiedRowId() === camera.id + '-drawer-id') {
+              <span class="copied-badge text-success fw-bold ms-auto"
+                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              } @else {
+              <span
+                class="spec-val font-monospace text-truncate text-end d-flex align-items-center justify-content-end gap-1.5 w-100">
+                {{ camera.id }}
+              </span>
+              }
+            </div>
+            <div class="spec-row" [class.copied-flash]="copiedRowId() === camera.id + '-drawer-lat'"
+              (click)="copyRowContent((camera.location.lat || 0).toString(), camera.id + '-drawer-lat'); $event.stopPropagation()">
+              <span class="spec-lbl">Latitud</span>
+              @if (copiedRowId() === camera.id + '-drawer-lat') {
+              <span class="copied-badge text-success fw-bold ms-auto"
+                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-truncate text-end w-100">
+                {{ camera.location.lat || '0.0' }}
+              </span>
+              }
+            </div>
+            <div class="spec-row" [class.copied-flash]="copiedRowId() === camera.id + '-drawer-lon'"
+              (click)="copyRowContent((camera.location.lon || 0).toString(), camera.id + '-drawer-lon'); $event.stopPropagation()">
+              <span class="spec-lbl">Longitud</span>
+              @if (copiedRowId() === camera.id + '-drawer-lon') {
+              <span class="copied-badge text-success fw-bold ms-auto"
+                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-truncate text-end w-100">
+                {{ camera.location.lon || '0.0' }}
+              </span>
+              }
+            </div>
           </div>
         </div>
         }
@@ -633,9 +768,12 @@
             @for (analytic of getAnalyticsForCamera(camera.id); track analytic.id) {
             <div class="ai-control-card-wrapper mb-2" [class.ai-active]="analytic.status === 'active'"
               [class.expanded]="isAnalyticDetailsExpanded(analytic.id)"
+              [class.dropdown-open]="activeAddScheduleDropdown() === analytic.id"
               [class.card-crud-new]="analyticNewIds().has(analytic.id)"
               [class.card-crud-updated]="analyticUpdatedIds().has(analytic.id)"
-              [class.card-crud-deleting]="analyticDeletingIds().has(analytic.id)">
+              [class.card-crud-deleting]="analyticDeletingIds().has(analytic.id)"
+              [class.card-crud-status-active]="analyticActiveStatusIds().has(analytic.id)"
+              [class.card-crud-status-inactive]="analyticInactiveStatusIds().has(analytic.id)">
               <div class="ai-control-header" (click)="toggleAnalyticDetails(analytic.id)">
                 <div class="d-flex align-items-center gap-3">
                   <span class="analytic-color-dot shadow-sm"
@@ -671,7 +809,8 @@
                   <!-- Chevron decorativo para indicar expansión -->
                   <div class="btn-toggle-details transition-all d-flex align-items-center justify-content-center"
                     [class.open]="isAnalyticDetailsExpanded(analytic.id)">
-                    <span class="icon-svg icon-chevron-down" style="width: 14px; height: 14px; transition: transform 0.2s ease;"></span>
+                    <span class="icon-svg icon-chevron-down"
+                      style="width: 14px; height: 14px; transition: transform 0.2s ease;"></span>
                   </div>
                 </div>
               </div>
@@ -684,8 +823,9 @@
                   <!-- Tarjeta de Horario estilo Bento -->
                   <div class="schedule-bento-card" [class]="'freq-' + sched.frequency"
                     [class.schedule-bento-card--desactivado]="sched.status !== 'activo'"
-                    (click)="toggleScheduleAssociation(sched, analytic.id, false)"
-                    title="Click para remover este horario de la analítica">
+                    [class.readonly-card]="!permissionsService.hasPermission('Analíticas', 'editar')"
+                    (click)="permissionsService.hasPermission('Analíticas', 'editar') ? toggleScheduleAssociation(sched, analytic.id, false) : null"
+                    [title]="permissionsService.hasPermission('Analíticas', 'editar') ? 'Click para remover este horario de la analítica' : ''">
                     <div class="card-left-section">
                       <span class="schedule-name">{{ sched.name }}</span>
                       <span class="schedule-meta-frequency">{{ sched.frequency | titlecase }}</span>
@@ -699,9 +839,11 @@
                       <span class="schedule-deactivated-overlay-badge">Desactivado</span>
                     </div>
                     }
+                    @if (permissionsService.hasPermission('Analíticas', 'editar')) {
                     <div class="card-delete-hover">
                       <span class="icon-svg icon-trash text-danger" style="width: 14px; height: 14px;"></span>
                     </div>
+                    }
                   </div>
                   } @empty {
                   <span class="text-muted small italic" style="font-size: 0.72rem; padding-left: 4px;">Sin horarios
@@ -711,10 +853,12 @@
 
                 <!-- Botón/Dropdown para añadir horario (siempre visible) -->
                 <div class="position-relative w-100 d-block">
+                  @if (permissionsService.hasPermission('Analíticas', 'editar')) {
                   <button class="btn-add-schedule-dashed" (click)="toggleAddScheduleDropdown(analytic.id, $event)">
                     <span class="icon-svg icon-plus" style="width: 12px; height: 12px;"></span>
                     <span>Añadir Horario</span>
                   </button>
+                  }
 
                   @if (activeAddScheduleDropdown() === analytic.id) {
                   <div class="add-schedule-dropdown-menu shadow" (click)="$event.stopPropagation()">
@@ -998,6 +1142,38 @@
     <div class="license-modal-footer pt-3 mt-2 text-end">
       <button class="btn btn-clear-filters px-4 py-2" (click)="showLicenseModal.set(false)">
         Cerrar
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+  Modal de Confirmación: Eliminar Nodo
+══════════════════════════════════════════════════════════════════════════ -->
+@if (showDeleteHostModal()) {
+<div class="delete-camera-modal-overlay" (click)="closeDeleteHostModal()" aria-modal="true" role="dialog">
+  <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
+    <div class="delete-modal-icon-wrap">
+      <span class="icon-svg icon-warning" style="width: 28px; height: 28px; color: var(--color-warning);"></span>
+    </div>
+    <h5 class="delete-modal-title">Eliminar Nodo</h5>
+    <p class="delete-modal-message">
+      ¿Estás seguro de que deseas eliminar el nodo <strong>{{ currentHost()?.hostname }}</strong>?
+      Esta acción eliminará de forma permanente el nodo y todas sus cámaras asociadas. Esta acción no se puede deshacer.
+    </p>
+    <div class="delete-modal-actions">
+      <button class="delete-modal-btn-cancel" (click)="closeDeleteHostModal()" [disabled]="isDeletingHost()">
+        Cancelar
+      </button>
+      <button class="delete-modal-btn-confirm" (click)="confirmDeleteHost()" [disabled]="isDeletingHost()">
+        @if (isDeletingHost()) {
+        <span class="delete-modal-spinner"></span>
+        Eliminando...
+        } @else {
+        <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+        Eliminar
+        }
       </button>
     </div>
   </div>

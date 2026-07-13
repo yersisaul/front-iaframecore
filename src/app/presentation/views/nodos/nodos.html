@@ -50,10 +50,12 @@
         <div class="header-separator"></div>
 
         <!-- Botón de Migrar Configuración -->
+        @if (permissionsService.hasPermission('Hosts', 'editar')) {
         <button class="btn-migrate-config" (click)="openMigrateModal()">
           <span class="icon-svg icon-migrate-arrows" style="width: 15px; height: 15px;"></span>
           <span>Migrar Configuración</span>
         </button>
+        }
 
       </div>
     </div>

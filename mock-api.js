@@ -524,7 +524,13 @@ const server = http.createServer((req, res) => {
       try {
         parsedBody = JSON.parse(body);
       } catch (e) {
-        // Ignorar errores de parseo
+        try {
+          const params = new URLSearchParams(body);
+          parsedBody = {};
+          for (const [key, value] of params.entries()) {
+            parsedBody[key] = value;
+          }
+        } catch (e2) {}
       }
     }
 
@@ -1116,6 +1122,22 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ---- RUTA: DELETE /frontend/hosts/{fingerprint} ----
+    const deleteHostMatch = pathname.match(/^\/frontend\/hosts\/([^\/]+)$/);
+    if (deleteHostMatch && req.method === 'DELETE') {
+      const hostFp = deleteHostMatch[1];
+      const hostIndex = dbHosts.findIndex(h => h.fingerprint === hostFp);
+      if (hostIndex !== -1) {
+        dbHosts.splice(hostIndex, 1);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Nodo eliminado exitosamente' }));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Nodo no encontrado' }));
+      }
+      return;
+    }
+
     // ---- RUTA: POST /frontend/hosts/migrate_setup ----
     if (pathname === '/frontend/hosts/migrate_setup' && req.method === 'POST') {
       const { old_fingerprint, new_fingerprint } = parsedBody;
@@ -1556,6 +1578,49 @@ const server = http.createServer((req, res) => {
       }
       return;
     }
+
+    // ---- RUTA: PUT /frontend/list_details/update_face_detail/{detail_id} ----
+    const updateFaceDetailMatch = pathname.match(/^\/(?:frontend\/)?list_details\/update_face_detail\/([^\/]+)$/);
+    if (updateFaceDetailMatch && req.method === 'PUT') {
+      const detailId = updateFaceDetailMatch[1];
+      const index = dbListDetails.findIndex(d => d.detail_id === detailId);
+      if (index !== -1) {
+        dbListDetails[index].nombre_asociado = parsedBody.nombre_asociado || dbListDetails[index].nombre_asociado;
+        if (parsedBody.list_id) {
+          dbListDetails[index].list_id = parsedBody.list_id;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(dbListDetails[index]));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Detalle de rostro no encontrado' }));
+      }
+      return;
+    }
+
+    // ---- RUTA: PUT /frontend/list_details/update_plate_detail/{detail_id} ----
+    const updatePlateDetailMatch = pathname.match(/^\/(?:frontend\/)?list_details\/update_plate_detail\/([^\/]+)$/);
+    if (updatePlateDetailMatch && req.method === 'PUT') {
+      const detailId = updatePlateDetailMatch[1];
+      const index = dbListDetails.findIndex(d => d.detail_id === detailId);
+      if (index !== -1) {
+        dbListDetails[index].nombre_asociado = parsedBody.nombre_asociado !== undefined ? parsedBody.nombre_asociado : dbListDetails[index].nombre_asociado;
+        if (parsedBody.plate_text) {
+          dbListDetails[index].metadata = dbListDetails[index].metadata || {};
+          dbListDetails[index].metadata.text_placa = parsedBody.plate_text;
+        }
+        if (parsedBody.list_id) {
+          dbListDetails[index].list_id = parsedBody.list_id;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(dbListDetails[index]));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Detalle de placa no encontrado' }));
+      }
+      return;
+    }
+
     // ---- RUTA: POST /storage/upload/{category} ----
     if (pathname.startsWith('/storage/upload/') && req.method === 'POST') {
       const category = pathname.substring(16);

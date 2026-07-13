@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable, of, Subscription, share } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { MetaIndexName, MetaRecord, MetaIndexInfo, MetaRostro } from '../domain/entities/metadata.models';
 import { MetaFilterState, MetaFilterOptions, defaultFilterState, defaultFilterOptions } from '../domain/entities/metadata.filters.models';
@@ -12,6 +12,7 @@ import { SearchMetadataUseCase } from '../domain/use-cases/search-metadata.use-c
 export class MetadataService {
   readonly availableIndices = signal<MetaIndexInfo[]>([]);
   readonly activeIndex = signal<MetaIndexName | null>(null);
+  readonly isViewActive = signal<boolean>(false);
   readonly records = signal<MetaRecord[]>([]);
   readonly totalRecords = signal<number>(0);
   readonly filters = signal<MetaFilterState>(defaultFilterState());
@@ -137,14 +138,20 @@ export class MetadataService {
     }
   }
 
+  private activeSubscription?: Subscription;
+
   loadCurrentPage(): void {
     const idx = this.activeIndex();
     if (!idx) return;
 
+    if (this.activeSubscription) {
+      this.activeSubscription.unsubscribe();
+    }
+
     const filters = this.filters();
     if (idx === 'rostros' && filters.imageFile) {
       this.isLoading.set(true);
-      this.repository.searchFacesByImage(filters.imageFile, this.pageSize()).subscribe({
+      this.activeSubscription = this.repository.searchFacesByImage(filters.imageFile, this.pageSize()).subscribe({
         next: records => {
           this.records.set(records);
           this.totalRecords.set(records.length);
@@ -161,7 +168,7 @@ export class MetadataService {
     }
 
     this.isLoading.set(true);
-    this.searchMetadataUseCase.execute(
+    this.activeSubscription = this.searchMetadataUseCase.execute(
       idx,
       filters,
       this.currentPage(),
@@ -192,7 +199,12 @@ export class MetadataService {
 
     this.isLoading.set(true);
     const size = this.pageSize();
-    return this.repository.searchFacesByImage(file, size).pipe(
+
+    if (this.activeSubscription) {
+      this.activeSubscription.unsubscribe();
+    }
+
+    const searchObs = this.repository.searchFacesByImage(file, size).pipe(
       tap(records => {
         this.records.set(records);
         this.totalRecords.set(records.length);
@@ -204,8 +216,12 @@ export class MetadataService {
         this.totalRecords.set(0);
         this.isLoading.set(false);
         return of([]);
-      })
+      }),
+      share()
     );
+
+    this.activeSubscription = searchObs.subscribe();
+    return searchObs;
   }
 
   private areFiltersEqual(a: MetaFilterState, b: MetaFilterState): boolean {

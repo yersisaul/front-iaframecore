@@ -59,4 +59,8 @@ export class HostHttpRepository implements IHostRepository {
       new_fingerprint: newFingerprint
     });
   }
+
+  delete(fingerprint: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}${fingerprint}`);
+  }
 }

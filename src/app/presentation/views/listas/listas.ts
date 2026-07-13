@@ -36,6 +36,15 @@ export interface SubjectDetectionHit {
   colores?: SubjectDetectionColor[];
 }
 
+export interface SubjectImportDraft {
+  file: File;
+  name: string;
+  previewUrl: string;
+  isEditingName: boolean;
+}
+
+
+
 @Component({
   selector: 'app-listas',
   standalone: true,
@@ -77,37 +86,45 @@ export class Listas implements OnInit, OnDestroy {
   readonly subjectToDeleteName = signal<string | null>(null);
   readonly isDeletingSubject = signal<boolean>(false);
 
-  readonly showEditSubjectModal = signal<boolean>(false);
-  readonly isUpdatingSubject = signal<boolean>(false);
-  readonly editSubjectName = signal<string>('');
-  readonly editSubjectPlate = signal<string>('');
-  readonly selectedEditFile = signal<File | null>(null);
-  readonly editImagePreviewUrl = signal<string | null>(null);
+  // Señales para los modales independientes de creación
+  readonly showAddFaceSubjectModal = signal<boolean>(false);
+  readonly faceImportDrafts = signal<SubjectImportDraft[]>([]);
+  readonly isDraggingOver = signal<boolean>(false);
+  readonly showFloatingAddButton = signal<boolean>(false);
 
+  readonly showAddPlateSubjectModal = signal<boolean>(false);
+  readonly subjectName = signal<string>('');
+  readonly subjectOwnerName = signal<string>('');
+  readonly activePlateTab = signal<'individual' | 'masivo'>('individual');
+  readonly selectedCsvFile = signal<File | null>(null);
+  readonly parsedCsvRows = signal<{ plate: string; owner: string }[]>([]);
+  readonly isDraggingOverCsv = signal<boolean>(false);
+
+  // Señales para los modales independientes de edición
+  readonly showEditFaceSubjectModal = signal<boolean>(false);
+  readonly editFaceSubjectName = signal<string>('');
+  readonly selectedEditFaceFile = signal<File | null>(null);
+  readonly editFaceImagePreviewUrl = signal<string | null>(null);
+
+  readonly showEditPlateSubjectModal = signal<boolean>(false);
+  readonly editPlateSubjectPlate = signal<string>('');
+  readonly editPlateSubjectName = signal<string>('');
+
+  readonly isUpdatingSubject = signal<boolean>(false);
   readonly selectedSubjectDetailId = signal<string | null>(null);
   readonly selectedSubjectDetail = computed(() => {
     const id = this.selectedSubjectDetailId();
     if (!id) return null;
     return this.listDetails().find(d => d.detail_id === id) || null;
   });
-  readonly showAddSubjectModal = signal<boolean>(false);
   readonly drawerScrolledToBottom = signal<boolean>(false);
   readonly hoveredHit = signal<SubjectDetectionHit | null>(null);
-  readonly subjectName = signal<string>('');
-  readonly subjectOwnerName = signal<string>('');
-  readonly selectedFile = signal<File | null>(null);
-  readonly imagePreviewUrl = signal<string | null>(null);
+  readonly fullscreenImgUrl = signal<string | null>(null);
   isSavingSubject = signal<boolean>(false);
   readonly isListsLoading = this.listService.isLoading;
   readonly lists = this.listService.lists;
   readonly listDetails = this.listService.listDetails;
   readonly similarityThreshold = this.listService.similarityThreshold;
-  readonly isSaveDisabled = computed(() => {
-    if (this.isSavingSubject()) return true;
-    if (!this.subjectName().trim()) return true;
-    if (this.listType() === 'face_recognition' && !this.selectedFile()) return true;
-    return false;
-  });
 
   // Search & Filters
   readonly searchControl = new FormControl('');
@@ -305,171 +322,455 @@ export class Listas implements OnInit, OnDestroy {
     this.hoveredHit.set(hit);
   }
 
+  extractNameFromFilename(filename: string): string {
+    const baseName = filename.substring(0, filename.lastIndexOf('.')) || filename;
+    return baseName.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
   openAddSubjectModal(): void {
-    this.subjectName.set('');
-    this.subjectOwnerName.set('');
-    this.selectedFile.set(null);
-    this.imagePreviewUrl.set(null);
-    this.showAddSubjectModal.set(true);
-  }
-
-  closeAddSubjectModal(): void {
-    const preview = this.imagePreviewUrl();
-    if (preview && preview.startsWith('blob:')) {
-      URL.revokeObjectURL(preview);
+    if (this.listType() === 'face_recognition') {
+      this.faceImportDrafts.set([]);
+      this.showFloatingAddButton.set(false);
+      this.showAddFaceSubjectModal.set(true);
+    } else {
+      this.subjectName.set('');
+      this.subjectOwnerName.set('');
+      this.activePlateTab.set('individual');
+      this.selectedCsvFile.set(null);
+      this.parsedCsvRows.set([]);
+      this.isDraggingOverCsv.set(false);
+      this.showAddPlateSubjectModal.set(true);
     }
-    this.showAddSubjectModal.set(false);
-    this.subjectName.set('');
-    this.subjectOwnerName.set('');
-    this.selectedFile.set(null);
-    this.imagePreviewUrl.set(null);
   }
 
-  onFileSelected(event: Event): void {
+  closeAddFaceSubjectModal(): void {
+    this.faceImportDrafts().forEach(d => {
+      if (d.previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(d.previewUrl);
+      }
+    });
+    this.showAddFaceSubjectModal.set(false);
+    this.faceImportDrafts.set([]);
+    this.showFloatingAddButton.set(false);
+  }
+
+  closeAddPlateSubjectModal(): void {
+    this.showAddPlateSubjectModal.set(false);
+    this.subjectName.set('');
+    this.subjectOwnerName.set('');
+    this.activePlateTab.set('individual');
+    this.selectedCsvFile.set(null);
+    this.parsedCsvRows.set([]);
+    this.isDraggingOverCsv.set(false);
+  }
+
+  onFilesSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      const file = input.files[0];
-      this.selectedFile.set(file);
+      this.addFilesToDraft(input.files);
+    }
+  }
 
-      const preview = this.imagePreviewUrl();
-      if (preview && preview.startsWith('blob:')) {
-        URL.revokeObjectURL(preview);
+  private addFilesToDraft(fileList: FileList): void {
+    const filesArray = Array.from(fileList);
+    const currentDrafts = this.faceImportDrafts();
+    const newDrafts: SubjectImportDraft[] = [];
+
+    filesArray.forEach(file => {
+      // Evitar duplicados por nombre de archivo y tamaño exacto
+      const isDuplicate = currentDrafts.some(d => d.file.name === file.name && d.file.size === file.size) ||
+                          newDrafts.some(d => d.file.name === file.name && d.file.size === file.size);
+      
+      if (!isDuplicate) {
+        newDrafts.push({
+          file,
+          name: this.extractNameFromFilename(file.name),
+          previewUrl: URL.createObjectURL(file),
+          isEditingName: false
+        });
       }
-      this.imagePreviewUrl.set(URL.createObjectURL(file));
+    });
+
+    if (newDrafts.length > 0) {
+      this.faceImportDrafts.update(current => [...current, ...newDrafts]);
+      this.scrollToBottom();
+    }
+  }
+
+  scrollToBottom(): void {
+    setTimeout(() => {
+      const container = document.querySelector('.import-drafts-grid') as HTMLElement;
+      if (container) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
+        // Recalcular inmediatamente el estado al disparar el auto-scroll
+        const isScrollable = container.scrollHeight > container.clientHeight + 10;
+        const isScrolledUp = container.scrollTop < container.scrollHeight - container.clientHeight - 40;
+        this.showFloatingAddButton.set(isScrollable && isScrolledUp);
+      }
+    }, 100);
+  }
+
+  checkScrollState(): void {
+    setTimeout(() => {
+      const el = document.querySelector('.import-drafts-grid') as HTMLElement;
+      if (el) {
+        const isScrollable = el.scrollHeight > el.clientHeight + 10;
+        const isScrolledUp = el.scrollTop < el.scrollHeight - el.clientHeight - 40;
+        this.showFloatingAddButton.set(isScrollable && isScrolledUp);
+      } else {
+        this.showFloatingAddButton.set(false);
+      }
+    }, 100);
+  }
+
+  onDraftsScroll(event: Event): void {
+    const el = event.target as HTMLElement;
+    const isScrollable = el.scrollHeight > el.clientHeight + 10;
+    const isScrolledUp = el.scrollTop < el.scrollHeight - el.clientHeight - 40;
+    this.showFloatingAddButton.set(isScrollable && isScrolledUp);
+  }
+
+  removeFile(index: number): void {
+    this.faceImportDrafts.update(current => {
+      const updated = [...current];
+      if (updated[index]) {
+        if (updated[index].previewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(updated[index].previewUrl);
+        }
+        updated.splice(index, 1);
+      }
+      return updated;
+    });
+    this.checkScrollState();
+  }
+
+  toggleEditDraftName(index: number): void {
+    this.faceImportDrafts.update(current => {
+      const updated = [...current];
+      if (updated[index]) {
+        updated[index] = {
+          ...updated[index],
+          isEditingName: !updated[index].isEditingName
+        };
+      }
+      return updated;
+    });
+  }
+
+  cancelEditDraftName(index: number): void {
+    this.faceImportDrafts.update(current => {
+      const updated = [...current];
+      if (updated[index]) {
+        updated[index] = {
+          ...updated[index],
+          isEditingName: false
+        };
+      }
+      return updated;
+    });
+  }
+
+  updateDraftName(index: number, newName: string): void {
+    this.faceImportDrafts.update(current => {
+      const updated = [...current];
+      if (updated[index]) {
+        updated[index] = {
+          ...updated[index],
+          name: newName.trim(),
+          isEditingName: false
+        };
+      }
+      return updated;
+    });
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  // Métodos de arrastrar y soltar (Drag and Drop)
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOver.set(true);
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOver.set(false);
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOver.set(false);
+    
+    if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+      this.addFilesToDraft(event.dataTransfer.files);
     }
   }
 
   openEditSubjectModal(detail: ListDetail): void {
-    this.editSubjectName.set(detail.nombre_asociado || '');
-    this.editSubjectPlate.set(detail.metadata?.text_placa || '');
-    this.selectedEditFile.set(null);
-    this.editImagePreviewUrl.set(detail.metadata?.url_img || null);
-    this.showEditSubjectModal.set(true);
+    if (this.listType() === 'face_recognition') {
+      this.editFaceSubjectName.set(detail.nombre_asociado || '');
+      this.selectedEditFaceFile.set(null);
+      this.editFaceImagePreviewUrl.set(detail.metadata?.url_img || null);
+      this.showEditFaceSubjectModal.set(true);
+    } else {
+      this.editPlateSubjectPlate.set(detail.metadata?.text_placa || '');
+      this.editPlateSubjectName.set(detail.nombre_asociado || '');
+      this.showEditPlateSubjectModal.set(true);
+    }
   }
 
-  closeEditSubjectModal(): void {
-    const preview = this.editImagePreviewUrl();
+  closeEditFaceSubjectModal(): void {
+    const preview = this.editFaceImagePreviewUrl();
     if (preview && preview.startsWith('blob:')) {
       URL.revokeObjectURL(preview);
     }
-    this.showEditSubjectModal.set(false);
-    this.editSubjectName.set('');
-    this.editSubjectPlate.set('');
-    this.selectedEditFile.set(null);
-    this.editImagePreviewUrl.set(null);
+    this.showEditFaceSubjectModal.set(false);
+    this.editFaceSubjectName.set('');
+    this.selectedEditFaceFile.set(null);
+    this.editFaceImagePreviewUrl.set(null);
   }
 
-  onEditFileSelected(event: Event): void {
+  closeEditPlateSubjectModal(): void {
+    this.showEditPlateSubjectModal.set(false);
+    this.editPlateSubjectPlate.set('');
+    this.editPlateSubjectName.set('');
+  }
+
+  onEditFaceFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
-      this.selectedEditFile.set(file);
+      this.selectedEditFaceFile.set(file);
 
-      const preview = this.editImagePreviewUrl();
+      const preview = this.editFaceImagePreviewUrl();
       if (preview && preview.startsWith('blob:')) {
         URL.revokeObjectURL(preview);
       }
-      this.editImagePreviewUrl.set(URL.createObjectURL(file));
+      this.editFaceImagePreviewUrl.set(URL.createObjectURL(file));
     }
   }
 
-  saveEditSubject(): void {
+  saveEditFaceSubject(): void {
     const detail = this.selectedSubjectDetail();
     if (!detail) return;
 
     this.isUpdatingSubject.set(true);
     const listId = this.selectedListId()!;
+    
+    const nameChanged = this.editFaceSubjectName().trim() !== (detail.nombre_asociado || '');
+    const file = this.selectedEditFaceFile();
 
-    if (this.listType() === 'face_recognition') {
-      const nameChanged = this.editSubjectName().trim() !== (detail.nombre_asociado || '');
-      const file = this.selectedEditFile();
+    const obs$: import('rxjs').Observable<any>[] = [];
+    if (nameChanged) {
+      obs$.push(this.listService.updateFaceDetail(detail.detail_id, listId, this.editFaceSubjectName().trim()));
+    }
+    if (file) {
+      obs$.push(this.listService.updateFaceImg(detail.detail_id, file));
+    }
 
-      const obs$: import('rxjs').Observable<any>[] = [];
-      if (nameChanged) {
-        obs$.push(this.listService.updateFaceDetail(detail.detail_id, this.editSubjectName().trim()));
-      }
-      if (file) {
-        obs$.push(this.listService.updateFaceImg(detail.detail_id, file));
-      }
+    if (obs$.length === 0) {
+      this.isUpdatingSubject.set(false);
+      this.closeEditFaceSubjectModal();
+      return;
+    }
 
-      if (obs$.length === 0) {
-        this.isUpdatingSubject.set(false);
-        this.closeEditSubjectModal();
-        return;
-      }
-
-      import('rxjs').then(({ forkJoin }) => {
-        forkJoin(obs$).subscribe({
-          next: () => {
-            this.isUpdatingSubject.set(false);
-            this.closeEditSubjectModal();
-            this.onListSelected(listId);
-          },
-          error: (err) => {
-            console.error('Error updating face subject:', err);
-            this.isUpdatingSubject.set(false);
-            alert('Error al actualizar los datos del sujeto.');
-          }
-        });
-      });
-    } else {
-      const name = this.editSubjectName().trim();
-      const plate = this.editSubjectPlate().trim();
-
-      this.listService.updatePlateDetail(detail.detail_id, plate, name).subscribe({
+    import('rxjs').then(({ forkJoin }) => {
+      forkJoin(obs$).subscribe({
         next: () => {
           this.isUpdatingSubject.set(false);
-          this.closeEditSubjectModal();
-          this.onListSelected(listId);
+          this.closeEditFaceSubjectModal();
         },
         error: (err) => {
-          console.error('Error updating plate subject:', err);
+          console.error('Error updating face subject:', err);
           this.isUpdatingSubject.set(false);
-          alert('Error al actualizar la placa.');
+          alert('Error al actualizar los datos del sujeto.');
         }
       });
-    }
+    });
   }
 
-  saveSubject(): void {
+  saveEditPlateSubject(): void {
+    const detail = this.selectedSubjectDetail();
+    if (!detail) return;
+
+    this.isUpdatingSubject.set(true);
+    const listId = this.selectedListId()!;
+    const name = this.editPlateSubjectName().trim();
+    const plate = this.editPlateSubjectPlate().trim();
+
+    this.listService.updatePlateDetail(detail.detail_id, listId, plate, name).subscribe({
+      next: () => {
+        this.isUpdatingSubject.set(false);
+        this.closeEditPlateSubjectModal();
+      },
+      error: (err) => {
+        console.error('Error updating plate subject:', err);
+        this.isUpdatingSubject.set(false);
+        alert('Error al actualizar la placa.');
+      }
+    });
+  }
+
+  saveFaceSubjects(): void {
+    const listId = this.selectedListId();
+    if (!listId || this.faceImportDrafts().length === 0) return;
+
+    this.isSavingSubject.set(true);
+
+    const observables = this.faceImportDrafts().map(draft => {
+      return this.listService.uploadAndAddSubject(listId, '', draft.name, draft.file);
+    });
+
+    import('rxjs').then(({ forkJoin }) => {
+      forkJoin(observables).subscribe({
+        next: () => {
+          this.isSavingSubject.set(false);
+          this.closeAddFaceSubjectModal();
+        },
+        error: (err) => {
+          console.error('Error importing face subjects:', err);
+          this.isSavingSubject.set(false);
+          alert('Error al importar algunos de los sujetos. Por favor intente de nuevo.');
+        }
+      });
+    });
+  }
+
+  savePlateSubject(): void {
     const listId = this.selectedListId();
     if (!listId || !this.subjectName().trim()) return;
 
     this.isSavingSubject.set(true);
 
-    if (this.listType() === 'face_recognition') {
-      const file = this.selectedFile();
-      if (!file) {
+    this.listService.addPlateSubject(listId, this.subjectName().trim(), this.subjectOwnerName().trim()).subscribe({
+      next: () => {
         this.isSavingSubject.set(false);
-        return;
+        this.closeAddPlateSubjectModal();
+      },
+      error: (err) => {
+        console.error('Error adding plate subject to watchlist:', err);
+        this.isSavingSubject.set(false);
+        alert('Error al agregar la placa a la lista de control.');
       }
-      this.listService.uploadAndAddSubject(listId, '', this.subjectName().trim(), file).subscribe({
-        next: () => {
-          this.isSavingSubject.set(false);
-          this.closeAddSubjectModal();
-          this.onListSelected(listId);
-        },
-        error: (err) => {
-          console.error('Error uploading/adding subject to watchlist:', err);
-          this.isSavingSubject.set(false);
-          alert('Error al agregar el sujeto a la lista de control.');
-        }
-      });
-    } else {
-      // Para LPR: Llamar a addPlateSubject con plateText (subjectName) y ownerName (subjectOwnerName)
-      this.listService.addPlateSubject(listId, this.subjectName().trim(), this.subjectOwnerName().trim()).subscribe({
-        next: () => {
-          this.isSavingSubject.set(false);
-          this.closeAddSubjectModal();
-          this.onListSelected(listId);
-        },
-        error: (err) => {
-          console.error('Error adding plate subject to watchlist:', err);
-          this.isSavingSubject.set(false);
-          alert('Error al agregar la placa a la lista de control.');
-        }
-      });
+    });
+  }
+
+  onCsvFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        this.selectedCsvFile.set(file);
+        this.parseCsv(file);
+      } else {
+        alert('Por favor selecciona un archivo en formato CSV.');
+      }
     }
+  }
+
+  onCsvDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOverCsv.set(true);
+  }
+
+  onCsvDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOverCsv.set(false);
+  }
+
+  onCsvDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOverCsv.set(false);
+
+    if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        this.selectedCsvFile.set(file);
+        this.parseCsv(file);
+      } else {
+        alert('Por favor selecciona un archivo en formato CSV.');
+      }
+    }
+  }
+
+  parseCsv(file: File): void {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (!text) return;
+
+      const lines = text.split(/\r?\n/);
+      const rows: { plate: string; owner: string }[] = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        // Soporta comas o punto y coma
+        const columns = line.split(/[,;]/);
+        if (columns.length > 0) {
+          const plate = columns[0].trim().toUpperCase();
+          const owner = columns[1] ? columns[1].trim() : '';
+
+          // Saltar la fila de cabecera si existe (ej: "placa", "propietario")
+          if (i === 0 && (plate.toLowerCase() === 'placa' || plate.toLowerCase() === 'plate')) {
+            continue;
+          }
+
+          if (plate) {
+            rows.push({ plate, owner });
+          }
+        }
+      }
+
+      this.parsedCsvRows.set(rows);
+    };
+    reader.readAsText(file);
+  }
+
+  removeCsvFile(): void {
+    this.selectedCsvFile.set(null);
+    this.parsedCsvRows.set([]);
+  }
+
+  savePlateSubjectsBulk(): void {
+    const listId = this.selectedListId();
+    if (!listId || this.parsedCsvRows().length === 0) return;
+
+    this.isSavingSubject.set(true);
+
+    const observables = this.parsedCsvRows().map(row => {
+      return this.listService.addPlateSubject(listId, row.plate, row.owner);
+    });
+
+    import('rxjs').then(({ forkJoin }) => {
+      forkJoin(observables).subscribe({
+        next: () => {
+          this.isSavingSubject.set(false);
+          this.closeAddPlateSubjectModal();
+        },
+        error: (err) => {
+          console.error('Error importing plate subjects from CSV:', err);
+          this.isSavingSubject.set(false);
+          alert('Error al importar algunos de los registros. Por favor intente de nuevo.');
+        }
+      });
+    });
   }
 
   openListModal(mode: 'create' | 'edit', list?: List, event?: Event): void {
@@ -506,9 +807,6 @@ export class Listas implements OnInit, OnDestroy {
       this.listService.createList(name, desc, type).subscribe({
         next: (newList) => {
           this.closeListModal();
-          this.listService.loadLists().subscribe(() => {
-            this.onListSelected(newList.list_id);
-          });
         },
         error: (err) => {
           console.error('Error creating watchlist:', err);
@@ -703,6 +1001,17 @@ export class Listas implements OnInit, OnDestroy {
 
   getColorLuminance(r: number, g: number, b: number): number {
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  }
+
+  openFullscreenImage(url: string, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.fullscreenImgUrl.set(url);
+  }
+
+  closeFullscreenImage(): void {
+    this.fullscreenImgUrl.set(null);
   }
 
 }

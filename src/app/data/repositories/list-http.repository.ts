@@ -32,6 +32,17 @@ export class ListHttpRepository implements IListRepository {
     );
   }
 
+  getListById(listId: string): Observable<List> {
+    return this.http.get<any>(`${this.listsUrl}/${listId}`).pipe(
+      map(item => ({
+        list_id: item.list_id,
+        name: item.name,
+        description: item.description,
+        list_type: item.list_type === 'RF' ? 'face_recognition' : (item.list_type === 'LPR' ? 'plate_recognition' : item.list_type)
+      }))
+    );
+  }
+
   registerList(list: Partial<List>): Observable<List> {
     const payload: any = {
       list_id: list.list_id !== undefined ? list.list_id : null,
@@ -88,6 +99,25 @@ export class ListHttpRepository implements IListRepository {
       catchError(err => {
         console.error('[ListRepo] Both list details endpoints failed:', err);
         return of([]);
+      })
+    );
+  }
+
+  getListDetailById(detailId: string): Observable<ListDetail> {
+    return this.http.get<any>(`${this.detailsUrl}/${detailId}`).pipe(
+      map(res => {
+        const mapped = {
+          detail_id: res.detail_id,
+          list_id: res.list_id,
+          nombre_asociado: res.nombre_asociado || '',
+          fingerprint_host: res.fingerprint_host || '',
+          embedding: res.embedding || [],
+          metadata: {
+            text_placa: res.metadata?.text_placa,
+            url_img: res.metadata?.url_img ? MetadataMapper.sanitizeImageUrl(res.metadata.url_img) : undefined
+          }
+        } as ListDetail;
+        return mapped;
       })
     );
   }
@@ -290,14 +320,16 @@ export class ListHttpRepository implements IListRepository {
     );
   }
 
-  updateFaceDetail(detailId: string, payload: { nombre_asociado: string }): Observable<ListDetail> {
-    const body = new HttpParams().set('nombre_asociado', payload.nombre_asociado);
+  updateFaceDetail(detailId: string, listId: string, payload: { nombre_asociado: string }): Observable<ListDetail> {
+    const body = new HttpParams()
+      .set('list_id', listId)
+      .set('nombre_asociado', payload.nombre_asociado);
     return this.http.put<any>(`${this.detailsUrl}/update_face_detail/${detailId}`, body.toString(), {
       headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded')
     }).pipe(
       map(res => ({
         detail_id: res.detail_id || detailId,
-        list_id: res.list_id || '',
+        list_id: res.list_id || listId || '',
         nombre_asociado: res.nombre_asociado || payload.nombre_asociado,
         fingerprint_host: res.fingerprint_host || '',
         embedding: res.embedding || [],
@@ -308,8 +340,10 @@ export class ListHttpRepository implements IListRepository {
     );
   }
 
-  updatePlateDetail(detailId: string, payload: { nombre_asociado?: string, plate_text: string }): Observable<ListDetail> {
-    let body = new HttpParams().set('plate_text', payload.plate_text);
+  updatePlateDetail(detailId: string, listId: string, payload: { nombre_asociado?: string, plate_text: string }): Observable<ListDetail> {
+    let body = new HttpParams()
+      .set('list_id', listId)
+      .set('plate_text', payload.plate_text);
     if (payload.nombre_asociado !== undefined) {
       body = body.set('nombre_asociado', payload.nombre_asociado);
     }
@@ -318,7 +352,7 @@ export class ListHttpRepository implements IListRepository {
     }).pipe(
       map(res => ({
         detail_id: res.detail_id || detailId,
-        list_id: res.list_id || '',
+        list_id: res.list_id || listId || '',
         nombre_asociado: res.nombre_asociado || payload.nombre_asociado || '',
         fingerprint_host: res.fingerprint_host || '',
         embedding: res.embedding || [],

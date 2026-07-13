@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable, of, Subscription } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { EventRecord, EventFilters, EventFilterOptions, defaultEventFilters, defaultEventFilterOptions } from '../domain/entities/event.models';
 import { SearchEventsUseCase } from '../domain/use-cases/search-events.use-case';
@@ -9,6 +9,7 @@ import { SearchEventsUseCase } from '../domain/use-cases/search-events.use-case'
 })
 export class EventService {
   readonly records = signal<EventRecord[]>([]);
+  readonly isViewActive = signal<boolean>(false);
   readonly totalRecords = signal<number>(0);
   readonly filters = signal<EventFilters>(defaultEventFilters());
   readonly filterOptions = signal<EventFilterOptions>(defaultEventFilterOptions());
@@ -92,9 +93,15 @@ export class EventService {
     this.loadCurrentPage();
   }
 
+  private activeSubscription?: Subscription;
+
   loadCurrentPage(): void {
+    if (this.activeSubscription) {
+      this.activeSubscription.unsubscribe();
+    }
+
     this.isLoading.set(true);
-    this.searchEventsUseCase.execute(
+    this.activeSubscription = this.searchEventsUseCase.execute(
       this.filters(),
       this.currentPage(),
       this.pageSize()

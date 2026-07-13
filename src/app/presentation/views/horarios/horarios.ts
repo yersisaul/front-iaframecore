@@ -49,6 +49,8 @@ export class Horarios implements OnInit, OnDestroy {
   readonly scheduleNewIds = this.scheduleService.newRecordIds;
   readonly scheduleUpdatedIds = this.scheduleService.updatedRecordIds;
   readonly scheduleDeletingIds = this.scheduleService.deletingRecordIds;
+  readonly scheduleActiveStatusIds = this.scheduleService.activeStatusIds;
+  readonly scheduleInactiveStatusIds = this.scheduleService.inactiveStatusIds;
 
   readonly expandedHosts = signal<boolean>(false);
   readonly expandedCameras = signal<boolean>(false);
@@ -97,7 +99,7 @@ export class Horarios implements OnInit, OnDestroy {
   });
 
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
-  readonly allSchedules = signal<Schedule[]>([]);
+  readonly allSchedules = this.scheduleService.schedules;
   readonly isLoading = signal(false);
 
   constructor() {}
@@ -248,9 +250,9 @@ export class Horarios implements OnInit, OnDestroy {
     return { emptyDays, days };
   });
 
-  // Lista de horarios completa
+  // Lista de horarios completa ordenada alfabéticamente
   readonly filteredSchedules = computed(() => {
-    return this.allSchedules();
+    return [...this.allSchedules()].sort((a, b) => a.name.localeCompare(b.name));
   });
 
   // calendarGrid removido por uso de selectores nativos
@@ -309,8 +311,7 @@ export class Horarios implements OnInit, OnDestroy {
     this.isLoading.set(true);
     this.scheduleService.getAllSchedules().pipe(
       catchError(() => of([]))
-    ).subscribe(schedules => {
-      this.allSchedules.set(schedules);
+    ).subscribe(() => {
       this.isLoading.set(false);
       this.loadAllAssociationDetails();
     });
@@ -376,11 +377,12 @@ export class Horarios implements OnInit, OnDestroy {
     this.scheduleService.updateScheduleState(sched.id, nextStatus).subscribe({
       next: () => {
         this.scheduleService.updateScheduleStatusLocal(sched.id, nextStatus);
-        this.loadAllSchedules(); // Recargar de forma segura para sincronizar todas las vistas
       },
       error: (err) => {
         console.error('[HorariosComponent] Failed to toggle schedule state:', err);
         alert('Ocurrió un error al cambiar el estado del horario.');
+        // Forzar actualización del switch en la UI para revertir la posición visual
+        this.scheduleService.schedules.update(all => [...all]);
       }
     });
   }
@@ -1003,7 +1005,6 @@ export class Horarios implements OnInit, OnDestroy {
       next: () => {
         this.cancelCreate(); // Limpia los campos
         this.showCreateScheduleModal.set(false);
-        this.loadAllSchedules();
       },
       error: (err) => {
         console.error('[HorariosComponent] createSchedule failed:', err);
@@ -1066,7 +1067,6 @@ export class Horarios implements OnInit, OnDestroy {
       next: () => {
         this.editingScheduleId.set(null);
         this.showEditScheduleModal.set(false);
-        this.loadAllSchedules();
       },
       error: (err) => {
         console.error('[HorariosComponent] saveScheduleEdit failed:', err);
@@ -1096,7 +1096,6 @@ export class Horarios implements OnInit, OnDestroy {
         }
         this.isDeletingSchedule.set(false);
         this.closeDeleteScheduleModal();
-        this.loadAllSchedules();
       },
       error: (err) => {
         console.error('[HorariosComponent] deleteSchedule failed:', err);
@@ -1105,7 +1104,6 @@ export class Horarios implements OnInit, OnDestroy {
         }
         this.isDeletingSchedule.set(false);
         this.closeDeleteScheduleModal();
-        this.loadAllSchedules();
       }
     });
   }

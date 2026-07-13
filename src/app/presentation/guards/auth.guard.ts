@@ -13,13 +13,27 @@ export const authGuard: CanActivateFn = (route, state) => {
     return false;
   }
 
+  // Interceptar la ruta raíz de dashboard para redirigir dinámicamente al primer módulo autorizado
+  const stateUrl = state.url.split('?')[0];
+  if (stateUrl === '/dashboard' || stateUrl === '/dashboard/') {
+    const defaultRoute = permissionsService.getDefaultRedirectRoute();
+    router.navigate([defaultRoute]);
+    return false;
+  }
+
   // Verificar permisos requeridos (basado en códigos de permiso del backend, no en nombres de rol)
   const requiredPermissions = route.data?.['permissions'] as string[];
   if (requiredPermissions && requiredPermissions.length > 0) {
     const activeCodes = permissionsService.activePermissionCodes();
-    const hasAll = requiredPermissions.every(p => activeCodes.has(p));
-    if (!hasAll) {
-      router.navigate(['/dashboard']);
+    const anyPermission = route.data?.['anyPermission'] as boolean;
+
+    const hasMatch = anyPermission
+      ? requiredPermissions.some(p => activeCodes.has(p))
+      : requiredPermissions.every(p => activeCodes.has(p));
+
+    if (!hasMatch) {
+      const fallback = permissionsService.getDefaultRedirectRoute();
+      router.navigate([fallback]);
       return false;
     }
   }

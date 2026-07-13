@@ -662,7 +662,7 @@
               </button>
               }
 
-              @if (activeIndex() === 'rostros' || (activeIndex() === 'vehiculos' && getReconocimiento(record))) {
+              @if ((activeIndex() === 'rostros' || (activeIndex() === 'vehiculos' && getReconocimiento(record))) && permissionsService.hasPermission('Detalles Listas', 'crear')) {
               <button type="button" class="btn-overlay-action btn-watchlist"
                 (click)="openAddToListModal(record); $event.stopPropagation()" title="Agregar a Lista de Control">
                 <span class="icon-svg icon-plus" style="width: 13px; height: 13px;"></span>
