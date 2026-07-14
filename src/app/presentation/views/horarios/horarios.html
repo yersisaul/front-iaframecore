@@ -1,0 +1,832 @@
+<div class="horarios-container container-fluid py-4 position-relative">
+  <!-- ══════════════════════════════════════════════════════
+       CABECERA ESTANDARIZADA
+       ══════════════════════════════════════════════════════ -->
+  <div class="view-header mb-4">
+    <!-- Fila 1: Identidad + Controles principales -->
+    <div class="header-row-top d-flex align-items-center justify-content-between gap-3">
+      <!-- IZQUIERDA: Sidebar toggle + Identidad de página -->
+      <div class="d-flex align-items-center gap-3">
+        <!-- Botón de Collapse Sidebar -->
+        <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
+          (click)="toggleSidebar()" aria-label="Toggle Sidebar">
+          @if (isSidebarCollapsed()) {
+          <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
+          } @else {
+          <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
+          }
+        </button>
+
+        <!-- Bloque de identidad: título + subtítulo -->
+        <div class="header-identity">
+          <h2 class="fw-bold mb-0 header-page-title">Programación de Horarios</h2>
+          <p class="text-muted mb-0 header-page-subtitle mt-1">
+            Se encontraron <span class="fw-semibold text-primary">{{ filteredSchedules().length }}</span> horarios
+            globales registrados.
+          </p>
+        </div>
+      </div>
+
+      <!-- DERECHA: Botón Crear Horario -->
+      @if (permissionsService.hasPermission('Horarios', 'crear')) {
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn-migrate-config d-flex align-items-center gap-2" (click)="openCreateScheduleModal()"
+          id="btn-crear-horario">
+          <span class="icon-svg icon-plus" style="width: 16px; height: 16px;"></span>
+          <span>Crear Horario</span>
+        </button>
+      </div>
+      }
+    </div>
+
+  </div>
+
+  <!-- Estado de carga -->
+  @if (isLoading() && allSchedules().length === 0) {
+  <div class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando horarios...</span>
+    </div>
+  </div>
+  }
+
+  <!-- Vista principal -->
+  @if (!isLoading() || allSchedules().length > 0) {
+  <div class="row g-4">
+
+    <!-- Columna 1: Lista de Horarios (1/3) -->
+    <div class="col-12 col-lg-4">
+      <div class="schedule-bento-card h-100 d-flex flex-column">
+        <h5 class="fw-bold fs-6 mb-3 d-flex align-items-center gap-2 text-primary">
+          <span class="icon-svg icon-list details-header-icon" style="width: 18px; height: 18px;"></span>
+          <span>Horarios Programados</span>
+          <span class="badge bg-secondary-light text-primary fs-8 rounded-pill ms-auto">{{ filteredSchedules().length
+            }}</span>
+        </h5>
+
+        @if (filteredSchedules().length === 0) {
+        <div class="text-center py-5 text-muted my-auto">
+          <div class="display-1 mb-4" style="font-size: 2.5rem; opacity: 0.6;">📅</div>
+          <h6 class="fw-bold text-body">No se encontraron horarios</h6>
+          <p class="small mb-0 text-muted">No hay horarios configurados o activos.</p>
+        </div>
+        } @else {
+        <!-- Grilla de Horarios con Scroll Interno -->
+        <div class="flex-grow-1 overflow-y-auto px-2 py-1" style="min-height: 0;">
+          <div class="row g-3">
+            @for (sched of filteredSchedules(); track sched.id) {
+            <div class="col-12">
+              <div class="schedule-modal-item p-3.5 rounded-3 border transition-all"
+                [class.schedule-active]="isScheduleActive(sched)" 
+                [class.schedule-inactive]="!isScheduleActive(sched)"
+                [class.selected-for-details]="selectedScheduleId() === sched.id"
+                [class.card-crud-new]="scheduleNewIds().has(sched.id)"
+                [class.card-crud-updated]="scheduleUpdatedIds().has(sched.id)"
+                [class.card-crud-deleting]="scheduleDeletingIds().has(sched.id)"
+                [class.card-crud-status-active]="scheduleActiveStatusIds().has(sched.id)"
+                [class.card-crud-status-inactive]="scheduleInactiveStatusIds().has(sched.id)"
+                (click)="selectScheduleForDetails(sched)" style="cursor: pointer;">
+                
+                <!-- Contenedor vertical de 2 filas -->
+                <div class="d-flex flex-column gap-2.5">
+                  
+                  <!-- Fila 1: Título y Controles CRUD (Switch, Editar, Eliminar) -->
+                  <div class="d-flex align-items-center justify-content-between w-100">
+                    <!-- Título -->
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="status-dot pulse" [class.pulse]="isScheduleActive(sched)"></span>
+                      <span class="fw-bold" style="font-size: 0.95rem;">{{ sched.name }}</span>
+                    </div>
+                    
+                    <!-- Controles CRUD -->
+                    <div class="d-flex align-items-center gap-2">
+                      <!-- Switch -->
+                      <div class="form-check form-switch m-0 d-flex align-items-center" (click)="$event.stopPropagation()">
+                        <input class="form-check-input" type="checkbox" role="switch" [id]="'switch-sched-' + sched.id"
+                          [checked]="sched.status === 'activo'"
+                          [disabled]="!permissionsService.hasPermission('Horarios', 'editar')"
+                          (change)="toggleScheduleStatus(sched, $event)">
+                      </div>
+                      
+                      <!-- Editar -->
+                      @if (permissionsService.hasPermission('Horarios', 'editar')) {
+                      <button class="btn btn-xs btn-ghost p-1.5"
+                        (click)="openEditScheduleModal(sched); $event.stopPropagation()" title="Editar Horario"
+                        aria-label="Editar horario">
+                        <span class="icon-svg icon-edit" style="width: 14px; height: 14px;"></span>
+                      </button>
+                      }
+                      
+                      <!-- Borrar -->
+                      @if (permissionsService.hasPermission('Horarios', 'eliminar')) {
+                      <button class="btn btn-xs btn-ghost text-danger p-1.5"
+                        (click)="openDeleteScheduleModal(sched); $event.stopPropagation()" title="Eliminar Horario"
+                        aria-label="Eliminar horario">
+                        <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+                      </button>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Fila 2: Frecuencia y Rango Horario -->
+                  <div class="d-flex align-items-center gap-2 mt-0.5">
+                    <span class="badge bg-light-translucent text-uppercase text-muted"
+                      style="font-size: 0.65rem; border: 1px solid var(--border-color);">{{ sched.frequency }}</span>
+                    <span class="font-monospace text-muted small" style="font-size: 0.75rem;">
+                      {{ sched.start | date:'dd/MM/yyyy HH:mm' }} - {{ sched.end | date:'dd/MM/yyyy HH:mm' }}
+                    </span>
+                  </div>
+                  
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- Columna 2: Detalles del Horario (2/3) -->
+    <div class="col-12 col-lg-8">
+      @if (!selectedSchedule()) {
+      <div class="schedule-bento-card text-center d-flex flex-column align-items-center justify-content-center h-100"
+        style="min-height: 480px;">
+        <div class="display-4 text-muted mb-3" style="font-size: 3rem; opacity: 0.5;">📅</div>
+        <h6 class="fw-bold text-body mb-2">Selecciona un Horario</h6>
+        <p class="text-muted small mb-0 px-3" style="line-height: 1.5;">
+          Haz clic en cualquier horario de la lista para explorar sus asociaciones, frecuencia y detalles gráficos de
+          operación en tiempo real.
+        </p>
+      </div>
+      } @else {
+      @let activeSched = selectedSchedule()!;
+      <div class="schedule-bento-card h-100 d-flex flex-column">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h5 class="fw-bold fs-6 mb-0 text-primary d-flex align-items-center gap-2">
+            <span class="icon-svg icon-clock details-header-icon" style="width: 18px; height: 18px;"></span>
+            <span>Detalles del Horario</span>
+          </h5>
+          <div class="d-flex align-items-center gap-2 text-muted small">
+            <span class="status-dot" [class.pulse]="activeSched.status === 'activo'"></span>
+            <span class="small font-monospace fw-semibold" [class.text-success]="activeSched.status === 'activo'">
+              {{ activeSched.status === 'activo' ? 'Activo' : 'Inactivo' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Details Body Wrapper con Scroll Interno -->
+        <div class="flex-grow-1 overflow-y-auto px-2 py-1" style="min-height: 0;">
+
+          <!-- Configuración Operativa Unificada (Single Container) -->
+          <div class="details-bento-block d-flex flex-column gap-4 mb-4">
+
+            <!-- Header de Detalles (Nombre, Frecuencia) -->
+            <div class="d-flex align-items-center justify-content-between">
+              <h6 class="fw-bold text-body mb-0" style="font-size: 1.15rem; line-height: 1.2; letter-spacing: -0.01em;">
+                {{ activeSched.name }}</h6>
+              <span class="badge bg-light-translucent text-uppercase text-muted"
+                style="font-size: 0.65rem; border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 6px;">
+                {{ activeSched.frequency }}
+              </span>
+            </div>
+
+
+            <!-- Fila 1: Vigencia y Rango en Grid -->
+            <!-- Distribución en dos columnas -->
+            <div class="row g-4">
+              <!-- Columna Izquierda: Vigencia y Rango -->
+              <div class="col-12 col-md-6 d-flex flex-column gap-3">
+                <!-- Vigencia -->
+                <div>
+                  <div class="d-flex align-items-center gap-2 text-primary mb-2">
+                    <span class="icon-svg icon-calendar details-header-icon" style="width: 16px; height: 16px;"></span>
+                    <span class="validez-title">Vigencia</span>
+                  </div>
+                  <div class="d-flex flex-column gap-2">
+                    <div
+                      class="d-flex align-items-baseline justify-content-between pb-1 border-bottom border-color-subtle">
+                      <span class="text-muted text-uppercase font-monospace"
+                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Inicio</span>
+                      <span class="text-body fw-bold font-monospace" style="font-size: 0.8rem;">{{ activeSched.start |
+                        date:'dd/MM/yyyy' }}</span>
+                    </div>
+                    <div class="d-flex align-items-baseline justify-content-between">
+                      <span class="text-muted text-uppercase font-monospace"
+                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Fin</span>
+                      <span class="text-body fw-bold font-monospace" style="font-size: 0.8rem;">{{ activeSched.end |
+                        date:'dd/MM/yyyy' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Rango -->
+                <div>
+                  <div class="d-flex align-items-center gap-2 text-primary mb-2">
+                    <span class="icon-svg icon-clock details-header-icon" style="width: 16px; height: 16px;"></span>
+                    <span class="validez-title">Rango</span>
+                  </div>
+                  <div class="d-flex flex-column gap-2">
+                    <div
+                      class="d-flex align-items-baseline justify-content-between pb-1 border-bottom border-color-subtle">
+                      <span class="text-muted text-uppercase font-monospace"
+                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Abre</span>
+                      <span class="text-body fw-bold font-monospace" style="font-size: 0.8rem;">{{
+                        getTimeString(activeSched.start) }}</span>
+                    </div>
+                    <div class="d-flex align-items-baseline justify-content-between">
+                      <span class="text-muted text-uppercase font-monospace"
+                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Cierra</span>
+                      <span class="text-body fw-bold font-monospace" style="font-size: 0.8rem;">{{
+                        getTimeString(activeSched.end) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Columna Derecha: Días de Operación y Ventana Horaria Diaria -->
+              <div class="col-12 col-md-6 d-flex flex-column gap-4">
+                <!-- Días de Operación -->
+                <div>
+                  <div class="validez-title mb-3">Días de Operación</div>
+                  <div class="weekday-grid">
+                    @for (dayLabel of ['D', 'L', 'M', 'M', 'J', 'V', 'S']; track $index) {
+                    @let isDayActive = isDayOfWeekActive($index, activeSched.start, activeSched.end,
+                    activeSched.frequency);
+                    <div class="details-weekday-circle" [class.active]="isDayActive"
+                      [title]="isDayActive ? 'Operativo' : 'Inactivo'">
+                      {{ dayLabel }}
+                    </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Ventana Horaria Diaria (Timeline) -->
+                <div class="premium-timeline-card p-0">
+                  <div class="validez-title mb-2.5">Ventana Horaria Diaria</div>
+                  <div class="timeline-hours-labels d-flex justify-content-between mb-2 text-muted font-monospace"
+                    style="font-size: 0.65rem;">
+                    <span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span>
+                  </div>
+                  <div class="timeline-track-premium w-100 mb-2">
+                    <div class="timeline-bar-premium h-100"
+                      [style.background]="getTimelineBackground(getTimeString(activeSched.start), getTimeString(activeSched.end))"
+                      style="width: 100%;"></div>
+                  </div>
+                  <div class="d-flex justify-content-between text-muted font-monospace" style="font-size: 0.72rem;">
+                    <span>Inicio: <strong class="text-body">{{ getTimeString(activeSched.start) }}</strong></span>
+                    <span>Fin: <strong class="text-body">{{ getTimeString(activeSched.end) }}</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Asociaciones Bento -->
+          <div class="d-flex flex-column gap-3">
+            <!-- Nodos -->
+            <div class="association-item-card border-assoc-host" (click)="expandedHosts.set(!expandedHosts())"
+              style="cursor: pointer;">
+              <div class="d-flex align-items-center justify-content-between mb-0 pb-1">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="assoc-icon-container text-primary">
+                    <span class="icon-svg icon-box" style="width: 12px; height: 12px;"></span>
+                  </div>
+                  <span class="associations-title-bar">Nodos (Hosts)</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-secondary-light text-primary font-monospace"
+                    style="font-size: 0.68rem; border-radius: 6px;">{{ selectedScheduleHosts().length }}</span>
+                  <span class="icon-svg icon-chevron-down accordion-arrow"
+                    [style.transform]="expandedHosts() ? 'rotate(180deg)' : 'rotate(0deg)'"
+                    style="width: 14px; height: 14px; transition: transform 0.2s ease;"></span>
+                </div>
+              </div>
+
+              @if (expandedHosts()) {
+              <div class="pt-3">
+                @if (selectedScheduleHosts().length === 0) {
+                <div class="text-muted small italic style-note ps-1">Ningún nodo heredando este horario</div>
+                } @else {
+                <div class="association-badges-grid ps-1">
+                  @for (host of selectedScheduleHosts(); track host.fingerprint) {
+                  <span class="badge-assoc-tag" (click)="navigateToHost(host.fingerprint); $event.stopPropagation();">
+                    {{ host.hostname }}
+                  </span>
+                  }
+                </div>
+                }
+              </div>
+              }
+            </div>
+
+            <!-- Cámaras -->
+            <div class="association-item-card border-assoc-cam" (click)="expandedCameras.set(!expandedCameras())"
+              style="cursor: pointer;">
+              <div class="d-flex align-items-center justify-content-between mb-0 pb-1">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="assoc-icon-container text-success">
+                    <span class="icon-svg icon-camara" style="width: 12px; height: 12px;"></span>
+                  </div>
+                  <span class="associations-title-bar">Cámaras</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-secondary-light text-primary font-monospace"
+                    style="font-size: 0.68rem; border-radius: 6px;">{{ selectedScheduleCameras().length }}</span>
+                  <span class="icon-svg icon-chevron-down accordion-arrow"
+                    [style.transform]="expandedCameras() ? 'rotate(180deg)' : 'rotate(0deg)'"
+                    style="width: 14px; height: 14px; transition: transform 0.2s ease;"></span>
+                </div>
+              </div>
+
+              @if (expandedCameras()) {
+              <div class="pt-3">
+                @if (selectedScheduleCameras().length === 0) {
+                <div class="text-muted small italic style-note ps-1">Ninguna cámara vinculada</div>
+                } @else {
+                <div class="association-badges-grid ps-1">
+                  @for (cam of selectedScheduleCameras(); track cam.id) {
+                  <span class="badge-assoc-tag"
+                    (click)="navigateToCamera(cam.hostFingerprint, cam.id); $event.stopPropagation();">
+                    {{ cam.name }}
+                  </span>
+                  }
+                </div>
+                }
+              </div>
+              }
+            </div>
+
+            <!-- Analíticas -->
+            <div class="association-item-card border-assoc-analytic"
+              (click)="expandedAnalytics.set(!expandedAnalytics())" style="cursor: pointer;">
+              <div class="d-flex align-items-center justify-content-between mb-0 pb-1">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="assoc-icon-container text-warning">
+                    <span class="icon-svg icon-shield" style="width: 12px; height: 12px;"></span>
+                  </div>
+                  <span class="associations-title-bar">Analíticas</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-secondary-light text-primary font-monospace"
+                    style="font-size: 0.68rem; border-radius: 6px;">{{ selectedScheduleAnalytics().length }}</span>
+                  <span class="icon-svg icon-chevron-down accordion-arrow"
+                    [style.transform]="expandedAnalytics() ? 'rotate(180deg)' : 'rotate(0deg)'"
+                    style="width: 14px; height: 14px; transition: transform 0.2s ease;"></span>
+                </div>
+              </div>
+
+              @if (expandedAnalytics()) {
+              <div class="pt-3">
+                @if (selectedScheduleAnalytics().length === 0) {
+                <div class="text-muted small italic style-note ps-1">Ninguna analítica vinculada</div>
+                } @else {
+                <div class="association-badges-grid ps-1">
+                  @for (an of selectedScheduleAnalytics(); track an.id) {
+                  <span class="badge-assoc-tag"
+                    (click)="navigateToAnalytic(an.hostFingerprint, an.targetCameraIds[0], an.id); $event.stopPropagation();">
+                    {{ getAnalyticLabel(an.type) }}
+                  </span>
+                  }
+                </div>
+                }
+              </div>
+              }
+            </div>
+          </div>
+        </div> <!-- Closes flex-grow-1 scrollable wrapper -->
+      </div>
+      }
+    </div>
+  </div>
+  }
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+  Modal de Confirmación: Eliminar Horario
+══════════════════════════════════════════════════════════════════════════ -->
+@if (showDeleteScheduleModal()) {
+<div class="delete-camera-modal-overlay" (click)="closeDeleteScheduleModal()" aria-modal="true" role="dialog">
+  <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
+
+    <!-- Icono de advertencia -->
+    <div class="delete-modal-icon-wrap">
+      <span class="icon-svg icon-warning" style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
+    </div>
+
+    <!-- Título y mensaje -->
+    <h5 class="delete-modal-title">Eliminar horario</h5>
+    <p class="delete-modal-message">
+      ¿Estás seguro de que deseas eliminar el horario
+      <strong class="delete-modal-camera-name">{{ scheduleToDelete()?.name }}</strong>?
+      Esta acción removerá el horario de todas las analíticas asociadas y no se puede deshacer.
+    </p>
+
+    <!-- Acciones -->
+    <div class="delete-modal-actions">
+      <button class="delete-modal-btn-cancel" (click)="closeDeleteScheduleModal()" [disabled]="isDeletingSchedule()">
+        Cancelar
+      </button>
+      <button class="delete-modal-btn-confirm" (click)="confirmDeleteSchedule()" [disabled]="isDeletingSchedule()">
+        @if (isDeletingSchedule()) {
+        <span class="delete-modal-spinner"></span>
+        Eliminando...
+        } @else {
+        <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+        Eliminar
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+  Modal de Registro: Crear Horario
+══════════════════════════════════════════════════════════════════════════ -->
+@if (showCreateScheduleModal()) {
+<div class="schedule-modal-overlay" (click)="closeCreateScheduleModal()" aria-modal="true" role="dialog">
+  <div class="schedule-modal-card" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2">
+      <h5 class="fw-bold mb-0 text-body d-flex align-items-center gap-2">
+        <span class="icon-svg icon-calendar text-primary" style="width: 20px; height: 20px;"></span>
+        <span>Nuevo Horario de Operación</span>
+      </h5>
+      <button class="btn btn-ghost p-1" style="font-size: 1.15rem; line-height: 1;" (click)="closeCreateScheduleModal()"
+        aria-label="Cerrar modal">✕</button>
+    </div>
+
+    <!-- Body -->
+    <!-- Form Body -->
+    <div class="mb-3 text-start">
+      <label class="form-label text-muted small fw-semibold">Nombre del Horario</label>
+      <input type="text" class="form-control form-control-sm" placeholder="Ej. Horario Comercial"
+        [ngModel]="newScheduleName()" (ngModelChange)="newScheduleName.set($event)">
+    </div>
+
+    <!-- Frecuencia -->
+    <div class="mb-3 text-start">
+      <label class="form-label d-block text-muted small fw-semibold">Frecuencia</label>
+      <div class="frequency-segment-control">
+        <button type="button" class="frequency-segment-btn" [class.active]="newScheduleFrequency() === 'diario'"
+          (click)="onNewScheduleFrequencyChange('diario')">Diario</button>
+        <button type="button" class="frequency-segment-btn" [class.active]="newScheduleFrequency() === 'semanal'"
+          (click)="onNewScheduleFrequencyChange('semanal')">Semanal</button>
+        <button type="button" class="frequency-segment-btn" [class.active]="newScheduleFrequency() === 'mensual'"
+          (click)="onNewScheduleFrequencyChange('mensual')">Mensual</button>
+      </div>
+    </div>
+
+    <!-- Selector de Rango de Fechas (Custom Popover) -->
+    <div class="mb-3 position-relative text-start">
+      <label class="form-label text-muted small fw-semibold">Rango de Fechas</label>
+      <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
+        [disabled]="!newScheduleFrequency()" (click)="openCalendar('newRange', $event)">
+        <span>
+          @if (!newScheduleFrequency()) {
+          Selecciona una frecuencia primero
+          } @else if (newScheduleDateStart()) {
+          {{ formatDateLabel(newScheduleDateStart()) }}
+          @if (newScheduleDateEnd() && newScheduleDateStart() !== newScheduleDateEnd()) {
+          - {{ formatDateLabel(newScheduleDateEnd()) }}
+          }
+          } @else {
+          Elegir rango de fechas
+          }
+        </span>
+        <span class="icon-svg icon-calendar text-muted opacity-75" style="width: 14px; height: 14px;"></span>
+      </button>
+
+      @if (activeCalendarField() === 'newRange') {
+      <div class="custom-calendar-popover position-absolute top-100 start-0 shadow-lg"
+        (click)="$event.stopPropagation()" style="z-index: 9999;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <button type="button" class="calendar-header-btn btn-ghost" [disabled]="isPrevCalendarMonthDisabled()"
+            (click)="prevCalendarMonth($event)">
+            &lt;
+          </button>
+          <span class="fw-bold text-capitalize" style="font-size: 0.85rem; color: var(--text-primary);">
+            {{ getMonths()[calendarViewMonth()] }} {{ calendarViewYear() }}
+          </span>
+          <button type="button" class="calendar-header-btn btn-ghost" (click)="nextCalendarMonth($event)">
+            &gt;
+          </button>
+        </div>
+
+        <div class="d-grid text-center text-muted small mb-1"
+          style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
+          <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
+        </div>
+
+        <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
+          @for (empty of calendarGrid().emptyDays; track empty) {
+          <div style="width: 28px; height: 28px;"></div>
+          }
+          @for (day of calendarGrid().days; track day) {
+          <button type="button" class="calendar-day-btn" [class.selected]="isCalendarDateSelected(day)"
+            [class.in-range]="isCalendarDateInRange(day)" [disabled]="isCalendarDayDisabled(day)"
+            (click)="selectCalendarDay(day)">
+            {{ day }}
+          </button>
+          }
+        </div>
+      </div>
+      }
+    </div>
+
+    <!-- Rango de Horas (Custom Popover) -->
+    <div class="row g-2 mb-3 text-start">
+      <div class="col-6 position-relative">
+        <label class="form-label text-muted small fw-semibold">Hora Inicio</label>
+        <button type="button" class="calendar-trigger-btn w-100 font-monospace"
+          (click)="openTimePicker('newStart', $event)">
+          <span>{{ newScheduleTimeStart() || 'Elegir hora' }}</span>
+          <span class="icon-svg icon-clock text-muted opacity-75" style="width: 14px; height: 14px;"></span>
+        </button>
+
+        @if (activeTimeField() === 'newStart') {
+        <div class="custom-time-popover position-absolute top-100 start-0 shadow-lg" (click)="$event.stopPropagation()"
+          style="z-index: 9999;">
+          <div class="time-picker-container">
+            <div class="time-column-wrapper">
+              <div class="time-column-header">Hora</div>
+              <div class="time-column scroll-container" (scroll)="onTimeScroll($event)">
+                @for (h of infiniteHours; track $index) {
+                <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
+                  (click)="selectTimeHour(h)">
+                  {{ h | number:'2.0-0' }}
+                </button>
+                }
+              </div>
+            </div>
+            <div class="time-separator">:</div>
+            <div class="time-column-wrapper">
+              <div class="time-column-header">Min</div>
+              <div class="time-column scroll-container" (scroll)="onTimeScroll($event)">
+                @for (m of infiniteMinutes; track $index) {
+                <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
+                  (click)="selectTimeMinute(m)">
+                  {{ m | number:'2.0-0' }}
+                </button>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        }
+      </div>
+
+      <div class="col-6 position-relative">
+        <label class="form-label text-muted small fw-semibold">Hora Fin</label>
+        <button type="button" class="calendar-trigger-btn w-100 font-monospace"
+          (click)="openTimePicker('newEnd', $event)">
+          <span>{{ newScheduleTimeEnd() || 'Elegir hora' }}</span>
+          <span class="icon-svg icon-clock text-muted opacity-75" style="width: 14px; height: 14px;"></span>
+        </button>
+
+        @if (activeTimeField() === 'newEnd') {
+        <div class="custom-time-popover position-absolute top-100 start-0 shadow-lg" (click)="$event.stopPropagation()"
+          style="z-index: 9999;">
+          <div class="time-picker-container">
+            <div class="time-column-wrapper">
+              <div class="time-column-header">Hora</div>
+              <div class="time-column scroll-container" (scroll)="onTimeScroll($event)">
+                @for (h of infiniteHours; track $index) {
+                <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
+                  (click)="selectTimeHour(h)">
+                  {{ h | number:'2.0-0' }}
+                </button>
+                }
+              </div>
+            </div>
+            <div class="time-separator">:</div>
+            <div class="time-column-wrapper">
+              <div class="time-column-header">Min</div>
+              <div class="time-column scroll-container" (scroll)="onTimeScroll($event)">
+                @for (m of infiniteMinutes; track $index) {
+                <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
+                  (click)="selectTimeMinute(m)">
+                  {{ m | number:'2.0-0' }}
+                </button>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- Validaciones -->
+    @if (getCalendarValidationWarning()) {
+    <div class="alert alert-warning py-2 px-3 small border-0 text-warning bg-warning-subtle mb-3 text-start"
+      style="font-size: 0.76rem;">
+      ⚠️ {{ getCalendarValidationWarning() }}
+    </div>
+    }
+
+    <!-- Footer Acciones -->
+    <div class="d-flex gap-3 mt-4 w-100">
+      <button class="btn btn-clear-filters flex-fill py-2" (click)="cancelCreate()">Limpiar</button>
+      <button class="btn btn-apply-filters flex-fill py-2" (click)="createSchedule()" [disabled]="!isFormValid()">Crear
+        Horario</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+  Modal de Edición: Editar Horario
+══════════════════════════════════════════════════════════════════════════ -->
+@if (showEditScheduleModal()) {
+<div class="schedule-modal-overlay" (click)="closeEditScheduleModal()" aria-modal="true" role="dialog">
+  <div class="schedule-modal-card" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2">
+      <h5 class="fw-bold mb-0 text-body d-flex align-items-center gap-2">
+        <span class="icon-svg icon-edit text-primary" style="width: 20px; height: 20px;"></span>
+        <span>Editar Horario</span>
+      </h5>
+      <button class="btn btn-ghost p-1" style="font-size: 1.15rem; line-height: 1;" (click)="closeEditScheduleModal()"
+        aria-label="Cerrar modal">✕</button>
+    </div>
+
+    <!-- Body -->
+    <!-- Form Body -->
+    <div class="mb-3 text-start">
+      <label class="form-label text-muted small fw-semibold">Nombre del Horario</label>
+      <input type="text" class="form-control form-control-sm" placeholder="Ej. Horario Comercial"
+        [ngModel]="editingScheduleName()" (ngModelChange)="editingScheduleName.set($event)">
+    </div>
+
+    <!-- Frecuencia -->
+    <div class="mb-3 text-start">
+      <label class="form-label d-block text-muted small fw-semibold">Frecuencia</label>
+      <div class="frequency-segment-control">
+        <button type="button" class="frequency-segment-btn" [class.active]="editingScheduleFrequency() === 'diario'"
+          (click)="onEditingScheduleFrequencyChange('diario')">Diario</button>
+        <button type="button" class="frequency-segment-btn" [class.active]="editingScheduleFrequency() === 'semanal'"
+          (click)="onEditingScheduleFrequencyChange('semanal')">Semanal</button>
+        <button type="button" class="frequency-segment-btn" [class.active]="editingScheduleFrequency() === 'mensual'"
+          (click)="onEditingScheduleFrequencyChange('mensual')">Mensual</button>
+      </div>
+    </div>
+
+    <!-- Selector de Rango de Fechas (Custom Popover) -->
+    <div class="mb-3 position-relative text-start">
+      <label class="form-label text-muted small fw-semibold">Rango de Fechas</label>
+      <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
+        [disabled]="!editingScheduleFrequency()" (click)="openCalendar('editingRange', $event)">
+        <span>
+          @if (!editingScheduleFrequency()) {
+          Selecciona una frecuencia primero
+          } @else if (editingScheduleDateStart()) {
+          {{ formatDateLabel(editingScheduleDateStart()) }}
+          @if (editingScheduleDateEnd() && editingScheduleDateStart() !== editingScheduleDateEnd()) {
+          - {{ formatDateLabel(editingScheduleDateEnd()) }}
+          }
+          } @else {
+          Elegir rango de fechas
+          }
+        </span>
+        <span class="icon-svg icon-calendar text-muted opacity-75" style="width: 14px; height: 14px;"></span>
+      </button>
+
+      @if (activeCalendarField() === 'editingRange') {
+      <div class="custom-calendar-popover position-absolute top-100 start-0 shadow-lg"
+        (click)="$event.stopPropagation()" style="z-index: 9999;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <button type="button" class="calendar-header-btn btn-ghost" [disabled]="isPrevCalendarMonthDisabled()"
+            (click)="prevCalendarMonth($event)">
+            &lt;
+          </button>
+          <span class="fw-bold text-capitalize" style="font-size: 0.85rem; color: var(--text-primary);">
+            {{ getMonths()[calendarViewMonth()] }} {{ calendarViewYear() }}
+          </span>
+          <button type="button" class="calendar-header-btn btn-ghost" (click)="nextCalendarMonth($event)">
+            &gt;
+          </button>
+        </div>
+
+        <div class="d-grid text-center text-muted small mb-1"
+          style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
+          <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
+        </div>
+
+        <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
+          @for (empty of calendarGrid().emptyDays; track empty) {
+          <div style="width: 28px; height: 28px;"></div>
+          }
+          @for (day of calendarGrid().days; track day) {
+          <button type="button" class="calendar-day-btn" [class.selected]="isCalendarDateSelected(day)"
+            [class.in-range]="isCalendarDateInRange(day)" [disabled]="isCalendarDayDisabled(day)"
+            (click)="selectCalendarDay(day)">
+            {{ day }}
+          </button>
+          }
+        </div>
+      </div>
+      }
+    </div>
+
+    <!-- Rango de Horas (Custom Popover) -->
+    <div class="row g-2 mb-3 text-start">
+      <div class="col-6 position-relative">
+        <label class="form-label text-muted small fw-semibold">Hora Inicio</label>
+        <button type="button" class="calendar-trigger-btn w-100 font-monospace"
+          (click)="openTimePicker('editingStart', $event)">
+          <span>{{ editingScheduleTimeStart() || 'Elegir hora' }}</span>
+          <span class="icon-svg icon-clock text-muted opacity-75" style="width: 14px; height: 14px;"></span>
+        </button>
+
+        @if (activeTimeField() === 'editingStart') {
+        <div class="custom-time-popover position-absolute top-100 start-0 shadow-lg" (click)="$event.stopPropagation()"
+          style="z-index: 9999;">
+          <div class="time-picker-container">
+            <div class="time-column-wrapper">
+              <div class="time-column-header">Hora</div>
+              <div class="time-column scroll-container" (scroll)="onTimeScroll($event)">
+                @for (h of infiniteHours; track $index) {
+                <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
+                  (click)="selectTimeHour(h)">
+                  {{ h | number:'2.0-0' }}
+                </button>
+                }
+              </div>
+            </div>
+            <div class="time-separator">:</div>
+            <div class="time-column-wrapper">
+              <div class="time-column-header">Min</div>
+              <div class="time-column scroll-container" (scroll)="onTimeScroll($event)">
+                @for (m of infiniteMinutes; track $index) {
+                <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
+                  (click)="selectTimeMinute(m)">
+                  {{ m | number:'2.0-0' }}
+                </button>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        }
+      </div>
+
+      <div class="col-6 position-relative">
+        <label class="form-label text-muted small fw-semibold">Hora Fin</label>
+        <button type="button" class="calendar-trigger-btn w-100 font-monospace"
+          (click)="openTimePicker('editingEnd', $event)">
+          <span>{{ editingScheduleTimeEnd() || 'Elegir hora' }}</span>
+          <span class="icon-svg icon-clock text-muted opacity-75" style="width: 14px; height: 14px;"></span>
+        </button>
+
+        @if (activeTimeField() === 'editingEnd') {
+        <div class="custom-time-popover position-absolute top-100 start-0 shadow-lg" (click)="$event.stopPropagation()"
+          style="z-index: 9999;">
+          <div class="time-picker-container">
+            <div class="time-column-wrapper">
+              <div class="time-column-header">Hora</div>
+              <div class="time-column scroll-container" (scroll)="onTimeScroll($event)">
+                @for (h of infiniteHours; track $index) {
+                <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
+                  (click)="selectTimeHour(h)">
+                  {{ h | number:'2.0-0' }}
+                </button>
+                }
+              </div>
+            </div>
+            <div class="time-separator">:</div>
+            <div class="time-column-wrapper">
+              <div class="time-column-header">Min</div>
+              <div class="time-column scroll-container" (scroll)="onTimeScroll($event)">
+                @for (m of infiniteMinutes; track $index) {
+                <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
+                  (click)="selectTimeMinute(m)">
+                  {{ m | number:'2.0-0' }}
+                </button>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- Validaciones -->
+    @if (getCalendarValidationWarning()) {
+    <div class="alert alert-warning py-2 px-3 small border-0 text-warning bg-warning-subtle mb-3 text-start"
+      style="font-size: 0.76rem;">
+      ⚠️ {{ getCalendarValidationWarning() }}
+    </div>
+    }
+
+    <!-- Footer Acciones -->
+    <div class="d-flex gap-3 mt-4 w-100">
+      <button class="btn btn-clear-filters flex-fill py-2" (click)="cancelEdit()">Cancelar</button>
+      <button class="btn btn-apply-filters flex-fill py-2" (click)="saveScheduleEdit()"
+        [disabled]="!isFormValid()">Guardar</button>
+    </div>
+  </div>
+</div>
+}

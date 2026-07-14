@@ -1,19 +1,14 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet, RouterLink } from '@angular/router';
-
-import { Roles } from './roles/roles';
-import { Usuarios } from './usuarios/usuarios';
-import { Login } from './login/login';
-import { Nodos } from './nodos/nodos';
-import { Horarios } from './horarios/horarios';
-import { Metadatos } from './metadatos/metadatos';
+import { Component, signal, inject } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { WebsocketService } from './core/services/websocket.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, Nodos, Login, Roles, Usuarios, Metadatos],
+  imports: [RouterOutlet],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
 export class App {
+  private websocketService = inject(WebsocketService);
   protected readonly title = signal('iaframecore');
 }

@@ -1,0 +1,99 @@
+<div class="login-wrapper d-flex align-items-center justify-content-center min-vh-100 position-relative">
+  <!-- Dynamic geometric background elements -->
+  <div class="bg-grid-overlay"></div>
+  <div class="bg-glow-orb orb-1"></div>
+  <div class="bg-glow-orb orb-2"></div>
+  <div class="bg-glow-orb orb-3"></div>
+
+  <div class="glass-card shadow-2xl p-5 border border-white/10 rounded-3xl animate-fade-in-up">
+    <!-- Header Block with SVG Brand Logo -->
+    <div class="text-center mb-5">
+      <div class="logo-container mb-4 mx-auto d-flex align-items-center justify-content-center">
+        <!-- Official Azor Logo Vector SVG -->
+        <img src="logo.svg" alt="AZOR" style="width: 44px; height: 44px; color: #ffffff;" />
+      </div>
+      <h2 class="brand-title fw-extrabold mb-1">AZOR ANALYTICS</h2>
+      <p class="brand-subtitle text-slate-400 small">Inteligencia Artificial y Análisis de Video</p>
+    </div>
+
+    <!-- Alarm / Error Alerts -->
+    @if (errorMessage()) {
+    <div
+      class="custom-alert-shake alert-error d-flex align-items-center gap-2 p-3 mb-4 rounded-xl border border-rose-500/20"
+      role="alert">
+      <span class="icon-svg icon-warning text-rose-500 flex-shrink-0" style="width: 16px; height: 16px;"></span>
+      <span class="small fw-semibold text-rose-200">{{ errorMessage() }}</span>
+    </div>
+    }
+
+    <!-- Form Block -->
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <!-- Email input -->
+      <div class="mb-4">
+        <label for="email" class="input-label-primary text-slate-300 small mb-2 d-block">Correo Electrónico</label>
+        <div class="premium-field-group">
+          <span class="field-icon-prefix">
+            <span class="icon-svg icon-email" style="width: 16px; height: 16px;"></span>
+          </span>
+          <input type="email" id="email" formControlName="email" class="premium-input-box"
+            placeholder="ejemplo@correo.com"
+            [class.input-box-error]="loginForm.get('email')?.touched && loginForm.get('email')?.invalid" />
+        </div>
+        @if (loginForm.get('email')?.touched && loginForm.get('email')?.errors?.['required']) {
+        <div class="validation-error-msg mt-1.5 d-flex align-items-center gap-1">
+          <span class="error-dot"></span>El correo electrónico es requerido.
+        </div>
+        }
+        @if (loginForm.get('email')?.touched && loginForm.get('email')?.errors?.['email']) {
+        <div class="validation-error-msg mt-1.5 d-flex align-items-center gap-1">
+          <span class="error-dot"></span>Introduce un correo electrónico válido.
+        </div>
+        }
+      </div>
+
+      <!-- Password input -->
+      <div class="mb-4">
+        <label for="password" class="input-label-primary text-slate-300 small mb-2 d-block">Contraseña</label>
+        <div class="premium-field-group">
+          <span class="field-icon-prefix">
+            <span class="icon-svg icon-lock" style="width: 16px; height: 16px;"></span>
+          </span>
+          <input [type]="showPassword() ? 'text' : 'password'" id="password" formControlName="password"
+            class="premium-input-box pe-12" placeholder="••••••••"
+            [class.input-box-error]="loginForm.get('password')?.touched && loginForm.get('password')?.invalid" />
+          <button type="button" class="btn-field-icon-suffix transition-all" (click)="togglePasswordVisibility()"
+            [title]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+            @if (showPassword()) {
+            <span class="icon-svg icon-eye" style="width: 16px; height: 16px;"></span>
+            } @else {
+            <span class="icon-svg icon-eye-off" style="width: 16px; height: 16px;"></span>
+            }
+          </button>
+        </div>
+        @if (loginForm.get('password')?.touched && loginForm.get('password')?.errors?.['required']) {
+        <div class="validation-error-msg mt-1.5 d-flex align-items-center gap-1">
+          <span class="error-dot"></span>La contraseña es requerida.
+        </div>
+        }
+        @if (loginForm.get('password')?.touched && loginForm.get('password')?.errors?.['minlength']) {
+        <div class="validation-error-msg mt-1.5 d-flex align-items-center gap-1">
+          <span class="error-dot"></span>La contraseña debe tener al menos 6 caracteres.
+        </div>
+        }
+      </div>
+
+      <!-- Action Button -->
+      <button type="submit"
+        class="premium-btn-submit w-100 py-3 mt-4 fw-semibold d-flex align-items-center justify-content-center gap-2"
+        [disabled]="loginForm.invalid || isLoading()">
+        @if (isLoading()) {
+        <span class="btn-spinner"></span>
+        <span>Verificando Credenciales...</span>
+        } @else {
+        <span class="icon-svg icon-login-arrow" style="width: 18px; height: 18px;"></span>
+        <span>Ingresar a la Plataforma</span>
+        }
+      </button>
+    </form>
+  </div>
+</div>

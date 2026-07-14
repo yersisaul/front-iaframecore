@@ -1,0 +1,903 @@
+<div class="nodos-container container-fluid py-4 position-relative">
+
+  <!-- ══════════════════════════════════════════════════════
+       CABECERA REFACTORIZADA — 2 FILAS
+       ══════════════════════════════════════════════════════ -->
+  <div class="view-header mb-4">
+
+    <!-- ─── FILA 1: Identidad + Controles principales ─── -->
+    <div class="header-row-top d-flex align-items-center justify-content-between gap-3">
+
+      <!-- IZQUIERDA: Sidebar toggle + Identidad de página -->
+      <div class="d-flex align-items-center gap-3">
+
+        <!-- Botón de Collapse Sidebar (sin cambios) -->
+        <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
+          (click)="toggleSidebar()" aria-label="Toggle Sidebar">
+          @if (isSidebarCollapsed()) {
+          <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
+          } @else {
+          <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
+          }
+        </button>
+
+        <!-- Bloque de identidad: título + subtítulo -->
+        <div class="header-identity">
+          <h2 class="fw-bold mb-0 header-page-title">Gestión de Nodos</h2>
+          <p class="text-muted mb-0 header-page-subtitle mt-1">
+            Se encontraron <span class="fw-semibold text-primary">{{ filteredHosts().length }}</span> nodos de cómputo
+            registrados.
+          </p>
+        </div>
+      </div>
+
+      <!-- DERECHA: Tabs de vista + Separador + Botón Migrar -->
+      <div class="d-flex align-items-center gap-3">
+
+        <!-- Tabs de Vista (Tarjetas / Lista) -->
+        <div class="view-tabs-group d-flex align-items-center gap-1">
+          <button class="btn-premium-tab" [class.active]="viewMode() === 'cards'" (click)="setViewMode('cards')">
+            <span class="icon-svg icon-grid" style="width: 14px; height: 14px;"></span>
+            <span>Tarjetas</span>
+          </button>
+          <button class="btn-premium-tab" [class.active]="viewMode() === 'list'" (click)="setViewMode('list')">
+            <span class="icon-svg icon-list" style="width: 14px; height: 14px;"></span>
+            <span>Lista</span>
+          </button>
+        </div>
+
+        <!-- Separador vertical -->
+        <div class="header-separator"></div>
+
+        <!-- Botón de Migrar Configuración -->
+        @if (permissionsService.hasPermission('Hosts', 'editar')) {
+        <button class="btn-migrate-config" (click)="openMigrateModal()">
+          <span class="icon-svg icon-migrate-arrows" style="width: 15px; height: 15px;"></span>
+          <span>Migrar Configuración</span>
+        </button>
+        }
+
+      </div>
+    </div>
+    <!-- /FILA 1 -->
+
+    <!-- ─── FILA 2: Búsqueda + Paginación ─── -->
+    <div class="header-row-bottom d-flex align-items-center gap-3 mt-3">
+
+      <!-- Barra de Búsqueda + Botón de Filtros -->
+      <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
+        <!-- Input wrapper ocupa todo el espacio libre, empujando el filtro al extremo -->
+        <div class="search-input-wrapper d-flex align-items-center flex-grow-1">
+          <span class="icon-svg icon-search search-icon-prefix text-muted flex-shrink-0" style="width: 18px; height: 18px; opacity: 0.5;"></span>
+          <input type="text" [formControl]="searchControl" placeholder="Buscar por hostname o IP..."
+            class="search-input-control border-0 ms-2" style="outline: none; flex: 1; min-width: 0;" />
+        </div>
+        <!-- Botón filtro al extremo derecho del searchbar -->
+        <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
+          (click)="toggleFilterPanel()" [class.active]="hasActiveFilters()" [class.open]="showFilterPanel()"
+          title="Filtros avanzados" aria-label="Filtros avanzados">
+          <span class="icon-svg icon-filter filter-icon"></span>
+          @if (hasActiveFilters()) {
+          <span class="active-badge-dot"></span>
+          }
+        </button>
+      </div>
+
+      <!-- Espaciador flexible -->
+      <div class="flex-grow-1"></div>
+
+      <!-- Selector de Nodos por Página -->
+      <div class="d-flex align-items-center gap-2">
+        <label for="limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Nodos por página:</label>
+        <select id="limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
+          (change)="onLimitChange($event)">
+          @for (opt of limitOptions(); track $index) {
+          <option [value]="opt" [selected]="limit() === opt">{{ opt }}</option>
+          }
+        </select>
+      </div>
+
+    </div>
+    <!-- /FILA 2 -->
+
+  </div>
+  <!-- /view-header -->
+
+  <!-- Backdrop Overlay para el Drawer Superior -->
+  @if (showFilterPanel()) {
+  <div class="drawer-backdrop" (click)="toggleFilterPanel()"></div>
+  }
+
+  <!-- Modal / Drawer Superior Deslizable -->
+  <div class="top-drawer" [class.open]="showFilterPanel()">
+    <div class="drawer-content p-4">
+      <div class="container-fluid">
+        <!-- Drawer Header -->
+        <div class="d-flex justify-content-between align-items-start mb-3 pb-3">
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="icon-svg drawer-header-icon icon-filter"></span>
+              <h5 class="fw-bold mb-0">Filtros Avanzados</h5>
+            </div>
+            <p class="text-muted small mb-0" style="margin-top: 2px;">Filtra y organiza los nodos de tu red de cómputo
+              en tiempo real.</p>
+          </div>
+          <button class="btn-ghost close-drawer-btn" (click)="toggleFilterPanel()" aria-label="Cerrar filtros">
+            <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
+          </button>
+        </div>
+
+        <!-- Cuadrícula de Filtros Bento Style -->
+        <div class="filters-bento-grid">
+          <!-- Filtro OS -->
+          <div class="filter-cell position-relative" (click)="toggleDropdown('os', $event)">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="icon-svg filter-cell-icon icon-nodos"></span>
+              <span class="filter-lbl mb-0">Sistema Operativo</span>
+            </div>
+            <div class="filter-display-val">
+              <span class="filter-current-value">{{ tempFilterOS() === 'all' ? 'Todos los Sistemas' : tempFilterOS()
+                }}</span>
+              <span class="icon-svg filter-chevron icon-chevron-right"
+                [class.rotated]="activeDropdown() === 'os'"></span>
+            </div>
+            @if (activeDropdown() === 'os') {
+            <div class="custom-dropdown-options-menu">
+              <div class="custom-dropdown-option" [class.active]="tempFilterOS() === 'all'"
+                (click)="selectFilterValue('os', 'all', $event)">
+                Todos los Sistemas
+              </div>
+              @for (os of filterOptions()?.os || []; track os) {
+              <div class="custom-dropdown-option" [class.active]="tempFilterOS() === os"
+                (click)="selectFilterValue('os', os, $event)">
+                {{ os }}
+              </div>
+              }
+            </div>
+            }
+          </div>
+
+          <div class="filter-cell position-relative" (click)="toggleDropdown('arch', $event)">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="icon-svg filter-cell-icon icon-cpu"></span>
+              <span class="filter-lbl mb-0">Arquitectura</span>
+            </div>
+            <div class="filter-display-val">
+              <span class="filter-current-value">{{ tempFilterArch() === 'all' ? 'Todas las Arquitecturas' :
+                tempFilterArch() }}</span>
+              <span class="icon-svg filter-chevron icon-chevron-right"
+                [class.rotated]="activeDropdown() === 'arch'"></span>
+            </div>
+            @if (activeDropdown() === 'arch') {
+            <div class="custom-dropdown-options-menu">
+              <div class="custom-dropdown-option" [class.active]="tempFilterArch() === 'all'"
+                (click)="selectFilterValue('arch', 'all', $event)">
+                Todas las Arquitecturas
+              </div>
+              @for (arch of filterOptions()?.arch || []; track arch) {
+              <div class="custom-dropdown-option" [class.active]="tempFilterArch() === arch"
+                (click)="selectFilterValue('arch', arch, $event)">
+                {{ arch }}
+              </div>
+              }
+            </div>
+            }
+          </div>
+
+          <div class="filter-cell position-relative" (click)="toggleDropdown('gpu', $event)">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="icon-svg filter-cell-icon icon-gpu"></span>
+              <span class="filter-lbl mb-0">GPU</span>
+            </div>
+            <div class="filter-display-val">
+              <span class="filter-current-value">{{ tempFilterGPU() === 'all' ? 'Todas las GPUs' : tempFilterGPU()
+                }}</span>
+              <span class="icon-svg filter-chevron icon-chevron-right"
+                [class.rotated]="activeDropdown() === 'gpu'"></span>
+            </div>
+            @if (activeDropdown() === 'gpu') {
+            <div class="custom-dropdown-options-menu">
+              <div class="custom-dropdown-option" [class.active]="tempFilterGPU() === 'all'"
+                (click)="selectFilterValue('gpu', 'all', $event)">
+                Todas las GPUs
+              </div>
+              @for (gpu of filterOptions()?.gpu || []; track gpu) {
+              <div class="custom-dropdown-option" [class.active]="tempFilterGPU() === gpu"
+                (click)="selectFilterValue('gpu', gpu, $event)">
+                {{ gpu }}
+              </div>
+              }
+            </div>
+            }
+          </div>
+
+          <div class="filter-cell position-relative" (click)="toggleDropdown('vram', $event)">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="icon-svg filter-cell-icon icon-gpu"></span>
+              <span class="filter-lbl mb-0">Memoria VRAM</span>
+            </div>
+            <div class="filter-display-val">
+              <span class="filter-current-value">{{ tempFilterVram() === 'all' ? 'Todas las capacidades' :
+                tempFilterVram() }}</span>
+              <span class="icon-svg filter-chevron icon-chevron-right"
+                [class.rotated]="activeDropdown() === 'vram'"></span>
+            </div>
+            @if (activeDropdown() === 'vram') {
+            <div class="custom-dropdown-options-menu">
+              <div class="custom-dropdown-option" [class.active]="tempFilterVram() === 'all'"
+                (click)="selectFilterValue('vram', 'all', $event)">
+                Todas las capacidades
+              </div>
+              @for (vram of filterOptions()?.vram || []; track vram) {
+              <div class="custom-dropdown-option" [class.active]="tempFilterVram() === vram"
+                (click)="selectFilterValue('vram', vram, $event)">
+                {{ vram }}
+              </div>
+              }
+            </div>
+            }
+          </div>
+
+          <div class="filter-cell position-relative" (click)="toggleDropdown('version', $event)">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="icon-svg filter-cell-icon icon-info-circle"></span>
+              <span class="filter-lbl mb-0">Versión</span>
+            </div>
+            <div class="filter-display-val">
+              <span class="filter-current-value">{{ tempFilterVersion() === 'all' ? 'Todas las versiones' : 'v' +
+                tempFilterVersion() }}</span>
+              <span class="icon-svg filter-chevron icon-chevron-right"
+                [class.rotated]="activeDropdown() === 'version'"></span>
+            </div>
+            @if (activeDropdown() === 'version') {
+            <div class="custom-dropdown-options-menu">
+              <div class="custom-dropdown-option" [class.active]="tempFilterVersion() === 'all'"
+                (click)="selectFilterValue('version', 'all', $event)">
+                Todas las versiones
+              </div>
+              @for (ver of filterOptions()?.version || []; track ver) {
+              <div class="custom-dropdown-option" [class.active]="tempFilterVersion() === ver"
+                (click)="selectFilterValue('version', ver, $event)">
+                v{{ ver }}
+              </div>
+              }
+            </div>
+            }
+          </div>
+
+          <!-- Filtro Estado -->
+          <div class="filter-cell position-relative" (click)="toggleDropdown('status', $event)">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="icon-svg filter-cell-icon icon-usuarios"></span>
+              <span class="filter-lbl mb-0">Estado de Actividad</span>
+            </div>
+            <div class="filter-display-val">
+              <span class="filter-current-value">{{ tempFilterStatus() === 'all' ? 'Todos los estados' :
+                (tempFilterStatus() === 'active' ? 'Activo (Online)' : 'Inactivo (Offline)') }}</span>
+              <span class="icon-svg filter-chevron icon-chevron-right"
+                [class.rotated]="activeDropdown() === 'status'"></span>
+            </div>
+            @if (activeDropdown() === 'status') {
+            <div class="custom-dropdown-options-menu">
+              <div class="custom-dropdown-option" [class.active]="tempFilterStatus() === 'all'"
+                (click)="selectFilterValue('status', 'all', $event)">
+                Todos los estados
+              </div>
+              <div class="custom-dropdown-option" [class.active]="tempFilterStatus() === 'active'"
+                (click)="selectFilterValue('status', 'active', $event)">
+                Activo (Online)
+              </div>
+              <div class="custom-dropdown-option" [class.active]="tempFilterStatus() === 'inactive'"
+                (click)="selectFilterValue('status', 'inactive', $event)">
+                Inactivo (Offline)
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- Acciones del Modal: Limpiar y Aplicar -->
+        <div class="d-flex gap-3 mt-4 pt-3 w-100">
+          <button class="btn btn-clear-filters flex-fill py-2.5" (click)="resetFilters()">
+            Limpiar Filtros
+          </button>
+          <button class="btn btn-apply-filters flex-fill py-2.5" (click)="applyFilters()">
+            Aplicar Cambios
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  @if (viewMode() === 'cards') {
+  <!-- CSS Grid Bento Box -->
+  <div #hostsGrid class="hosts-grid mb-4">
+    @for (host of pagedHosts(); track host.id) {
+    <div class="card host-card h-100" [class.is-active]="host.status === 'active' || host.status === 'online'"
+      [class.ubuntu-card]="!!host.hwInfo?.system?.toLowerCase()?.includes('linux')"
+      [class.windows-card]="!!host.hwInfo?.system?.toLowerCase()?.includes('windows')"
+      [class.host-card--new]="hostService.newHostIds().has(host.fingerprint)"
+      [class.host-card--updated]="hostService.updatedHostIds().has(host.fingerprint)"
+      [class.host-card--deleting]="hostService.deletingHostIds().has(host.fingerprint)"
+      (click)="goToCameras(host.fingerprint)">
+      <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
+        <div>
+          <!-- Cabecera de la Tarjeta: OS Icon + Hostname + Versión y Actividad -->
+          <div class="host-header-block d-flex align-items-center justify-content-between pb-3" style="gap: 12px;">
+            <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0;">
+              @if (host.hwInfo; as hw) {
+              <span class="icon-svg os-avatar-icon" [class.icon-ubuntu]="!!hw?.system?.toLowerCase()?.includes('linux')"
+                [class.icon-windows]="!!hw?.system?.toLowerCase()?.includes('windows')"
+                [class.icon-nodos]="!hw?.system?.toLowerCase()?.includes('linux') && !hw?.system?.toLowerCase()?.includes('windows')">
+              </span>
+              } @else {
+              <span class="icon-svg os-avatar-icon icon-nodos"></span>
+              }
+              <div class="host-title-container">
+                <h5 class="host-title fw-bold mb-0" [title]="host.hostname">
+                  {{ host.hostname }}
+                </h5>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+              <!-- Estado de Actividad visualmente renovado -->
+              <span class="status-badge"
+                [class.status-badge-online]="host.status === 'active' || host.status === 'online'"
+                [class.status-badge-offline]="host.status !== 'active' && host.status !== 'online'">
+                {{ (host.status === 'active' || host.status === 'online') ? 'Online' : 'Offline' }}
+              </span>
+              <!-- Versión visualmente renovada -->
+              <span class="version-tag">v{{ host.version }}</span>
+            </div>
+          </div>
+
+          <!-- Información de Identidad y Hardware del Nodo -->
+          <div class="specs-list d-flex flex-column gap-1 mb-2">
+            <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-lastSeen'"
+              (click)="copyRowContent(formatLastSeen(host.metrics?.lastSeen), host.fingerprint + '-lastSeen'); $event.stopPropagation()">
+              <span class="spec-lbl">Últ. vez</span>
+              @if (copiedRowId() === host.fingerprint + '-lastSeen') {
+              <span class="copied-badge text-success fw-bold ms-auto"
+                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-truncate text-end">
+                {{ formatLastSeen(host.metrics?.lastSeen) }}
+              </span>
+              }
+            </div>
+            <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-fingerprint'"
+              (click)="copyRowContent(host.fingerprint, host.fingerprint + '-fingerprint'); $event.stopPropagation()">
+              <span class="spec-lbl">Fingerprint</span>
+              @if (copiedRowId() === host.fingerprint + '-fingerprint') {
+              <span class="copied-badge text-success fw-bold ms-auto"
+                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-truncate text-end">
+                {{host.fingerprint }}
+              </span>
+              }
+            </div>
+            <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-ipAddress'"
+              (click)="copyRowContent(host.ipAddress, host.fingerprint + '-ipAddress'); $event.stopPropagation()">
+              <span class="spec-lbl">Dirección IP</span>
+              @if (copiedRowId() === host.fingerprint + '-ipAddress') {
+              <span class="copied-badge text-success fw-bold ms-auto"
+                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-truncate text-end">
+                {{ host.ipAddress}}
+              </span>
+              }
+            </div>
+            @if (host.hwInfo; as hw) {
+            <!-- SO + Release en una sola fila -->
+            <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-system'"
+              (click)="copyRowContent(hw?.system + ' ' + hw?.release, host.fingerprint + '-system'); $event.stopPropagation()">
+              <span class="spec-lbl">Sistema</span>
+              @if (copiedRowId() === host.fingerprint + '-system') {
+              <span class="copied-badge text-success fw-bold ms-auto"
+                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-truncate text-end">
+                {{ hw?.system }} &ndash; {{ hw?.release }}
+              </span>
+              }
+            </div>
+            <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-mac'"
+              (click)="copyRowContent(hw?.mac || '', host.fingerprint + '-mac'); $event.stopPropagation()">
+              <span class="spec-lbl">Dirección MAC</span>
+              @if (copiedRowId() === host.fingerprint + '-mac') {
+              <span class="copied-badge text-success fw-bold ms-auto"
+                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-truncate text-end">
+                {{ hw?.mac }}
+              </span>
+              }
+            </div>
+            }
+          </div>
+
+          <!-- Bloque CPU / RAM (actualizado con métricas del heartbeat) -->
+          <div class="resource-panel cpu-panel mb-2">
+            <div class="resource-panel-header">
+              <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0;">
+                <span class="icon-svg resource-icon icon-cpu"></span>
+                <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
+                  <span class="resource-lbl">CPU</span>
+                  @if (host.hwInfo?.arch) {
+                  <span class="resource-name text-truncate" [title]="host.hwInfo?.arch">
+                    {{ host.hwInfo?.arch }}
+                  </span>
+                  }
+                </div>
+              </div>
+              <div class="resource-stats">
+                <div class="resource-stat-item">
+                  <span class="resource-stat-lbl">Uso CPU</span>
+                  <span class="resource-stat-val">
+                    @if (host.metrics && host.metrics.cpu !== null && host.metrics.cpu !== undefined) {
+                    {{ host.metrics.cpu | number:'1.0-1' }}<span class="resource-stat-unit">%</span>
+                    } @else {
+                    -
+                    }
+                  </span>
+                </div>
+                <div class="resource-stat-divider"></div>
+                <div class="resource-stat-item text-end">
+                  <span class="resource-stat-lbl">RAM</span>
+                  <span class="resource-stat-val">
+                    @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
+                    {{ ((host.metrics.memory / 100) * parseMemoryGB(host.hwInfo?.totalMemory ?? host.hwInfo?.totalRam))
+                    | number:'1.1-1' }}
+                    <span class="resource-stat-unit"> / {{ parseMemoryGB(host.hwInfo?.totalMemory ??
+                      host.hwInfo?.totalRam) | number:'1.0-0' }} GB</span>
+                    } @else {
+                    - <span class="resource-stat-unit"> / {{ parseMemoryGB(host.hwInfo?.totalMemory ??
+                      host.hwInfo?.totalRam) || '-' }} GB</span>
+                    }
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="resource-bar-track">
+              <div class="resource-bar-fill cpu-bar"
+                [style.width.%]="(host.metrics && host.metrics.cpu !== null && host.metrics.cpu !== undefined) ? host.metrics.cpu : 0">
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloque GPU (actualizado con métricas del heartbeat) -->
+          @if (host.gpuInfo; as gpu) {
+          <div class="resource-panel gpu-panel">
+            <div class="resource-panel-header">
+              <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0;">
+                <span class="icon-svg resource-icon icon-gpu"></span>
+                <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
+                  <span class="resource-lbl">GPU</span>
+                  <div class="gpu-title-container">
+                    <span class="resource-name" [title]="(gpu?.gpu || '') + ' ' + (gpu?.model || '')">
+                      {{ gpu?.model }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="resource-stats">
+                <div class="resource-stat-item">
+                  <span class="resource-stat-lbl">Uso GPU</span>
+                  <span class="resource-stat-val">
+                    @if (host.metrics && host.metrics.gpu !== null && host.metrics.gpu !== undefined) {
+                    {{ host.metrics.gpu | number:'1.0-1' }}<span class="resource-stat-unit">%</span>
+                    } @else {
+                    -
+                    }
+                  </span>
+                </div>
+                <div class="resource-stat-divider"></div>
+                <div class="resource-stat-item text-end">
+                  <span class="resource-stat-lbl">VRAM</span>
+                  <span class="resource-stat-val">
+                    @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
+                    {{ ((host.metrics.vram / 100) * parseMemoryGB(gpu?.totalMemory)) | number:'1.1-1' }}
+                    <span class="resource-stat-unit"> / {{ parseMemoryGB(gpu?.totalMemory) | number:'1.0-0' }} GB</span>
+                    } @else {
+                    - <span class="resource-stat-unit"> / {{ parseMemoryGB(gpu?.totalMemory) || '-' }} GB</span>
+                    }
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="resource-bar-track">
+              <div class="resource-bar-fill gpu-bar"
+                [style.width.%]="(host.metrics && host.metrics.gpu !== null && host.metrics.gpu !== undefined) ? host.metrics.gpu : 0">
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+    }
+  </div>
+  } @else {
+  <!-- Tabla Premium de Nodos -->
+  <div class="border shadow-sm rounded-4 mb-4 bg-card overflow-hidden">
+    <div class="nm-table-container">
+      <table class="table nm-table align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col" class="text-muted small fw-bold">ESTADO</th>
+            <th scope="col" class="text-muted small fw-bold">HOSTNAME</th>
+            <th scope="col" class="text-muted small fw-bold">DIRECCIÓN IP</th>
+            <th scope="col" class="text-muted small fw-bold text-center">SO</th>
+            <th scope="col" class="text-muted small fw-bold text-center">CPU / RAM</th>
+            <th scope="col" class="text-muted small fw-bold text-center">GPU</th>
+            <th scope="col" class="text-muted small fw-bold text-center">ÚLT. VEZ</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (host of pagedHosts(); track host.id) {
+          <tr class="nm-table-tr align-middle"
+            [class.ubuntu-tr]="!!host.hwInfo?.system?.toLowerCase()?.includes('linux')"
+            [class.windows-tr]="!!host.hwInfo?.system?.toLowerCase()?.includes('windows')"
+            [class.host-card--new]="hostService.newHostIds().has(host.fingerprint)"
+            [class.host-card--updated]="hostService.updatedHostIds().has(host.fingerprint)"
+            [class.host-card--deleting]="hostService.deletingHostIds().has(host.fingerprint)"
+            (click)="goToCameras(host.fingerprint)">
+            <!-- Estado -->
+            <td class="ps-3">
+              <span class="d-inline-flex align-items-center gap-2">
+                <span class="status-dot" [class.online]="host.status === 'active' || host.status === 'online'"></span>
+                <span class="fw-semibold" [class.text-success]="host.status === 'active' || host.status === 'online'"
+                  [class.text-danger]="host.status !== 'active' && host.status !== 'online'"
+                  style="font-size: 0.88rem;">
+                  {{ (host.status === 'active' || host.status === 'online') ? 'Online' : 'Offline' }}
+                </span>
+              </span>
+            </td>
+            <!-- Hostname -->
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold text-body text-truncate d-block" style="font-size: 0.88rem;"
+                  [title]="host.hostname">{{ host.hostname }}</span>
+              </div>
+            </td>
+            <!-- IP -->
+            <td>
+              <code class="font-monospace text-muted" style="font-size: 0.88rem;">{{ host.ipAddress }}</code>
+            </td>
+            <!-- SO -->
+            <td>
+              <div class="d-flex align-items-center" style="min-width: 0;">
+                <span class="icon-svg os-avatar-icon table-os-icon flex-shrink-0"
+                  style="width: 24px; height: 24px; margin-right: 10px;"
+                  [class.icon-ubuntu]="!!host.hwInfo?.system?.toLowerCase()?.includes('linux')"
+                  [class.icon-windows]="!!host.hwInfo?.system?.toLowerCase()?.includes('windows')"
+                  [class.icon-nodos]="!host.hwInfo?.system?.toLowerCase()?.includes('linux') && !host.hwInfo?.system?.toLowerCase()?.includes('windows')">
+                </span>
+                <span class="text-body fw-medium flex-shrink-0"
+                  style="font-size: 0.88rem; white-space: nowrap; margin-right: 5px;">{{ host.hwInfo?.system || '-'
+                  }}</span>
+                @if (host.hwInfo?.release) {
+                <div class="os-release-container">
+                  <span class="os-release-text text-muted font-monospace" style="font-size: 0.78rem;">{{
+                    host.hwInfo?.release }}</span>
+                </div>
+                }
+              </div>
+            </td>
+            <!-- CPU / RAM -->
+            <td>
+              <div class="d-flex flex-column gap-1" style="width: 100%;">
+                <!-- Fila Superior: Arquitectura + % Uso CPU -->
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                  <span class="text-muted text-nowrap" style="font-size: 0.82rem; font-weight: 500;">
+                    {{ host.hwInfo?.arch || '-' }}
+                  </span>
+                  <span class="fw-semibold text-body" style="font-size: 0.82rem;">
+                    {{ (host.metrics && host.metrics.cpu !== null && host.metrics.cpu !== undefined) ? host.metrics.cpu
+                    : 0 }}%
+                  </span>
+                </div>
+                <!-- Barra de Progreso CPU -->
+                <div class="resource-bar-track" style="height: 6px;">
+                  <div class="resource-bar-fill cpu-bar"
+                    [style.width.%]="(host.metrics && host.metrics.cpu !== null && host.metrics.cpu !== undefined) ? host.metrics.cpu : 0">
+                  </div>
+                </div>
+                <!-- Fila Inferior: Consumo RAM -->
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-muted font-monospace" style="font-size: 0.76rem; letter-spacing: 0.02em;">
+                    RAM: @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
+                    {{ ((host.metrics.memory / 100) * parseMemoryGB(host.hwInfo?.totalMemory ?? host.hwInfo?.totalRam))
+                    | number:'1.1-1' }} / {{ parseMemoryGB(host.hwInfo?.totalMemory ?? host.hwInfo?.totalRam) |
+                    number:'1.0-0' }} GB
+                    } @else {
+                    - / {{ parseMemoryGB(host.hwInfo?.totalMemory ?? host.hwInfo?.totalRam) || '-' }} GB
+                    }
+                  </span>
+                </div>
+              </div>
+            </td>
+            <!-- GPU -->
+            <td>
+              @if (host.gpuInfo; as gpu) {
+              <div class="d-flex flex-column gap-1" style="width: 100%;">
+                <!-- Fila Superior: Modelo + % Uso -->
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                  <div class="gpu-model-container">
+                    <span class="gpu-model-text text-muted" style="font-size: 0.82rem; font-weight: 500;">{{ gpu.model
+                      }}</span>
+                  </div>
+                  <span class="fw-semibold text-body flex-shrink-0" style="font-size: 0.82rem;">
+                    {{ (host.metrics && host.metrics.gpu !== null && host.metrics.gpu !== undefined) ? host.metrics.gpu
+                    : 0 }}%
+                  </span>
+                </div>
+                <!-- Barra de Progreso -->
+                <div class="resource-bar-track" style="height: 6px;">
+                  <div class="resource-bar-fill gpu-bar"
+                    [style.width.%]="(host.metrics && host.metrics.gpu !== null && host.metrics.gpu !== undefined) ? host.metrics.gpu : 0">
+                  </div>
+                </div>
+                <!-- Fila Inferior: Consumo VRAM -->
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-muted font-monospace" style="font-size: 0.76rem; letter-spacing: 0.02em;">
+                    VRAM: @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
+                    {{ ((host.metrics.vram / 100) * parseMemoryGB(gpu.totalMemory)) | number:'1.1-1' }} / {{
+                    parseMemoryGB(gpu.totalMemory) | number:'1.0-0' }} GB
+                    } @else {
+                    - / {{ parseMemoryGB(gpu.totalMemory) || '-' }} GB
+                    }
+                  </span>
+                </div>
+              </div>
+              } @else {
+              <span class="text-muted" style="font-size: 0.82rem;">-</span>
+              }
+            </td>
+            <!-- Última Vez -->
+            <td class="text-center">
+              @if (host.metrics?.lastSeen) {
+              <div class="d-flex flex-column align-items-center justify-content-center" style="gap: 2px;">
+                <span class="text-body fw-medium font-monospace text-nowrap" style="font-size: 0.82rem;">
+                  {{ host.metrics?.lastSeen | date:'dd/MM/yyyy' }}
+                </span>
+                <span class="text-muted font-monospace text-nowrap" style="font-size: 0.76rem;">
+                  {{ host.metrics?.lastSeen | date:'HH:mm:ss' }}
+                </span>
+              </div>
+              } @else {
+              <span class="text-muted font-monospace" style="font-size: 0.82rem;">-</span>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  }
+
+  @if (filteredHosts().length === 0) {
+  <div class="card border-0 shadow-sm rounded-3 p-5 text-center mb-4">
+    <div class="py-4">
+      <span class="icon-svg icon-nodos text-muted"
+        style="width: 48px; height: 48px; opacity: 0.5; margin-bottom: 1rem;"></span>
+      <h5 class="fw-bold">No se encontraron nodos</h5>
+      <p class="text-muted">No hay servidores registrados que coincidan con los filtros aplicados en la página actual.
+      </p>
+    </div>
+  </div>
+  }
+
+  <!-- Paginación con Ghost Buttons y Chevrons SVG -->
+  @if (totalPages() > 1) {
+  <div class="d-flex justify-content-center align-items-center gap-4 mt-5">
+    <nav aria-label="Page navigation">
+      <ul class="pagination pagination-md align-items-center" style="gap: 6px;">
+        <li class="page-item" [class.disabled]="currentPage() === 1">
+          <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center" (click)="prevPage()"
+            aria-label="Previous">
+            <span class="icon-svg icon-chevron-left" style="width: 18px; height: 18px;"></span>
+          </button>
+        </li>
+        @for (page of visiblePages(); track page) {
+        <li class="page-item" [class.active]="currentPage() === page">
+          <button class="page-link-ghost" (click)="setPage(page)">
+            {{ page }}
+          </button>
+        </li>
+        }
+        <li class="page-item" [class.disabled]="currentPage() === totalPages()">
+          <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center" (click)="nextPage()"
+            aria-label="Next">
+            <span class="icon-svg icon-chevron-right" style="width: 18px; height: 18px;"></span>
+          </button>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Jump to Page Input Container -->
+    <div class="d-flex align-items-center gap-2 jump-to-page-container">
+      <span class="text-muted small fw-medium">Ir a:</span>
+      <input type="text" class="form-control form-control-sm text-center shadow-sm"
+        style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;" placeholder="{{ currentPage() }}"
+        inputmode="numeric" pattern="[0-9]*" (input)="onPageInput($event)" (keydown.enter)="jumpToPage($event)"
+        (blur)="jumpToPage($event)" />
+      <span class="text-muted small fw-medium">de {{ totalPages() }}</span>
+    </div>
+  </div>
+  }
+
+  <!-- Modal de Migración de Configuración -->
+  @if (showMigrateModal()) {
+  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center" (click)="closeMigrateModal()">
+    <div class="modal-card-custom modal-card-custom--large p-4 rounded-4 shadow-lg border"
+      (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="icon-svg icon-migrate-arrows" style="width: 20px; height: 20px; background-color: var(--primary, #0d6efd);"></span>
+            <h5 class="fw-bold mb-0 text-body fs-6 ms-1">Migrar Configuración de Nodo</h5>
+          </div>
+          <p class="text-muted small mb-0 mt-2" style="font-size: 0.78rem; line-height: 1.45; max-width: 820px;">
+            Transfiere configuraciones y cámaras desde un nodo emisor (Origen) a un receptor compatible (Destino).
+          </p>
+        </div>
+        <button class="btn-ghost p-1.5" (click)="closeMigrateModal()" aria-label="Cerrar modal">
+          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body-custom">
+        <!-- Layout bicolumna con conector de flecha central para selección -->
+        <div class="nm-columns-wrapper mt-4 pt-2">
+          <!-- Columna Origen (Izquierda) -->
+          <div class="nm-column nm-column-origin">
+            <div class="nm-column-header d-flex align-items-center justify-content-between mb-3">
+              <div class="d-flex align-items-center gap-2">
+                <span class="node-flow-badge badge-origen uppercase">Origen</span>
+                <span class="node-column-title fw-bold text-muted small">NODO EMISOR</span>
+              </div>
+            </div>
+
+            <!-- Buscador Origen -->
+            <div class="nm-search-wrapper mb-3 position-relative">
+              <span class="icon-svg icon-search nm-search-icon"></span>
+              <input #originSearchInput type="text" class="nm-search-input"
+                placeholder="Buscar por nombre, IP o fingerprint..." [disabled]="isMigrating()"
+                [value]="originSearchText()" (input)="originSearchText.set(originSearchInput.value)" />
+              @if (originSearchText()) {
+              <button class="btn-clear-search position-absolute end-0 top-50 translate-middle-y btn-ghost p-1"
+                (click)="originSearchText.set('')" style="right: 8px !important;">
+                <span class="icon-svg icon-close" style="width: 12px; height: 12px;"></span>
+              </button>
+              }
+            </div>
+
+            <!-- Lista de Origen -->
+            <div class="nm-list-scroll">
+              @for (host of filteredOriginHosts(); track host.id) {
+              <div class="nm-list-item d-flex align-items-center gap-3"
+                [class.is-selected]="selectedOldFingerprint() === host.fingerprint"
+                [class.ubuntu-item]="!!host.hwInfo?.system?.toLowerCase()?.includes('linux')"
+                [class.windows-item]="!!host.hwInfo?.system?.toLowerCase()?.includes('windows')"
+                [class.default-item]="!host.hwInfo?.system?.toLowerCase()?.includes('linux') && !host.hwInfo?.system?.toLowerCase()?.includes('windows')"
+                (click)="!isMigrating() && selectOldHost(host.fingerprint, $event)">
+                <!-- Avatar OS -->
+                <span class="icon-svg os-avatar-icon flex-shrink-0" style="width: 20px; height: 20px;"
+                  [class.icon-ubuntu]="!!host.hwInfo?.system?.toLowerCase()?.includes('linux')"
+                  [class.icon-windows]="!!host.hwInfo?.system?.toLowerCase()?.includes('windows')"
+                  [class.icon-nodos]="!host.hwInfo?.system?.toLowerCase()?.includes('linux') && !host.hwInfo?.system?.toLowerCase()?.includes('windows')">
+                </span>
+                <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <span class="nm-item-hostname fw-bold text-truncate" style="max-width: 140px;"
+                      [title]="host.hostname">{{ host.hostname }}</span>
+                    <span class="status-dot"
+                      [class.online]="host.status === 'active' || host.status === 'online'"></span>
+                  </div>
+                  <span class="font-monospace text-muted small nm-item-subtext" style="font-size: 0.65rem;">IP: {{
+                    host.ipAddress }}</span>
+                </div>
+              </div>
+              } @empty {
+              <div class="nm-empty-state text-center p-4">
+                <span class="text-muted small">No se encontraron nodos.</span>
+              </div>
+              }
+            </div>
+          </div>
+
+          <!-- Separador Central de Flujo (Flecha) -->
+          <div class="nm-flow-separator d-flex align-items-center justify-content-center">
+            <div class="flow-arrow-wrap rounded-circle shadow-sm"
+              [class.is-active]="!!selectedOldFingerprint() && !!selectedNewFingerprint()">
+              <span class="icon-svg icon-arrow-right flow-arrow-icon-right" style="width: 24px; height: 24px;"></span>
+            </div>
+          </div>
+
+          <!-- Columna Destino (Derecha) -->
+          <div class="nm-column nm-column-destination position-relative">
+            <div class="nm-column-header d-flex align-items-center justify-content-between mb-3">
+              <div class="d-flex align-items-center gap-2">
+                <span class="node-flow-badge badge-destino uppercase">Destino</span>
+                <span class="node-column-title fw-bold text-muted small">NODO RECEPTOR</span>
+              </div>
+            </div>
+
+            <!-- Buscador Destino -->
+            <div class="nm-search-wrapper mb-3 position-relative">
+              <span class="icon-svg icon-search nm-search-icon"></span>
+              <input #targetSearchInput type="text" class="nm-search-input"
+                placeholder="Buscar por nombre, IP o fingerprint..." [disabled]="isMigrating()"
+                [value]="targetSearchText()" (input)="targetSearchText.set(targetSearchInput.value)" />
+              @if (targetSearchText()) {
+              <button class="btn-clear-search position-absolute end-0 top-50 translate-middle-y btn-ghost p-1"
+                (click)="targetSearchText.set('')" style="right: 8px !important;">
+                <span class="icon-svg icon-close" style="width: 12px; height: 12px;"></span>
+              </button>
+              }
+            </div>
+
+            <!-- Lista de Destino -->
+            <div class="nm-list-scroll">
+              @for (host of compatibleTargetHosts(); track host.id) {
+              <div class="nm-list-item d-flex align-items-center gap-3"
+                [class.is-selected]="selectedNewFingerprint() === host.fingerprint"
+                [class.ubuntu-item]="!!host.hwInfo?.system?.toLowerCase()?.includes('linux')"
+                [class.windows-item]="!!host.hwInfo?.system?.toLowerCase()?.includes('windows')"
+                [class.default-item]="!host.hwInfo?.system?.toLowerCase()?.includes('linux') && !host.hwInfo?.system?.toLowerCase()?.includes('windows')"
+                (click)="!isMigrating() && selectNewHost(host.fingerprint, $event)">
+                <!-- Avatar OS -->
+                <span class="icon-svg os-avatar-icon flex-shrink-0" style="width: 20px; height: 20px;"
+                  [class.icon-ubuntu]="!!host.hwInfo?.system?.toLowerCase()?.includes('linux')"
+                  [class.icon-windows]="!!host.hwInfo?.system?.toLowerCase()?.includes('windows')"
+                  [class.icon-nodos]="!host.hwInfo?.system?.toLowerCase()?.includes('linux') && !host.hwInfo?.system?.toLowerCase()?.includes('windows')">
+                </span>
+                <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <span class="nm-item-hostname fw-bold text-truncate" style="max-width: 140px;"
+                      [title]="host.hostname">{{ host.hostname }}</span>
+                    <span class="status-dot"
+                      [class.online]="host.status === 'active' || host.status === 'online'"></span>
+                  </div>
+                  <span class="font-monospace text-muted small nm-item-subtext" style="font-size: 0.65rem;">IP: {{
+                    host.ipAddress }}</span>
+                </div>
+              </div>
+              } @empty {
+              <div class="nm-empty-state text-center p-4">
+                <span class="text-muted small">No hay otros nodos disponibles que coincidan.</span>
+              </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="nm-footer-actions mt-4 pt-3">
+          <button class="btn btn-outline-secondary btn-flat-cancel" (click)="closeMigrateModal()"
+            [disabled]="isMigrating()">
+            Cancelar
+          </button>
+          <button class="btn btn-primary btn-flat-confirm d-flex align-items-center justify-content-center gap-2"
+            (click)="executeMigration()"
+            [disabled]="!selectedOldFingerprint() || !selectedNewFingerprint() || isMigrating()">
+            @if (isMigrating()) {
+            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            <span>Migrando...</span>
+            } @else {
+            <span>Iniciar Migración</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+</div>

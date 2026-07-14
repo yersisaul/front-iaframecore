@@ -1,0 +1,295 @@
+/* ═══════════════════════════════════════════════════════════════
+   PREMIUM LOGIN INTERFACE STYLES (AZOR ANALYTICS)
+   ═══════════════════════════════════════════════════════════════ */
+
+.login-wrapper {
+  background-color: #05050a;
+  overflow: hidden;
+  position: relative;
+  font-family: var(--font-sans), sans-serif;
+  color: #ffffff;
+  z-index: 1;
+}
+
+/* Technological Grid Overlay */
+.bg-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Animated Glowing Orbs representing AI nodes */
+.bg-glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(140px);
+  opacity: 0.12;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.orb-1 {
+  width: 450px;
+  height: 450px;
+  background: #2b7fff;
+  top: -10%;
+  left: 10%;
+  animation: floatOrb 25s infinite alternate ease-in-out;
+}
+
+.orb-2 {
+  width: 500px;
+  height: 500px;
+  background: #8b5cf6;
+  bottom: -15%;
+  right: 10%;
+  animation: floatOrb 30s infinite alternate-reverse ease-in-out;
+}
+
+.orb-3 {
+  width: 350px;
+  height: 350px;
+  background: #00d3f2;
+  top: 40%;
+  right: 25%;
+  opacity: 0.08;
+  animation: floatOrb 20s infinite alternate ease-in-out;
+}
+
+@keyframes floatOrb {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(40px, 30px) scale(1.1);
+  }
+}
+
+/* Glassmorphism Card Wrapper */
+.glass-card {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 28px;
+  width: 100%;
+  max-width: 450px;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 25px 70px -10px rgba(0, 0, 0, 0.6);
+  transition: border-color 0.4s ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(43, 127, 255, 0.2);
+}
+
+/* Brand Logo Layout */
+.logo-container {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: rgba(43, 127, 255, 0.06);
+  border: 1.5px solid rgba(43, 127, 255, 0.15);
+  box-shadow: 0 10px 25px rgba(43, 127, 255, 0.05);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover .logo-container {
+  transform: translateY(-2px) scale(1.05);
+  border-color: rgba(43, 127, 255, 0.35);
+  background: rgba(43, 127, 255, 0.12);
+  box-shadow: 0 15px 30px rgba(43, 127, 255, 0.12);
+}
+
+.brand-title {
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #ffffff;
+}
+
+.brand-subtitle {
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+}
+
+/* Premium Inputs Layout */
+.input-label-primary {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.premium-field-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.field-icon-prefix {
+  position: absolute;
+  left: 16px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  transition: color 0.3s ease;
+  z-index: 10;
+}
+
+.premium-input-box {
+  width: 100%;
+  padding: 14px 16px 14px 48px;
+  background-color: rgba(10, 10, 15, 0.6) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.07) !important;
+  border-radius: 14px !important;
+  color: #ffffff !important;
+  font-size: 0.9rem !important;
+  outline: none !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.premium-input-box::placeholder {
+  color: #475569;
+  opacity: 1;
+}
+
+.premium-input-box:focus {
+  background-color: rgba(10, 10, 15, 0.8) !important;
+  border-color: #2b7fff !important;
+  box-shadow: 0 0 0 4px rgba(43, 127, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.premium-input-box:focus + .field-icon-prefix,
+.premium-field-group:focus-within .field-icon-prefix {
+  color: #2b7fff;
+}
+
+/* Toggle Password Visibility Suffix button */
+.btn-field-icon-suffix {
+  position: absolute;
+  right: 14px;
+  background: transparent;
+  border: none;
+  color: #475569;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.btn-field-icon-suffix:hover {
+  color: #94a3b8;
+}
+
+/* Input error state styling */
+.input-box-error {
+  border-color: rgba(244, 63, 94, 0.4) !important;
+}
+
+.input-box-error:focus {
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.15) !important;
+}
+
+/* Validation Messages */
+.validation-error-msg {
+  font-size: 0.72rem;
+  color: #fda4af;
+  font-weight: 500;
+}
+
+.error-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #f43f5e;
+  display: inline-block;
+}
+
+/* Alarm & Error Alert Layout */
+.alert-error {
+  background-color: rgba(244, 63, 94, 0.08);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.custom-alert-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Action Submission Button */
+.premium-btn-submit {
+  border-radius: 14px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(135deg, #2b7fff 0%, #7c3aed 100%);
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.25);
+  cursor: pointer;
+}
+
+.premium-btn-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(124, 58, 237, 0.45);
+  filter: brightness(1.1);
+}
+
+.premium-btn-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.premium-btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Fade-in Animation on Entrance */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Loading Spinners */
+.btn-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

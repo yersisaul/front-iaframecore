@@ -1,0 +1,152 @@
+<nav class="sidebar-nav">
+  <!-- Cabecera del Sidebar con Marca -->
+  <div class="sidebar-header d-flex align-items-center mb-4 px-3" [class.justify-content-center]="isCollapsed()">
+    <div class="logo-wrapper d-flex align-items-center gap-2">
+      <img src="logo.svg" alt="AZOR" style="width: 24px; height: 24px;" />
+      <span class="fw-bold fs-5 text-gradient" [class.d-none]="isCollapsed()">Azor analytics</span>
+    </div>
+  </div>
+
+  <ul class="nav flex-column flex-grow-1">
+    <!-- 1. Nodos -->
+    @if (permissionsService.hasPermission('Hosts', 'ver')) {
+    <li class="nav-item mb-2">
+      <a routerLink="/dashboard/nodos" routerLinkActive="active"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
+        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Nodos' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-nodos nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()">Nodos</span>
+      </a>
+    </li>
+    }
+
+    <!-- 2. Cámaras -->
+    @if (permissionsService.hasPermission('Cámaras', 'ver')) {
+    <li class="nav-item mb-2">
+      <a routerLink="/dashboard/camaras" routerLinkActive="active"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
+        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Cámaras' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-camara nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()">Cámaras</span>
+      </a>
+    </li>
+    }
+
+    <!-- 3. Horarios -->
+    @if (permissionsService.hasPermission('Horarios', 'ver')) {
+    <li class="nav-item mb-2">
+      <a routerLink="/dashboard/horarios" routerLinkActive="active"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
+        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Horarios' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-horarios nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()">Horarios</span>
+      </a>
+    </li>
+    }
+
+    <!-- 4. Listas de Control -->
+    @if (permissionsService.hasPermission('Listas', 'ver')) {
+    <li class="nav-item mb-2">
+      <a style="cursor: pointer;" (click)="toggleListasSubmenu($event)"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded position-relative"
+        [class.justify-content-center]="isCollapsed()" [class.active]="isListasActive()"
+        [title]="isCollapsed() ? 'Listas de Control' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-listas nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()" class="flex-grow-1">Listas de Control</span>
+
+        <span [class.d-none]="isCollapsed()" class="submenu-chevron ms-auto" [class.open]="isListasOpen()">
+          <span class="icon-svg icon-chevron-down" style="width: 12px; height: 12px;"></span>
+        </span>
+      </a>
+
+      <ul class="submenu-list list-unstyled" [class.open]="isListasOpen() && !isCollapsed()">
+        <li>
+          <a routerLink="/dashboard/listas/rostros" routerLinkActive="active-sub"
+            class="submenu-link d-flex align-items-center rounded text-body">
+            <span class="submenu-dot me-2 rostros"></span>
+            <span class="submenu-text">Listas de Rostros</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="/dashboard/listas/placas" routerLinkActive="active-sub"
+            class="submenu-link d-flex align-items-center rounded text-body">
+            <span class="submenu-dot me-2 vehiculos"></span>
+            <span class="submenu-text">Listas de Placas</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+    }
+
+    <!-- 5. Metadatos -->
+    <li class="nav-item mb-2">
+      <a style="cursor: pointer;" (click)="toggleMetadataSubmenu($event)"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded position-relative"
+        [class.justify-content-center]="isCollapsed()" [class.active]="isMetadataActive()"
+        [title]="isCollapsed() ? 'Metadatos' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-metadatos nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()" class="flex-grow-1">Metadatos</span>
+
+        <span [class.d-none]="isCollapsed()" class="submenu-chevron ms-auto" [class.open]="isMetadataOpen()">
+          <span class="icon-svg icon-chevron-down" style="width: 12px; height: 12px;"></span>
+        </span>
+      </a>
+
+      <ul class="submenu-list list-unstyled" [class.open]="isMetadataOpen() && !isCollapsed()">
+        @for (info of availableIndices(); track info.name) {
+        <li>
+          <a [routerLink]="['/dashboard/metadatos', info.name]" routerLinkActive="active-sub"
+            class="submenu-link d-flex align-items-center rounded text-body justify-content-between">
+            <div class="d-flex align-items-center">
+              <span class="submenu-dot me-2" [ngClass]="info.name"></span>
+              <span class="submenu-text text-capitalize">{{ info.name }}</span>
+            </div>
+            <span class="badge rounded-pill bg-light border text-muted small ms-2 submenu-count">{{
+              formatCount(info.count) }}</span>
+          </a>
+        </li>
+        }
+      </ul>
+    </li>
+
+    <!-- 6. Eventos -->
+    <li class="nav-item mb-2">
+      <a routerLink="/dashboard/eventos" routerLinkActive="active"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
+        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Eventos' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-eventos nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()">Eventos</span>
+      </a>
+    </li>
+
+    <!-- 7. Usuarios -->
+    @if (permissionsService.hasPermission('Usuarios', 'ver') || permissionsService.hasPermission('Roles', 'ver')) {
+    <li class="nav-item mb-2">
+      <a routerLink="/dashboard/usuarios" routerLinkActive="active"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
+        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Usuarios' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-usuarios nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()">Usuarios</span>
+      </a>
+    </li>
+    }
+  </ul>
+
+  <div class="sidebar-footer border-top pt-3 d-flex flex-column gap-2">
+    <app-session-control [isCollapsed]="isCollapsed()"></app-session-control>
+  </div>
+</nav>

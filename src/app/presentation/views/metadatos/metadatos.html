@@ -1,0 +1,910 @@
+<div class="metadata-view-container container-fluid py-4 position-relative">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center header-section">
+    <div class="d-flex align-items-center gap-3">
+      <!-- Botón de Collapse Sidebar (Ghost Button) -->
+      <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
+        (click)="toggleSidebar()" aria-label="Toggle Sidebar">
+        @if (isSidebarCollapsed()) {
+        <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
+        } @else {
+        <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
+        }
+      </button>
+
+      <div>
+        <h2 class="fw-bold mb-0 text-capitalize fs-3">
+          Búsqueda de {{ activeIndex() }}
+        </h2>
+        <p class="text-muted mb-0 small">
+          Se encontraron <span class="fw-semibold text-primary">{{ formatTotalRecords(totalRecords()) }}</span>
+          registros en el índice
+        </p>
+      </div>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <!-- Barra de Búsqueda Unificada y Botón de Filtros Agrupados -->
+      <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
+        <div class="search-input-wrapper position-relative d-flex align-items-center pl-1">
+          <span class="icon-svg icon-search search-icon-prefix text-muted" style="width: 18px; height: 18px; opacity: 0.5;"></span>
+          <input type="text" [formControl]="searchControl" placeholder="Buscar metadatos..."
+            class="search-input-control border-0 ms-2" style="font-size: 0.82rem; outline: none; width: 180px;" />
+        </div>
+
+        <!-- Botón de Búsqueda por Imagen -->
+        @if (activeIndex() === 'rostros') {
+        <button type="button" class="btn-ghost image-search-btn d-flex align-items-center justify-content-center ms-1"
+          (click)="triggerImageUpload()" title="Buscar por imagen" aria-label="Buscar por imagen">
+          <span class="icon-svg icon-upload image-search-icon" style="width: 18px; height: 18px;"></span>
+        </button>
+        <input type="file" #imageInput class="d-none" accept="image/*" (change)="onImageSelected($event)" />
+        }
+
+        <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
+          (click)="toggleFiltersVisibility()" [class.active]="hasActiveFilters()" [class.open]="showFilters()"
+          title="Mostrar/ocultar filtros" aria-label="Mostrar/ocultar filtros">
+          <span class="icon-svg icon-filter filter-icon"></span>
+          @if (hasActiveFilters()) {
+          <span class="active-badge-dot"></span>
+          }
+        </button>
+      </div>
+
+      <!-- Selector de Registros por Página -->
+      <div class="d-flex align-items-center gap-2">
+        <label for="limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Registros por página:</label>
+        <select id="limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
+          (change)="onLimitChange($event)">
+          @for (opt of limitOptions(); track $index) {
+          <option [value]="opt" [selected]="pageSize() === opt">{{ opt }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra de Filtros Horizontal -->
+  <div class="horizontal-filters-bar mb-4" [class.hidden]="!showFilters()">
+    <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
+      <!-- 1. CÁMARAS -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilters().camaras.length > 0" (click)="toggleDropdown('camaras', $event)">
+          <span class="icon-svg icon-camara filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Cámaras</span>
+          @if (tempFilters().camaras.length > 0) {
+          <span class="badge bg-primary text-white" style="font-size: 0.7rem; border-radius: 10px;">{{
+            tempFilters().camaras.length }}</span>
+          }
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'camaras'"
+            style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'camaras') {
+        <div class="filter-dropdown-menu dropdown-camaras p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @for (cam of camarasOptions(); track cam) {
+          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
+            <input type="checkbox" [checked]="tempFilters().camaras.includes(cam)"
+              (change)="toggleMultiSelectFilter('camaras', cam)" class="form-check-input flex-shrink-0" />
+            <span class="text-truncate" [title]="cam">{{ cam }}</span>
+          </label>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- 2. TIPO DE OBJETO -->
+      @if (activeIndex() === 'personas' || activeIndex() === 'vehiculos' || activeIndex() === 'otros') {
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
+          [class.active]="tempFilters().tipoObjeto.length > 0" (click)="toggleDropdown('tipoObjeto', $event)">
+          <span class="icon-svg icon-box filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Tipo de Objeto</span>
+          @if (tempFilters().tipoObjeto.length > 0) {
+          <span class="badge bg-primary text-white" style="font-size: 0.7rem; border-radius: 10px;">{{
+            tempFilters().tipoObjeto.length }}</span>
+          }
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'tipoObjeto'"
+            style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'tipoObjeto') {
+        <div class="filter-dropdown-menu dropdown-tipo p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @for (obj of tipoObjetoOptions(); track obj) {
+          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
+            <input type="checkbox" [checked]="tempFilters().tipoObjeto.includes(obj)"
+              (change)="toggleMultiSelectFilter('tipoObjeto', obj)" class="form-check-input flex-shrink-0" />
+            <span class="text-truncate text-capitalize">{{ obj }}</span>
+          </label>
+          }
+        </div>
+        }
+      </div>
+      }
+
+      <!-- 6. COLORES -->
+      @if (activeIndex() === 'personas' || activeIndex() === 'rostros' || activeIndex() === 'vehiculos' || activeIndex()
+      === 'otros') {
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
+          [class.active]="tempFilters().colores.length > 0" (click)="toggleDropdown('colores', $event)">
+          <span class="icon-svg icon-grid filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Colores</span>
+          @if (tempFilters().colores.length > 0) {
+          <span class="badge bg-primary text-white" style="font-size: 0.7rem; border-radius: 10px;">{{
+            tempFilters().colores.length }}</span>
+          }
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'colores'"
+            style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'colores') {
+        <div class="filter-dropdown-menu dropdown-colores p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @for (col of coloresOptions(); track col) {
+          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
+            <input type="checkbox" [checked]="tempFilters().colores.includes(col)"
+              (change)="toggleMultiSelectFilter('colores', col)" class="form-check-input flex-shrink-0" />
+            <span class="text-truncate text-capitalize">{{ col }}</span>
+          </label>
+          }
+        </div>
+        }
+      </div>
+      }
+
+      <!-- 7. POSTURAS -->
+      @if (activeIndex() === 'personas') {
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
+          [class.active]="tempFilters().posturas.length > 0" (click)="toggleDropdown('posturas', $event)">
+          <span class="icon-svg icon-user filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Posturas</span>
+          @if (tempFilters().posturas.length > 0) {
+          <span class="badge bg-primary text-white" style="font-size: 0.7rem; border-radius: 10px;">{{
+            tempFilters().posturas.length }}</span>
+          }
+          <span class="icon-svg icon-chevron-down transition-all" style="width: 10px; height: 10px;"
+            [class.rotated]="activeDropdown() === 'posturas'"></span>
+        </button>
+        @if (activeDropdown() === 'posturas') {
+        <div class="filter-dropdown-menu dropdown-posturas p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @for (pos of posturasOptions(); track pos) {
+          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
+            <input type="checkbox" [checked]="tempFilters().posturas.includes(pos)"
+              (change)="toggleMultiSelectFilter('posturas', pos)" class="form-check-input flex-shrink-0" />
+            <span class="text-truncate text-capitalize">{{ pos }}</span>
+          </label>
+          }
+        </div>
+        }
+      </div>
+      }
+
+      <!-- 3. EDAD -->
+      @if (activeIndex() === 'personas' || activeIndex() === 'rostros') {
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
+          [class.active]="tempFilters().edad !== null" (click)="toggleDropdown('edad', $event)">
+          <span class="icon-svg icon-clock filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Edad: {{ tempFilters().edad || 'Todos' }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'edad'"
+            style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'edad') {
+        <div class="filter-dropdown-menu dropdown-edad p-2" (click)="$event.stopPropagation()">
+          <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilters().edad === null"
+            (click)="selectSingleFilter('edad', null)">
+            Todos
+          </button>
+          @for (ed of edadesOptions(); track ed) {
+          <button class="dropdown-item py-1.5 px-3 rounded text-capitalize" [class.active]="tempFilters().edad === ed"
+            (click)="selectSingleFilter('edad', ed)">
+            {{ ed }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+      }
+
+      <!-- 4. GÉNERO -->
+      @if (activeIndex() === 'personas' || activeIndex() === 'rostros') {
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
+          [class.active]="tempFilters().genero !== null" (click)="toggleDropdown('genero', $event)">
+          <span class="icon-svg icon-user filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Género: {{ tempFilters().genero || 'Todos' }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'genero'"
+            style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'genero') {
+        <div class="filter-dropdown-menu dropdown-genero p-2" (click)="$event.stopPropagation()">
+          <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilters().genero === null"
+            (click)="selectSingleFilter('genero', null)">
+            Todos
+          </button>
+          @for (gen of generosOptions(); track gen) {
+          <button class="dropdown-item py-1.5 px-3 rounded text-capitalize"
+            [class.active]="tempFilters().genero === gen" (click)="selectSingleFilter('genero', gen)">
+            {{ gen }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+      }
+
+      <!-- 5. RECONOCIMIENTO -->
+      @if (activeIndex() === 'rostros' || activeIndex() === 'vehiculos') {
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
+          [class.active]="tempFilters().reconocimiento !== null" (click)="toggleDropdown('reconocimiento', $event)">
+          <span class="icon-svg icon-list filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>{{ activeIndex() === 'vehiculos' ? 'Placa' : 'Sujeto' }}: {{ tempFilters().reconocimiento || 'Todos'
+            }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'reconocimiento'"
+            style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'reconocimiento') {
+        <div class="filter-dropdown-menu dropdown-reconocimiento p-2" (click)="$event.stopPropagation()">
+          <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilters().reconocimiento === null"
+            (click)="selectSingleFilter('reconocimiento', null)">
+            Todos
+          </button>
+          @for (rec of reconocimientosOptions(); track rec) {
+          <button class="dropdown-item py-1.5 px-3 rounded text-capitalize"
+            [class.active]="tempFilters().reconocimiento === rec" (click)="selectSingleFilter('reconocimiento', rec)">
+            {{ rec }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+      }
+
+      <!-- FILTRO COINCIDENCIA (SOLO PARA ROSTROS) -->
+      @if (activeIndex() === 'rostros') {
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
+          [class.active]="tempFilters().coincidenciaFiltro !== 'all'"
+          (click)="toggleDropdown('coincidenciaFiltro', $event)">
+          <span class="icon-svg icon-user filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>
+            Coincidencia:
+            {{ tempFilters().coincidenciaFiltro === 'all' ? 'Todos' : (tempFilters().coincidenciaFiltro ===
+            'coincidencia' ? 'Solo Coincidencias' : 'Sin Coincidencias') }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'coincidenciaFiltro'"
+            style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'coincidenciaFiltro') {
+        <div class="filter-dropdown-menu dropdown-coincidenciaFiltro p-2" (click)="$event.stopPropagation()">
+          <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilters().coincidenciaFiltro === 'all'"
+            (click)="selectCoincidenciaFilter('all')">
+            Todos los Rostros
+          </button>
+          <button class="dropdown-item py-1.5 px-3 rounded"
+            [class.active]="tempFilters().coincidenciaFiltro === 'coincidencia'"
+            (click)="selectCoincidenciaFilter('coincidencia')">
+            Solo Coincidencias (Watchlist)
+          </button>
+          <button class="dropdown-item py-1.5 px-3 rounded"
+            [class.active]="tempFilters().coincidenciaFiltro === 'sin_coincidencia'"
+            (click)="selectCoincidenciaFilter('sin_coincidencia')">
+            Sin Coincidencias (Anónimos)
+          </button>
+        </div>
+        }
+      </div>
+      }
+
+
+      <!-- 8. CONFIABILIDAD -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilters().confiabilidadMin > 0 || tempFilters().confiabilidadMax < 1"
+          (click)="toggleDropdown('confiabilidad', $event)">
+          <span class="icon-svg icon-settings filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Confiabilidad ({{ (tempFilters().confiabilidadMin * 100) | number:'1.0-0' }}% - {{
+            (tempFilters().confiabilidadMax * 100) | number:'1.0-0' }}%)</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'confiabilidad'"
+            style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'confiabilidad') {
+        <div class="filter-dropdown-menu dropdown-confiabilidad p-3" (click)="$event.stopPropagation()">
+          <div class="dropdown-header-title mb-2 text-uppercase text-muted fw-bold">Confiabilidad</div>
+
+          <!-- Presets -->
+          <div class="d-flex gap-2 mb-3 preset-buttons-row">
+            <button type="button" class="preset-btn text-nowrap"
+              [class.active]="tempFilters().confiabilidadMin === 0 && tempFilters().confiabilidadMax === 1"
+              (click)="selectConfiabilidadPreset('all')">
+              Todo
+            </button>
+            <button type="button" class="preset-btn text-nowrap"
+              [class.active]="tempFilters().confiabilidadMin === 0.7 && tempFilters().confiabilidadMax === 1"
+              (click)="selectConfiabilidadPreset('high')">
+              Alta (70%+)
+            </button>
+            <button type="button" class="preset-btn text-nowrap"
+              [class.active]="tempFilters().confiabilidadMin === 0.9 && tempFilters().confiabilidadMax === 1"
+              (click)="selectConfiabilidadPreset('veryHigh')">
+              Muy Alta (90%+)
+            </button>
+          </div>
+
+          <!-- Minimum Range -->
+          <div class="mb-3">
+            <label class="filter-label d-flex justify-content-between small mb-1.5 fw-medium text-muted">
+              <span>Mínima</span>
+              <span class="text-primary fw-semibold">{{ (tempFilters().confiabilidadMin * 100) | number:'1.0-0'
+                }}%</span>
+            </label>
+            <input type="range" class="form-range" min="0" max="1" step="0.05" [value]="tempFilters().confiabilidadMin"
+              (input)="onConfiabilidadChange($event, 'min')">
+          </div>
+
+          <!-- Maximum Range -->
+          <div>
+            <label class="filter-label d-flex justify-content-between small mb-1.5 fw-medium text-muted">
+              <span>Máxima</span>
+              <span class="text-primary fw-semibold">{{ (tempFilters().confiabilidadMax * 100) | number:'1.0-0'
+                }}%</span>
+            </label>
+            <input type="range" class="form-range" min="0" max="1" step="0.05" [value]="tempFilters().confiabilidadMax"
+              (input)="onConfiabilidadChange($event, 'max')">
+          </div>
+        </div>
+        }
+      </div>
+
+      <!-- 9. RANGO DE FECHAS -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilters().timestampDesde || tempFilters().timestampHasta"
+          (click)="toggleDropdown('fechas', $event)">
+          <span class="icon-svg icon-calendar filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Rango de Fechas</span>
+          @if (tempFilters().timestampDesde || tempFilters().timestampHasta) {
+          <span class="badge-dot-active bg-primary animate-pulse"
+            style="width: 6px; height: 6px; border-radius: 50%;"></span>
+          }
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'fechas'"
+            style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'fechas') {
+        <div class="filter-dropdown-menu dropdown-fechas p-3" (click)="$event.stopPropagation()">
+          <div class="dropdown-header-title mb-3 text-uppercase text-muted fw-bold">Rango de Fechas</div>
+
+          <!-- Presets -->
+          <div class="d-flex flex-wrap gap-2 mb-3 preset-buttons-row">
+            <button type="button" class="preset-btn" (click)="setDatePreset('24h')">24h</button>
+            <button type="button" class="preset-btn" (click)="setDatePreset('7d')">7 días</button>
+            <button type="button" class="preset-btn" (click)="setDatePreset('today')">Hoy</button>
+            <button type="button" class="preset-btn text-danger-hover" (click)="setDatePreset('clear')">Limpiar</button>
+          </div>
+
+          <!-- Desde: Date + Time custom pickers -->
+          <div class="mb-3">
+            <label class="form-label small mb-2 fw-semibold text-muted d-block">Desde</label>
+            <div class="row g-2">
+              <!-- Fecha Desde -->
+              <div class="col-7 position-relative">
+                <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
+                  (click)="openCalendarField('desde', $event)">
+                  <span>{{ formatCalendarDateLabel(dateDesdeStr()) || 'Elegir fecha' }}</span>
+                  <span class="icon-svg icon-calendar text-muted opacity-75" style="width: 13px; height: 13px;"></span>
+                </button>
+
+                @if (activeCalendarField() === 'desde') {
+                <div class="custom-calendar-popover position-absolute top-100 start-0"
+                  (click)="$event.stopPropagation()">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <button type="button" class="calendar-header-btn btn-ghost" (click)="prevCalendarMonth($event)">
+                      &lt;
+                    </button>
+                    <span class="fw-bold text-capitalize" style="font-size: 0.85rem; color: var(--text-primary);">
+                      {{ getMonths()[calendarViewMonth()] }} {{ calendarViewYear() }}
+                    </span>
+                    <button type="button" class="calendar-header-btn btn-ghost" (click)="nextCalendarMonth($event)">
+                      &gt;
+                    </button>
+                  </div>
+
+                  <div class="d-grid text-center text-muted small mb-1"
+                    style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
+                    <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
+                  </div>
+
+                  <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
+                    @for (empty of calendarGrid().emptyDays; track empty) {
+                    <div style="width: 28px; height: 28px;"></div>
+                    }
+                    @for (day of calendarGrid().days; track day) {
+                    <button type="button" class="calendar-day-btn" [class.selected]="isCalendarDaySelected(day)"
+                      (click)="selectCalendarDay(day)">
+                      {{ day }}
+                    </button>
+                    }
+                  </div>
+                </div>
+                }
+              </div>
+
+              <!-- Hora Desde -->
+              <div class="col-5 position-relative">
+                <button type="button" class="calendar-trigger-btn w-100 font-monospace"
+                  (click)="openTimePickerField('desde', $event)">
+                  <span>{{ timeDesdeStr() || '00:00' }}</span>
+                  <span class="icon-svg icon-clock text-muted opacity-75" style="width: 13px; height: 13px;"></span>
+                </button>
+
+                @if (activeTimeField() === 'desde') {
+                <div class="custom-time-popover position-absolute top-100 start-0" (click)="$event.stopPropagation()">
+                  <div class="time-picker-container">
+                    <div class="time-column-wrapper">
+                      <div class="time-column-header">Hora</div>
+                      <div class="time-column scroll-container">
+                        @for (h of hoursList; track h) {
+                        <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
+                          (click)="selectTimeHour(h)">
+                          {{ h | number:'2.0-0' }}
+                        </button>
+                        }
+                      </div>
+                    </div>
+                    <div class="time-separator">:</div>
+                    <div class="time-column-wrapper">
+                      <div class="time-column-header">Min</div>
+                      <div class="time-column scroll-container">
+                        @for (m of minutesList; track m) {
+                        <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
+                          (click)="selectTimeMinute(m)">
+                          {{ m | number:'2.0-0' }}
+                        </button>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Hasta: Date + Time custom pickers -->
+          <div>
+            <label class="form-label small mb-2 fw-semibold text-muted d-block">Hasta</label>
+            <div class="row g-2">
+              <!-- Fecha Hasta -->
+              <div class="col-7 position-relative">
+                <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
+                  (click)="openCalendarField('hasta', $event)">
+                  <span>{{ formatCalendarDateLabel(dateHastaStr()) || 'Elegir fecha' }}</span>
+                  <span class="icon-svg icon-calendar text-muted opacity-75" style="width: 13px; height: 13px;"></span>
+                </button>
+
+                @if (activeCalendarField() === 'hasta') {
+                <div class="custom-calendar-popover position-absolute top-100 start-0"
+                  (click)="$event.stopPropagation()">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <button type="button" class="calendar-header-btn btn-ghost" (click)="prevCalendarMonth($event)">
+                      &lt;
+                    </button>
+                    <span class="fw-bold text-capitalize" style="font-size: 0.85rem; color: var(--text-primary);">
+                      {{ getMonths()[calendarViewMonth()] }} {{ calendarViewYear() }}
+                    </span>
+                    <button type="button" class="calendar-header-btn btn-ghost" (click)="nextCalendarMonth($event)">
+                      &gt;
+                    </button>
+                  </div>
+
+                  <div class="d-grid text-center text-muted small mb-1"
+                    style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
+                    <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
+                  </div>
+
+                  <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
+                    @for (empty of calendarGrid().emptyDays; track empty) {
+                    <div style="width: 28px; height: 28px;"></div>
+                    }
+                    @for (day of calendarGrid().days; track day) {
+                    <button type="button" class="calendar-day-btn" [class.selected]="isCalendarDaySelected(day)"
+                      (click)="selectCalendarDay(day)">
+                      {{ day }}
+                    </button>
+                    }
+                  </div>
+                </div>
+                }
+              </div>
+
+              <!-- Hora Hasta -->
+              <div class="col-5 position-relative">
+                <button type="button" class="calendar-trigger-btn w-100 font-monospace"
+                  (click)="openTimePickerField('hasta', $event)">
+                  <span>{{ timeHastaStr() || '23:59' }}</span>
+                  <span class="icon-svg icon-clock text-muted opacity-75" style="width: 13px; height: 13px;"></span>
+                </button>
+
+                @if (activeTimeField() === 'hasta') {
+                <div class="custom-time-popover position-absolute top-100 start-0" (click)="$event.stopPropagation()">
+                  <div class="time-picker-container">
+                    <div class="time-column-wrapper">
+                      <div class="time-column-header">Hora</div>
+                      <div class="time-column scroll-container">
+                        @for (h of hoursList; track h) {
+                        <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
+                          (click)="selectTimeHour(h)">
+                          {{ h | number:'2.0-0' }}
+                        </button>
+                        }
+                      </div>
+                    </div>
+                    <div class="time-separator">:</div>
+                    <div class="time-column-wrapper">
+                      <div class="time-column-header">Min</div>
+                      <div class="time-column scroll-container">
+                        @for (m of minutesList; track m) {
+                        <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
+                          (click)="selectTimeMinute(m)">
+                          {{ m | number:'2.0-0' }}
+                        </button>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+          </div>
+
+        </div>
+        }
+      </div>
+
+      <!-- Vista previa del patrón de imagen para búsqueda -->
+      @if (tempFilters().imageSearchUrl) {
+      <div class="image-search-preview-pill d-flex align-items-center gap-2 border rounded-pill px-3 py-1 shadow-sm">
+        <img [src]="tempFilters().imageSearchUrl"
+          style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;" />
+        <span class="small text-muted fw-semibold">Patrón de Imagen</span>
+        <button type="button" class="btn-close btn-close-xs" (click)="clearImageSearch()"></button>
+      </div>
+      }
+
+      <!-- BOTONES DE APLICAR Y LIMPIAR FILTROS -->
+      <div class="filter-actions-group d-flex align-items-center gap-2">
+        @if (hasActiveFilters()) {
+        <button (click)="onResetFilters()"
+          class="btn btn-outline-secondary btn-premium-action d-flex align-items-center gap-2">
+          <span class="icon-svg icon-close" style="width: 14px; height: 14px;"></span>
+          Limpiar Filtros
+        </button>
+        }
+
+        @if (hasPendingFilterChanges()) {
+        <button (click)="onApplyFilters()" class="btn btn-primary btn-premium-action d-flex align-items-center gap-2">
+          <span class="icon-svg icon-save" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+          Aplicar Filtros
+        </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content-layout position-relative">
+    <!-- Grid content and pagination -->
+    <div #metadataGrid class="grid-content-area position-relative">
+      <!-- Loading spinner -->
+      @if (isLoading()) {
+      <div
+        class="loading-overlay d-flex justify-content-center align-items-center position-absolute w-100 h-100 bg-white bg-opacity-75"
+        style="z-index: 10;">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+      </div>
+      }
+
+      <!-- No records found view -->
+      @if (!isLoading() && records().length === 0) {
+      <div class="empty-state-view text-center py-5 rounded bg-white shadow-sm border">
+        <div class="empty-icon-wrapper mb-3 text-muted">
+          <span class="icon-svg icon-warning text-muted opacity-50" style="width: 48px; height: 48px;"></span>
+        </div>
+        <h4 class="fw-bold">Sin Resultados</h4>
+        <p class="text-muted">No se encontraron metadatos que coincidan con los filtros seleccionados.</p>
+        <button (click)="onResetFilters()" class="btn btn-primary btn-premium mt-2">Restablecer Filtros</button>
+      </div>
+      }
+
+      <!-- Metadata Cards Grid -->
+      @if (records().length > 0) {
+      <div class="metadata-grid">
+        @for (record of records(); track record.id) {
+        <div class="card metadata-card border-0 shadow-sm rounded-3 position-relative"
+          [class.metadata-card--live-new]="newRecordIds().has(record.id)" style="overflow: visible !important;"
+          (mousemove)="onCardMouseMove($event, record.id)" (mouseleave)="onCardMouseLeave()">
+
+          <!-- Image section with overlay -->
+          <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center">
+            @if (record.imagenRemota) {
+            <img [src]="record.imagenRemota" (error)="$event.target && ($event.target.style.display = 'none')"
+              class="card-img-top object-fit-contain w-100 h-100" alt="Thumbnail" />
+            } @else {
+            <div class="placeholder-img-icon position-absolute d-flex flex-column align-items-center">
+              <span class="icon-svg icon-box text-muted" style="width: 32px; height: 32px;"></span>
+              <span class="text-muted small mt-2">Sin Imagen</span>
+            </div>
+            }
+
+            <!-- Floating Index Type indicator -->
+            <div class="index-badge-overlay text-capitalize">
+              {{ activeIndex() }}
+            </div>
+
+            <!-- Premium hover overlay with actions -->
+            <div class="ed-img-overlay d-flex flex-column align-items-center justify-content-center gap-3">
+              @if (record.embedding && record.embedding.length > 0) {
+              <button type="button" class="btn-overlay-action btn-coincidence"
+                (click)="filtrarPorCoincidencia(record); $event.stopPropagation()"
+                title="Filtrar por Coincidencia Vectorial">
+                <span class="icon-svg icon-search" style="width: 13px; height: 13px;"></span>
+                <span>Filtrar por coincidencia</span>
+              </button>
+              }
+
+              @if ((activeIndex() === 'rostros' || (activeIndex() === 'vehiculos' && getReconocimiento(record))) && permissionsService.hasPermission('Detalles Listas', 'crear')) {
+              <button type="button" class="btn-overlay-action btn-watchlist"
+                (click)="openAddToListModal(record); $event.stopPropagation()" title="Agregar a Lista de Control">
+                <span class="icon-svg icon-plus" style="width: 13px; height: 13px;"></span>
+                <span>Añadir a Lista</span>
+              </button>
+              }
+            </div>
+          </div>
+
+          <!-- Card Body details -->
+          <div class="card-body p-3 d-flex flex-column justify-content-between">
+            <div>
+              <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
+                <h6 class="card-title fw-bold mb-0 text-truncate" [title]="record.camara" style="max-width: 60%;">
+                  {{ record.camara }}
+                </h6>
+                <div class="timestamp-row text-muted small mb-0 d-flex align-items-center gap-1 text-end flex-shrink-0">
+                  <span class="icon-svg icon-clock flex-shrink-0" style="width: 11px; height: 11px;"></span>
+                  <span style="font-size: 0.72rem;">{{ formatDate(record.timestamp) }}</span>
+                </div>
+              </div>
+
+              <!-- Reliability Indicator (ProgressBar) -->
+              <div class="reliability-indicator mb-1">
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                  <span>Confiabilidad</span>
+                  <span class="fw-bold" [ngClass]="{
+                        'text-danger': record.confiabilidad < 0.5,
+                        'text-warning': record.confiabilidad >= 0.5 && record.confiabilidad < 0.8,
+                        'text-success': record.confiabilidad >= 0.8
+                      }">{{ (record.confiabilidad * 100) | number:'1.0-0' }}%</span>
+                </div>
+                <div class="progress" style="height: 5px; background-color: var(--border-color);">
+                  <div class="progress-bar" role="progressbar" [style.width.%]="record.confiabilidad * 100" [ngClass]="{
+                              'bg-danger': record.confiabilidad < 0.5,
+                              'bg-warning': record.confiabilidad >= 0.5 && record.confiabilidad < 0.8,
+                              'bg-success': record.confiabilidad >= 0.8
+                            }" [attr.aria-valuenow]="record.confiabilidad * 100" aria-valuemin="0" aria-valuemax="100">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Floating popover on hover for attribute badges -->
+          @if (activeHoverCardId() === record.id) {
+          <div class="metadata-card-popover" [style.left.px]="mouseX()" [style.top.px]="mouseY()">
+            <div class="popover-header d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-1.5">
+                <span class="icon-svg icon-box text-primary popover-header-icon" style="width: 12px; height: 12px;"></span>
+                <span class="popover-header-title text-muted text-uppercase fw-bold">Atributos</span>
+              </div>
+              <span class="badge bg-secondary-light text-secondary text-capitalize"
+                style="font-size: 0.65rem; padding: 2px 6px;">
+                {{ activeIndex() }}
+              </span>
+            </div>
+
+            <!-- Sección Identificación -->
+            @if (getTipoObjeto(record) || getEdad(record) || getGenero(record) || getReconocimiento(record)) {
+            <div class="popover-section">
+              <div class="popover-section-title text-muted text-uppercase fw-bold">Identificación</div>
+              <div class="attributes-grid">
+                @if (getTipoObjeto(record)) {
+                <span class="attribute-pill object-type-pill text-capitalize">
+                  <span class="pill-dot"></span>
+                  {{ getTipoObjeto(record) }}
+                </span>
+                }
+                @if (getEdad(record)) {
+                <span class="attribute-pill age-pill text-capitalize">
+                  Edad: {{ getEdad(record) }}
+                </span>
+                }
+                @if (getGenero(record)) {
+                <span class="attribute-pill gender-pill text-capitalize">
+                  Género: {{ getGenero(record) }}
+                </span>
+                }
+                @if (getReconocimiento(record)) {
+                <span class="attribute-pill recognition-pill text-capitalize">
+                  {{ getReconocimiento(record) }}
+                </span>
+                }
+              </div>
+            </div>
+            }
+
+            <!-- Sección Posturas -->
+            @if (getPosturas(record) && getPosturas(record).length > 0) {
+            <div class="popover-section">
+              <div class="popover-section-title text-muted text-uppercase fw-bold">Posturas</div>
+              <div class="attributes-grid">
+                @for (pos of getPosturas(record); track $index) {
+                <span class="attribute-pill posture-pill text-capitalize">
+                  {{ pos.postura }}
+                  <span class="posture-count">{{ pos.conteo }}</span>
+                </span>
+                }
+              </div>
+            </div>
+            }
+
+            <!-- Sección Colores -->
+            @if (record.colores && record.colores.length > 0) {
+            <div class="popover-section">
+              <div class="popover-section-title text-muted text-uppercase fw-bold">Colores</div>
+              <div class="attributes-grid">
+                @for (col of record.colores; track $index) {
+                <span class="color-pill-v2 d-inline-flex align-items-center rounded-pill py-1 px-2 border"
+                  [style.background-color]="getColorStyle(col)"
+                  [style.color]="getColorLuminance(col.r, col.g, col.b) > 0.6 ? '#1e293b' : '#ffffff'"
+                  [style.border-color]="getColorLuminance(col.r, col.g, col.b) > 0.9 ? '#cbd5e1' : 'transparent'"
+                  [title]="col.colorText + ' (' + (col.porcentaje * 100 | number:'1.0-0') + '%)'">
+                  <span class="color-text text-capitalize" style="font-size: 0.7rem; font-weight: 600;">{{ col.colorText
+                    }}</span>
+                  <span class="color-percentage-v2" style="font-size: 0.65rem; opacity: 0.85; margin-left: 4px;">{{
+                    (col.porcentaje * 100) | number:'1.0-0' }}%</span>
+                </span>
+                }
+              </div>
+            </div>
+            }
+          </div>
+          }
+
+        </div>
+        }
+      </div>
+      }
+
+      <!-- Paginación -->
+      @if (totalPages() > 1 && !tempFilters().imageSearchUrl) {
+      <div class="d-flex justify-content-center align-items-center mt-5 gap-4 flex-wrap">
+        <nav aria-label="Page navigation">
+          <ul class="pagination pagination-md align-items-center mb-0" style="gap: 6px; padding: 0; list-style: none;">
+            <li class="page-item" [class.disabled]="currentPage() === 1">
+              <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center"
+                (click)="prevPage()" aria-label="Previous">
+                <span class="icon-svg icon-chevron-left" style="width: 18px; height: 18px;"></span>
+              </button>
+            </li>
+            @for (page of visiblePages(); track page) {
+            <li class="page-item" [class.active]="currentPage() === page">
+              <button class="page-link-ghost" (click)="setPage(page)">
+                {{ page }}
+              </button>
+            </li>
+            }
+            <li class="page-item" [class.disabled]="currentPage() === totalPages()">
+              <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center"
+                (click)="nextPage()" aria-label="Next">
+                <span class="icon-svg icon-chevron-right" style="width: 18px; height: 18px;"></span>
+              </button>
+            </li>
+          </ul>
+        </nav>
+
+        <!-- Jump to Page Input Container -->
+        <div class="d-flex align-items-center gap-2 jump-to-page-container">
+          <span class="text-muted small fw-medium">Ir a:</span>
+          <input type="text" class="form-control form-control-sm text-center shadow-sm"
+            style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;" [placeholder]="currentPage()"
+            inputmode="numeric" pattern="[0-9]*" (input)="onPageInput($event)" (keydown.enter)="jumpToPage($event)"
+            (blur)="jumpToPage($event)" />
+          <span class="text-muted small fw-medium">de {{ totalPages() }}</span>
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+
+  <!-- Modal Agregar a Lista de Control (Estilo Premium) -->
+  @if (showAddToWatchlistModal()) {
+  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center" (click)="closeAddToListModal()">
+    <div class="modal-card-custom p-4 shadow-lg border" (click)="$event.stopPropagation()">
+
+      <!-- Modal Header -->
+      <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+        <h5 class="fw-bold mb-0 text-body fs-6">Agregar a Lista de Control</h5>
+        <button class="btn-ghost p-1" (click)="closeAddToListModal()" aria-label="Cerrar modal">
+          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body-custom">
+        @if (selectedRecordForWatchlist(); as record) {
+        <!-- Record Thumbnail -->
+        <div class="d-flex align-items-center gap-3 mb-3 p-2 border rounded bg-light-translucent">
+          <img [src]="record.imagenRemota" class="rounded object-fit-contain shadow-sm border bg-dark"
+            style="width: 60px; height: 60px;" />
+          <div style="min-width: 0;">
+            <span class="small text-muted d-block text-capitalize">Índice: {{ activeIndex() }}</span>
+            <span class="fw-semibold text-body d-block text-truncate" style="font-size: 0.85rem;">{{ record.camara
+              }}</span>
+            <span class="text-muted" style="font-size: 0.7rem;">{{ formatDate(record.timestamp) }}</span>
+          </div>
+        </div>
+
+        <!-- List Selector -->
+        <div class="mb-3">
+          <label class="form-label text-muted small fw-semibold">Seleccionar Lista de Control</label>
+          <select class="form-select form-select-sm" [value]="selectedWatchlistId()"
+            (change)="selectedWatchlistId.set($any($event.target).value)">
+            <option value="" disabled selected>-- Elige una Lista --</option>
+            @for (lst of compatibleWatchlists(); track lst.list_id) {
+            <option [value]="lst.list_id">{{ lst.name }}</option>
+            }
+          </select>
+          @if (compatibleWatchlists().length === 0) {
+          <span class="text-warning small mt-1 d-block" style="font-size: 0.68rem;">
+            No hay listas de tipo <strong>{{ activeIndex() === 'vehiculos' ? 'placas' : 'rostros' }}</strong>.
+            Primero cree una en la sección de Listas del Sidebar.
+          </span>
+          }
+        </div>
+
+        <!-- Name Field -->
+        <div class="mb-4">
+          <label class="form-label text-muted small fw-semibold">
+            {{ activeIndex() === 'vehiculos' ? 'Nombre del Propietario (Opcional)' : 'Nombre Completo de la Persona' }}
+          </label>
+          <input type="text" class="form-control form-control-sm"
+            [placeholder]="activeIndex() === 'vehiculos' ? 'Ej. Juan Pérez' : 'Nombre completo del sujeto'"
+            [ngModel]="subjectWatchlistName()" (ngModelChange)="subjectWatchlistName.set($event)" />
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="d-flex gap-3 border-top pt-3">
+          <button class="btn btn-outline-secondary flex-fill py-2 btn-sm fw-semibold" (click)="closeAddToListModal()">
+            Cancelar
+          </button>
+          <button class="btn btn-primary flex-fill py-2 btn-sm fw-semibold" (click)="saveRecordToList()"
+            [disabled]="!selectedWatchlistId() || (activeIndex() !== 'vehiculos' && !subjectWatchlistName().trim()) || isWatchlistLoading()">
+            Agregar a Lista
+          </button>
+        </div>
+        }
+      </div>
+
+    </div>
+  </div>
+  }
+</div>

@@ -42,3 +42,17 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Graphify
+graphify-out/
+
+# Environment variables
+.env
+.gitignore
+schemas.md
+endpoints.md
+
+# Generated configuration files
+src/app/core/config/api-key.config.ts
+src/app/core/config/websocket.config.ts
+provisional-mockups

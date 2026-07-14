@@ -1,13 +1,19 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
-  <title>Iaframecore</title>
+  <title>Azor Analytics</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; connect-src 'self' ws://localhost:* http://localhost:* ws: http:; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: http://localhost:* http: https: https://picsum.photos https://fastly.picsum.photos https://*.picsum.photos https://*.unsplash.com https://randomuser.me;">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <link rel="icon" type="image/x-icon" href="logo.svg">
 </head>
+
 <body>
   <app-root></app-root>
 </body>
+
 </html>

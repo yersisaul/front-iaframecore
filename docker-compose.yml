@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+    image: front-iaframecore:latest
+    container_name: front-iaframecore-app
+    ports:
+      - "80:80"
+    environment:
+      - API_HOST=${API_HOST}
+      - OPENSEARCH_HOST=${OPENSEARCH_HOST}
+    restart: always
