@@ -77,8 +77,7 @@
             @for (sched of filteredSchedules(); track sched.id) {
             <div class="col-12">
               <div class="schedule-modal-item p-3.5 rounded-3 border transition-all"
-                [class.schedule-active]="isScheduleActive(sched)" 
-                [class.schedule-inactive]="!isScheduleActive(sched)"
+                [class.schedule-active]="isScheduleActive(sched)" [class.schedule-inactive]="!isScheduleActive(sched)"
                 [class.selected-for-details]="selectedScheduleId() === sched.id"
                 [class.card-crud-new]="scheduleNewIds().has(sched.id)"
                 [class.card-crud-updated]="scheduleUpdatedIds().has(sched.id)"
@@ -86,28 +85,33 @@
                 [class.card-crud-status-active]="scheduleActiveStatusIds().has(sched.id)"
                 [class.card-crud-status-inactive]="scheduleInactiveStatusIds().has(sched.id)"
                 (click)="selectScheduleForDetails(sched)" style="cursor: pointer;">
-                
+
                 <!-- Contenedor vertical de 2 filas -->
                 <div class="d-flex flex-column gap-2.5">
-                  
-                  <!-- Fila 1: Título y Controles CRUD (Switch, Editar, Eliminar) -->
+
+                  <!-- Fila 1: Título con Frecuencia y Controles CRUD -->
                   <div class="d-flex align-items-center justify-content-between w-100">
-                    <!-- Título -->
-                    <div class="d-flex align-items-center gap-2">
+                    <!-- Título y Frecuencia -->
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
                       <span class="status-dot pulse" [class.pulse]="isScheduleActive(sched)"></span>
                       <span class="fw-bold" style="font-size: 0.95rem;">{{ sched.name }}</span>
+                      <span class="badge bg-light-translucent text-uppercase text-muted"
+                        style="font-size: 0.65rem; border: 1px solid var(--border-color); padding: 3px 6px; border-radius: 5px;">
+                        {{ sched.frequency }}
+                      </span>
                     </div>
-                    
+
                     <!-- Controles CRUD -->
                     <div class="d-flex align-items-center gap-2">
                       <!-- Switch -->
-                      <div class="form-check form-switch m-0 d-flex align-items-center" (click)="$event.stopPropagation()">
+                      <div class="form-check form-switch m-0 d-flex align-items-center"
+                        (click)="$event.stopPropagation()">
                         <input class="form-check-input" type="checkbox" role="switch" [id]="'switch-sched-' + sched.id"
                           [checked]="sched.status === 'activo'"
                           [disabled]="!permissionsService.hasPermission('Horarios', 'editar')"
                           (change)="toggleScheduleStatus(sched, $event)">
                       </div>
-                      
+
                       <!-- Editar -->
                       @if (permissionsService.hasPermission('Horarios', 'editar')) {
                       <button class="btn btn-xs btn-ghost p-1.5"
@@ -116,7 +120,7 @@
                         <span class="icon-svg icon-edit" style="width: 14px; height: 14px;"></span>
                       </button>
                       }
-                      
+
                       <!-- Borrar -->
                       @if (permissionsService.hasPermission('Horarios', 'eliminar')) {
                       <button class="btn btn-xs btn-ghost text-danger p-1.5"
@@ -128,15 +132,13 @@
                     </div>
                   </div>
 
-                  <!-- Fila 2: Frecuencia y Rango Horario -->
+                  <!-- Fila 2: Rango Horario -->
                   <div class="d-flex align-items-center gap-2 mt-0.5">
-                    <span class="badge bg-light-translucent text-uppercase text-muted"
-                      style="font-size: 0.65rem; border: 1px solid var(--border-color);">{{ sched.frequency }}</span>
                     <span class="font-monospace text-muted small" style="font-size: 0.75rem;">
                       {{ sched.start | date:'dd/MM/yyyy HH:mm' }} - {{ sched.end | date:'dd/MM/yyyy HH:mm' }}
                     </span>
                   </div>
-                  
+
                 </div>
               </div>
             </div>
@@ -178,107 +180,104 @@
         <!-- Details Body Wrapper con Scroll Interno -->
         <div class="flex-grow-1 overflow-y-auto px-2 py-1" style="min-height: 0;">
 
-          <!-- Configuración Operativa Unificada (Single Container) -->
-          <div class="details-bento-block d-flex flex-column gap-4 mb-4">
+          <!-- Configuración Operativa Unificada (Bento Grid) -->
+          <div class="d-flex flex-column gap-3 mb-4">
 
-            <!-- Header de Detalles (Nombre, Frecuencia) -->
-            <div class="d-flex align-items-center justify-content-between">
-              <h6 class="fw-bold text-body mb-0" style="font-size: 1.15rem; line-height: 1.2; letter-spacing: -0.01em;">
-                {{ activeSched.name }}</h6>
-              <span class="badge bg-light-translucent text-uppercase text-muted"
-                style="font-size: 0.65rem; border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 6px;">
+            <!-- Header de Detalles Simplificado y Minimalista (Sin contenedor de tarjeta) -->
+            <div class="d-flex align-items-center justify-content-between mb-2 px-1">
+              <h4 class="fw-bold text-body mb-0" style="font-size: 1.25rem; letter-spacing: -0.015em;">
+                {{ activeSched.name }}
+              </h4>
+              <span class="badge badge-frequency-premium">
                 {{ activeSched.frequency }}
               </span>
             </div>
 
+            <!-- Grilla Bento de Detalles -->
+            <div class="details-bento-grid">
 
-            <!-- Fila 1: Vigencia y Rango en Grid -->
-            <!-- Distribución en dos columnas -->
-            <div class="row g-4">
-              <!-- Columna Izquierda: Vigencia y Rango -->
-              <div class="col-12 col-md-6 d-flex flex-column gap-3">
-                <!-- Vigencia -->
-                <div>
-                  <div class="d-flex align-items-center gap-2 text-primary mb-2">
-                    <span class="icon-svg icon-calendar details-header-icon" style="width: 16px; height: 16px;"></span>
-                    <span class="validez-title">Vigencia</span>
+              <!-- Bento Card 1: Vigencia -->
+              <div class="bento-details-card">
+                <div class="bento-details-card-header">
+                  <span class="icon-svg icon-calendar bento-card-icon text-primary"
+                    style="width: 15px; height: 15px;"></span>
+                  <span class="bento-card-title">Vigencia</span>
+                </div>
+                <div class="bento-details-card-body d-flex flex-column gap-2 mt-1">
+                  <div class="bento-metric-row">
+                    <span class="bento-metric-label">Inicio</span>
+                    <span class="bento-metric-value">{{ activeSched.start | date:'dd/MM/yyyy' }}</span>
                   </div>
-                  <div class="d-flex flex-column gap-2">
-                    <div
-                      class="d-flex align-items-baseline justify-content-between pb-1 border-bottom border-color-subtle">
-                      <span class="text-muted text-uppercase font-monospace"
-                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Inicio</span>
-                      <span class="text-body fw-bold font-monospace" style="font-size: 0.8rem;">{{ activeSched.start |
-                        date:'dd/MM/yyyy' }}</span>
-                    </div>
-                    <div class="d-flex align-items-baseline justify-content-between">
-                      <span class="text-muted text-uppercase font-monospace"
-                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Fin</span>
-                      <span class="text-body fw-bold font-monospace" style="font-size: 0.8rem;">{{ activeSched.end |
-                        date:'dd/MM/yyyy' }}</span>
-                    </div>
+                  <div class="bento-metric-row">
+                    <span class="bento-metric-label">Fin</span>
+                    <span class="bento-metric-value">{{ activeSched.end | date:'dd/MM/yyyy' }}</span>
                   </div>
                 </div>
+              </div>
 
-                <!-- Rango -->
-                <div>
-                  <div class="d-flex align-items-center gap-2 text-primary mb-2">
-                    <span class="icon-svg icon-clock details-header-icon" style="width: 16px; height: 16px;"></span>
-                    <span class="validez-title">Rango</span>
+              <!-- Bento Card 2: Rango -->
+              <div class="bento-details-card">
+                <div class="bento-details-card-header">
+                  <span class="icon-svg icon-clock bento-card-icon text-success"
+                    style="width: 15px; height: 15px;"></span>
+                  <span class="bento-card-title">Rango Horario</span>
+                </div>
+                <div class="bento-details-card-body d-flex flex-column gap-2 mt-1">
+                  <div class="bento-metric-row">
+                    <span class="bento-metric-label">Apertura</span>
+                    <span class="bento-metric-value">{{ getTimeString(activeSched.start) }}</span>
                   </div>
-                  <div class="d-flex flex-column gap-2">
-                    <div
-                      class="d-flex align-items-baseline justify-content-between pb-1 border-bottom border-color-subtle">
-                      <span class="text-muted text-uppercase font-monospace"
-                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Abre</span>
-                      <span class="text-body fw-bold font-monospace" style="font-size: 0.8rem;">{{
-                        getTimeString(activeSched.start) }}</span>
+                  <div class="bento-metric-row">
+                    <span class="bento-metric-label">Cierre</span>
+                    <span class="bento-metric-value">{{ getTimeString(activeSched.end) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bento Card 3 (Combinada): Días de Operación y Ventana Horaria (Timeline) -->
+              <div class="bento-details-card col-span-2-desktop">
+                <div class="bento-details-card-header">
+                  <span class="icon-svg icon-activity bento-card-icon"
+                    style="width: 15px; height: 15px; color: #a855f7;"></span>
+                  <span class="bento-card-title">Operación y Ventana Diaria</span>
+                </div>
+                <div class="bento-details-card-body d-flex flex-column gap-3 pt-1">
+                  <!-- Días de Operación -->
+                  <div>
+                    <div class="weekday-grid">
+                      @for (dayLabel of ['D', 'L', 'M', 'M', 'J', 'V', 'S']; track $index) {
+                      @let isDayActive = isDayOfWeekActive($index, activeSched.start, activeSched.end,
+                      activeSched.frequency);
+                      <div class="details-weekday-circle" [class.active]="isDayActive"
+                        [title]="isDayActive ? 'Operativo' : 'Inactivo'">
+                        {{ dayLabel }}
+                      </div>
+                      }
                     </div>
-                    <div class="d-flex align-items-baseline justify-content-between">
-                      <span class="text-muted text-uppercase font-monospace"
-                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Cierra</span>
-                      <span class="text-body fw-bold font-monospace" style="font-size: 0.8rem;">{{
-                        getTimeString(activeSched.end) }}</span>
+                  </div>
+
+                  <!-- Divider Sutil -->
+                  <div class="border-top border-color-subtle w-100 my-1"></div>
+
+                  <!-- Timeline -->
+                  <div>
+                    <div class="timeline-hours-labels d-flex justify-content-between mb-2 text-muted font-monospace"
+                      style="font-size: 0.74rem;">
+                      <span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span>
+                    </div>
+                    <div class="timeline-track-premium w-100 mb-2.5">
+                      <div class="timeline-bar-premium h-100"
+                        [style.background]="getTimelineBackground(getTimeString(activeSched.start), getTimeString(activeSched.end))"
+                        style="width: 100%;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted font-monospace" style="font-size: 0.8rem;">
+                      <span>Inicio: <strong class="text-body">{{ getTimeString(activeSched.start) }}</strong></span>
+                      <span>Fin: <strong class="text-body">{{ getTimeString(activeSched.end) }}</strong></span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Columna Derecha: Días de Operación y Ventana Horaria Diaria -->
-              <div class="col-12 col-md-6 d-flex flex-column gap-4">
-                <!-- Días de Operación -->
-                <div>
-                  <div class="validez-title mb-3">Días de Operación</div>
-                  <div class="weekday-grid">
-                    @for (dayLabel of ['D', 'L', 'M', 'M', 'J', 'V', 'S']; track $index) {
-                    @let isDayActive = isDayOfWeekActive($index, activeSched.start, activeSched.end,
-                    activeSched.frequency);
-                    <div class="details-weekday-circle" [class.active]="isDayActive"
-                      [title]="isDayActive ? 'Operativo' : 'Inactivo'">
-                      {{ dayLabel }}
-                    </div>
-                    }
-                  </div>
-                </div>
-
-                <!-- Ventana Horaria Diaria (Timeline) -->
-                <div class="premium-timeline-card p-0">
-                  <div class="validez-title mb-2.5">Ventana Horaria Diaria</div>
-                  <div class="timeline-hours-labels d-flex justify-content-between mb-2 text-muted font-monospace"
-                    style="font-size: 0.65rem;">
-                    <span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span>
-                  </div>
-                  <div class="timeline-track-premium w-100 mb-2">
-                    <div class="timeline-bar-premium h-100"
-                      [style.background]="getTimelineBackground(getTimeString(activeSched.start), getTimeString(activeSched.end))"
-                      style="width: 100%;"></div>
-                  </div>
-                  <div class="d-flex justify-content-between text-muted font-monospace" style="font-size: 0.72rem;">
-                    <span>Inicio: <strong class="text-body">{{ getTimeString(activeSched.start) }}</strong></span>
-                    <span>Fin: <strong class="text-body">{{ getTimeString(activeSched.end) }}</strong></span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -296,7 +295,7 @@
                 </div>
                 <div class="d-flex align-items-center gap-2">
                   <span class="badge bg-secondary-light text-primary font-monospace"
-                    style="font-size: 0.68rem; border-radius: 6px;">{{ selectedScheduleHosts().length }}</span>
+                    style="font-size: 0.68rem; border-radius: 6px;">{{ filteredScheduleHosts().length }}</span>
                   <span class="icon-svg icon-chevron-down accordion-arrow"
                     [style.transform]="expandedHosts() ? 'rotate(180deg)' : 'rotate(0deg)'"
                     style="width: 14px; height: 14px; transition: transform 0.2s ease;"></span>
@@ -305,13 +304,22 @@
 
               @if (expandedHosts()) {
               <div class="pt-3">
-                @if (selectedScheduleHosts().length === 0) {
+                @if (filteredScheduleHosts().length === 0) {
                 <div class="text-muted small italic style-note ps-1">Ningún nodo heredando este horario</div>
                 } @else {
                 <div class="association-badges-grid ps-1">
-                  @for (host of selectedScheduleHosts(); track host.fingerprint) {
-                  <span class="badge-assoc-tag" (click)="navigateToHost(host.fingerprint); $event.stopPropagation();">
-                    {{ host.hostname }}
+                  @for (host of filteredScheduleHosts(); track host.fingerprint) {
+                  <span class="badge-assoc-tag badge-assoc-tag--host"
+                    [class.is-filtered]="activeHostFilters().includes(host.fingerprint)"
+                    [class.is-dimmed]="activeHostFilters().length > 0 && !activeHostFilters().includes(host.fingerprint)">
+                    <span class="badge-assoc-tag-click-zone"
+                      (click)="toggleHostFilter(host.fingerprint); $event.stopPropagation();">
+                      <span class="badge-assoc-tag-text">{{ host.hostname }}</span>
+                    </span>
+                    <button class="badge-assoc-tag-nav-zone"
+                      (click)="navigateToHost(host.fingerprint); $event.stopPropagation();" title="Ir a Nodo">
+                      <span class="icon-svg icon-external-link" style="width: 13px; height: 13px;"></span>
+                    </button>
                   </span>
                   }
                 </div>
@@ -332,7 +340,7 @@
                 </div>
                 <div class="d-flex align-items-center gap-2">
                   <span class="badge bg-secondary-light text-primary font-monospace"
-                    style="font-size: 0.68rem; border-radius: 6px;">{{ selectedScheduleCameras().length }}</span>
+                    style="font-size: 0.68rem; border-radius: 6px;">{{ filteredScheduleCameras().length }}</span>
                   <span class="icon-svg icon-chevron-down accordion-arrow"
                     [style.transform]="expandedCameras() ? 'rotate(180deg)' : 'rotate(0deg)'"
                     style="width: 14px; height: 14px; transition: transform 0.2s ease;"></span>
@@ -341,14 +349,23 @@
 
               @if (expandedCameras()) {
               <div class="pt-3">
-                @if (selectedScheduleCameras().length === 0) {
+                @if (filteredScheduleCameras().length === 0) {
                 <div class="text-muted small italic style-note ps-1">Ninguna cámara vinculada</div>
                 } @else {
                 <div class="association-badges-grid ps-1">
-                  @for (cam of selectedScheduleCameras(); track cam.id) {
-                  <span class="badge-assoc-tag"
-                    (click)="navigateToCamera(cam.hostFingerprint, cam.id); $event.stopPropagation();">
-                    {{ cam.name }}
+                  @for (cam of filteredScheduleCameras(); track cam.id) {
+                  <span class="badge-assoc-tag badge-assoc-tag--camera"
+                    [class.is-filtered]="activeCameraFilters().includes(cam.id)"
+                    [class.is-dimmed]="activeCameraFilters().length > 0 && !activeCameraFilters().includes(cam.id)">
+                    <span class="badge-assoc-tag-click-zone"
+                      (click)="toggleCameraFilter(cam.id); $event.stopPropagation();">
+                      <span class="badge-assoc-tag-text">{{ cam.name }}</span>
+                    </span>
+                    <button class="badge-assoc-tag-nav-zone"
+                      (click)="navigateToCamera(cam.hostFingerprint, cam.id); $event.stopPropagation();"
+                      title="Ir a Cámara">
+                      <span class="icon-svg icon-external-link" style="width: 13px; height: 13px;"></span>
+                    </button>
                   </span>
                   }
                 </div>
@@ -362,14 +379,14 @@
               (click)="expandedAnalytics.set(!expandedAnalytics())" style="cursor: pointer;">
               <div class="d-flex align-items-center justify-content-between mb-0 pb-1">
                 <div class="d-flex align-items-center gap-2">
-                  <div class="assoc-icon-container text-warning">
-                    <span class="icon-svg icon-shield" style="width: 12px; height: 12px;"></span>
+                  <div class="assoc-icon-container" style="color: #a855f7;">
+                    <span class="icon-svg icon-activity" style="width: 12px; height: 12px;"></span>
                   </div>
                   <span class="associations-title-bar">Analíticas</span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                   <span class="badge bg-secondary-light text-primary font-monospace"
-                    style="font-size: 0.68rem; border-radius: 6px;">{{ selectedScheduleAnalytics().length }}</span>
+                    style="font-size: 0.68rem; border-radius: 6px;">{{ filteredScheduleAnalytics().length }}</span>
                   <span class="icon-svg icon-chevron-down accordion-arrow"
                     [style.transform]="expandedAnalytics() ? 'rotate(180deg)' : 'rotate(0deg)'"
                     style="width: 14px; height: 14px; transition: transform 0.2s ease;"></span>
@@ -378,14 +395,27 @@
 
               @if (expandedAnalytics()) {
               <div class="pt-3">
-                @if (selectedScheduleAnalytics().length === 0) {
+                @if (filteredScheduleAnalytics().length === 0) {
                 <div class="text-muted small italic style-note ps-1">Ninguna analítica vinculada</div>
                 } @else {
                 <div class="association-badges-grid ps-1">
-                  @for (an of selectedScheduleAnalytics(); track an.id) {
-                  <span class="badge-assoc-tag"
-                    (click)="navigateToAnalytic(an.hostFingerprint, an.targetCameraIds[0], an.id); $event.stopPropagation();">
-                    {{ getAnalyticLabel(an.type) }}
+                  @for (an of filteredScheduleAnalytics(); track an.id) {
+                  <span class="badge-assoc-tag badge-assoc-tag--analytic"
+                    [class.is-filtered]="activeAnalyticFilters().includes(an.id)"
+                    [class.is-dimmed]="activeAnalyticFilters().length > 0 && !activeAnalyticFilters().includes(an.id)">
+                    <span class="badge-assoc-tag-click-zone"
+                      (click)="toggleAnalyticFilter(an.id); $event.stopPropagation();">
+                      <span class="badge-assoc-tag-text">
+                        {{ getAnalyticLabel(an.type) }}@if (an.detectionClasses.length > 0) { ({{
+                        an.detectionClasses.slice(0, 3).join(', ') }}{{ an.detectionClasses.length > 3 ? '...' : '' }})
+                        }
+                      </span>
+                    </span>
+                    <button class="badge-assoc-tag-nav-zone"
+                      (click)="navigateToAnalytic(an.hostFingerprint, an.targetCameraIds[0], an.id); $event.stopPropagation();"
+                      title="Ir a Analítica">
+                      <span class="icon-svg icon-external-link" style="width: 13px; height: 13px;"></span>
+                    </button>
                   </span>
                   }
                 </div>
@@ -411,7 +441,8 @@
 
     <!-- Icono de advertencia -->
     <div class="delete-modal-icon-wrap">
-      <span class="icon-svg icon-warning" style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
+      <span class="icon-svg icon-warning"
+        style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
     </div>
 
     <!-- Título y mensaje -->

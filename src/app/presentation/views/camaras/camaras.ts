@@ -33,7 +33,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   private hostService = inject(HostService);
   public permissionsService = inject(PermissionsService);
 
-  @ViewChild('camerasGrid', { static: false }) camerasGrid!: ElementRef<HTMLDivElement>;
+  @ViewChild('camerasContainer', { static: false }) camerasContainer!: ElementRef<HTMLDivElement>;
 
   readonly hostId = signal<string | null>(null);
 
@@ -642,10 +642,9 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       this.analyticService.getAllAnalytics().subscribe();
     }
 
-    // Reloj para verificar horarios activos cada segundo y transiciones
+    // Reloj para actualizar la señal de tiempo actual cada segundo
     this.timerId = setInterval(() => {
       this.currentTime.set(new Date());
-      this.checkScheduleTransitions();
     }, 1000);
   }
 
@@ -656,13 +655,13 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       this.adjustColumnsAndLimit(width);
     });
 
-    if (typeof ResizeObserver !== 'undefined' && this.camerasGrid) {
+    if (typeof ResizeObserver !== 'undefined' && this.camerasContainer) {
       this.resizeObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
           this.resizeSubject.next(entry.contentRect.width);
         }
       });
-      this.resizeObserver.observe(this.camerasGrid.nativeElement);
+      this.resizeObserver.observe(this.camerasContainer.nativeElement);
     }
   }
 
@@ -693,15 +692,14 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const oldCols = this.columns();
 
     if (newCols !== oldCols) {
-      this.columns.set(newCols);
-      if (this.viewMode() === 'cards') {
-        const currentLimit = this.limit();
-        const validOptions = [newCols * 10, newCols * 20, newCols * 30];
-        if (!validOptions.includes(currentLimit)) {
-          this.limit.set(newCols * 10);
-        }
-        this.currentPage.set(1);
+      const currentLimit = this.limit();
+      let multiplier = Math.round(currentLimit / oldCols);
+      if (multiplier !== 10 && multiplier !== 20 && multiplier !== 30) {
+        multiplier = 10;
       }
+      this.columns.set(newCols);
+      this.limit.set(newCols * multiplier);
+      this.currentPage.set(1);
     }
   }
 
@@ -1035,11 +1033,20 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       newAnalyticIds = currentAnalyticIds.filter(id => id !== analyticId);
     }
 
-    const formatPayloadDate = (d: Date) => d.toISOString();
+    // El backend espera el formato DD/MM/YYYY HH:mm en hora local del servidor
+    const formatPayloadDate = (d: Date): string => {
+      const pad = (num: number) => num.toString().padStart(2, '0');
+      const day = pad(d.getDate());
+      const month = pad(d.getMonth() + 1);
+      const year = d.getFullYear();
+      const hours = pad(d.getHours());
+      const minutes = pad(d.getMinutes());
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    };
 
     const payload = {
       nombre: schedule.name,
-      fingerprint_host: '',
+      fingerprint_host: schedule.hostFingerprint || '',
       analytics_ids: newAnalyticIds.map(id => ({ id_analytic: id })),
       timestamp_inicio: formatPayloadDate(schedule.start),
       timestamp_fin: formatPayloadDate(schedule.end),
@@ -1049,7 +1056,12 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
     this.scheduleService.updateSchedule(schedule.id, payload).subscribe({
       next: () => {
-        // Success
+        // Sincronizar localmente en memoria de inmediato para asegurar respuesta instantánea
+        const updatedSchedule: Schedule = {
+          ...schedule,
+          analyticIds: newAnalyticIds
+        };
+        this.scheduleService.addOrUpdateScheduleLocal(updatedSchedule);
       },
       error: (err) => {
         console.error('[CamarasComponent] toggleScheduleAssociation failed:', err);
@@ -1108,54 +1120,6 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   }
 
   // ── Sincronización de Horarios y Control Manual ──────────────────────────────
-  private previousScheduledActiveStates = new Map<string, boolean>();
-
-  private checkScheduleTransitions(): void {
-    const hostFingerprint = this.hostId();
-
-    const listAnalytics = hostFingerprint
-      ? this.analytics().filter(a => a.hostFingerprint === hostFingerprint)
-      : this.analytics();
-    const listSchedules = this.schedules();
-
-    listAnalytics.forEach(analytic => {
-      // Buscar horarios asociados a esta analítica
-      const schedulesForAnalytic = listSchedules.filter(s =>
-        s.analyticIds.includes(analytic.id)
-      );
-
-      if (schedulesForAnalytic.length === 0) {
-        this.previousScheduledActiveStates.delete(analytic.id);
-        return;
-      }
-
-      // Determinar si al menos un horario está activo
-      const currentlyScheduledActive = schedulesForAnalytic.some(s => this.isScheduleActive(s));
-
-      const hasPrev = this.previousScheduledActiveStates.has(analytic.id);
-      const prevScheduledActive = this.previousScheduledActiveStates.get(analytic.id);
-
-      if (!hasPrev) {
-        // Inicializar estado sin lanzar transiciones en la carga inicial
-        this.previousScheduledActiveStates.set(analytic.id, currentlyScheduledActive);
-        return;
-      }
-
-      if (currentlyScheduledActive !== prevScheduledActive) {
-        // Ocurrió una transición de encendido o apagado programado
-        this.previousScheduledActiveStates.set(analytic.id, currentlyScheduledActive);
-        const targetStatus = currentlyScheduledActive ? 'active' : 'inactive';
-
-        this.analyticService.updateAnalyticStatus(analytic.id, targetStatus).subscribe({
-          next: () => {
-            this.analyticService.analytics.update(all =>
-              all.map(a => a.id === analytic.id ? { ...a, status: targetStatus } : a)
-            );
-          }
-        });
-      }
-    });
-  }
 
   toggleAnalyticStatus(analytic: Analytic): void {
     const newStatus = analytic.status === 'active' ? 'inactive' : 'active';
@@ -1255,11 +1219,6 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   setViewMode(mode: 'cards' | 'list'): void {
     this.viewMode.set(mode);
     localStorage.setItem('camaras_view_mode', mode);
-    if (mode === 'list') {
-      this.limit.set(10);
-    } else {
-      this.limit.set(this.columns() * 10);
-    }
     this.currentPage.set(1);
   }
 

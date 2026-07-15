@@ -28,7 +28,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   private permissionsService = inject(PermissionsService);
   private destroyRef = inject(DestroyRef);
 
-  @ViewChild('eventGrid', { static: false }) eventGrid!: ElementRef<HTMLDivElement>;
+  @ViewChild('eventosContainer', { static: false }) eventosContainer!: ElementRef<HTMLDivElement>;
 
   // Expose signals from service
   readonly records = this.eventService.records;
@@ -204,18 +204,18 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       this.adjustColumnsAndLimit(width);
     });
 
-    if (typeof ResizeObserver !== 'undefined' && this.eventGrid) {
+    if (typeof ResizeObserver !== 'undefined' && this.eventosContainer) {
       this.resizeObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
           this.resizeSubject.next(entry.contentRect.width);
         }
       });
-      this.resizeObserver.observe(this.eventGrid.nativeElement);
+      this.resizeObserver.observe(this.eventosContainer.nativeElement);
     }
 
     setTimeout(() => {
-      if (this.eventGrid) {
-        const width = this.eventGrid.nativeElement.getBoundingClientRect().width;
+      if (this.eventosContainer) {
+        const width = this.eventosContainer.nativeElement.getBoundingClientRect().width;
         this.adjustColumnsAndLimit(width);
       }
     }, 50);
@@ -249,12 +249,12 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     
     if (newCols !== oldCols) {
       const currentSize = this.pageSize();
-      const validOptions = [newCols * 10, newCols * 20, newCols * 30];
-      
-      this.columns.set(newCols);
-      if (!validOptions.includes(currentSize)) {
-        this.eventService.setPageSize(newCols * 10);
+      let multiplier = Math.round(currentSize / oldCols);
+      if (multiplier !== 10 && multiplier !== 20 && multiplier !== 30) {
+        multiplier = 10;
       }
+      this.columns.set(newCols);
+      this.eventService.setPageSize(newCols * multiplier);
       this.eventService.setPage(1);
     }
   }

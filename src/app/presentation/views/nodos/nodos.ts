@@ -28,7 +28,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
-  @ViewChild('hostsGrid', { static: false }) hostsGrid!: ElementRef<HTMLDivElement>;
+  @ViewChild('nodosContainer', { static: false }) nodosContainer!: ElementRef<HTMLDivElement>;
 
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
 
@@ -122,8 +122,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     );
   });
   readonly allHosts = this.hostService.allHosts;
-  private heartbeatIntervalSubscription?: Subscription;
-  private consecutiveFailures = new Map<string, number>();
+
 
   // ── Dynamic filter option lists (built from loaded data) ────────────────────
   readonly filterOptions = signal<HostFilterOptions | null>(null);
@@ -278,8 +277,45 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
       this.isLoading.set(false);
       // Build filter options from the now-loaded data
       this.filterOptions.set(this.hostService.buildFilterOptions());
-      // Start monitoring polling
-      this.startHeartbeatPolling();
+      // Consultar el estado y métricas iniciales una única vez al iniciar
+      this.fetchInitialHeartbeats();
+    });
+  }
+
+  fetchInitialHeartbeats(): void {
+    const hosts = this.hostService.allHosts();
+    if (hosts.length === 0) return;
+
+    hosts.forEach(host => {
+      this.hostService.getHeartbeat(host.fingerprint).subscribe({
+        next: (metrics) => {
+          const serverTime = metrics.serverTime || new Date();
+          const lastSeenDate = new Date(metrics.lastSeen);
+          const diffSeconds = (serverTime.getTime() - lastSeenDate.getTime()) / 1000;
+
+          // Si el last_seen es mayor o igual a 10 segundos, se considera inactivo (offline)
+          const isOffline = diffSeconds >= 10;
+          const status = isOffline ? 'offline' : 'online';
+
+          // Actualizar métricas y estado inicial
+          this.hostService.updateHostMetrics(
+            host.fingerprint,
+            isOffline ? {
+              lastSeen: metrics.lastSeen,
+              cpu: null as any,
+              gpu: null as any,
+              vram: null as any,
+              memory: null as any
+            } : metrics,
+            status
+          );
+        },
+        error: (err) => {
+          console.warn(`Failed to fetch initial heartbeat for host ${host.hostname}:`, err);
+          // Si falla la petición inicial, se asume inactivo
+          this.hostService.updateHostMetrics(host.fingerprint, null, 'offline');
+        }
+      });
     });
   }
 
@@ -288,17 +324,16 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
       debounceTime(150)
     ).subscribe(width => this.adjustColumnsAndLimit(width));
 
-    if (typeof ResizeObserver !== 'undefined' && this.hostsGrid) {
+    if (typeof ResizeObserver !== 'undefined' && this.nodosContainer) {
       this.resizeObserver = new ResizeObserver(entries => {
         for (const e of entries) this.resizeSubject.next(e.contentRect.width);
       });
-      this.resizeObserver.observe(this.hostsGrid.nativeElement);
+      this.resizeObserver.observe(this.nodosContainer.nativeElement);
     }
   }
 
   ngOnDestroy(): void {
     this.hostService.isViewActive.set(false);
-    this.stopHeartbeatPolling();
     this.resizeObserver?.disconnect();
     this.resizeSubscription?.unsubscribe();
     if (this.copiedTimeout) clearTimeout(this.copiedTimeout);
@@ -331,16 +366,15 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     const newCols = Math.max(1, Math.floor((containerWidth + 24) / (335 + 24)));
     const oldCols = this.columns();
     if (newCols !== oldCols) {
-      this.columns.set(newCols);
-      if (this.viewMode() === 'cards') {
-        const currentLimit = this.limit();
-        const validOptions = [newCols * 10, newCols * 20, newCols * 30];
-        if (!validOptions.includes(currentLimit)) {
-          this.limit.set(newCols * 10);
-        }
-        this.currentPage.set(1);
-        this.syncUrl();
+      const currentLimit = this.limit();
+      let multiplier = Math.round(currentLimit / oldCols);
+      if (multiplier !== 10 && multiplier !== 20 && multiplier !== 30) {
+        multiplier = 10;
       }
+      this.columns.set(newCols);
+      this.limit.set(newCols * multiplier);
+      this.currentPage.set(1);
+      this.syncUrl();
     }
   }
 
@@ -388,75 +422,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.syncUrl();
   }
 
-  private heartbeatTimeoutId?: any;
 
-  startHeartbeatPolling(): void {
-    this.stopHeartbeatPolling();
-    this.fetchVisibleHostsHeartbeat();
-    this.scheduleNextHeartbeat();
-  }
-
-  stopHeartbeatPolling(): void {
-    if (this.heartbeatTimeoutId) {
-      clearTimeout(this.heartbeatTimeoutId);
-      this.heartbeatTimeoutId = undefined;
-    }
-  }
-
-  private scheduleNextHeartbeat(): void {
-    const now = Date.now();
-    const nextBoundary = Math.ceil(now / 5000) * 5000;
-    // Aligned to exact clean 5-second boundaries (:00, :05, :10...) plus a 100ms
-    // offset to allow backend DB transactions to complete.
-    const delay = (nextBoundary - now) + 100;
-
-    this.heartbeatTimeoutId = setTimeout(() => {
-      this.fetchVisibleHostsHeartbeat();
-      this.scheduleNextHeartbeat();
-    }, delay);
-  }
-
-  private fetchVisibleHostsHeartbeat(): void {
-    const visibleHosts = this.pagedHosts();
-    if (visibleHosts.length === 0) return;
-
-    visibleHosts.forEach(host => {
-      this.hostService.getHeartbeat(host.fingerprint).subscribe({
-        next: (metrics) => {
-          const serverTime = metrics.serverTime || new Date();
-          // Align server time to clean 5-second boundary in UTC for exact comparison
-          const iterationTimeUTC = new Date(Math.floor(serverTime.getTime() / 5000) * 5000);
-          const lastSeenDate = new Date(metrics.lastSeen);
-          const diffSeconds = (iterationTimeUTC.getTime() - lastSeenDate.getTime()) / 1000;
-
-          if (diffSeconds >= 10) {
-            // Si el last_seen no se actualiza en 10s (2 iteraciones), se considera inactivo inmediatamente
-            this.consecutiveFailures.set(host.fingerprint, 2);
-            this.hostService.updateHostMetrics(host.fingerprint, {
-              lastSeen: metrics.lastSeen,
-              cpu: null as any,
-              gpu: null as any,
-              vram: null as any,
-              memory: null as any
-            }, 'offline');
-          } else {
-            // Nodo activo
-            this.consecutiveFailures.set(host.fingerprint, 0);
-            this.hostService.updateHostMetrics(host.fingerprint, metrics, 'online');
-          }
-        },
-        error: (err) => {
-          console.warn(`Failed to fetch heartbeat for host ${host.hostname}:`, err);
-          const fails = (this.consecutiveFailures.get(host.fingerprint) || 0) + 1;
-          this.consecutiveFailures.set(host.fingerprint, fails);
-
-          if (fails >= 2) {
-            this.hostService.updateHostMetrics(host.fingerprint, null, 'offline');
-          }
-        }
-      });
-    });
-  }
 
   // Parse total memory string or number (bytes), fallback to 16 GB if null/invalid
   parseMemoryGB(mem: string | number | null | undefined): number {
@@ -668,11 +634,6 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   setViewMode(mode: 'cards' | 'list'): void {
     this.viewMode.set(mode);
     localStorage.setItem('nodos_view_mode', mode);
-    if (mode === 'list') {
-      this.limit.set(10);
-    } else {
-      this.limit.set(this.columns() * 10);
-    }
     this.currentPage.set(1);
     this.syncUrl();
   }

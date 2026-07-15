@@ -1196,11 +1196,11 @@
 }
 
 .details-weekday-circle {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
   /* squircle modern layout */
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -1318,41 +1318,212 @@
 }
 
 .badge-assoc-tag {
-  display: block;
-  font-size: 0.72rem;
-  font-family: var(--font-monospace, monospace);
-  font-weight: 600;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-family: var(--bs-body-font-family, sans-serif);
+  font-weight: 550;
+  border-radius: 10px;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+  min-height: 42px;
+  border: 1.5px solid transparent;
+  padding: 0 !important; /* padding is handled by internal zones now */
+  position: relative;
 }
 
-[data-bs-theme="dark"] .badge-assoc-tag {
-  background-color: rgba(255, 255, 255, 0.02);
-  border-color: rgba(255, 255, 255, 0.06);
-  color: var(--text-secondary);
+.badge-assoc-tag-click-zone {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  overflow: hidden;
+  white-space: nowrap;
+  container-type: inline-size;
+  cursor: pointer;
+  min-width: 0; /* allows flex item to shrink properly */
 }
 
-.badge-assoc-tag:hover {
-  transform: translateY(-1.5px);
-  border-color: rgba(var(--primary-rgb), 0.35) !important;
-  background-color: rgba(var(--primary-rgb), 0.05) !important;
+.badge-assoc-tag-text {
+  display: inline-block;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.badge-assoc-tag-click-zone:hover .badge-assoc-tag-text {
+  max-width: none;
+  width: max-content;
+  text-overflow: clip;
+  overflow: visible;
+  animation: marquee-badge 3s linear infinite alternate;
+}
+
+@keyframes marquee-badge {
+  0%,
+  15% {
+    transform: translate3d(calc(max(0px, 100% - 100cqw + 32px) / 2), 0, 0);
+  }
+  85%,
+  100% {
+    transform: translate3d(calc(min(0px, 100cqw - 32px - 100%) / 2), 0, 0);
+  }
+}
+
+.badge-assoc-tag-nav-zone {
+  width: 38px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  flex-shrink: 0;
+  border-left: 1.5px solid transparent; /* default divider border */
+}
+
+/* Category Specific Dividers */
+.badge-assoc-tag--host .badge-assoc-tag-nav-zone {
+  border-left-color: rgba(var(--primary-rgb), 0.15);
+}
+.badge-assoc-tag--camera .badge-assoc-tag-nav-zone {
+  border-left-color: rgba(16, 185, 129, 0.15);
+}
+.badge-assoc-tag--analytic .badge-assoc-tag-nav-zone {
+  border-left-color: rgba(168, 85, 247, 0.15);
+}
+
+.badge-assoc-tag.is-filtered .badge-assoc-tag-nav-zone {
+  border-left-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.badge-assoc-tag-nav-zone .icon-external-link {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.badge-assoc-tag-nav-zone:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+[data-bs-theme="dark"] .badge-assoc-tag-nav-zone:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.badge-assoc-tag-nav-zone:hover .icon-external-link {
+  transform: scale(1.18) translate(0.7px, -0.7px);
+  color: currentColor !important;
+}
+
+/* Dimmed / Inactive filter state */
+.badge-assoc-tag.is-dimmed {
+  opacity: 0.45;
+  filter: grayscale(40%);
+  transform: scale(0.97);
+}
+
+.badge-assoc-tag.is-dimmed:hover {
+  opacity: 0.75;
+  filter: none;
+  transform: translateY(-1px);
+}
+
+/* Active filter state: Host (Blue) */
+.badge-assoc-tag--host.is-filtered {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35) !important;
+}
+
+/* Active filter state: Camera (Green) */
+.badge-assoc-tag--camera.is-filtered {
+  background-color: #10b981 !important;
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+}
+
+/* Active filter state: Analytic (Purple) */
+.badge-assoc-tag--analytic.is-filtered {
+  background-color: #a855f7 !important;
+  border-color: #a855f7 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.35) !important;
+}
+
+/* Modifier: Hosts (Blue Theme) */
+.badge-assoc-tag--host {
+  background-color: rgba(var(--primary-rgb), 0.05);
+  color: var(--primary);
+  border-color: rgba(var(--primary-rgb), 0.15);
+}
+.badge-assoc-tag--host:not(.is-filtered):hover {
+  background-color: rgba(var(--primary-rgb), 0.12) !important;
+  border-color: var(--primary) !important;
   color: var(--primary) !important;
-  box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.08);
+  box-shadow: 0 6px 14px rgba(var(--primary-rgb), 0.15);
+  transform: translateY(-2px);
+}
+
+/* Modifier: Cameras (Green Theme) */
+.badge-assoc-tag--camera {
+  background-color: rgba(16, 185, 129, 0.05);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.15);
+}
+.badge-assoc-tag--camera:not(.is-filtered):hover {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  border-color: #10b981 !important;
+  color: #10b981 !important;
+  box-shadow: 0 6px 14px rgba(16, 185, 129, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Modifier: Analytics (Purple Theme) */
+.badge-assoc-tag--analytic {
+  background-color: rgba(168, 85, 247, 0.05);
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.15);
+}
+.badge-assoc-tag--analytic:not(.is-filtered):hover {
+  background-color: rgba(168, 85, 247, 0.12) !important;
+  border-color: #a855f7 !important;
+  color: #a855f7 !important;
+  box-shadow: 0 6px 14px rgba(168, 85, 247, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Dark Mode Adjustments */
+[data-bs-theme="dark"] .badge-assoc-tag--host {
+  background-color: rgba(var(--primary-rgb), 0.1);
+  border-color: rgba(var(--primary-rgb), 0.25);
+  color: #60a5fa;
+}
+[data-bs-theme="dark"] .badge-assoc-tag--camera {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+[data-bs-theme="dark"] .badge-assoc-tag--analytic {
+  background-color: rgba(168, 85, 247, 0.1);
+  border-color: rgba(168, 85, 247, 0.25);
+  color: #c084fc;
 }
 
 .association-badges-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
   width: 100%;
 }
 
@@ -1376,37 +1547,133 @@
 }
 
 /* ── Diseños Premium Bento Detalles ── */
-.details-meta-grid {
+.details-bento-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-  margin-bottom: 0.25rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 992px) {
+  .col-span-2-desktop {
+    grid-column: span 2;
+  }
 }
 
 @media (max-width: 768px) {
-  .details-meta-grid {
+  .details-bento-grid {
     grid-template-columns: 1fr;
   }
 }
 
-.meta-subcard {
-  background: rgba(0, 0, 0, 0.015);
+.bento-details-card {
+  background: rgba(var(--primary-rgb), 0.02);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 1rem;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  transition: all 0.25s ease;
+  gap: 12px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-[data-bs-theme="dark"] .meta-subcard {
-  background: rgba(255, 255, 255, 0.01);
+[data-bs-theme="dark"] .bento-details-card {
+  background: rgba(255, 255, 255, 0.02);
 }
 
-.meta-subcard:hover {
+.bento-details-card:hover {
+  transform: translateY(-2px);
   border-color: rgba(var(--primary-rgb), 0.25);
-  background: rgba(var(--primary-rgb), 0.01);
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.08);
+  background: rgba(var(--primary-rgb), 0.04);
+}
+
+[data-bs-theme="dark"] .bento-details-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.bento-details-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bento-card-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.bento-card-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bento-metric-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.bento-metric-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.bento-metric-label {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  font-weight: 550;
+}
+
+.bento-metric-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: var(--font-monospace, monospace);
+  color: var(--text-primary);
+}
+
+.details-card-header-panel {
+  padding: 12px 16px;
+  background-color: rgba(var(--primary-rgb), 0.04);
+  border-radius: 12px;
+  border: 1px solid rgba(var(--primary-rgb), 0.1);
+  margin-bottom: 8px;
+}
+
+[data-bs-theme="dark"] .details-card-header-panel {
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.schedule-detail-title {
+  font-size: 1.22rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.badge-frequency-premium {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--primary) !important;
+  background-color: rgba(var(--primary-rgb), 0.1) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.15) !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+}
+
+[data-bs-theme="dark"] .badge-frequency-premium {
+  color: #60a5fa !important;
+  background-color: rgba(var(--primary-rgb), 0.18) !important;
 }
 
 .details-header-icon {

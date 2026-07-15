@@ -1,4 +1,5 @@
-<div class="nodos-container container-fluid py-4 position-relative" [class.host-page--deleting]="isHostDeleting()">
+<div #camerasContainer class="nodos-container container-fluid py-4 position-relative"
+  [class.host-page--deleting]="isHostDeleting()">
 
   <!-- ══════════════════════════════════════════════════════
        CABECERA — 2 FILAS (Mismo formato que Nodos)
@@ -39,7 +40,8 @@
             }
           </h2>
           <p class="text-muted mb-0 header-page-subtitle mt-1">
-            Se encontraron <span class="fw-semibold text-primary">{{ filteredCameras().length }}</span> cámaras
+            Se encontraron <span class="fw-semibold text-primary">{{ filteredCameras().length }}</span> cámaras y <span
+              class="fw-semibold text-primary">{{ analytics().length }}</span> analíticas
             @if (hostId()) { en este nodo. } @else { en el sistema. }
           </p>
         </div>
@@ -205,7 +207,7 @@
             <div class="filter-display-val">
               <span class="filter-current-value">
                 {{ tempFilterStatus() === 'all' ? 'Todos los Estados' : (tempFilterStatus() === 'active' ||
-                tempFilterStatus() === 'online' ? 'Activo (Online)' : 'Inactivo (Offline)') }}
+                tempFilterStatus() === 'online' ? 'Online' : 'Offline') }}
               </span>
               <span class="icon-svg filter-chevron icon-chevron-right"
                 [class.rotated]="activeDropdown() === 'status'"></span>
@@ -219,12 +221,12 @@
               <div class="custom-dropdown-option"
                 [class.active]="tempFilterStatus() === 'active' || tempFilterStatus() === 'online'"
                 (click)="selectFilterValue('status', 'active', $event)">
-                Activo (Online)
+                Online
               </div>
               <div class="custom-dropdown-option"
                 [class.active]="tempFilterStatus() === 'inactive' || tempFilterStatus() === 'offline'"
                 (click)="selectFilterValue('status', 'inactive', $event)">
-                Inactivo (Offline)
+                Offline
               </div>
             </div>
             }
@@ -371,7 +373,7 @@
       <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
         <div>
           <!-- Cabecera: Icono + Nombre + Decoder + Estado -->
-          <div class="host-header-block d-flex align-items-center justify-content-between pb-3">
+          <div class="host-header-block d-flex align-items-center justify-content-between pb-3" style="gap: 12px;">
             <div class="d-flex align-items-center gap-2">
               <span class="icon-svg os-avatar-icon icon-camara" style="width: 24px; height: 24px;"></span>
               <div class="host-title-container">
@@ -459,11 +461,13 @@
           <tr>
             <th scope="col">ESTADO</th>
             <th scope="col">NOMBRE DE CÁMARA</th>
+            @if (!hostId()) {
             <th scope="col">NODO ASOCIADO</th>
+            }
             <th scope="col">STREAM</th>
             <th scope="col">DECODIFICADOR</th>
             <th scope="col">COORDENADAS</th>
-            <th scope="col" class="pe-3">SISTEMAS DE IA</th>
+            <th scope="col" class="pe-3">ANALITICAS POR CAMARA</th>
           </tr>
         </thead>
         <tbody>
@@ -491,12 +495,14 @@
               </div>
             </td>
             <!-- Nodo / Host -->
+            @if (!hostId()) {
             <td>
               <span class="text-body text-truncate d-inline-block" style="font-size: 0.88rem;"
                 [title]="camera.hostFingerprint">
                 {{ getHostName(camera.hostFingerprint) }}
               </span>
             </td>
+            }
             <!-- Stream -->
             <td>
               <div class="d-inline-flex align-items-center gap-2 text-uppercase font-monospace text-body"
@@ -529,21 +535,24 @@
             </td>
             <!-- Analíticas de IA -->
             <td class="pe-3" (click)="$event.stopPropagation()">
-              <div class="d-flex flex-wrap gap-1.5 align-items-center">
+              <div class="d-flex flex-wrap gap-1.5 align-items-center" style="gap:10px;">
                 @if (getAnalyticsForCamera(camera.id); as cameraAnalytics) {
-                  @if (cameraAnalytics.length > 0) {
-                    @for (analytic of cameraAnalytics; track analytic.id) {
-                      <span class="analytic-status-pill text-capitalize"
-                        [class.analytic-status-pill--active]="analytic.status === 'active' || analytic.status === 'online'"
-                        [class.analytic-status-pill--inactive]="analytic.status !== 'active' && analytic.status !== 'online'"
-                        [title]="getAnalyticLabel(analytic.type)">
-                        <span class="pill-dot" style="width: 5px; height: 5px; border-radius: 50%; display: inline-block; background-color: currentColor; margin-right: 6px;"></span>
-                        {{ getAnalyticLabel(analytic.type) }}
-                      </span>
-                    }
-                  } @else {
-                    <span class="text-muted small font-monospace" style="font-size: 0.8rem; opacity: 0.6;">Ninguna</span>
-                  }
+                @if (cameraAnalytics.length > 0) {
+                @for (analytic of cameraAnalytics; track analytic.id) {
+                <span class="analytic-status-pill text-capitalize"
+                  [class.analytic-status-pill--active]="analytic.status === 'active' || analytic.status === 'online'"
+                  [class.analytic-status-pill--inactive]="analytic.status !== 'active' && analytic.status !== 'online'"
+                  [title]="getAnalyticLabel(analytic.type)">
+                  <span class="pill-dot"
+                    style="width: 5px; height: 5px; border-radius: 50%; display: inline-block; background-color: currentColor; margin-right: 6px;"></span>
+                  {{ getAnalyticLabel(analytic.type) }}@if (analytic.detectionClasses.length > 0) { ({{
+                  analytic.detectionClasses.slice(0, 3).join(', ') }}{{ analytic.detectionClasses.length > 3 ? '...' :
+                  '' }}) }
+                </span>
+                }
+                } @else {
+                <span class="text-muted small font-monospace" style="font-size: 0.8rem; opacity: 0.6;">Ninguna</span>
+                }
                 }
               </div>
             </td>
@@ -613,24 +622,6 @@
           </div>
 
           <div class="d-flex align-items-center gap-2">
-            @if (!isEditingCamera()) {
-            <div class="d-flex align-items-center gap-1">
-              @if (permissionsService.hasPermission('Cámaras', 'editar')) {
-              <button class="btn-ghost d-flex align-items-center justify-content-center"
-                style="width: 32px; height: 32px; border-radius: 50%;" (click)="startEditingCamera(camera)"
-                title="Editar Información">
-                <span class="icon-svg icon-edit" style="width: 14px; height: 14px;"></span>
-              </button>
-              }
-              @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
-              <button class="btn-ghost d-flex align-items-center justify-content-center text-danger"
-                style="width: 32px; height: 32px; border-radius: 50%;" (click)="openDeleteModal(camera)"
-                title="Eliminar Cámara">
-                <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-              </button>
-              }
-            </div>
-            }
             <button class="btn-ghost close-drawer-btn d-flex align-items-center justify-content-center"
               style="width: 32px; height: 32px; border-radius: 50%;" (click)="closeAiPanel()" aria-label="Cerrar panel">
               <span class="icon-svg icon-close text-muted" style="width: 16px; height: 16px;"></span>
@@ -701,13 +692,28 @@
                 style="width: 18px; height: 18px; color: inherit; background-color: currentColor;"></span>
             </div>
 
-            <div class="overflow-hidden" style="flex: 1;">
-              <div class="d-flex align-items-center gap-2">
-                <h5 class="fw-bold mb-0 text-truncate text-body" style="font-size: 1.05rem;" [title]="camera.name">
-                  {{ camera.name }}
-                </h5>
-              </div>
+            <!-- Contenedor del nombre y el botón de editar -->
+            <div class="d-flex align-items-center gap-2 overflow-hidden" style="flex: 1;">
+              <h5 class="fw-bold mb-0 text-truncate text-body" style="font-size: 1.05rem;" [title]="camera.name">
+                {{ camera.name }}
+              </h5>
+              @if (permissionsService.hasPermission('Cámaras', 'editar')) {
+              <button class="btn-ghost d-flex align-items-center justify-content-center"
+                style="width: 26px; height: 26px; border-radius: 50%; padding: 0; flex-shrink: 0;"
+                (click)="startEditingCamera(camera)" title="Editar Información">
+                <span class="icon-svg icon-edit" style="width: 13px; height: 13px;"></span>
+              </button>
+              }
             </div>
+
+            <!-- Botón de eliminar (al lado derecho del todo) -->
+            @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
+            <button class="btn-ghost d-flex align-items-center justify-content-center text-danger"
+              style="width: 30px; height: 30px; border-radius: 50%; padding: 0; flex-shrink: 0;"
+              (click)="openDeleteModal(camera)" title="Eliminar Cámara">
+              <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+            </button>
+            }
           </div>
 
           <!-- Fila de Detalles Técnicos en Lista (Idéntico a Nodos) -->
@@ -821,7 +827,7 @@
                 <div class="d-flex flex-column gap-2 mb-3">
                   @for (sched of getSchedulesForAnalytic(analytic.id); track sched.id) {
                   <!-- Tarjeta de Horario estilo Bento -->
-                  <div class="schedule-bento-card" [class]="'freq-' + sched.frequency"
+                  <div class="schedule-bento-card freq-{{ sched.frequency }}"
                     [class.schedule-bento-card--desactivado]="sched.status !== 'activo'"
                     [class.readonly-card]="!permissionsService.hasPermission('Analíticas', 'editar')"
                     (click)="permissionsService.hasPermission('Analíticas', 'editar') ? toggleScheduleAssociation(sched, analytic.id, false) : null"

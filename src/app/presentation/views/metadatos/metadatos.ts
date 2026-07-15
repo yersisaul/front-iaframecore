@@ -49,7 +49,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     return this.watchlists().filter(w => w.list_type === type);
   });
 
-  @ViewChild('metadataGrid', { static: false }) metadataGrid!: ElementRef<HTMLDivElement>;
+  @ViewChild('metadataContainer', { static: false }) metadataContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('imageInput') imageInput!: ElementRef<HTMLInputElement>;
 
   // Expose signals from service
@@ -545,19 +545,19 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       this.adjustColumnsAndLimit(width);
     });
 
-    if (typeof ResizeObserver !== 'undefined' && this.metadataGrid) {
+    if (typeof ResizeObserver !== 'undefined' && this.metadataContainer) {
       this.resizeObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
           this.resizeSubject.next(entry.contentRect.width);
         }
       });
-      this.resizeObserver.observe(this.metadataGrid.nativeElement);
+      this.resizeObserver.observe(this.metadataContainer.nativeElement);
     }
 
     // Trigger initial adjustment
     setTimeout(() => {
-      if (this.metadataGrid) {
-        const width = this.metadataGrid.nativeElement.getBoundingClientRect().width;
+      if (this.metadataContainer) {
+        const width = this.metadataContainer.nativeElement.getBoundingClientRect().width;
         this.adjustColumnsAndLimit(width);
       }
     }, 50);
@@ -596,12 +596,12 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     
     if (newCols !== oldCols) {
       const currentSize = this.pageSize();
-      const validOptions = [newCols * 10, newCols * 20, newCols * 30];
-      
-      this.columns.set(newCols);
-      if (!validOptions.includes(currentSize)) {
-        this.metadataService.setPageSize(newCols * 10);
+      let multiplier = Math.round(currentSize / oldCols);
+      if (multiplier !== 10 && multiplier !== 20 && multiplier !== 30) {
+        multiplier = 10;
       }
+      this.columns.set(newCols);
+      this.metadataService.setPageSize(newCols * multiplier);
       this.metadataService.setPage(1);
     }
   }

@@ -17,6 +17,7 @@ import { IUserRepository } from '../domain/repositories/user.repository';
 import { IScheduleRepository } from '../domain/repositories/schedule.repository';
 import { IListRepository } from '../domain/repositories/list.repository';
 import { WebsocketConnectionService } from './websocket-connection.service';
+import { HostMetrics } from '../domain/entities/host.models';
 
 @Injectable({
   providedIn: 'root'
@@ -236,22 +237,24 @@ export class WebsocketService {
       if (!scheduleId) return;
       console.log(`[WebSocket] Horario creado/actualizado: ${scheduleId}`);
       
-      if (this.scheduleService.isViewActive()) {
-        const isUpdate = this.scheduleService.schedules().some(s => s.id === scheduleId);
-        this.scheduleRepository.getById(scheduleId).subscribe({
-          next: (schedule) => {
-            this.scheduleService.addOrUpdateScheduleLocal(schedule);
+      const isUpdate = this.scheduleService.schedules().some(s => s.id === scheduleId);
+      this.scheduleRepository.getById(scheduleId).subscribe({
+        next: (schedule) => {
+          // Sincronizar siempre el estado local para asegurar consistencia en otras vistas como Cámaras
+          this.scheduleService.addOrUpdateScheduleLocal(schedule);
+          
+          if (this.scheduleService.isViewActive()) {
             if (isUpdate) {
               this.scheduleService.markAsUpdated(scheduleId);
             } else {
               this.scheduleService.markAsNew(scheduleId);
             }
-          },
-          error: (err) => {
-            console.error('[WebSocket] Error al cargar horario individual:', err);
           }
-        });
-      }
+        },
+        error: (err) => {
+          console.error('[WebSocket] Error al cargar horario individual:', err);
+        }
+      });
 
     } else if (action === 'schedule_deleted') {
       const scheduleId = body.schedule_id || msg.schedule_id || body.id || msg.id;
@@ -574,6 +577,21 @@ export class WebsocketService {
       } else {
         this.hostService.deleteHostLocal(fingerprint);
       }
+    } else if (action === 'metrics') {
+      const fingerprint = body.fingerprint_host;
+      if (!fingerprint) return;
+
+      const newMetrics: HostMetrics = {
+        lastSeen: new Date(),
+        cpu: body.cpu ?? 0,
+        memory: body.memory ?? 0,
+        gpu: body.gpu ?? 0,
+        vram: body.vram ?? 0
+      };
+
+      console.log(`[WebSocket] Métricas en tiempo real recibidas para nodo: ${fingerprint}`);
+      // Actualizar métricas y forzar estado a 'online'
+      this.hostService.updateHostMetrics(fingerprint, newMetrics, 'online');
     }
   }
 

@@ -569,7 +569,8 @@ code.code-badge {
   box-sizing: border-box;
 }
 
-[data-bs-theme="dark"] .schedule-bento-card {
+::ng-deep .dark .schedule-bento-card,
+::ng-deep [data-bs-theme="dark"] .schedule-bento-card {
   background-color: rgba(255, 255, 255, 0.02) !important;
   border-color: rgba(255, 255, 255, 0.06) !important;
 }
@@ -589,11 +590,7 @@ code.code-badge {
 
 /* Active parent card adaptivity */
 .ai-control-card-wrapper.ai-active .schedule-bento-card {
-  background-color: rgba(255, 255, 255, 0.5) !important;
-}
-
-[data-bs-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: var(--bg-schedule-bento-active, rgba(255, 255, 255, 0.5)) !important;
 }
 
 /* Typography elements */
@@ -640,24 +637,13 @@ code.code-badge {
 
 /* Active overrides for bento content */
 .ai-control-card-wrapper.ai-active .schedule-bento-card .schedule-name {
-  color: var(--color-online) !important;
+  color: var(--color-schedule-bento-active-text, var(--color-online)) !important;
 }
 
 .ai-control-card-wrapper.ai-active .schedule-bento-card .schedule-meta-frequency,
 .ai-control-card-wrapper.ai-active .schedule-bento-card .schedule-meta-date,
 .ai-control-card-wrapper.ai-active .schedule-bento-card .schedule-meta-time {
-  color: var(--color-online) !important;
-  opacity: 0.8;
-}
-
-[data-bs-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card .schedule-name {
-  color: #ffffff !important;
-}
-
-[data-bs-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card .schedule-meta-frequency,
-[data-bs-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card .schedule-meta-date,
-[data-bs-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card .schedule-meta-time {
-  color: rgba(255, 255, 255, 0.7) !important;
+  color: var(--color-schedule-bento-active-subtext, var(--color-online)) !important;
   opacity: 1;
 }
 
@@ -721,7 +707,8 @@ code.code-badge {
   transition: all 0.25s ease;
 }
 
-[data-bs-theme="dark"] .schedule-deactivated-overlay {
+::ng-deep .dark .schedule-deactivated-overlay,
+::ng-deep [data-bs-theme="dark"] .schedule-deactivated-overlay {
   background-color: rgba(0, 0, 0, 0.42);
 }
 

@@ -250,6 +250,10 @@
   /* Sync Bootstrap border utility class with our design token */
   --bs-border-color: var(--border);
   --bg-card: var(--card);
+  --bg-header-light: #f8fafc;
+  --bg-schedule-bento-active: rgba(255, 255, 255, 0.5);
+  --color-schedule-bento-active-text: var(--color-online, #10b981);
+  --color-schedule-bento-active-subtext: rgba(16, 185, 129, 0.85);
 
   /* Brand */
   --primary: var(--azor-button-blue);
@@ -707,6 +711,10 @@
   /* Sync Bootstrap border utility class with our design token */
   --bs-border-color: var(--border);
   --bg-card: var(--card);
+  --bg-header-light: #262626;
+  --bg-schedule-bento-active: rgba(0, 0, 0, 0.25);
+  --color-schedule-bento-active-text: #ffffff;
+  --color-schedule-bento-active-subtext: rgba(255, 255, 255, 0.7);
 
   /* Brand */
   --primary: var(--azor-button-blue);

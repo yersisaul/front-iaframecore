@@ -9,7 +9,7 @@ import { HostService } from '../../../core/services/host.service';
 import { ScheduleService } from '../../../core/services/schedule.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
-import { Schedule } from '../../../core/domain/entities/schedule.models';
+import { Schedule, ScheduleMapper } from '../../../core/domain/entities/schedule.models';
 
 import { ICameraRepository } from '../../../core/domain/repositories/camera.repository';
 import { IAnalyticRepository } from '../../../core/domain/repositories/analytic.repository';
@@ -73,6 +73,114 @@ export class Horarios implements OnInit, OnDestroy {
     const sched = this.selectedSchedule();
     if (!sched || !sched.analyticIds) return [];
     return this.allAnalyticsList().filter(a => sched.analyticIds.includes(a.id));
+  });
+
+  readonly uniqueSelectedScheduleAnalytics = computed(() => {
+    const analytics = this.selectedScheduleAnalytics();
+    const seen = new Set<string>();
+    const unique: Analytic[] = [];
+    analytics.forEach(a => {
+      const typeLabel = this.getAnalyticLabel(a.type);
+      const classesStr = (a.detectionClasses || []).slice().sort().join(',');
+      const key = `${typeLabel}_${classesStr}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(a);
+      }
+    });
+    return unique;
+  });
+
+  readonly activeHostFilters = signal<string[]>([]);
+  readonly activeCameraFilters = signal<string[]>([]);
+  readonly activeAnalyticFilters = signal<string[]>([]);
+
+  readonly filteredScheduleHosts = computed(() => {
+    const hosts = this.selectedScheduleHosts();
+    const activeCams = this.activeCameraFilters();
+    const activeAns = this.activeAnalyticFilters();
+
+    if (activeCams.length > 0) {
+      const cameras = this.selectedScheduleCameras().filter(c => activeCams.includes(c.id));
+      const fingerprints = cameras.map(c => c.hostFingerprint);
+      return hosts.filter(h => fingerprints.includes(h.fingerprint));
+    }
+
+    if (activeAns.length > 0) {
+      const allAnalytics = this.selectedScheduleAnalytics();
+      const uniqueAnalytics = this.uniqueSelectedScheduleAnalytics();
+      const activeSigs = uniqueAnalytics
+        .filter(ua => activeAns.includes(ua.id))
+        .map(ua => `${ua.type}_${(ua.detectionClasses || []).slice().sort().join(',')}`);
+      
+      const matchingAnalytics = allAnalytics.filter(a => {
+        const sig = `${a.type}_${(a.detectionClasses || []).slice().sort().join(',')}`;
+        return activeSigs.includes(sig);
+      });
+      const fingerprints = matchingAnalytics.map(a => a.hostFingerprint);
+      return hosts.filter(h => fingerprints.includes(h.fingerprint));
+    }
+
+    return hosts;
+  });
+
+  readonly filteredScheduleCameras = computed(() => {
+    const cameras = this.selectedScheduleCameras();
+    const activeHosts = this.activeHostFilters();
+    const activeAns = this.activeAnalyticFilters();
+
+    if (activeHosts.length > 0) {
+      return cameras.filter(c => activeHosts.includes(c.hostFingerprint));
+    }
+
+    if (activeAns.length > 0) {
+      const allAnalytics = this.selectedScheduleAnalytics();
+      const uniqueAnalytics = this.uniqueSelectedScheduleAnalytics();
+      const activeSigs = uniqueAnalytics
+        .filter(ua => activeAns.includes(ua.id))
+        .map(ua => `${ua.type}_${(ua.detectionClasses || []).slice().sort().join(',')}`);
+
+      const matchingAnalytics = allAnalytics.filter(a => {
+        const sig = `${a.type}_${(a.detectionClasses || []).slice().sort().join(',')}`;
+        return activeSigs.includes(sig);
+      });
+      
+      const camIds = new Set<string>();
+      matchingAnalytics.forEach(a => {
+        if (a.targetCameraIds) {
+          a.targetCameraIds.forEach(id => camIds.add(id));
+        }
+      });
+      return cameras.filter(c => camIds.has(c.id));
+    }
+
+    return cameras;
+  });
+
+  readonly filteredScheduleAnalytics = computed(() => {
+    const uniqueAnalytics = this.uniqueSelectedScheduleAnalytics();
+    const activeHosts = this.activeHostFilters();
+    const activeCams = this.activeCameraFilters();
+
+    if (activeHosts.length > 0) {
+      return uniqueAnalytics.filter(ua => activeHosts.includes(ua.hostFingerprint));
+    }
+
+    if (activeCams.length > 0) {
+      const allAnalytics = this.selectedScheduleAnalytics();
+      const matchingAnalytics = allAnalytics.filter(a => 
+        a.targetCameraIds && a.targetCameraIds.some(id => activeCams.includes(id))
+      );
+      const matchingSigs = new Set(matchingAnalytics.map(a => 
+        `${a.type}_${(a.detectionClasses || []).slice().sort().join(',')}`
+      ));
+      return uniqueAnalytics.filter(ua => {
+        const sig = `${ua.type}_${(ua.detectionClasses || []).slice().sort().join(',')}`;
+        return matchingSigs.has(sig);
+      });
+    }
+
+    return uniqueAnalytics;
   });
 
   readonly selectedScheduleHosts = computed(() => {
@@ -1008,7 +1116,14 @@ export class Horarios implements OnInit, OnDestroy {
     };
 
     this.scheduleService.registerSchedule(payload).subscribe({
-      next: () => {
+      next: (responseDto) => {
+        if (responseDto && responseDto.schedule_id) {
+          const newSchedule = ScheduleMapper.toDomain(responseDto);
+          this.scheduleService.addOrUpdateScheduleLocal(newSchedule);
+        } else {
+          // Fallback a recargar todo si no viene la entidad
+          this.scheduleService.getAllSchedules().subscribe();
+        }
         this.cancelCreate(); // Limpia los campos
         this.showCreateScheduleModal.set(false);
       },
@@ -1072,7 +1187,35 @@ export class Horarios implements OnInit, OnDestroy {
     };
 
     this.scheduleService.updateSchedule(scheduleId, payload).subscribe({
-      next: () => {
+      next: (responseDto) => {
+        // Intentar usar el DTO de respuesta, si no, reconstruir localmente y guardar en memoria
+        let updatedSchedule: Schedule | null = null;
+        if (responseDto && responseDto.schedule_id) {
+          updatedSchedule = ScheduleMapper.toDomain(responseDto);
+        } else {
+          // Reconstrucción local de respaldo
+          const oldSchedule = this.scheduleService.schedules().find(s => s.id === scheduleId);
+          if (oldSchedule) {
+            const parseDateFromInput = (dStr: string, tStr: string): Date => {
+              const [year, month, day] = dStr.split('-').map(Number);
+              const [hours, minutes] = tStr.split(':').map(Number);
+              return new Date(year, month - 1, day, hours, minutes);
+            };
+            updatedSchedule = {
+              ...oldSchedule,
+              name: this.editingScheduleName(),
+              analyticIds: [...this.editingScheduleSelectedAnalyticIds()],
+              start: parseDateFromInput(this.editingScheduleDateStart(), this.editingScheduleTimeStart()),
+              end: parseDateFromInput(this.editingScheduleDateEnd(), this.editingScheduleTimeEnd()),
+              frequency: this.editingScheduleFrequency()
+            };
+          }
+        }
+        if (updatedSchedule) {
+          this.scheduleService.addOrUpdateScheduleLocal(updatedSchedule);
+        } else {
+          this.scheduleService.getAllSchedules().subscribe();
+        }
         this.editingScheduleId.set(null);
         this.showEditScheduleModal.set(false);
       },
@@ -1099,6 +1242,9 @@ export class Horarios implements OnInit, OnDestroy {
     this.isDeletingSchedule.set(true);
     this.scheduleService.deleteSchedule(sched.id).subscribe({
       next: () => {
+        // Eliminar del estado local en memoria inmediatamente
+        this.scheduleService.deleteScheduleLocal(sched.id);
+
         if (this.selectedScheduleId() === sched.id) {
           this.selectedScheduleId.set(null);
         }
@@ -1106,12 +1252,9 @@ export class Horarios implements OnInit, OnDestroy {
         this.closeDeleteScheduleModal();
       },
       error: (err) => {
-        console.error('[HorariosComponent] deleteSchedule failed:', err);
-        if (this.selectedScheduleId() === sched.id) {
-          this.selectedScheduleId.set(null);
-        }
+        console.error('[HorariosComponent] confirmDeleteSchedule failed:', err);
         this.isDeletingSchedule.set(false);
-        this.closeDeleteScheduleModal();
+        alert('Error al eliminar el horario. Por favor, intente de nuevo.');
       }
     });
   }
@@ -1197,6 +1340,42 @@ export class Horarios implements OnInit, OnDestroy {
     this.expandedHosts.set(false);
     this.expandedCameras.set(false);
     this.expandedAnalytics.set(false);
+    this.activeHostFilters.set([]);
+    this.activeCameraFilters.set([]);
+    this.activeAnalyticFilters.set([]);
+  }
+
+  toggleHostFilter(fingerprint: string): void {
+    this.activeCameraFilters.set([]);
+    this.activeAnalyticFilters.set([]);
+    const current = this.activeHostFilters();
+    if (current.includes(fingerprint)) {
+      this.activeHostFilters.set(current.filter(f => f !== fingerprint));
+    } else {
+      this.activeHostFilters.set([...current, fingerprint]);
+    }
+  }
+
+  toggleCameraFilter(cameraId: string): void {
+    this.activeHostFilters.set([]);
+    this.activeAnalyticFilters.set([]);
+    const current = this.activeCameraFilters();
+    if (current.includes(cameraId)) {
+      this.activeCameraFilters.set(current.filter(id => id !== cameraId));
+    } else {
+      this.activeCameraFilters.set([...current, cameraId]);
+    }
+  }
+
+  toggleAnalyticFilter(analyticId: string): void {
+    this.activeHostFilters.set([]);
+    this.activeCameraFilters.set([]);
+    const current = this.activeAnalyticFilters();
+    if (current.includes(analyticId)) {
+      this.activeAnalyticFilters.set(current.filter(id => id !== analyticId));
+    } else {
+      this.activeAnalyticFilters.set([...current, analyticId]);
+    }
   }
 
   isDayOfWeekActive(dayIndex: number, start: Date, end: Date, frequency: string): boolean {
