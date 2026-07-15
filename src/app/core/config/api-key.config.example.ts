@@ -1,3 +1,5 @@
+import { AppEnvironment } from '../config/app-environment';
+
 export const ApiKeyConfig = {
-  apiKey: 'INSERTAR_AQUI_TU_JWT_API_KEY_DE_DESARROLLO'
+  apiKey: 'jwt_3st_t1c_us3r_k3y'
 };
