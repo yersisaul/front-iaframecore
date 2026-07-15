@@ -5,13 +5,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        - JWT_SECRET_KEY=${JWT_SECRET_KEY}
     image: front-iaframecore:latest
-    container_name: front-iaframecore-app
+    container_name: front-iaframe-app
     ports:
-      - "80:80"
+      - "8080:80"
     environment:
-      - API_HOST=${API_HOST}
-      - OPENSEARCH_HOST=${OPENSEARCH_HOST}
+      - API_HOST=http://aa-core.local:8000
+      - OPENSEARCH_HOST=http://aa-core.local:9200
+      - JWT_SECRET_KEY=jwt_3st_t1c_us3r_k3y
     restart: always

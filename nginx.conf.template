@@ -6,7 +6,9 @@ server {
     add_header X-Frame-Options "DENY" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Content-Security-Policy "default-src 'self'; connect-src 'self' ${API_HOST} http://localhost:8000 http://localhost:* https://picsum.photos https://fastly.picsum.photos https://*.picsum.photos https://*.unsplash.com https://randomuser.me; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: ${API_HOST} http://localhost:8000 http://localhost:* https://picsum.photos https://fastly.picsum.photos https://*.picsum.photos https://*.unsplash.com https://randomuser.me; frame-ancestors 'none';" always;
+    
+    # Hemos encapsulado correctamente API_HOST dentro del CSP
+    # add_header Content-Security-Policy "default-src 'self'; connect-src 'self' ${API_HOST} http://localhost:8000 http://localhost:* https://picsum.photos https://fastly.picsum.photos https://*.picsum.photos https://*.unsplash.com https://randomuser.me; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: ${API_HOST} http://localhost:8000 http://localhost:* https://picsum.photos https://fastly.picsum.photos https://*.picsum.photos https://*.unsplash.com https://randomuser.me; frame-ancestors 'none';" always;
 
     # Serve compiled static Angular SPA files
     location / {
@@ -16,9 +18,6 @@ server {
 
     # Secure API proxying to FastAPI Backend
     location /api/ {
-        # Limit login requests to prevent force brute (requires limit_req_zone inside http context in main nginx.conf)
-        # limit_req zone=login_limit burst=5 nodelay;
-
         proxy_pass ${API_HOST}/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -27,8 +26,6 @@ server {
     }
 
     # SECURE REVERSE PROXY FOR OPENSEARCH
-    # Restrict proxy endpoints to ONLY allow necessary GET/POST queries to prevent database manipulation.
-
     # 1. Search endpoints (POST only)
     location ~ ^/opensearch/([a-z]+)/_search$ {
         limit_except POST {
@@ -68,7 +65,7 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # 4. Deny access to any other OpenSearch paths (e.g. DELETE, document inserts, mappings)
+    # 4. Deny access to any other OpenSearch paths
     location /opensearch/ {
         deny all;
     }

@@ -20,7 +20,7 @@ function getEnvValue(key) {
   return null;
 }
 
-const jwtKey = getEnvValue('JWT_SECRET_KEY');
+const jwtKey = getEnvValue('JWT_SECRET_KEY') || 'PLACEHOLDER_JWT_SECRET_KEY';
 const apiTarget = getEnvValue('API_HOST') || 'http://localhost:8000';
 
 if (!jwtKey) {

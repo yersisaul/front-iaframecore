@@ -5,4 +5,3 @@ export const AppEnvironment = {
   enableBackendWorkarounds: true,
   openSearchBaseUrl: '/opensearch'
 };
-
