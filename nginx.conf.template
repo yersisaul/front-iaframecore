@@ -69,6 +69,27 @@ server {
     location /opensearch/ {
         deny all;
     }
+
+    # PROXY INVERSO PARA WEBSOCKETS (FastAPI)
+    location /ws/ {
+        proxy_pass ${API_HOST}/ws/; 
+        
+        # Habilitar protocolo WebSocket
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # Pasar cabeceras de red importantes
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Para Mantener la conexión abierta sin que Nginx la tumbe por inactividad
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
 }
 
 # SECURE SSL/TLS SERVER TEMPLATE (OPTIONAL FOR DEPLOYMENT ENVIRONMENT)
