@@ -1047,6 +1047,40 @@ select {
 /* ═══════════════════════════════════════════════════════════════
    ICON SYSTEM — CSS mask-based SVG icons
    ═══════════════════════════════════════════════════════════════ */
+.placeholder-img-icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-dark-surface, #0f172a) !important;
+  color: var(--text-muted, #94a3b8) !important;
+  user-select: none;
+  z-index: 0;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.placeholder-img-icon .fallback-icon {
+  width: 28px;
+  height: 28px;
+  opacity: 0.5;
+  margin-bottom: 0.35rem;
+}
+
+.placeholder-img-icon .fallback-text {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+  opacity: 0.85;
+}
+
 .icon-svg {
   display: inline-block;
   background-color: currentColor;
@@ -1112,6 +1146,26 @@ select {
   mask-image: url('/assets/icons/global/filter.svg');
   width: 22px;
   height: 22px;
+}
+
+.icon-undo {
+  -webkit-mask-image: url('/assets/icons/global/undo.svg');
+  mask-image: url('/assets/icons/global/undo.svg');
+}
+
+.icon-redo {
+  -webkit-mask-image: url('/assets/icons/global/redo.svg');
+  mask-image: url('/assets/icons/global/redo.svg');
+}
+
+.icon-zoom-in {
+  -webkit-mask-image: url('/assets/icons/global/zoom-in.svg');
+  mask-image: url('/assets/icons/global/zoom-in.svg');
+}
+
+.icon-zoom-out {
+  -webkit-mask-image: url('/assets/icons/global/zoom-out.svg');
+  mask-image: url('/assets/icons/global/zoom-out.svg');
 }
 
 .icon-chevron-left {
@@ -1723,4 +1777,53 @@ main,
 .card-crud-deleting {
   animation: liveDeleteCollapse 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   pointer-events: none !important;
+}
+
+/* Botón de cierre premium para modales */
+.btn-close-premium {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #64748b;
+  cursor: pointer;
+}
+
+.btn-close-premium:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  transform: scale(1.05);
+}
+
+.dark .btn-close-premium:hover,
+[data-bs-theme="dark"] .btn-close-premium:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.btn-close-premium .icon-svg {
+  transition: all 0.15s ease;
+  background-color: currentColor !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ESTÁNDAR GLOBAL DE TITULOS DE CABECERA Y SUBTITULOS (Nodos Specs)
+   ═══════════════════════════════════════════════════════════════ */
+.header-page-title {
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.25 !important;
+  color: var(--text-primary) !important;
+}
+
+.header-page-subtitle {
+  font-size: 0.8rem !important;
+  line-height: 1.4 !important;
+  color: var(--text-muted) !important;
 }

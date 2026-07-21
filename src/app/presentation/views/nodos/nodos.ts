@@ -297,7 +297,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
           const isOffline = diffSeconds >= 10;
           const status = isOffline ? 'offline' : 'online';
 
-          // Actualizar métricas y estado inicial
+          // Actualizar métricas y estado por heartbeat
           this.hostService.updateHostMetrics(
             host.fingerprint,
             isOffline ? {
@@ -312,7 +312,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
         },
         error: (err) => {
           console.warn(`Failed to fetch initial heartbeat for host ${host.hostname}:`, err);
-          // Si falla la petición inicial, se asume inactivo
+          // Si falla la petición del heartbeat, marcar como inactivo (offline)
           this.hostService.updateHostMetrics(host.fingerprint, null, 'offline');
         }
       });

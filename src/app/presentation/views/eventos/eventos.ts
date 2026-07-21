@@ -724,6 +724,13 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     return `https://maps.google.com?q=${record.location.lat},${record.location.lon}`;
   }
 
+  onImageError(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (target) {
+      target.style.display = 'none';
+    }
+  }
+
   // --- Image Detail Modal & Magnifier Zoom Logic ---
   openImageDetailsModal(record: EventRecord): void {
     this.selectedEventForModal.set(record);

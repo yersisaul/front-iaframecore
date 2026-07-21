@@ -459,10 +459,13 @@ export class Horarios implements OnInit, OnDestroy {
   }
 
   isScheduleActive(schedule: Schedule): boolean {
-    if (schedule.status !== 'activo') {
+    if (!schedule || schedule.status !== 'activo') {
       return false;
     }
     if (!schedule.analyticIds || schedule.analyticIds.length === 0) {
+      return false;
+    }
+    if (!schedule.start || !schedule.end || isNaN(schedule.start.getTime()) || isNaN(schedule.end.getTime())) {
       return false;
     }
     const now = this.currentTime();
@@ -1240,23 +1243,49 @@ export class Horarios implements OnInit, OnDestroy {
     if (!sched) return;
 
     this.isDeletingSchedule.set(true);
-    this.scheduleService.deleteSchedule(sched.id).subscribe({
-      next: () => {
-        // Eliminar del estado local en memoria inmediatamente
-        this.scheduleService.deleteScheduleLocal(sched.id);
 
-        if (this.selectedScheduleId() === sched.id) {
-          this.selectedScheduleId.set(null);
+    const executeDeletion = () => {
+      this.scheduleService.deleteSchedule(sched.id).subscribe({
+        next: () => {
+          this.scheduleService.deleteScheduleLocal(sched.id);
+
+          if (this.selectedScheduleId() === sched.id) {
+            this.selectedScheduleId.set(null);
+          }
+          this.isDeletingSchedule.set(false);
+          this.closeDeleteScheduleModal();
+          this.loadAllAssociationDetails();
+        },
+        error: (err) => {
+          console.error('[HorariosComponent] confirmDeleteSchedule failed:', err);
+          this.isDeletingSchedule.set(false);
+          alert('Error al eliminar el horario. Por favor, intente de nuevo.');
         }
-        this.isDeletingSchedule.set(false);
-        this.closeDeleteScheduleModal();
-      },
-      error: (err) => {
-        console.error('[HorariosComponent] confirmDeleteSchedule failed:', err);
-        this.isDeletingSchedule.set(false);
-        alert('Error al eliminar el horario. Por favor, intente de nuevo.');
-      }
-    });
+      });
+    };
+
+    if (sched.analyticIds && sched.analyticIds.length > 0) {
+      const payload = {
+        nombre: sched.name,
+        fingerprint_host: sched.hostFingerprint || '',
+        analytics_ids: [],
+        timestamp_inicio: this.formatTimestampForBackend(this.getDateString(sched.start), this.getTimeString(sched.start)),
+        timestamp_fin: this.formatTimestampForBackend(this.getDateString(sched.end), this.getTimeString(sched.end)),
+        frecuencia: sched.frequency,
+        estado: sched.status
+      };
+
+      this.scheduleService.updateSchedule(sched.id, payload).pipe(
+        catchError((err) => {
+          console.warn('[HorariosComponent] Error desvinculando analíticas antes de eliminar:', err);
+          return of(null);
+        })
+      ).subscribe(() => {
+        executeDeletion();
+      });
+    } else {
+      executeDeletion();
+    }
   }
 
   getRemainingRepetitions(
@@ -1265,7 +1294,7 @@ export class Horarios implements OnInit, OnDestroy {
     frequency: 'diario' | 'semanal' | 'mensual',
     referenceDate: Date = new Date()
   ): number {
-    if (start > end) return 0;
+    if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return 0;
 
     const startHour = start.getHours();
     const startMin = start.getMinutes();
@@ -1278,7 +1307,8 @@ export class Horarios implements OnInit, OnDestroy {
 
     let count = 0;
     let i = 0;
-    while (true) {
+    const maxIterations = frequency === 'diario' ? 366 : frequency === 'semanal' ? 53 : 120;
+    while (i < maxIterations) {
       let repDate: Date;
       if (frequency === 'diario') {
         repDate = new Date(overallStartDate.getTime() + i * 24 * 60 * 60 * 1000);
@@ -1307,7 +1337,6 @@ export class Horarios implements OnInit, OnDestroy {
       }
 
       i++;
-      if (i > 10000) break;
     }
 
     return count;

@@ -65,7 +65,7 @@
     <div class="header-row-bottom d-flex align-items-center gap-3 mt-3">
 
       <!-- Barra de Búsqueda + Botón de Filtros -->
-      <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
+      <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
         <!-- Input wrapper ocupa todo el espacio libre, empujando el filtro al extremo -->
         <div class="search-input-wrapper d-flex align-items-center flex-grow-1">
           <span class="icon-svg icon-search search-icon-prefix text-muted flex-shrink-0"
@@ -530,6 +530,7 @@
           <tr>
             <th scope="col" class="text-muted small fw-bold">ESTADO</th>
             <th scope="col" class="text-muted small fw-bold">HOSTNAME</th>
+            <th scope="col" class="text-muted small fw-bold text-center">VERSIÓN</th>
             <th scope="col" class="text-muted small fw-bold">DIRECCIÓN IP</th>
             <th scope="col" class="text-muted small fw-bold text-center">SO</th>
             <th scope="col" class="text-muted small fw-bold text-center">CPU / RAM</th>
@@ -563,6 +564,10 @@
                 <span class="fw-bold text-body text-truncate d-block" style="font-size: 0.88rem;"
                   [title]="host.hostname">{{ host.hostname }}</span>
               </div>
+            </td>
+            <!-- Versión -->
+            <td class="text-center">
+              <span class="version-tag">v{{ host.version }}</span>
             </td>
             <!-- IP -->
             <td>

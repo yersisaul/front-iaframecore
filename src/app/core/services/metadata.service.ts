@@ -21,12 +21,79 @@ export class MetadataService {
   readonly currentPage = signal<number>(1);
   readonly pageSize = signal<number>(24);
   readonly newRecordIds = signal<Set<string>>(new Set());
+  readonly bufferedEvents = signal<MetaRecord[]>([]);
 
   markAsNew(id: string): void {
     this.newRecordIds.update(s => new Set([...s, id]));
     setTimeout(() => {
       this.newRecordIds.update(s => { const next = new Set(s); next.delete(id); return next; });
     }, 900);
+  }
+
+  hasActiveFilters(f: MetaFilterState): boolean {
+    if (!f) return false;
+    return (f.camaras && f.camaras.length > 0) ||
+           (f.tipoObjeto && f.tipoObjeto.length > 0) ||
+           !!f.edad ||
+           !!f.genero ||
+           !!(f.reconocimiento && f.reconocimiento.trim()) ||
+           (f.colores && f.colores.length > 0) ||
+           (f.posturas && f.posturas.length > 0) ||
+           (f.confiabilidadMin > 0) ||
+           (f.confiabilidadMax < 1) ||
+           f.timestampDesde !== null ||
+           f.timestampHasta !== null ||
+           f.coincidenciaFiltro !== 'all' ||
+           !!(f.search && f.search.trim()) ||
+           !!f.imageSearchUrl ||
+           !!f.imageEmbedding;
+  }
+
+  addNewRecord(newRecord: MetaRecord): void {
+    const f = this.filters();
+    const activeFiltersExist = this.hasActiveFilters(f);
+    const isPaginating = this.currentPage() > 1;
+    const shouldBuffer = activeFiltersExist || isPaginating;
+
+    if (shouldBuffer) {
+      this.bufferedEvents.update(prev => {
+        if (prev.some(r => r.id === newRecord.id)) return prev;
+        return [newRecord, ...prev];
+      });
+    } else {
+      // Si está en la página 1 y sin filtros activos, insertar directamente arriba
+      this.records.update(list => {
+        if (list.some(r => r.id === newRecord.id)) return list;
+        const nextList = [newRecord, ...list];
+        return nextList.slice(0, this.pageSize());
+      });
+      this.totalRecords.update(n => n + 1);
+      this.markAsNew(newRecord.id);
+    }
+  }
+
+  applyBufferedEvents(): void {
+    const buffer = this.bufferedEvents();
+    this.bufferedEvents.set([]);
+    if (buffer.length === 0) return;
+
+    if (this.currentPage() === 1) {
+      // ⚡ INSTANTÁNEO (0ms de red): Ya estamos en la página 1, insertamos localmente
+      this.records.update(r => {
+        const limit = this.pageSize();
+        const updated = [...buffer, ...r];
+        const unique = updated.filter((item, index, self) =>
+          index === self.findIndex(t => t.id === item.id)
+        );
+        return unique.slice(0, limit);
+      });
+      this.totalRecords.update(t => t + buffer.length);
+      buffer.forEach(e => this.markAsNew(e.id));
+    } else {
+      // 🌐 NAVEGACIÓN (Página > 1 a Página 1): Carga los 24 registros reales de la Página 1
+      this.currentPage.set(1);
+      this.loadCurrentPage(buffer);
+    }
   }
 
   constructor(
@@ -68,12 +135,14 @@ export class MetadataService {
   }
 
   setActiveIndex(index: MetaIndexName): void {
+    this.bufferedEvents.set([]);
     this.activeIndex.set(index);
     this.currentPage.set(1);
     this.resetFilters();
   }
 
   updateFilters(newFilters: Partial<MetaFilterState>): void {
+    this.bufferedEvents.set([]);
     this.filters.update(current => ({
       ...current,
       ...newFilters
@@ -83,6 +152,7 @@ export class MetadataService {
   }
 
   resetFilters(): void {
+    this.bufferedEvents.set([]);
     this.filters.set(defaultFilterState());
     this.currentPage.set(1);
     this.loadCurrentPage();
@@ -94,8 +164,13 @@ export class MetadataService {
   }
 
   setPageSize(size: number): void {
+    if (this.pageSize() === size) return;
     this.pageSize.set(size);
-    this.currentPage.set(1);
+    const total = this.totalRecords();
+    const maxPage = total > 0 ? Math.ceil(total / size) : 1;
+    if (this.currentPage() > maxPage) {
+      this.currentPage.set(maxPage);
+    }
     this.loadCurrentPage();
   }
 
@@ -140,7 +215,7 @@ export class MetadataService {
 
   private activeSubscription?: Subscription;
 
-  loadCurrentPage(): void {
+  loadCurrentPage(bufferPrefix?: MetaRecord[]): void {
     const idx = this.activeIndex();
     if (!idx) return;
 
@@ -153,7 +228,15 @@ export class MetadataService {
       this.isLoading.set(true);
       this.activeSubscription = this.repository.searchFacesByImage(filters.imageFile, this.pageSize()).subscribe({
         next: records => {
-          this.records.set(records);
+          let finalRecords = records;
+          if (bufferPrefix && bufferPrefix.length > 0) {
+            const combined = [...bufferPrefix, ...records];
+            finalRecords = (combined as MetaRostro[]).filter((item, index, self) =>
+              index === self.findIndex(t => t.id === item.id)
+            ).slice(0, this.pageSize());
+            bufferPrefix.forEach(r => this.markAsNew(r.id));
+          }
+          this.records.set(finalRecords);
           this.totalRecords.set(records.length);
           this.isLoading.set(false);
         },
@@ -175,8 +258,24 @@ export class MetadataService {
       this.pageSize()
     ).subscribe({
       next: res => {
-        this.records.set(res.records);
-        this.totalRecords.set(res.total);
+        const totalPages = res.total > 0 ? Math.ceil(res.total / this.pageSize()) : 1;
+        if (this.currentPage() > totalPages && res.total > 0) {
+          this.currentPage.set(totalPages);
+          this.loadCurrentPage(bufferPrefix);
+          return;
+        }
+
+        let finalRecords = res.records;
+        if (bufferPrefix && bufferPrefix.length > 0) {
+          const combined = [...bufferPrefix, ...res.records];
+          finalRecords = combined.filter((item, index, self) =>
+            index === self.findIndex(t => t.id === item.id)
+          ).slice(0, this.pageSize());
+          bufferPrefix.forEach(r => this.markAsNew(r.id));
+        }
+
+        this.records.set(finalRecords);
+        this.totalRecords.set(Math.max(res.total, finalRecords.length));
         this.filterOptions.set(res.filterOptions);
         this.isLoading.set(false);
       },
@@ -244,10 +343,10 @@ export class MetadataService {
     const dateEndB = b.timestampHasta ? new Date(b.timestampHasta).getTime() : null;
     if (dateEndA !== dateEndB) return false;
 
-    // Compare arrays
+    // Compare arrays with sorting
     const arraysEqual = (x?: string[], y?: string[]) => {
-      const arrX = x || [];
-      const arrY = y || [];
+      const arrX = [...(x || [])].sort();
+      const arrY = [...(y || [])].sort();
       if (arrX.length !== arrY.length) return false;
       return arrX.every((v, i) => v === arrY[i]);
     };

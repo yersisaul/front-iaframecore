@@ -1075,7 +1075,10 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   }
 
   isScheduleActive(schedule: Schedule): boolean {
-    if (schedule.status !== 'activo') {
+    if (!schedule || schedule.status !== 'activo') {
+      return false;
+    }
+    if (!schedule.start || !schedule.end || isNaN(schedule.start.getTime()) || isNaN(schedule.end.getTime())) {
       return false;
     }
     const now = this.currentTime();

@@ -70,23 +70,19 @@ export class WebsocketService {
       this.metadataService.incrementIndexCount(indexName);
 
       // Si el índice del metadato coincide con el activo en pantalla y no hay KNN activo, recargar los detalles
-      const hasKnnActive = !!(this.metadataService.filters()?.imageSearchUrl || this.metadataService.filters()?.imageEmbedding);
+      const activeFilters = this.metadataService.filters();
+      const hasKnnActive = !!(activeFilters?.imageSearchUrl || activeFilters?.imageEmbedding);
       if (this.metadataService.isViewActive() && this.metadataService.activeIndex() === indexName && !hasKnnActive) {
         console.log(`[WebSocket] Consultando OpenSearch para metadato en vivo del índice activo "${indexName}"`);
         this.metadataRepository.getById(indexName, docId).subscribe({
           next: (newRecord) => {
-            const isFirstPage = this.metadataService.currentPage() === 1;
-            if (isFirstPage) {
-              this.metadataService.records.update(list => {
-                if (list.some(r => r.id === newRecord.id)) return list;
-                const nextList = [newRecord, ...list];
-                return nextList.slice(0, this.metadataService.pageSize());
-              });
-              this.metadataService.totalRecords.update(n => n + 1);
-              this.metadataService.markAsNew(newRecord.id);
-            } else {
-              this.metadataService.totalRecords.update(n => n + 1);
+            // Validar que el nuevo registro cumpla con TODOS los filtros activos en pantalla
+            if (!this.matchesMetadataFilters(newRecord, activeFilters)) {
+              console.log(`[WebSocket] Nuevo metadato ${docId} descartado porque no coincide con los filtros activos.`);
+              return;
             }
+
+            this.metadataService.addNewRecord(newRecord);
           },
           error: (err) => {
             console.error('[WebSocket] Error al cargar nuevo metadato individual desde OpenSearch:', err);
@@ -564,6 +560,20 @@ export class WebsocketService {
         this.scheduleService.getAllSchedules().subscribe();
       }
 
+    } else if (action === 'host_connected') {
+      const fingerprint = body.fingerprint || msg.fingerprint;
+      if (!fingerprint) return;
+
+      console.log(`[WebSocket] Host conectado en tiempo real: ${fingerprint}`);
+      this.hostService.updateHostStatus(fingerprint, 'online');
+
+    } else if (action === 'host_disconnected') {
+      const fingerprint = body.fingerprint || msg.fingerprint;
+      if (!fingerprint) return;
+
+      console.log(`[WebSocket] Host desconectado en tiempo real: ${fingerprint}`);
+      this.hostService.updateHostStatus(fingerprint, 'offline');
+
     } else if (action === 'host_deleted') {
       const fingerprint = body.fingerprint || msg.fingerprint || body.fingerprint_host || msg.fingerprint_host;
       if (!fingerprint) return;
@@ -590,7 +600,7 @@ export class WebsocketService {
       };
 
       console.log(`[WebSocket] Métricas en tiempo real recibidas para nodo: ${fingerprint}`);
-      // Actualizar métricas y forzar estado a 'online'
+      // Actualizar métricas y marcar estado como 'online'
       this.hostService.updateHostMetrics(fingerprint, newMetrics, 'online');
     }
   }
@@ -601,5 +611,109 @@ export class WebsocketService {
       this.subscription.unsubscribe();
       this.subscription = null;
     }
+  }
+
+  /**
+   * Verifica si un registro de metadato recibido en tiempo real vía WebSocket
+   * cumple con todos los filtros activos aplicados en la vista.
+   */
+  private matchesMetadataFilters(record: any, filters: any): boolean {
+    if (!filters || !record) return true;
+
+    // 1. Cámaras (Multi-select OR)
+    if (filters.camaras && filters.camaras.length > 0) {
+      const recCam = (record.camara || '').toLowerCase();
+      if (!filters.camaras.some((c: string) => c.toLowerCase() === recCam)) {
+        return false;
+      }
+    }
+
+    // 2. Tipo de Objeto (Multi-select OR)
+    if (filters.tipoObjeto && filters.tipoObjeto.length > 0) {
+      const recType = (record.tipoObjeto || '').toLowerCase();
+      if (!filters.tipoObjeto.some((t: string) => t.toLowerCase() === recType)) {
+        return false;
+      }
+    }
+
+    // 3. Edad (Single-select)
+    if (filters.edad) {
+      const recEdad = (record.edad || '').toLowerCase();
+      if (recEdad !== filters.edad.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // 4. Género (Single-select)
+    if (filters.genero) {
+      const recGenero = (record.genero || '').toLowerCase();
+      if (recGenero !== filters.genero.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // 5. Reconocimiento / Placa / Sujeto (Single-select / búsqueda parcial)
+    if (filters.reconocimiento && filters.reconocimiento.trim()) {
+      const recVal = (record.reconocimiento || '').toLowerCase().trim();
+      const filterVal = filters.reconocimiento.toLowerCase().trim();
+      if (!recVal) return false;
+
+      const recNorm = recVal.replace(/[^a-z0-9]/gi, '');
+      const filterNorm = filterVal.replace(/[^a-z0-9]/gi, '');
+
+      if (!recVal.includes(filterVal) && (filterNorm && !recNorm.includes(filterNorm))) {
+        return false;
+      }
+    }
+
+    // 6. Colores (Multi-select OR)
+    if (filters.colores && filters.colores.length > 0) {
+      const recordColors = (record.colores || []).map((c: any) => (c.colorText || '').toLowerCase());
+      const hasMatch = filters.colores.some((fc: string) => recordColors.includes(fc.toLowerCase()));
+      if (!hasMatch) return false;
+    }
+
+    // 7. Posturas (Multi-select OR)
+    if (filters.posturas && filters.posturas.length > 0) {
+      const recordPosturas = (record.posturas || []).map((p: any) => (p.postura || '').toLowerCase());
+      const hasMatch = filters.posturas.some((fp: string) => recordPosturas.includes(fp.toLowerCase()));
+      if (!hasMatch) return false;
+    }
+
+    // 8. Confiabilidad (Range)
+    const conf = record.confiabilidad;
+    if (conf !== undefined && conf !== null) {
+      if (filters.confiabilidadMin > 0 && conf < filters.confiabilidadMin) return false;
+      if (filters.confiabilidadMax < 1 && conf > filters.confiabilidadMax) return false;
+    }
+
+    // 9. Timestamp (Range)
+    if (record.timestamp) {
+      const recTime = new Date(record.timestamp).getTime();
+      if (filters.timestampDesde && recTime < new Date(filters.timestampDesde).getTime()) return false;
+      if (filters.timestampHasta && recTime > new Date(filters.timestampHasta).getTime()) return false;
+    }
+
+    // 10. coincidenciaFiltro (Rostros)
+    if (filters.coincidenciaFiltro === 'coincidencia') {
+      const recVal = (record.reconocimiento || '').trim();
+      if (!recVal) return false;
+    } else if (filters.coincidenciaFiltro === 'sin_coincidencia') {
+      const recVal = (record.reconocimiento || '').trim();
+      if (recVal) return false;
+    }
+
+    // 11. Search (Búsqueda unificada de texto)
+    if (filters.search && filters.search.trim()) {
+      const q = filters.search.trim().toLowerCase();
+      const matchesSearch =
+        (record.id && record.id.toLowerCase().includes(q)) ||
+        (record.camara && record.camara.toLowerCase().includes(q)) ||
+        (record.reconocimiento && record.reconocimiento.toLowerCase().includes(q)) ||
+        (record.tipoObjeto && record.tipoObjeto.toLowerCase().includes(q));
+      if (!matchesSearch) return false;
+    }
+
+    return true;
   }
 }

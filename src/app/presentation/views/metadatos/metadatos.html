@@ -13,10 +13,10 @@
       </button>
 
       <div>
-        <h2 class="fw-bold mb-0 text-capitalize fs-3">
+        <h2 class="fw-bold mb-0 header-page-title text-capitalize">
           Búsqueda de {{ activeIndex() }}
         </h2>
-        <p class="text-muted mb-0 small">
+        <p class="text-muted mb-0 header-page-subtitle mt-1">
           Se encontraron <span class="fw-semibold text-primary">{{ formatTotalRecords(totalRecords()) }}</span>
           registros en el índice
         </p>
@@ -24,9 +24,10 @@
     </div>
     <div class="d-flex align-items-center gap-3">
       <!-- Barra de Búsqueda Unificada y Botón de Filtros Agrupados -->
-      <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
+      <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
         <div class="search-input-wrapper position-relative d-flex align-items-center pl-1">
-          <span class="icon-svg icon-search search-icon-prefix text-muted" style="width: 18px; height: 18px; opacity: 0.5;"></span>
+          <span class="icon-svg icon-search search-icon-prefix text-muted"
+            style="width: 18px; height: 18px; opacity: 0.5;"></span>
           <input type="text" [formControl]="searchControl" placeholder="Buscar metadatos..."
             class="search-input-control border-0 ms-2" style="font-size: 0.82rem; outline: none; width: 180px;" />
         </div>
@@ -77,8 +78,7 @@
             tempFilters().camaras.length }}</span>
           }
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'camaras'"
-            style="width: 10px; height: 10px;"></span>
+            [class.rotated]="activeDropdown() === 'camaras'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'camaras') {
         <div class="filter-dropdown-menu dropdown-camaras p-2 scrollable-menu" (click)="$event.stopPropagation()">
@@ -105,8 +105,7 @@
             tempFilters().tipoObjeto.length }}</span>
           }
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'tipoObjeto'"
-            style="width: 10px; height: 10px;"></span>
+            [class.rotated]="activeDropdown() === 'tipoObjeto'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'tipoObjeto') {
         <div class="filter-dropdown-menu dropdown-tipo p-2 scrollable-menu" (click)="$event.stopPropagation()">
@@ -135,8 +134,7 @@
             tempFilters().colores.length }}</span>
           }
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'colores'"
-            style="width: 10px; height: 10px;"></span>
+            [class.rotated]="activeDropdown() === 'colores'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'colores') {
         <div class="filter-dropdown-menu dropdown-colores p-2 scrollable-menu" (click)="$event.stopPropagation()">
@@ -188,8 +186,7 @@
           <span class="icon-svg icon-clock filter-icon" style="width: 14px; height: 14px;"></span>
           <span>Edad: {{ tempFilters().edad || 'Todos' }}</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'edad'"
-            style="width: 10px; height: 10px;"></span>
+            [class.rotated]="activeDropdown() === 'edad'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'edad') {
         <div class="filter-dropdown-menu dropdown-edad p-2" (click)="$event.stopPropagation()">
@@ -216,8 +213,7 @@
           <span class="icon-svg icon-user filter-icon" style="width: 14px; height: 14px;"></span>
           <span>Género: {{ tempFilters().genero || 'Todos' }}</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'genero'"
-            style="width: 10px; height: 10px;"></span>
+            [class.rotated]="activeDropdown() === 'genero'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'genero') {
         <div class="filter-dropdown-menu dropdown-genero p-2" (click)="$event.stopPropagation()">
@@ -236,17 +232,15 @@
       </div>
       }
 
-      <!-- 5. RECONOCIMIENTO -->
-      @if (activeIndex() === 'rostros' || activeIndex() === 'vehiculos') {
+      <!-- 5. RECONOCIMIENTO / SUJETO (SOLO PARA ROSTROS) -->
+      @if (activeIndex() === 'rostros') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
           [class.active]="tempFilters().reconocimiento !== null" (click)="toggleDropdown('reconocimiento', $event)">
           <span class="icon-svg icon-list filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>{{ activeIndex() === 'vehiculos' ? 'Placa' : 'Sujeto' }}: {{ tempFilters().reconocimiento || 'Todos'
-            }}</span>
+          <span>Sujeto: {{ tempFilters().reconocimiento || 'Todos' }}</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'reconocimiento'"
-            style="width: 10px; height: 10px;"></span>
+            [class.rotated]="activeDropdown() === 'reconocimiento'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'reconocimiento') {
         <div class="filter-dropdown-menu dropdown-reconocimiento p-2" (click)="$event.stopPropagation()">
@@ -265,6 +259,34 @@
       </div>
       }
 
+      <!-- FILTRO PLACA (SOLO PARA VEHÍCULOS) - DESPLEGABLE CON ENTRADA EN TIEMPO REAL -->
+      @if (activeIndex() === 'vehiculos') {
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-uppercase"
+          [class.active]="tempFilters().reconocimiento !== null" (click)="toggleDropdown('placa', $event)">
+          <span class="icon-svg icon-list filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Placa: {{ tempFilters().reconocimiento || 'Todas' }}</span>
+          @if (tempFilters().reconocimiento) {
+          <span class="ms-1 text-danger font-monospace fw-bold" (click)="clearPlateFilter($event)" title="Quitar filtro de placa" style="font-size: 0.85rem; cursor: pointer;">✕</span>
+          } @else {
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'placa'" style="width: 10px; height: 10px;"></span>
+          }
+        </button>
+        @if (activeDropdown() === 'placa') {
+        <div class="filter-dropdown-menu dropdown-placa p-2" (click)="$event.stopPropagation()">
+          <input type="text"
+            class="form-control form-control-sm font-monospace text-uppercase text-center fw-bold"
+            style="letter-spacing: 2px;"
+            placeholder="XXX-XXX"
+            maxlength="7"
+            [value]="tempFilters().reconocimiento || ''"
+            (input)="onRealtimePlateInput($event)" />
+        </div>
+        }
+      </div>
+      }
+
       <!-- FILTRO COINCIDENCIA (SOLO PARA ROSTROS) -->
       @if (activeIndex() === 'rostros') {
       <div class="filter-dropdown-wrapper position-relative">
@@ -278,8 +300,7 @@
             'coincidencia' ? 'Solo Coincidencias' : 'Sin Coincidencias') }}
           </span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'coincidenciaFiltro'"
-            style="width: 10px; height: 10px;"></span>
+            [class.rotated]="activeDropdown() === 'coincidenciaFiltro'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'coincidenciaFiltro') {
         <div class="filter-dropdown-menu dropdown-coincidenciaFiltro p-2" (click)="$event.stopPropagation()">
@@ -312,8 +333,7 @@
           <span>Confiabilidad ({{ (tempFilters().confiabilidadMin * 100) | number:'1.0-0' }}% - {{
             (tempFilters().confiabilidadMax * 100) | number:'1.0-0' }}%)</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'confiabilidad'"
-            style="width: 10px; height: 10px;"></span>
+            [class.rotated]="activeDropdown() === 'confiabilidad'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'confiabilidad') {
         <div class="filter-dropdown-menu dropdown-confiabilidad p-3" (click)="$event.stopPropagation()">
@@ -375,8 +395,7 @@
             style="width: 6px; height: 6px; border-radius: 50%;"></span>
           }
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
-            [class.rotated]="activeDropdown() === 'fechas'"
-            style="width: 10px; height: 10px;"></span>
+            [class.rotated]="activeDropdown() === 'fechas'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'fechas') {
         <div class="filter-dropdown-menu dropdown-fechas p-3" (click)="$event.stopPropagation()">
@@ -614,6 +633,20 @@
       </div>
       }
 
+      <!-- Banner de nuevos metadatos bufferizados -->
+      @if (bufferedEvents().length > 0) {
+      <div
+        class="alert alert-info py-2.5 px-4 mb-3 d-flex align-items-center justify-content-between animation-fade-in shadow-sm border-0"
+        style="border-radius: 12px; font-size: 0.85rem; background-color: var(--primary-light); color: var(--primary); border: 1.5px solid rgba(var(--primary-rgb), 0.15) !important;">
+        <div class="d-flex align-items-center gap-2">
+          <span class="icon-svg icon-activity animate-pulse" style="width: 16px; height: 16px;"></span>
+          <span class="fw-semibold">Hay {{ bufferedEvents().length }} nuevo(s) metadato(s) disponible(s).</span>
+        </div>
+        <button class="btn btn-sm btn-primary py-1 px-3 fw-bold rounded-pill shadow-sm"
+          (click)="applyBufferedEvents()">Ver nuevos metadatos</button>
+      </div>
+      }
+
       <!-- No records found view -->
       @if (!isLoading() && records().length === 0) {
       <div class="empty-state-view text-center py-5 rounded bg-white shadow-sm border">
@@ -636,14 +669,15 @@
 
           <!-- Image section with overlay -->
           <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center">
-            @if (record.imagenRemota) {
-            <img [src]="record.imagenRemota" (error)="$event.target && ($event.target.style.display = 'none')"
-              class="card-img-top object-fit-contain w-100 h-100" alt="Thumbnail" />
-            } @else {
-            <div class="placeholder-img-icon position-absolute d-flex flex-column align-items-center">
-              <span class="icon-svg icon-box text-muted" style="width: 32px; height: 32px;"></span>
-              <span class="text-muted small mt-2">Sin Imagen</span>
+            <!-- Fallback placeholder (visible if no image or if image fails 404) -->
+            <div class="placeholder-img-icon">
+              <span class="icon-svg icon-warning fallback-icon"></span>
+              <span class="fallback-text">SIN IMAGEN</span>
             </div>
+
+            @if (record.imagenRemota) {
+            <img [src]="record.imagenRemota" (error)="onImageError($event)"
+              class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;" alt="Thumbnail" />
             }
 
             <!-- Floating Index Type indicator -->
@@ -662,7 +696,8 @@
               </button>
               }
 
-              @if ((activeIndex() === 'rostros' || (activeIndex() === 'vehiculos' && getReconocimiento(record))) && permissionsService.hasPermission('Detalles Listas', 'crear')) {
+              @if ((activeIndex() === 'rostros' || (activeIndex() === 'vehiculos' && getReconocimiento(record))) &&
+              permissionsService.hasPermission('Detalles Listas', 'crear')) {
               <button type="button" class="btn-overlay-action btn-watchlist"
                 (click)="openAddToListModal(record); $event.stopPropagation()" title="Agregar a Lista de Control">
                 <span class="icon-svg icon-plus" style="width: 13px; height: 13px;"></span>
@@ -712,7 +747,8 @@
           <div class="metadata-card-popover" [style.left.px]="mouseX()" [style.top.px]="mouseY()">
             <div class="popover-header d-flex align-items-center justify-content-between">
               <div class="d-flex align-items-center gap-1.5">
-                <span class="icon-svg icon-box text-primary popover-header-icon" style="width: 12px; height: 12px;"></span>
+                <span class="icon-svg icon-box text-primary popover-header-icon"
+                  style="width: 12px; height: 12px;"></span>
                 <span class="popover-header-title text-muted text-uppercase fw-bold">Atributos</span>
               </div>
               <span class="badge bg-secondary-light text-secondary text-capitalize"
@@ -841,10 +877,10 @@
     <div class="modal-card-custom p-4 shadow-lg border" (click)="$event.stopPropagation()">
 
       <!-- Modal Header -->
-      <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+      <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="fw-bold mb-0 text-body fs-6">Agregar a Lista de Control</h5>
-        <button class="btn-ghost p-1" (click)="closeAddToListModal()" aria-label="Cerrar modal">
-          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
+        <button class="btn-close-premium" (click)="closeAddToListModal()" aria-label="Cerrar modal">
+          <span class="icon-svg icon-close" style="width: 16px; height: 16px;"></span>
         </button>
       </div>
 

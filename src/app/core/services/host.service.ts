@@ -172,6 +172,29 @@ export class HostService {
     );
   }
 
+  updateHostStatus(fingerprint: string, status: string): void {
+    const exists = this.allHosts().some(h => h.fingerprint === fingerprint);
+    if (exists) {
+      this.allHosts.update(hosts =>
+        hosts.map(h => {
+          if (h.fingerprint === fingerprint) {
+            return { ...h, status };
+          }
+          return h;
+        })
+      );
+      if (this.isViewActive()) {
+        this.markAsUpdatedHost(fingerprint);
+      }
+    } else {
+      this.loadAllHosts().subscribe(() => {
+        if (this.isViewActive()) {
+          this.markAsNewHost(fingerprint);
+        }
+      });
+    }
+  }
+
   migrateSetup(oldFingerprint: string, newFingerprint: string): Observable<void> {
     return this.hostRepository.migrateSetup(oldFingerprint, newFingerprint).pipe(
       tap(() => {

@@ -704,8 +704,9 @@
 
 .filter-dropdown-menu.dropdown-edad,
 .filter-dropdown-menu.dropdown-genero,
-.filter-dropdown-menu.dropdown-reconocimiento {
-  min-width: 180px;
+.filter-dropdown-menu.dropdown-reconocimiento,
+.filter-dropdown-menu.dropdown-placa {
+  min-width: 170px;
 }
 
 .filter-dropdown-menu.dropdown-coincidenciaFiltro {
@@ -1724,4 +1725,37 @@
 .metadata-card .card-img-wrapper {
   aspect-ratio: 4 / 3;
   height: auto;
+}
+
+/* ── Modal de Búsqueda por Placa (Vehículos) ── */
+.plate-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-backdrop, rgba(15, 23, 42, 0.6));
+  backdrop-filter: blur(8px);
+  z-index: 1060;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeInModal 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.plate-modal-card {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 380px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+  animation: scaleUpModal 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+::ng-deep .dark .plate-modal-card,
+::ng-deep [data-bs-theme="dark"] .plate-modal-card {
+  background-color: var(--bg-modal, #1e293b);
+  border-color: var(--border-modal, #334155);
 }

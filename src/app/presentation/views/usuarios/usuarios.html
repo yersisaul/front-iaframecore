@@ -13,7 +13,7 @@
       </button>
 
       <div>
-        <h2 class="fw-bold mb-0 fs-3">Gestión de Accesos</h2>
+        <h2 class="fw-bold mb-0 header-page-title">Gestión de Accesos</h2>
         <p class="text-muted mb-0 small mt-1">
           @if (activeTab() === 'usuarios') {
           Se encontraron <span class="fw-semibold text-primary">{{ filteredUsers().length }}</span> cuentas de acceso en
@@ -48,71 +48,75 @@
 
       <!-- Botón de acción principal correspondiente (Fila 1) -->
       @if (activeTab() === 'usuarios') {
-        @if (permissionsService.hasPermission('Usuarios', 'crear') || permissionsService.hasPermission('Usuarios', 'agregar')) {
-          <button class="btn-migrate-config" (click)="openRegisterModal()">
-            <span class="icon-svg icon-user-plus" style="width: 16px; height: 16px;"></span>
-            <span class="d-none d-md-inline">Nuevo Usuario</span>
-          </button>
-        }
+      @if (permissionsService.hasPermission('Usuarios', 'crear') || permissionsService.hasPermission('Usuarios',
+      'agregar')) {
+      <button class="btn-migrate-config" (click)="openRegisterModal()">
+        <span class="icon-svg icon-user-plus" style="width: 16px; height: 16px;"></span>
+        <span class="d-none d-md-inline">Nuevo Usuario</span>
+      </button>
+      }
       } @else {
-        @if (permissionsService.hasPermission('Roles', 'crear') || permissionsService.hasPermission('Roles', 'agregar')) {
-          <button class="btn-migrate-config" (click)="openCreateRoleModal()">
-            <span class="icon-svg icon-plus" style="width: 16px; height: 16px;"></span>
-            <span>Nuevo rol</span>
-          </button>
-        }
+      @if (permissionsService.hasPermission('Roles', 'crear') || permissionsService.hasPermission('Roles', 'agregar')) {
+      <button class="btn-migrate-config" (click)="openCreateRoleModal()">
+        <span class="icon-svg icon-plus" style="width: 16px; height: 16px;"></span>
+        <span>Nuevo rol</span>
+      </button>
+      }
       }
     </div>
   </div>
 
   <!-- Fila 2: Búsqueda y Filtros (Solo para la pestaña de Usuarios) -->
   @if (activeTab() === 'usuarios') {
-    <div class="header-row-bottom d-flex align-items-center gap-3 mt-3 mb-4">
-      <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1 bg-surface">
-        <div class="search-input-wrapper position-relative d-flex align-items-center pl-1 flex-grow-1">
-          <span class="icon-svg icon-search search-icon-prefix text-muted" style="width: 18px; height: 18px; opacity: 0.5;"></span>
-          <input type="text" [value]="searchQuery()" (input)="onSearchChange($event)" placeholder="Buscar usuario..."
-            class="search-input-control border-0 ms-2"
-            style="font-size: 0.82rem; outline: none; width: 100%; background: transparent; color: var(--text-primary);" />
-        </div>
+  <div class="header-row-bottom d-flex align-items-center gap-3 mt-3 mb-4">
+    <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1 bg-surface">
+      <div class="search-input-wrapper position-relative d-flex align-items-center pl-1 flex-grow-1">
+        <span class="icon-svg icon-search search-icon-prefix text-muted"
+          style="width: 18px; height: 18px; opacity: 0.5;"></span>
+        <input type="text" [value]="searchQuery()" (input)="onSearchChange($event)" placeholder="Buscar usuario..."
+          class="search-input-control border-0 ms-2"
+          style="font-size: 0.82rem; outline: none; width: 100%; background: transparent; color: var(--text-primary);" />
+      </div>
 
-        <div class="filter-dropdown-wrapper position-relative flex-shrink-0">
-          <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
-            (click)="toggleFiltersVisibility($event)" [class.active]="selectedRoleFilter() !== 'TODOS'"
-            [class.open]="showFilters()" title="Filtrar por Rol" aria-label="Filtrar por Rol">
-            <span class="icon-svg icon-filter filter-icon"></span>
-            @if (selectedRoleFilter() !== 'TODOS') {
-              <span class="active-badge-dot"></span>
-            }
-          </button>
+      <div class="filter-dropdown-wrapper position-relative flex-shrink-0">
+        <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
+          (click)="toggleFiltersVisibility($event)" [class.active]="selectedRoleFilter() !== 'TODOS'"
+          [class.open]="showFilters()" title="Filtrar por Rol" aria-label="Filtrar por Rol">
+          <span class="icon-svg icon-filter filter-icon"></span>
+          @if (selectedRoleFilter() !== 'TODOS') {
+          <span class="active-badge-dot"></span>
+          }
+        </button>
 
-          <!-- Dropdown Desplegable -->
-          @if (showFilters()) {
-            <div class="filter-dropdown-menu dropdown-rol p-3 scrollable-menu" style="position: absolute; right: 0; top: calc(100% + 8px); z-index: 1000;" (click)="$event.stopPropagation()">
-              <label class="custom-checkbox-wrapper d-flex align-items-center gap-2" for="role-todos">
-                <input class="custom-checkbox-input" type="checkbox" id="role-todos"
-                  [checked]="selectedRoleFilter() === 'TODOS'" (change)="setRoleFilter('TODOS')">
-                <span class="custom-checkbox-box d-flex align-items-center justify-content-center">
-                  <span class="icon-svg icon-check checkbox-check-icon" style="width: 10px; height: 10px;"></span>
-                </span>
-                <span class="custom-checkbox-label">TODOS LOS ROLES</span>
-              </label>
-              <!-- Filtros de rol dinámicos desde el backend -->
-              @for (rol of availableRoles(); track rol.rol_id) {
-                <label class="custom-checkbox-wrapper d-flex align-items-center gap-2 mt-2" [for]="'role-' + rol.rol_id">
-                  <input class="custom-checkbox-input" type="checkbox" [id]="'role-' + rol.rol_id"
-                    [checked]="selectedRoleFilter() === rol.nombre" (change)="setRoleFilter(rol.nombre)">
-                  <span class="custom-checkbox-box d-flex align-items-center justify-content-center">
-                    <span class="icon-svg icon-check checkbox-check-icon" style="width: 10px; height: 10px;"></span>
-                  </span>
-                  <span class="custom-checkbox-label">{{ rol.nombre }}</span>
-                </label>
-              }
-            </div>
+        <!-- Dropdown Desplegable -->
+        @if (showFilters()) {
+        <div class="filter-dropdown-menu dropdown-rol p-3 scrollable-menu"
+          style="position: absolute; right: 0; top: calc(100% + 8px); z-index: 1000;"
+          (click)="$event.stopPropagation()">
+          <label class="custom-checkbox-wrapper d-flex align-items-center gap-2" for="role-todos">
+            <input class="custom-checkbox-input" type="checkbox" id="role-todos"
+              [checked]="selectedRoleFilter() === 'TODOS'" (change)="setRoleFilter('TODOS')">
+            <span class="custom-checkbox-box d-flex align-items-center justify-content-center">
+              <span class="icon-svg icon-check checkbox-check-icon" style="width: 10px; height: 10px;"></span>
+            </span>
+            <span class="custom-checkbox-label">TODOS LOS ROLES</span>
+          </label>
+          <!-- Filtros de rol dinámicos desde el backend -->
+          @for (rol of availableRoles(); track rol.rol_id) {
+          <label class="custom-checkbox-wrapper d-flex align-items-center gap-2 mt-2" [for]="'role-' + rol.rol_id">
+            <input class="custom-checkbox-input" type="checkbox" [id]="'role-' + rol.rol_id"
+              [checked]="selectedRoleFilter() === rol.nombre" (change)="setRoleFilter(rol.nombre)">
+            <span class="custom-checkbox-box d-flex align-items-center justify-content-center">
+              <span class="icon-svg icon-check checkbox-check-icon" style="width: 10px; height: 10px;"></span>
+            </span>
+            <span class="custom-checkbox-label">{{ rol.nombre }}</span>
+          </label>
           }
         </div>
+        }
       </div>
     </div>
+  </div>
   }
 
   <!-- TAB: USUARIOS -->
@@ -230,24 +234,25 @@
           </div>
           }
           @for (rol of availableRoles(); track rol.rol_id) {
-          <div class="w-100 p-3 rounded-3 mb-2 border transition-all role-card-item d-flex align-items-center justify-content-between"
-            [ngStyle]="getRoleStyle(rol.nombre)"
-            [class.active-role-card]="selectedRoleForEdit()?.rol_id === rol.rol_id"
+          <div
+            class="w-100 p-3 rounded-3 mb-2 border transition-all role-card-item d-flex align-items-center justify-content-between"
+            [ngStyle]="getRoleStyle(rol.nombre)" [class.active-role-card]="selectedRoleForEdit()?.rol_id === rol.rol_id"
             [class.border-primary]="selectedRoleForEdit()?.rol_id === rol.rol_id"
             [class.role-card--new]="permissionsService.newRoleIds().has(rol.rol_id)"
             [class.role-card--updated]="permissionsService.updatedRoleIds().has(rol.rol_id)"
             [class.role-card--deleting]="permissionsService.deletingRoleIds().has(rol.rol_id)"
-            (click)="selectRoleForEdit(rol)"
-            style="background: var(--bg-surface, transparent); cursor: pointer;">
+            (click)="selectRoleForEdit(rol)" style="background: var(--bg-surface, transparent); cursor: pointer;">
             <div class="flex-grow-1 pe-2">
               <span class="role-badge mb-1 d-inline-block">{{ rol.nombre }}</span>
               <p class="text-muted mb-0 small mt-1">{{ rol.descripcion }}</p>
             </div>
             <div class="d-flex align-items-center gap-2">
-              <span class="badge role-permissions-count-badge small">{{ getActivePermissionsCount(rol) }} permisos</span>
-              
+              <span class="badge role-permissions-count-badge small">{{ getActivePermissionsCount(rol) }}
+                permisos</span>
+
               @if (!isSystemRole(rol.nombre) && permissionsService.hasPermission('Roles', 'eliminar')) {
-              <button class="btn-action-icon btn-action-delete role-delete-btn" (click)="openDeleteRoleModal(rol, $event)" title="Eliminar Rol" aria-label="Eliminar Rol">
+              <button class="btn-action-icon btn-action-delete role-delete-btn"
+                (click)="openDeleteRoleModal(rol, $event)" title="Eliminar Rol" aria-label="Eliminar Rol">
                 <span class="icon-svg icon-trash" style="width: 13px; height: 13px;"></span>
               </button>
               }
@@ -261,17 +266,20 @@
     <!-- Panel derecho: Permisos del rol seleccionado -->
     <div class="col-md-8">
       @if (!selectedRoleForEdit()) {
-      <div class="card premium-roles-matrix-card border shadow-sm rounded-4 bg-card d-flex align-items-center justify-content-center p-5 position-relative overflow-hidden">
+      <div
+        class="card premium-roles-matrix-card border shadow-sm rounded-4 bg-card d-flex align-items-center justify-content-center p-5 position-relative overflow-hidden">
         <div class="text-center position-relative px-4" style="max-width: 440px;">
           <!-- Contenedor del icono con fondo suave -->
           <div class="mx-auto mb-4 d-flex align-items-center justify-content-center"
             style="width: 72px; height: 72px; border-radius: 20px; background: rgba(13, 110, 253, 0.08); border: 1px solid rgba(13, 110, 253, 0.15); box-shadow: 0 8px 20px rgba(13, 110, 253, 0.03);">
-            <span class="icon-svg icon-lock" style="width: 32px; height: 32px; background-color: var(--primary);"></span>
+            <span class="icon-svg icon-lock"
+              style="width: 32px; height: 32px; background-color: var(--primary);"></span>
           </div>
-          
+
           <h6 class="fw-bold text-body fs-6 mb-2" style="letter-spacing: -0.01em;">Gestión de Permisos</h6>
           <p class="text-muted small mb-0 lh-lg" style="font-size: 0.82rem;">
-            Selecciona un rol de la columna izquierda para auditar, administrar y actualizar su matriz de permisos y facultades operativas de forma segura.
+            Selecciona un rol de la columna izquierda para auditar, administrar y actualizar su matriz de permisos y
+            facultades operativas de forma segura.
           </p>
         </div>
       </div>
@@ -281,14 +289,17 @@
           <h5 class="fw-bold mb-0 text-body">Permisos: {{ selectedRoleForEdit()!.nombre }}</h5>
           @if (isSystemRole(selectedRoleForEdit()!.nombre)) {
           <p class="text-warning mb-0 small mt-1 d-flex align-items-center">
-            <span class="icon-svg icon-warning me-1" style="width: 14px; height: 14px; background-color: #ffc107;"></span>
+            <span class="icon-svg icon-warning me-1"
+              style="width: 14px; height: 14px; background-color: #ffc107;"></span>
             Este es un rol de sistema predefinido y no puede ser modificado.
           </p>
           } @else {
-          <p class="text-muted mb-0 small mt-1">Activa o desactiva los permisos. Los cambios se guardan y sincronizan en tiempo real con el backend.</p>
+          <p class="text-muted mb-0 small mt-1">Activa o desactiva los permisos. Los cambios se guardan y sincronizan en
+            tiempo real con el backend.</p>
           }
         </div>
-        <div class="card-body p-0 scrollable-permissions-table-container custom-scrollbar" style="background-color: var(--bg-card, #ffffff);">
+        <div class="card-body p-0 scrollable-permissions-table-container custom-scrollbar"
+          style="background-color: var(--bg-card, #ffffff);">
           <div class="permissions-groups-container" style="display: flex; flex-direction: column;">
             @if (permissionsService.availablePermissions().length === 0) {
             <div class="text-center py-4 text-muted">
@@ -299,16 +310,16 @@
             @for (group of groupedPermissions(); track group.resource) {
             <div class="permission-group-block" style="display: flex; flex-direction: column;">
               <!-- Cabecera del Grupo: Permiso de Consulta (Lectura) -->
-              <div class="permission-group-row d-flex align-items-center justify-content-between p-3" 
+              <div class="permission-group-row d-flex align-items-center justify-content-between p-3"
                 (click)="onHeaderClick(group)"
                 [style.opacity]="(group.resource === 'list_details' && !isListsReadActive() || group.resource === 'analytics' && !isCamerasReadActive()) ? '0.5' : '1'"
                 [style.pointer-events]="(group.resource === 'list_details' && !isListsReadActive() || group.resource === 'analytics' && !isCamerasReadActive()) ? 'none' : 'auto'"
                 style="background-color: var(--bg-header-light, #f8fafc); cursor: pointer; user-select: none; transition: background-color 0.2s ease;">
-                
+
                 <!-- Columna 1: Chevron + Icono + Nombre (50% de ancho) -->
                 <div class="d-flex align-items-center gap-3" style="flex: 1 1 50%; min-width: 0;">
                   @if (group.others.length > 0) {
-                  <span class="icon-svg icon-chevron-down transition-transform" 
+                  <span class="icon-svg icon-chevron-down transition-transform"
                     [style.transform]="isGroupExpanded(group.resource) ? 'rotate(0deg)' : 'rotate(-90deg)'"
                     style="width: 14px; height: 14px; transition: transform 0.2s ease-in-out; color: var(--text-secondary); flex-shrink: 0;"></span>
                   } @else {
@@ -319,8 +330,7 @@
                   <div class="resource-icon-circle d-flex align-items-center justify-content-center rounded-circle"
                     [style.background-color]="getResourceColor(group.resource) + '14'"
                     style="width: 32px; height: 32px; flex-shrink: 0;">
-                    <span class="icon-svg nav-icon" 
-                      [class]="getResourceIcon(group.resource)"
+                    <span class="icon-svg nav-icon" [class]="getResourceIcon(group.resource)"
                       [style.background-color]="getResourceColor(group.resource)"
                       style="width: 16px; height: 16px;"></span>
                   </div>
@@ -338,13 +348,13 @@
                 </div>
 
                 <!-- Columna 3: Estado Switch (20% de ancho) -->
-                <div class="d-flex align-items-center justify-content-end gap-2" 
-                  (click)="$event.stopPropagation()"
+                <div class="d-flex align-items-center justify-content-end gap-2" (click)="$event.stopPropagation()"
                   style="flex: 1 1 20%; flex-shrink: 0;">
-                  <span class="text-muted small d-none d-sm-inline-block" style="font-size: 0.75rem; white-space: nowrap;">
+                  <span class="text-muted small d-none d-sm-inline-block"
+                    style="font-size: 0.75rem; white-space: nowrap;">
                     {{ isPermissionSelected(group.read.permiso_id) ? 'Habilitado' : 'Deshabilitado' }}
                   </span>
-                  <label class="switch-toggle" 
+                  <label class="switch-toggle"
                     [class.switch-disabled]="group.resource === 'list_details' && !isListsReadActive() || group.resource === 'analytics' && !isCamerasReadActive() || isSystemRole(selectedRoleForEdit()!.nombre) || !permissionsService.hasPermission('Roles', 'editar')">
                     <input type="checkbox" [checked]="isPermissionSelected(group.read.permiso_id)"
                       [disabled]="group.resource === 'list_details' && !isListsReadActive() || group.resource === 'analytics' && !isCamerasReadActive() || isSystemRole(selectedRoleForEdit()!.nombre) || !permissionsService.hasPermission('Roles', 'editar')"
@@ -353,34 +363,35 @@
                   </label>
                 </div>
               </div>
- 
+
               <!-- Hijos del Grupo (Crear, Editar, Eliminar) -->
               @if (isGroupExpanded(group.resource) && group.others.length > 0) {
               <div class="permission-group-children" style="background-color: var(--bg-card, #ffffff);">
                 @for (subPerm of group.others; track subPerm.permiso_id) {
                 <div class="permission-child-row d-flex align-items-center justify-content-between p-3"
                   style="transition: background-color 0.2s ease;">
-                  
+
                   <!-- Columna 1: Dot + Nombre (50% de ancho con indentación) -->
                   <div class="d-flex align-items-center gap-3" style="flex: 1 1 50%; padding-left: 3rem; min-width: 0;">
-                    <span class="submenu-dot" 
-                      [style.background-color]="getResourceColor(group.resource)" 
+                    <span class="submenu-dot" [style.background-color]="getResourceColor(group.resource)"
                       style="width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; opacity: 0.7;"></span>
                     <span class="text-body text-truncate" style="font-size: 0.86rem; font-weight: 500;">
                       {{ subPerm.descripcion }}
                     </span>
                   </div>
- 
+
                   <!-- Columna 2: Identificador Técnico Badge (30% de ancho) -->
-                  <div class="d-flex align-items-center justify-content-center px-2" style="flex: 1 1 30%; min-width: 0;">
+                  <div class="d-flex align-items-center justify-content-center px-2"
+                    style="flex: 1 1 30%; min-width: 0;">
                     <span class="permission-code-badge text-truncate" style="opacity: 0.85;">
                       {{ subPerm.codigo }}
                     </span>
                   </div>
- 
+
                   <!-- Columna 3: Estado Switch (20% de ancho) -->
-                  <div class="d-flex align-items-center justify-content-end gap-2" style="flex: 1 1 20%; flex-shrink: 0;">
-                    <label class="switch-toggle" 
+                  <div class="d-flex align-items-center justify-content-end gap-2"
+                    style="flex: 1 1 20%; flex-shrink: 0;">
+                    <label class="switch-toggle"
                       [class.switch-disabled]="!isPermissionSelected(group.read.permiso_id) || isSystemRole(selectedRoleForEdit()!.nombre) || !permissionsService.hasPermission('Roles', 'editar')">
                       <input type="checkbox" [checked]="isPermissionSelected(subPerm.permiso_id)"
                         [disabled]="!isPermissionSelected(group.read.permiso_id) || isSystemRole(selectedRoleForEdit()!.nombre) || !permissionsService.hasPermission('Roles', 'editar')"
@@ -480,7 +491,8 @@
         <div class="premium-input-group mb-4">
           <label class="premium-input-label">Rol del Sistema</label>
           <div class="input-icon-wrapper">
-            <span class="icon-svg icon-lock" style="width: 16px; height: 16px; color: var(--text-muted); margin-left: 12px; position: absolute; z-index: 2;"></span>
+            <span class="icon-svg icon-lock"
+              style="width: 16px; height: 16px; color: var(--text-muted); margin-left: 12px; position: absolute; z-index: 2;"></span>
             <select class="premium-input-control select-premium" formControlName="rol_id">
               @for (rol of availableRoles(); track rol.rol_id) {
               <option [value]="rol.rol_id">{{ rol.nombre }}</option>
@@ -595,7 +607,8 @@
 
       <!-- Icono de advertencia -->
       <div class="delete-modal-icon-wrap">
-        <span class="icon-svg icon-warning" style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
+        <span class="icon-svg icon-warning"
+          style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
       </div>
 
       <!-- Título y mensaje -->
@@ -704,7 +717,8 @@
         <div class="premium-input-group mb-4">
           <label class="premium-input-label">Rol del Sistema</label>
           <div class="input-icon-wrapper">
-            <span class="icon-svg icon-lock" style="width: 16px; height: 16px; color: var(--text-muted); margin-left: 12px; position: absolute; z-index: 2;"></span>
+            <span class="icon-svg icon-lock"
+              style="width: 16px; height: 16px; color: var(--text-muted); margin-left: 12px; position: absolute; z-index: 2;"></span>
             <select class="premium-input-control select-premium" formControlName="rol_id">
               @for (rol of availableRoles(); track rol.rol_id) {
               <option [value]="rol.rol_id">{{ rol.nombre }}</option>
@@ -745,7 +759,8 @@
         <div class="d-flex align-items-center gap-3">
           <div class="modal-header-icon-wrap icon-edit-theme"
             style="background: rgba(13, 110, 253, 0.1) !important; color: var(--primary) !important;">
-            <span class="icon-svg icon-lock" style="width: 22px; height: 22px; background-color: var(--primary);"></span>
+            <span class="icon-svg icon-lock"
+              style="width: 22px; height: 22px; background-color: var(--primary);"></span>
           </div>
           <div>
             <h5 class="fw-bold mb-0 text-primary fs-6">Crear Rol de Sistema</h5>
@@ -812,7 +827,8 @@
 
       <!-- Icono de advertencia -->
       <div class="delete-modal-icon-wrap">
-        <span class="icon-svg icon-warning" style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
+        <span class="icon-svg icon-warning"
+          style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
       </div>
 
       <!-- Título y mensaje -->
@@ -820,7 +836,8 @@
       <p class="delete-modal-message">
         ¿Estás seguro de que deseas eliminar permanentemente el rol de sistema
         <strong class="delete-modal-camera-name">{{ roleToDelete()?.nombre }}</strong>?
-        Esta acción removerá el rol y dejará sin permisos asociados a los usuarios que lo posean. Esta acción no se puede deshacer.
+        Esta acción removerá el rol y dejará sin permisos asociados a los usuarios que lo posean. Esta acción no se
+        puede deshacer.
       </p>
 
       <!-- Acciones -->

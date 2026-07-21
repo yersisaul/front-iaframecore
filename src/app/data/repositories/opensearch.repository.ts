@@ -81,23 +81,45 @@ export class OpenSearchRepository implements IMetadataRepository {
       mustFilters.push(this.buildTermFilter('genero', filters.genero));
     }
 
-    // 4. reconocimiento (Single-select)
-    if (filters.reconocimiento) {
-      mustFilters.push(this.buildTermFilter('reconocimiento', filters.reconocimiento));
+    // 4. reconocimiento (Single-select / Placa / Sujeto - Búsqueda flexible con/sin guion)
+    if (filters.reconocimiento && filters.reconocimiento.trim()) {
+      const val = filters.reconocimiento.trim();
+      const valClean = val.replace(/[^A-Za-z0-9]/g, '');
+      const variants = Array.from(new Set([
+        val,
+        val.toLowerCase(),
+        val.toUpperCase(),
+        valClean,
+        valClean.toLowerCase(),
+        valClean.toUpperCase()
+      ])).filter(Boolean);
+
+      const shouldClause: any[] = [
+        { terms: { 'reconocimiento': variants } },
+        { terms: { 'reconocimiento.keyword': variants } }
+      ];
+
+      variants.forEach(v => {
+        shouldClause.push({ wildcard: { 'reconocimiento.keyword': { value: `*${v}*`, case_insensitive: true } } });
+        shouldClause.push({ wildcard: { 'reconocimiento': { value: `*${v}*`, case_insensitive: true } } });
+      });
+
+      mustFilters.push({
+        bool: {
+          should: shouldClause,
+          minimum_should_match: 1
+        }
+      });
     }
 
-    // 5. colores (Multi-select OR - Nested for 'rostros', flat for others)
+    // 5. colores (Multi-select OR - Nested for all indices)
     if (filters.colores && filters.colores.length > 0) {
-      if (isRostros) {
-        mustFilters.push({
-          nested: {
-            path: 'colores',
-            query: this.buildTermsFilter('colores.color_text', filters.colores)
-          }
-        });
-      } else {
-        mustFilters.push(this.buildTermsFilter('colores.color_text', filters.colores));
-      }
+      mustFilters.push({
+        nested: {
+          path: 'colores',
+          query: this.buildTermsFilter('colores.color_text', filters.colores)
+        }
+      });
     }
 
     // 6. posturas (Multi-select OR - Nested - Only for 'personas' if present)
@@ -163,9 +185,28 @@ export class OpenSearchRepository implements IMetadataRepository {
     // 11. coincidenciaFiltro (Only for 'rostros' index)
     if (index === 'rostros' && filters.coincidenciaFiltro) {
       if (filters.coincidenciaFiltro === 'coincidencia') {
-        mustFilters.push({ exists: { field: 'reconocimiento' } });
+        mustFilters.push({
+          bool: {
+            must: [
+              { exists: { field: 'reconocimiento' } }
+            ],
+            must_not: [
+              { term: { 'reconocimiento.keyword': '' } },
+              { term: { 'reconocimiento': '' } }
+            ]
+          }
+        });
       } else if (filters.coincidenciaFiltro === 'sin_coincidencia') {
-        mustFilters.push({ bool: { must_not: { exists: { field: 'reconocimiento' } } } });
+        mustFilters.push({
+          bool: {
+            should: [
+              { bool: { must_not: { exists: { field: 'reconocimiento' } } } },
+              { term: { 'reconocimiento.keyword': '' } },
+              { term: { 'reconocimiento': '' } }
+            ],
+            minimum_should_match: 1
+          }
+        });
       }
     }
 
@@ -217,7 +258,7 @@ export class OpenSearchRepository implements IMetadataRepository {
           knn: {
             embedding: {
               vector: filters.imageEmbedding,
-              k: pageSize * 3,
+              k: Math.max(100, (page * pageSize) + pageSize),
               ...(mustFilters.length > 0 ? { filter: { bool: { filter: mustFilters } } } : {})
             }
           }
@@ -336,11 +377,21 @@ export class OpenSearchRepository implements IMetadataRepository {
   }
 
   private buildTermFilter(field: string, value: any): any {
+    const strVal = String(value);
+    const variants = Array.from(new Set([
+      strVal,
+      strVal.toLowerCase(),
+      strVal.toUpperCase(),
+      strVal.charAt(0).toUpperCase() + strVal.slice(1).toLowerCase()
+    ]));
+
     return {
       bool: {
         should: [
-          { term: { [field]: value } },
-          { term: { [`${field}.keyword`]: value } }
+          { terms: { [field]: variants } },
+          { terms: { [`${field}.keyword`]: variants } },
+          { term: { [field]: { value: strVal, case_insensitive: true } } },
+          { term: { [`${field}.keyword`]: { value: strVal, case_insensitive: true } } }
         ],
         minimum_should_match: 1
       }
@@ -348,11 +399,22 @@ export class OpenSearchRepository implements IMetadataRepository {
   }
 
   private buildTermsFilter(field: string, values: any[]): any {
+    const rawList = Array.isArray(values) ? values : [values];
+    const expandedVariants = new Set<string>();
+    rawList.forEach(v => {
+      const s = String(v);
+      expandedVariants.add(s);
+      expandedVariants.add(s.toLowerCase());
+      expandedVariants.add(s.toUpperCase());
+      expandedVariants.add(s.charAt(0).toUpperCase() + s.slice(1).toLowerCase());
+    });
+    const variantsList = Array.from(expandedVariants);
+
     return {
       bool: {
         should: [
-          { terms: { [field]: values } },
-          { terms: { [`${field}.keyword`]: values } }
+          { terms: { [field]: variantsList } },
+          { terms: { [`${field}.keyword`]: variantsList } }
         ],
         minimum_should_match: 1
       }

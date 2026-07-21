@@ -13,10 +13,10 @@
       </button>
 
       <div>
-        <h2 class="fw-bold mb-0 text-body fs-3">
+        <h2 class="fw-bold mb-0 header-page-title text-body">
           Listas de Control de {{ listType() === 'face_recognition' ? 'Rostros' : 'Placas' }}
         </h2>
-        <p class="text-muted mb-0 small">
+        <p class="text-muted mb-0 header-page-subtitle mt-1">
           Gestión global de watchlists y control de alertas en todos los nodos.
         </p>
       </div>
@@ -130,11 +130,12 @@
 
           <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-2">
             <!-- Barra de Búsqueda Unificada y Botón de Filtros Agrupados -->
-            <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border px-2 py-1">
+            <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
               <div class="search-input-wrapper position-relative d-flex align-items-center ps-1">
                 <span class="icon-svg icon-search search-icon-prefix text-muted"
                   style="width: 18px; height: 18px; opacity: 0.5;"></span>
-                <input type="text" [formControl]="searchControl" [placeholder]="listType() === 'plate_recognition' ? 'Buscar placa...' : 'Buscar sujeto...'"
+                <input type="text" [formControl]="searchControl"
+                  [placeholder]="listType() === 'plate_recognition' ? 'Buscar placa...' : 'Buscar sujeto...'"
                   class="search-input-control border-0 ms-2" style="font-size: 0.82rem; outline: none; width: 180px;" />
               </div>
 
@@ -321,11 +322,14 @@
               }
 
               <!-- Subject Avatar/Image -->
-              <div class="subject-card-img-wrapper mb-3">
-                <img [src]="detail.metadata?.url_img || 'logo.svg'"
+              <div class="subject-card-img-wrapper mb-3 position-relative d-flex align-items-center justify-content-center">
+                <div class="placeholder-img-icon">
+                  <span class="fallback-text" style="font-size: 0.55rem; line-height: 1;">SIN IMAGEN</span>
+                </div>
+                <img [src]="detail.metadata?.url_img || ''" (error)="onImageError($event)"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'"
-                  class="object-fit-cover border shadow-sm subject-card-avatar" />
+                  class="object-fit-cover border shadow-sm subject-card-avatar position-relative" style="z-index: 1;" />
               </div>
 
               <!-- Subject Information -->
@@ -387,7 +391,7 @@
     @if (selectedSubjectDetail(); as activeDetail) {
     <!-- Scroll hint wrapper unifying header and scrollable body -->
     <div class="drawer-scroll-wrapper position-relative flex-grow-1 d-flex flex-column overflow-hidden">
-      
+
       <div class="drawer-body p-4 scroll-container flex-grow-1 overflow-y-auto" (scroll)="onDrawerScroll($event)">
         <!-- Header inside the scrollable body to unify paddings -->
         <div class="drawer-header d-flex align-items-center justify-content-between p-0 mb-4">
@@ -405,12 +409,15 @@
             <!-- Columna Izquierda: Foto y Nombre/Identidad -->
             <div class="identity-column-left">
               <!-- Clean Avatar Header -->
-              <div class="identity-avatar-header">
-                <img [src]="activeDetail.metadata?.url_img || 'logo.svg'"
-                  class="identity-avatar object-fit-cover bg-body"
+              <div class="identity-avatar-header position-relative d-flex align-items-center justify-content-center">
+                <div class="placeholder-img-icon">
+                  <span class="fallback-text" style="font-size: 0.65rem;">SIN IMAGEN</span>
+                </div>
+                <img [src]="activeDetail.metadata?.url_img || ''" (error)="onImageError($event)"
+                  class="identity-avatar object-fit-cover bg-body position-relative" style="z-index: 1;"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'"
-                  (click)="openFullscreenImage(activeDetail.metadata?.url_img || 'logo.svg', $event)" />
+                  (click)="openFullscreenImage(activeDetail.metadata?.url_img || '', $event)" />
               </div>
 
               <!-- Name / Plate with Edit Trigger -->
@@ -540,8 +547,11 @@
                 [class.border-start-rose]="hit.confiabilidad < 0.5" (mouseenter)="setHoveredHit(hit)"
                 (mouseleave)="setHoveredHit(null)">
                 <div class="d-flex gap-3 align-items-center">
-                  <div class="timeline-img-wrapper flex-shrink-0 position-relative">
-                    <img [src]="hit.imagen" class="border bg-dark timeline-sighting-img shadow-xs" />
+                  <div class="timeline-img-wrapper flex-shrink-0 position-relative d-flex align-items-center justify-content-center">
+                    <div class="placeholder-img-icon">
+                      <span class="fallback-text" style="font-size: 0.5rem; line-height: 1;">SIN IMAGEN</span>
+                    </div>
+                    <img [src]="hit.imagen" (error)="onImageError($event)" class="border bg-dark timeline-sighting-img shadow-xs position-relative" style="z-index: 1;" />
                   </div>
                   <div class="text-truncate flex-grow-1">
                     <div class="d-flex justify-content-between align-items-start gap-2 mb-2">

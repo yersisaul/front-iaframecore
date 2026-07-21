@@ -9,6 +9,7 @@ import { Metadatos } from './presentation/views/metadatos/metadatos';
 import { Camaras } from './presentation/views/camaras/camaras';
 import { Listas } from './presentation/views/listas/listas';
 import { Eventos } from './presentation/views/eventos/eventos';
+import { Monitoreo } from './presentation/views/monitoreo/monitoreo';
 import { authGuard } from './presentation/guards/auth.guard';
 
 export const routes: Routes = [
@@ -30,7 +31,8 @@ export const routes: Routes = [
             { path: 'metadatos/:indexName', component: Metadatos },
             { path: 'listas', redirectTo: 'listas/rostros', pathMatch: 'full' },
             { path: 'listas/:listType', component: Listas, data: { permissions: ['lists.read'] } },
-            { path: 'eventos', component: Eventos }
+            { path: 'eventos', component: Eventos },
+            { path: 'monitoreo', component: Monitoreo }
         ]
     },
     { path: '**', redirectTo: '/dashboard' } // Redirige a dashboard para cualquier ruta no definida

@@ -62,6 +62,11 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   readonly currentPage = this.metadataService.currentPage;
   readonly pageSize = this.metadataService.pageSize;
   readonly newRecordIds = this.metadataService.newRecordIds;
+  readonly bufferedEvents = this.metadataService.bufferedEvents;
+
+  applyBufferedEvents(): void {
+    this.metadataService.applyBufferedEvents();
+  }
 
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
 
@@ -311,12 +316,47 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     else { this.timeHastaStr.set(newTs); this._applyDateTimeToFilter('hasta'); }
   }
 
+  private syncDateTimePickerStrings(desde: Date | null, hasta: Date | null): void {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    if (desde) {
+      const d = new Date(desde);
+      this.dateDesdeStr.set(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+      this.timeDesdeStr.set(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    } else {
+      this.dateDesdeStr.set('');
+      this.timeDesdeStr.set('00:00');
+    }
+
+    if (hasta) {
+      const h = new Date(hasta);
+      this.dateHastaStr.set(`${h.getFullYear()}-${pad(h.getMonth() + 1)}-${pad(h.getDate())}`);
+      this.timeHastaStr.set(`${pad(h.getHours())}:${pad(h.getMinutes())}`);
+    } else {
+      this.dateHastaStr.set('');
+      this.timeHastaStr.set('23:59');
+    }
+  }
+
   private _applyDateTimeToFilter(field: 'desde' | 'hasta'): void {
     const dateStr = field === 'desde' ? this.dateDesdeStr() : this.dateHastaStr();
     const timeStr = field === 'desde' ? this.timeDesdeStr() : this.timeHastaStr();
-    if (!dateStr) return;
-    const combined = `${dateStr}T${timeStr || '00:00'}`;
-    const date = new Date(combined);
+    if (!dateStr) {
+      if (field === 'desde') this.tempFilters.update(f => ({ ...f, timestampDesde: null }));
+      else this.tempFilters.update(f => ({ ...f, timestampHasta: null }));
+      return;
+    }
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+
+    const timeParts = (timeStr || (field === 'desde' ? '00:00' : '23:59')).split(':');
+    const hour = parseInt(timeParts[0], 10) || 0;
+    const min = parseInt(timeParts[1], 10) || 0;
+    const sec = field === 'hasta' ? 59 : 0;
+
+    const date = new Date(year, month, day, hour, min, sec);
     if (isNaN(date.getTime())) return;
     if (field === 'desde') this.tempFilters.update(f => ({ ...f, timestampDesde: date }));
     else this.tempFilters.update(f => ({ ...f, timestampHasta: date }));
@@ -451,6 +491,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
         coincidenciaFiltro: f.coincidenciaFiltro || 'all'
       });
       this.searchControl.setValue(f.search || '', { emitEvent: false });
+      this.syncDateTimePickerStrings(f.timestampDesde, f.timestampHasta);
     });
 
     // Unified search debounce subscriber
@@ -503,6 +544,13 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
         queryParamsHandling: 'merge'
       });
     });
+  }
+
+  onImageError(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (target) {
+      target.style.display = 'none';
+    }
   }
 
   ngOnInit(): void {
@@ -601,8 +649,10 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
         multiplier = 10;
       }
       this.columns.set(newCols);
-      this.metadataService.setPageSize(newCols * multiplier);
-      this.metadataService.setPage(1);
+      const newSize = newCols * multiplier;
+      if (this.pageSize() !== newSize) {
+        this.metadataService.setPageSize(newSize);
+      }
     }
   }
 
@@ -699,6 +749,33 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
 
   selectCoincidenciaFilter(value: 'all' | 'coincidencia' | 'sin_coincidencia'): void {
     this.tempFilters.update(f => ({ ...f, coincidenciaFiltro: value }));
+    this.activeDropdown.set(null);
+  }
+
+  // --- Filtro de Placa en Tiempo Real (Vehículos) ---
+  onRealtimePlateInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    let raw = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (raw.length > 6) {
+      raw = raw.slice(0, 6);
+    }
+    let formatted = raw;
+    if (raw.length > 3) {
+      formatted = `${raw.slice(0, 3)}-${raw.slice(3)}`;
+    }
+    input.value = formatted;
+
+    const val = formatted.trim();
+    this.tempFilters.update(f => ({ ...f, reconocimiento: val || null }));
+    this.metadataService.updateFilters(this.tempFilters());
+    this.metadataService.setPage(1);
+  }
+
+  clearPlateFilter(event?: Event): void {
+    if (event) event.stopPropagation();
+    this.tempFilters.update(f => ({ ...f, reconocimiento: null }));
+    this.metadataService.updateFilters(this.tempFilters());
+    this.metadataService.setPage(1);
     this.activeDropdown.set(null);
   }
 

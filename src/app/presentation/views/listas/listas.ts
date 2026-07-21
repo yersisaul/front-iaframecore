@@ -216,6 +216,13 @@ export class Listas implements OnInit, OnDestroy {
     });
   }
 
+  onImageError(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (target) {
+      target.style.display = 'none';
+    }
+  }
+
   ngOnInit(): void {
     this.listService.isViewActive.set(true);
     this.listService.loadLists().subscribe();

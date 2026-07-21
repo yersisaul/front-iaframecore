@@ -119,6 +119,18 @@
       </ul>
     </li>
 
+    <!-- 5.5. Monitoreo -->
+    <li class="nav-item mb-2">
+      <a routerLink="/dashboard/monitoreo" routerLinkActive="active"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
+        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Monitoreo' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-grid nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()">Visor Táctico</span>
+      </a>
+    </li>
+
     <!-- 6. Eventos -->
     <li class="nav-item mb-2">
       <a routerLink="/dashboard/eventos" routerLinkActive="active"
