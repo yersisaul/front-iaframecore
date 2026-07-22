@@ -1,0 +1,39 @@
+@if (show) {
+<div class="delete-camera-modal-overlay" (click)="onCancel()" aria-modal="true" role="dialog">
+  <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
+
+    <!-- Icono de advertencia -->
+    <div class="delete-modal-icon-wrap">
+      <span class="icon-svg icon-warning"
+        style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
+    </div>
+
+    <!-- Título y mensaje -->
+    <h5 class="delete-modal-title">{{ title }}</h5>
+    <p class="delete-modal-message">
+      {{ messagePrefix }}
+      @if (itemName) {
+      <strong class="delete-modal-camera-name">{{ itemName }}</strong>
+      }
+      {{ messageSuffix }}
+    </p>
+
+    <!-- Acciones -->
+    <div class="delete-modal-actions">
+      <button class="delete-modal-btn-cancel" (click)="onCancel()" [disabled]="isDeleting">
+        {{ cancelText }}
+      </button>
+      <button class="delete-modal-btn-confirm" (click)="onConfirm()" [disabled]="isDeleting">
+        @if (isDeleting) {
+        <span class="delete-modal-spinner"></span>
+        Eliminando...
+        } @else {
+        <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+        {{ confirmText }}
+        }
+      </button>
+    </div>
+
+  </div>
+</div>
+}

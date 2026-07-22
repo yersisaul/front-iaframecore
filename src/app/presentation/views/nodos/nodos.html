@@ -3,77 +3,30 @@
   <!-- ══════════════════════════════════════════════════════
        CABECERA REFACTORIZADA — 2 FILAS
        ══════════════════════════════════════════════════════ -->
-  <div class="view-header mb-4">
+  <!-- CABECERA REFACTORIZADA DRY — 2 FILAS -->
+  <app-page-header
+    title="Gestión de Nodos"
+    [subtitle]="'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + filteredHosts().length + '</span> nodos de cómputo registrados.'">
 
-    <!-- ─── FILA 1: Identidad + Controles principales ─── -->
-    <div class="header-row-top d-flex align-items-center justify-content-between gap-3">
+    <!-- Ranura para Fila 1 Derecha (Tabs y Migrar) -->
+    <ng-container header-actions>
+      <!-- Tabs de Vista (Tarjetas / Lista) REFACTORIZADO DRY -->
+      <app-view-mode-toggle [viewMode]="viewMode()" (viewModeChange)="setViewMode($event)"></app-view-mode-toggle>
 
-      <!-- IZQUIERDA: Sidebar toggle + Identidad de página -->
-      <div class="d-flex align-items-center gap-3">
+      <!-- Botón de Migrar Configuración -->
+      @if (permissionsService.hasPermission('Hosts', 'editar')) {
+      <button class="btn-migrate-config" (click)="openMigrateModal()">
+        <span class="icon-svg icon-migrate-arrows" style="width: 15px; height: 15px;"></span>
+        <span>Migrar Configuración</span>
+      </button>
+      }
+    </ng-container>
 
-        <!-- Botón de Collapse Sidebar (sin cambios) -->
-        <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
-          (click)="toggleSidebar()" aria-label="Toggle Sidebar">
-          @if (isSidebarCollapsed()) {
-          <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
-          } @else {
-          <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
-          }
-        </button>
-
-        <!-- Bloque de identidad: título + subtítulo -->
-        <div class="header-identity">
-          <h2 class="fw-bold mb-0 header-page-title">Gestión de Nodos</h2>
-          <p class="text-muted mb-0 header-page-subtitle mt-1">
-            Se encontraron <span class="fw-semibold text-primary">{{ filteredHosts().length }}</span> nodos de cómputo
-            registrados.
-          </p>
-        </div>
-      </div>
-
-      <!-- DERECHA: Tabs de vista + Separador + Botón Migrar -->
-      <div class="d-flex align-items-center gap-3">
-
-        <!-- Tabs de Vista (Tarjetas / Lista) -->
-        <div class="view-tabs-group d-flex align-items-center gap-1">
-          <button class="btn-premium-tab" [class.active]="viewMode() === 'cards'" (click)="setViewMode('cards')">
-            <span class="icon-svg icon-grid" style="width: 14px; height: 14px;"></span>
-            <span>Tarjetas</span>
-          </button>
-          <button class="btn-premium-tab" [class.active]="viewMode() === 'list'" (click)="setViewMode('list')">
-            <span class="icon-svg icon-list" style="width: 14px; height: 14px;"></span>
-            <span>Lista</span>
-          </button>
-        </div>
-
-        <!-- Separador vertical -->
-        <div class="header-separator"></div>
-
-        <!-- Botón de Migrar Configuración -->
-        @if (permissionsService.hasPermission('Hosts', 'editar')) {
-        <button class="btn-migrate-config" (click)="openMigrateModal()">
-          <span class="icon-svg icon-migrate-arrows" style="width: 15px; height: 15px;"></span>
-          <span>Migrar Configuración</span>
-        </button>
-        }
-
-      </div>
-    </div>
-    <!-- /FILA 1 -->
-
-    <!-- ─── FILA 2: Búsqueda + Paginación ─── -->
-    <div class="header-row-bottom d-flex align-items-center gap-3 mt-3">
-
+    <!-- Ranura para Fila 2 (Búsqueda + Paginación) -->
+    <div header-bottom class="header-row-bottom d-flex align-items-center gap-3 mt-3">
       <!-- Barra de Búsqueda + Botón de Filtros -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
-        <!-- Input wrapper ocupa todo el espacio libre, empujando el filtro al extremo -->
-        <div class="search-input-wrapper d-flex align-items-center flex-grow-1">
-          <span class="icon-svg icon-search search-icon-prefix text-muted flex-shrink-0"
-            style="width: 18px; height: 18px; opacity: 0.5;"></span>
-          <input type="text" [formControl]="searchControl" placeholder="Buscar por hostname o IP..."
-            class="search-input-control border-0 ms-2" style="outline: none; flex: 1; min-width: 0;" />
-        </div>
-        <!-- Botón filtro al extremo derecho del searchbar -->
+        <app-search-input [control]="searchControl" placeholder="Buscar por hostname o IP..."></app-search-input>
         <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
           (click)="toggleFilterPanel()" [class.active]="hasActiveFilters()" [class.open]="showFilterPanel()"
           title="Filtros avanzados" aria-label="Filtros avanzados">
@@ -97,218 +50,194 @@
           }
         </select>
       </div>
-
     </div>
-    <!-- /FILA 2 -->
-
-  </div>
+  </app-page-header>
   <!-- /view-header -->
 
-  <!-- Backdrop Overlay para el Drawer Superior -->
+  <!-- Barra de Filtros Horizontal -->
   @if (showFilterPanel()) {
-  <div class="drawer-backdrop" (click)="toggleFilterPanel()"></div>
-  }
+  <div class="horizontal-filters-bar mb-4">
+    <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
-  <!-- Modal / Drawer Superior Deslizable -->
-  <div class="top-drawer" [class.open]="showFilterPanel()">
-    <div class="drawer-content p-4">
-      <div class="container-fluid">
-        <!-- Drawer Header -->
-        <div class="d-flex justify-content-between align-items-start mb-3 pb-3">
-          <div>
-            <div class="d-flex align-items-center gap-2">
-              <span class="icon-svg drawer-header-icon icon-filter"></span>
-              <h5 class="fw-bold mb-0">Filtros Avanzados</h5>
-            </div>
-            <p class="text-muted small mb-0" style="margin-top: 2px;">Filtra y organiza los nodos de tu red de cómputo
-              en tiempo real.</p>
-          </div>
-          <button class="btn-ghost close-drawer-btn" (click)="toggleFilterPanel()" aria-label="Cerrar filtros">
-            <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
+      <!-- 1. ESTADO DE ACTIVIDAD -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilterStatus() !== 'all'" (click)="toggleDropdown('status', $event)">
+          <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>
+            Estado: {{ tempFilterStatus() === 'all' ? 'Todos' : (tempFilterStatus() === 'active' || tempFilterStatus()
+            === 'online' ? 'Online' : 'Offline') }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'status'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'status') {
+        <div class="filter-dropdown-menu dropdown-status p-2" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterStatus() === 'all'"
+            (click)="selectFilterValue('status', 'all', $event)">
+            Todos los Estados
+          </button>
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+            [class.active]="tempFilterStatus() === 'active' || tempFilterStatus() === 'online'"
+            (click)="selectFilterValue('status', 'active', $event)">
+            Online
+          </button>
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+            [class.active]="tempFilterStatus() === 'inactive' || tempFilterStatus() === 'offline'"
+            (click)="selectFilterValue('status', 'inactive', $event)">
+            Offline
           </button>
         </div>
-
-        <!-- Cuadrícula de Filtros Bento Style -->
-        <div class="filters-bento-grid">
-          <!-- Filtro OS -->
-          <div class="filter-cell position-relative" (click)="toggleDropdown('os', $event)">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-nodos"></span>
-              <span class="filter-lbl mb-0">Sistema Operativo</span>
-            </div>
-            <div class="filter-display-val">
-              <span class="filter-current-value">{{ tempFilterOS() === 'all' ? 'Todos los Sistemas' : tempFilterOS()
-                }}</span>
-              <span class="icon-svg filter-chevron icon-chevron-right"
-                [class.rotated]="activeDropdown() === 'os'"></span>
-            </div>
-            @if (activeDropdown() === 'os') {
-            <div class="custom-dropdown-options-menu">
-              <div class="custom-dropdown-option" [class.active]="tempFilterOS() === 'all'"
-                (click)="selectFilterValue('os', 'all', $event)">
-                Todos los Sistemas
-              </div>
-              @for (os of filterOptions()?.os || []; track os) {
-              <div class="custom-dropdown-option" [class.active]="tempFilterOS() === os"
-                (click)="selectFilterValue('os', os, $event)">
-                {{ os }}
-              </div>
-              }
-            </div>
-            }
-          </div>
-
-          <div class="filter-cell position-relative" (click)="toggleDropdown('arch', $event)">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-cpu"></span>
-              <span class="filter-lbl mb-0">Arquitectura</span>
-            </div>
-            <div class="filter-display-val">
-              <span class="filter-current-value">{{ tempFilterArch() === 'all' ? 'Todas las Arquitecturas' :
-                tempFilterArch() }}</span>
-              <span class="icon-svg filter-chevron icon-chevron-right"
-                [class.rotated]="activeDropdown() === 'arch'"></span>
-            </div>
-            @if (activeDropdown() === 'arch') {
-            <div class="custom-dropdown-options-menu">
-              <div class="custom-dropdown-option" [class.active]="tempFilterArch() === 'all'"
-                (click)="selectFilterValue('arch', 'all', $event)">
-                Todas las Arquitecturas
-              </div>
-              @for (arch of filterOptions()?.arch || []; track arch) {
-              <div class="custom-dropdown-option" [class.active]="tempFilterArch() === arch"
-                (click)="selectFilterValue('arch', arch, $event)">
-                {{ arch }}
-              </div>
-              }
-            </div>
-            }
-          </div>
-
-          <div class="filter-cell position-relative" (click)="toggleDropdown('gpu', $event)">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-gpu"></span>
-              <span class="filter-lbl mb-0">GPU</span>
-            </div>
-            <div class="filter-display-val">
-              <span class="filter-current-value">{{ tempFilterGPU() === 'all' ? 'Todas las GPUs' : tempFilterGPU()
-                }}</span>
-              <span class="icon-svg filter-chevron icon-chevron-right"
-                [class.rotated]="activeDropdown() === 'gpu'"></span>
-            </div>
-            @if (activeDropdown() === 'gpu') {
-            <div class="custom-dropdown-options-menu">
-              <div class="custom-dropdown-option" [class.active]="tempFilterGPU() === 'all'"
-                (click)="selectFilterValue('gpu', 'all', $event)">
-                Todas las GPUs
-              </div>
-              @for (gpu of filterOptions()?.gpu || []; track gpu) {
-              <div class="custom-dropdown-option" [class.active]="tempFilterGPU() === gpu"
-                (click)="selectFilterValue('gpu', gpu, $event)">
-                {{ gpu }}
-              </div>
-              }
-            </div>
-            }
-          </div>
-
-          <div class="filter-cell position-relative" (click)="toggleDropdown('vram', $event)">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-gpu"></span>
-              <span class="filter-lbl mb-0">Memoria VRAM</span>
-            </div>
-            <div class="filter-display-val">
-              <span class="filter-current-value">{{ tempFilterVram() === 'all' ? 'Todas las capacidades' :
-                tempFilterVram() }}</span>
-              <span class="icon-svg filter-chevron icon-chevron-right"
-                [class.rotated]="activeDropdown() === 'vram'"></span>
-            </div>
-            @if (activeDropdown() === 'vram') {
-            <div class="custom-dropdown-options-menu">
-              <div class="custom-dropdown-option" [class.active]="tempFilterVram() === 'all'"
-                (click)="selectFilterValue('vram', 'all', $event)">
-                Todas las capacidades
-              </div>
-              @for (vram of filterOptions()?.vram || []; track vram) {
-              <div class="custom-dropdown-option" [class.active]="tempFilterVram() === vram"
-                (click)="selectFilterValue('vram', vram, $event)">
-                {{ vram }}
-              </div>
-              }
-            </div>
-            }
-          </div>
-
-          <div class="filter-cell position-relative" (click)="toggleDropdown('version', $event)">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-info-circle"></span>
-              <span class="filter-lbl mb-0">Versión</span>
-            </div>
-            <div class="filter-display-val">
-              <span class="filter-current-value">{{ tempFilterVersion() === 'all' ? 'Todas las versiones' : 'v' +
-                tempFilterVersion() }}</span>
-              <span class="icon-svg filter-chevron icon-chevron-right"
-                [class.rotated]="activeDropdown() === 'version'"></span>
-            </div>
-            @if (activeDropdown() === 'version') {
-            <div class="custom-dropdown-options-menu">
-              <div class="custom-dropdown-option" [class.active]="tempFilterVersion() === 'all'"
-                (click)="selectFilterValue('version', 'all', $event)">
-                Todas las versiones
-              </div>
-              @for (ver of filterOptions()?.version || []; track ver) {
-              <div class="custom-dropdown-option" [class.active]="tempFilterVersion() === ver"
-                (click)="selectFilterValue('version', ver, $event)">
-                v{{ ver }}
-              </div>
-              }
-            </div>
-            }
-          </div>
-
-          <!-- Filtro Estado -->
-          <div class="filter-cell position-relative" (click)="toggleDropdown('status', $event)">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-usuarios"></span>
-              <span class="filter-lbl mb-0">Estado de Actividad</span>
-            </div>
-            <div class="filter-display-val">
-              <span class="filter-current-value">{{ tempFilterStatus() === 'all' ? 'Todos los estados' :
-                (tempFilterStatus() === 'active' ? 'Online' : 'Offline') }}</span>
-              <span class="icon-svg filter-chevron icon-chevron-right"
-                [class.rotated]="activeDropdown() === 'status'"></span>
-            </div>
-            @if (activeDropdown() === 'status') {
-            <div class="custom-dropdown-options-menu">
-              <div class="custom-dropdown-option" [class.active]="tempFilterStatus() === 'all'"
-                (click)="selectFilterValue('status', 'all', $event)">
-                Todos los estados
-              </div>
-              <div class="custom-dropdown-option" [class.active]="tempFilterStatus() === 'active'"
-                (click)="selectFilterValue('status', 'active', $event)">
-                Online
-              </div>
-              <div class="custom-dropdown-option" [class.active]="tempFilterStatus() === 'inactive'"
-                (click)="selectFilterValue('status', 'inactive', $event)">
-                Offline
-              </div>
-            </div>
-            }
-          </div>
-        </div>
-
-        <!-- Acciones del Modal: Limpiar y Aplicar -->
-        <div class="d-flex gap-3 mt-4 pt-3 w-100">
-          <button class="btn btn-clear-filters flex-fill py-2.5" (click)="resetFilters()">
-            Limpiar Filtros
-          </button>
-          <button class="btn btn-apply-filters flex-fill py-2.5" (click)="applyFilters()">
-            Aplicar Cambios
-          </button>
-        </div>
+        }
       </div>
+
+      <!-- 2. SISTEMA OPERATIVO -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilterOS() !== 'all'" (click)="toggleDropdown('os', $event)">
+          <span class="icon-svg icon-nodos filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Sistema: {{ tempFilterOS() === 'all' ? 'Todos' : tempFilterOS() }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'os'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'os') {
+        <div class="filter-dropdown-menu dropdown-os p-2" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterOS() === 'all'"
+            (click)="selectFilterValue('os', 'all', $event)">
+            Todos los Sistemas
+          </button>
+          @for (os of filterOptions()?.os || []; track os) {
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded text-capitalize"
+            [class.active]="tempFilterOS() === os" (click)="selectFilterValue('os', os, $event)">
+            {{ os }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- 3. ARQUITECTURA -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilterArch() !== 'all'" (click)="toggleDropdown('arch', $event)">
+          <span class="icon-svg icon-cpu filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Arquitectura: {{ tempFilterArch() === 'all' ? 'Todas' : tempFilterArch() }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'arch'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'arch') {
+        <div class="filter-dropdown-menu dropdown-arch p-2" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterArch() === 'all'"
+            (click)="selectFilterValue('arch', 'all', $event)">
+            Todas las Arquitecturas
+          </button>
+          @for (arch of filterOptions()?.arch || []; track arch) {
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterArch() === arch"
+            (click)="selectFilterValue('arch', arch, $event)">
+            {{ arch }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- 4. GPU -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilterGPU() !== 'all'" (click)="toggleDropdown('gpu', $event)">
+          <span class="icon-svg icon-gpu filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>GPU: {{ tempFilterGPU() === 'all' ? 'Todas' : tempFilterGPU() }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'gpu'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'gpu') {
+        <div class="filter-dropdown-menu dropdown-gpu p-2" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterGPU() === 'all'"
+            (click)="selectFilterValue('gpu', 'all', $event)">
+            Todas las GPUs
+          </button>
+          @for (gpu of filterOptions()?.gpu || []; track gpu) {
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterGPU() === gpu"
+            (click)="selectFilterValue('gpu', gpu, $event)">
+            {{ gpu }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- 5. MEMORIA VRAM -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilterVram() !== 'all'" (click)="toggleDropdown('vram', $event)">
+          <span class="icon-svg icon-gpu filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>VRAM: {{ tempFilterVram() === 'all' ? 'Todas' : tempFilterVram() }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'vram'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'vram') {
+        <div class="filter-dropdown-menu dropdown-vram p-2" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterVram() === 'all'"
+            (click)="selectFilterValue('vram', 'all', $event)">
+            Todas las Capacidades
+          </button>
+          @for (vram of filterOptions()?.vram || []; track vram) {
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterVram() === vram"
+            (click)="selectFilterValue('vram', vram, $event)">
+            {{ vram }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- 6. VERSIÓN -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilterVersion() !== 'all'" (click)="toggleDropdown('version', $event)">
+          <span class="icon-svg icon-info-circle filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Versión: {{ tempFilterVersion() === 'all' ? 'Todas' : 'v' + tempFilterVersion() }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'version'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'version') {
+        <div class="filter-dropdown-menu dropdown-version p-2" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterVersion() === 'all'"
+            (click)="selectFilterValue('version', 'all', $event)">
+            Todas las Versiones
+          </button>
+          @for (ver of filterOptions()?.version || []; track ver) {
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterVersion() === ver"
+            (click)="selectFilterValue('version', ver, $event)">
+            v{{ ver }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- BOTONES DE APLICAR Y LIMPIAR FILTROS -->
+      <div class="filter-actions-group d-flex align-items-center gap-2 ms-auto">
+        @if (hasActiveFilters()) {
+        <button type="button" (click)="resetFilters()"
+          class="btn btn-outline-secondary btn-premium-action d-flex align-items-center gap-2">
+          <span class="icon-svg icon-close" style="width: 14px; height: 14px;"></span>
+          Limpiar Filtros
+        </button>
+        }
+
+        @if (hasPendingFilterChanges()) {
+        <button type="button" (click)="applyFilters()"
+          class="btn btn-primary btn-premium-action d-flex align-items-center gap-2">
+          <span class="icon-svg icon-save" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+          Aplicar Filtros
+        </button>
+        }
+      </div>
+
     </div>
   </div>
+  }
 
   @if (viewMode() === 'cards') {
   <!-- CSS Grid Bento Box -->
@@ -347,6 +276,12 @@
                 [class.status-badge-online]="host.status === 'active' || host.status === 'online'"
                 [class.status-badge-offline]="host.status !== 'active' && host.status !== 'online'">
                 {{ (host.status === 'active' || host.status === 'online') ? 'Online' : 'Offline' }}
+              </span>
+              <!-- Cantidad de Cámaras -->
+              <span class="camera-count-badge" [class.has-cameras]="getCameraCount(host.fingerprint) > 0"
+                [title]="getCameraCount(host.fingerprint) + ' cámara(s) asignada(s)'">
+                <span class="icon-svg icon-camara camera-badge-icon"></span>
+                <span class="camera-count-num">{{ getCameraCount(host.fingerprint) }}</span>
               </span>
               <!-- Versión visualmente renovada -->
               <span class="version-tag">v{{ host.version }}</span>
@@ -530,6 +465,7 @@
           <tr>
             <th scope="col" class="text-muted small fw-bold">ESTADO</th>
             <th scope="col" class="text-muted small fw-bold">HOSTNAME</th>
+            <th scope="col" class="text-muted small fw-bold text-center">CÁMARAS</th>
             <th scope="col" class="text-muted small fw-bold text-center">VERSIÓN</th>
             <th scope="col" class="text-muted small fw-bold">DIRECCIÓN IP</th>
             <th scope="col" class="text-muted small fw-bold text-center">SO</th>
@@ -564,6 +500,14 @@
                 <span class="fw-bold text-body text-truncate d-block" style="font-size: 0.88rem;"
                   [title]="host.hostname">{{ host.hostname }}</span>
               </div>
+            </td>
+            <!-- Cámaras -->
+            <td class="text-center">
+              <span class="camera-count-badge" [class.has-cameras]="getCameraCount(host.fingerprint) > 0"
+                [title]="getCameraCount(host.fingerprint) + ' cámara(s) asignada(s)'">
+                <span class="icon-svg icon-camara camera-badge-icon"></span>
+                <span class="camera-count-num">{{ getCameraCount(host.fingerprint) }}</span>
+              </span>
             </td>
             <!-- Versión -->
             <td class="text-center">
@@ -698,44 +642,13 @@
   </div>
   }
 
-  <!-- Paginación con Ghost Buttons y Chevrons SVG -->
-  @if (totalPages() > 1) {
-  <div class="d-flex justify-content-center align-items-center gap-4 mt-5">
-    <nav aria-label="Page navigation">
-      <ul class="pagination pagination-md align-items-center" style="gap: 6px;">
-        <li class="page-item" [class.disabled]="currentPage() === 1">
-          <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center" (click)="prevPage()"
-            aria-label="Previous">
-            <span class="icon-svg icon-chevron-left" style="width: 18px; height: 18px;"></span>
-          </button>
-        </li>
-        @for (page of visiblePages(); track page) {
-        <li class="page-item" [class.active]="currentPage() === page">
-          <button class="page-link-ghost" (click)="setPage(page)">
-            {{ page }}
-          </button>
-        </li>
-        }
-        <li class="page-item" [class.disabled]="currentPage() === totalPages()">
-          <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center" (click)="nextPage()"
-            aria-label="Next">
-            <span class="icon-svg icon-chevron-right" style="width: 18px; height: 18px;"></span>
-          </button>
-        </li>
-      </ul>
-    </nav>
-
-    <!-- Jump to Page Input Container -->
-    <div class="d-flex align-items-center gap-2 jump-to-page-container">
-      <span class="text-muted small fw-medium">Ir a:</span>
-      <input type="text" class="form-control form-control-sm text-center shadow-sm"
-        style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;" placeholder="{{ currentPage() }}"
-        inputmode="numeric" pattern="[0-9]*" (input)="onPageInput($event)" (keydown.enter)="jumpToPage($event)"
-        (blur)="jumpToPage($event)" />
-      <span class="text-muted small fw-medium">de {{ totalPages() }}</span>
-    </div>
-  </div>
-  }
+  <!-- Paginación con Ghost Buttons y Chevrons SVG (REUTILIZABLE DRY) -->
+  <app-pagination-controls
+    [currentPage]="currentPage()"
+    [totalPages]="totalPages()"
+    [visiblePages]="visiblePages()"
+    (pageChange)="setPage($event)">
+  </app-pagination-controls>
 
   <!-- Modal de Migración de Configuración -->
   @if (showMigrateModal()) {

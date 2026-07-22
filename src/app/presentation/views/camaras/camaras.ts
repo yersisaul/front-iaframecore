@@ -15,11 +15,18 @@ import { Analytic } from '../../../core/domain/entities/analytic.models';
 import { Camera } from '../../../core/domain/entities/camera.models';
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
+import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
+import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
+import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { SearchInputComponent } from '../../shared/search-input/search-input.component';
+import { ViewModeToggleComponent } from '../../shared/view-mode-toggle/view-mode-toggle.component';
+import { CameraDetailDrawerComponent } from '../../shared/camera-detail-drawer/camera-detail-drawer.component';
 
 @Component({
   selector: 'app-camaras',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, CameraDetailDrawerComponent],
   templateUrl: './camaras.html',
   styleUrl: './camaras.css'
 })
@@ -167,16 +174,27 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly searchTerm = signal<string>('');
 
   // ── Advanced Filters state ──
+  // ── Advanced Filters state ──
   readonly filterStatus = signal<string>('all');
+  readonly filterHost = signal<string>('all');
   readonly filterStreamType = signal<string>('all');
   readonly filterDecoder = signal<string>('all');
   readonly filterAnalyticType = signal<string>('all');
 
-  // Temp copies shown in the drawer (committed on "Aplicar")
+  // Temp copies shown in the pills (committed on "Aplicar")
   readonly tempFilterStatus = signal<string>('all');
+  readonly tempFilterHost = signal<string>('all');
   readonly tempFilterStreamType = signal<string>('all');
   readonly tempFilterDecoder = signal<string>('all');
   readonly tempFilterAnalyticType = signal<string>('all');
+
+  readonly hasPendingFilterChanges = computed<boolean>(() => {
+    return this.tempFilterStatus()       !== this.filterStatus()       ||
+           this.tempFilterHost()         !== this.filterHost()         ||
+           this.tempFilterStreamType()   !== this.filterStreamType()   ||
+           this.tempFilterDecoder()      !== this.filterDecoder()      ||
+           this.tempFilterAnalyticType() !== this.filterAnalyticType();
+  });
 
   readonly showFilterPanel = signal<boolean>(false);
   readonly activeDropdown = signal<string | null>(null);
@@ -189,11 +207,13 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const statuses = new Set<string>();
     const streams = new Set<string>();
     const decoders = new Set<string>();
+    const hostsSet = new Set<string>();
 
     list.forEach(c => {
       if (c.status) statuses.add(c.status);
       if (c.streamType) streams.add(c.streamType);
       if (c.decoder) decoders.add(c.decoder);
+      if (c.hostFingerprint) hostsSet.add(c.hostFingerprint);
     });
 
     const uniqueAnalytics = new Set<string>();
@@ -206,8 +226,14 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       }
     });
 
+    const hostOptions = Array.from(hostsSet).map(fp => ({
+      fingerprint: fp,
+      name: this.getHostName(fp)
+    })).sort((a, b) => a.name.localeCompare(b.name));
+
     return {
       status: Array.from(statuses).sort(),
+      hosts: hostOptions,
       streamType: Array.from(streams).sort(),
       decoder: Array.from(decoders).sort(),
       analyticType: Array.from(uniqueAnalytics).sort()
@@ -219,16 +245,19 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const list = this.cameras();
     const term = this.searchTerm().trim().toLowerCase();
     const st = this.filterStatus();
+    const hFp = this.filterHost();
     const stream = this.filterStreamType();
     const dec = this.filterDecoder();
     const analyticType = this.filterAnalyticType();
 
     const filtered = list.filter(c => {
       if (this.hostId() && c.hostFingerprint !== this.hostId()) return false;
-      // Search only by camera name or camera ID (prefix matching)
+      if (!this.hostId() && hFp !== 'all' && c.hostFingerprint !== hFp) return false;
+
+      // Search by camera name or camera ID (substring matching)
       if (term) {
-        const matchesName = c.name.toLowerCase().startsWith(term);
-        const matchesId = c.id.toLowerCase().startsWith(term);
+        const matchesName = c.name.toLowerCase().includes(term);
+        const matchesId = c.id.toLowerCase().includes(term);
         if (!matchesName && !matchesId) return false;
       }
 
@@ -277,6 +306,28 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
     });
+  });
+
+  // Total de analíticas filtradas reactivamente acorde a las cámaras visibles y los filtros de analítica
+  readonly filteredAnalyticsCount = computed<number>(() => {
+    const cameras = this.filteredCameras();
+    const cameraIds = new Set(cameras.map(c => c.id));
+    const analyticTypeFilter = this.filterAnalyticType();
+
+    const filtered = this.analytics().filter(a => {
+      if (this.hostId() && a.hostFingerprint !== this.hostId()) return false;
+      const targetsFilteredCamera = (a.targetCameraIds || []).some(id => cameraIds.has(id));
+      if (!targetsFilteredCamera) return false;
+
+      if (analyticTypeFilter !== 'all') {
+        if (this.normalizeAnalyticType(a.type) !== this.normalizeAnalyticType(analyticTypeFilter)) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    return filtered.length;
   });
 
   readonly currentPage = signal(1, { equal: () => false });
@@ -523,6 +574,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   hasActiveFilters(): boolean {
     return this.searchTerm().trim() !== '' ||
            this.filterStatus() !== 'all' ||
+           this.filterHost() !== 'all' ||
            this.filterStreamType() !== 'all' ||
            this.filterDecoder() !== 'all' ||
            this.filterAnalyticType() !== 'all';
@@ -532,6 +584,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     if (!this.showFilterPanel()) {
       // Sync temp copies to active values when opening
       this.tempFilterStatus.set(this.filterStatus());
+      this.tempFilterHost.set(this.filterHost());
       this.tempFilterStreamType.set(this.filterStreamType());
       this.tempFilterDecoder.set(this.filterDecoder());
       this.tempFilterAnalyticType.set(this.filterAnalyticType());
@@ -541,22 +594,22 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   applyFilters(): void {
     this.filterStatus.set(this.tempFilterStatus());
+    this.filterHost.set(this.tempFilterHost());
     this.filterStreamType.set(this.tempFilterStreamType());
     this.filterDecoder.set(this.tempFilterDecoder());
     this.filterAnalyticType.set(this.tempFilterAnalyticType());
     this.currentPage.set(1);
-    this.showFilterPanel.set(false);
   }
 
   resetFilters(): void {
     this.searchControl.setValue('');
     this.searchTerm.set('');
-    this.filterStatus.set('all');      this.tempFilterStatus.set('all');
-    this.filterStreamType.set('all');  this.tempFilterStreamType.set('all');
-    this.filterDecoder.set('all');     this.tempFilterDecoder.set('all');
-    this.filterAnalyticType.set('all'); this.tempFilterAnalyticType.set('all');
+    this.filterStatus.set('all');       this.tempFilterStatus.set('all');
+    this.filterHost.set('all');         this.tempFilterHost.set('all');
+    this.filterStreamType.set('all');   this.tempFilterStreamType.set('all');
+    this.filterDecoder.set('all');      this.tempFilterDecoder.set('all');
+    this.filterAnalyticType.set('all');  this.tempFilterAnalyticType.set('all');
     this.currentPage.set(1);
-    this.showFilterPanel.set(false);
     this.activeDropdown.set(null);
   }
 
@@ -569,25 +622,13 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  selectFilterValue(filterName: string, value: string, event: Event): void {
-    event.stopPropagation();
-    if (filterName === 'status') {
-      this.tempFilterStatus.set(value);
-      this.filterStatus.set(value);
-    }
-    if (filterName === 'streamType') {
-      this.tempFilterStreamType.set(value);
-      this.filterStreamType.set(value);
-    }
-    if (filterName === 'decoder') {
-      this.tempFilterDecoder.set(value);
-      this.filterDecoder.set(value);
-    }
-    if (filterName === 'analyticType') {
-      this.tempFilterAnalyticType.set(value);
-      this.filterAnalyticType.set(value);
-    }
-    this.currentPage.set(1);
+  selectFilterValue(filterName: string, value: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    if (filterName === 'status')       this.tempFilterStatus.set(value);
+    if (filterName === 'host')         this.tempFilterHost.set(value);
+    if (filterName === 'streamType')   this.tempFilterStreamType.set(value);
+    if (filterName === 'decoder')      this.tempFilterDecoder.set(value);
+    if (filterName === 'analyticType') this.tempFilterAnalyticType.set(value);
     this.activeDropdown.set(null);
   }
 

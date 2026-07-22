@@ -1826,4 +1826,25 @@ main,
   font-size: 0.8rem !important;
   line-height: 1.4 !important;
   color: var(--text-muted) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ESTÁNDAR GLOBAL DE BARRAS DE FILTROS HORIZONTALES (Zero-Flicker)
+   ═══════════════════════════════════════════════════════════════ */
+.horizontal-filters-bar {
+  position: relative;
+  overflow: visible !important;
+  z-index: 100;
+  animation: filterBarSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes filterBarSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -1,36 +1,12 @@
 <div #metadataContainer class="metadata-view-container container-fluid py-4 position-relative">
-  <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center header-section">
-    <div class="d-flex align-items-center gap-3">
-      <!-- Botón de Collapse Sidebar (Ghost Button) -->
-      <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
-        (click)="toggleSidebar()" aria-label="Toggle Sidebar">
-        @if (isSidebarCollapsed()) {
-        <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
-        } @else {
-        <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
-        }
-      </button>
-
-      <div>
-        <h2 class="fw-bold mb-0 header-page-title text-capitalize">
-          Búsqueda de {{ activeIndex() }}
-        </h2>
-        <p class="text-muted mb-0 header-page-subtitle mt-1">
-          Se encontraron <span class="fw-semibold text-primary">{{ formatTotalRecords(totalRecords()) }}</span>
-          registros en el índice
-        </p>
-      </div>
-    </div>
-    <div class="d-flex align-items-center gap-3">
+  <!-- Header REFACTORIZADO DRY -->
+  <app-page-header
+    [title]="'Búsqueda de ' + activeIndex()"
+    [subtitle]="'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + formatTotalRecords(totalRecords()) + '</span> registros en el índice'">
+    <ng-container header-actions>
       <!-- Barra de Búsqueda Unificada y Botón de Filtros Agrupados -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
-        <div class="search-input-wrapper position-relative d-flex align-items-center pl-1">
-          <span class="icon-svg icon-search search-icon-prefix text-muted"
-            style="width: 18px; height: 18px; opacity: 0.5;"></span>
-          <input type="text" [formControl]="searchControl" placeholder="Buscar metadatos..."
-            class="search-input-control border-0 ms-2" style="font-size: 0.82rem; outline: none; width: 180px;" />
-        </div>
+        <app-search-input [control]="searchControl" placeholder="Buscar metadatos..." inputWidth="180px"></app-search-input>
 
         <!-- Botón de Búsqueda por Imagen -->
         @if (activeIndex() === 'rostros') {
@@ -61,11 +37,12 @@
           }
         </select>
       </div>
-    </div>
-  </div>
+    </ng-container>
+  </app-page-header>
 
   <!-- Barra de Filtros Horizontal -->
-  <div class="horizontal-filters-bar mb-4" [class.hidden]="!showFilters()">
+  @if (showFilters()) {
+  <div class="horizontal-filters-bar mb-4">
     <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
       <!-- 1. CÁMARAS -->
       <div class="filter-dropdown-wrapper position-relative">
@@ -618,6 +595,7 @@
       </div>
     </div>
   </div>
+  }
 
   <div class="main-content-layout position-relative">
     <!-- Grid content and pagination -->
@@ -647,16 +625,15 @@
       </div>
       }
 
-      <!-- No records found view -->
+      <!-- No records found view (REUTILIZABLE DRY) -->
       @if (!isLoading() && records().length === 0) {
-      <div class="empty-state-view text-center py-5 rounded bg-white shadow-sm border">
-        <div class="empty-icon-wrapper mb-3 text-muted">
-          <span class="icon-svg icon-warning text-muted opacity-50" style="width: 48px; height: 48px;"></span>
-        </div>
-        <h4 class="fw-bold">Sin Resultados</h4>
-        <p class="text-muted">No se encontraron metadatos que coincidan con los filtros seleccionados.</p>
-        <button (click)="onResetFilters()" class="btn btn-primary btn-premium mt-2">Restablecer Filtros</button>
-      </div>
+      <app-empty-state
+        title="Sin Resultados"
+        description="No se encontraron metadatos que coincidan con los filtros seleccionados."
+        iconClass="icon-warning"
+        actionText="Restablecer Filtros"
+        (action)="onResetFilters()">
+      </app-empty-state>
       }
 
       <!-- Metadata Cards Grid -->
@@ -830,43 +807,14 @@
       </div>
       }
 
-      <!-- Paginación -->
-      @if (totalPages() > 1 && !tempFilters().imageSearchUrl) {
-      <div class="d-flex justify-content-center align-items-center mt-5 gap-4 flex-wrap">
-        <nav aria-label="Page navigation">
-          <ul class="pagination pagination-md align-items-center mb-0" style="gap: 6px; padding: 0; list-style: none;">
-            <li class="page-item" [class.disabled]="currentPage() === 1">
-              <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center"
-                (click)="prevPage()" aria-label="Previous">
-                <span class="icon-svg icon-chevron-left" style="width: 18px; height: 18px;"></span>
-              </button>
-            </li>
-            @for (page of visiblePages(); track page) {
-            <li class="page-item" [class.active]="currentPage() === page">
-              <button class="page-link-ghost" (click)="setPage(page)">
-                {{ page }}
-              </button>
-            </li>
-            }
-            <li class="page-item" [class.disabled]="currentPage() === totalPages()">
-              <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center"
-                (click)="nextPage()" aria-label="Next">
-                <span class="icon-svg icon-chevron-right" style="width: 18px; height: 18px;"></span>
-              </button>
-            </li>
-          </ul>
-        </nav>
-
-        <!-- Jump to Page Input Container -->
-        <div class="d-flex align-items-center gap-2 jump-to-page-container">
-          <span class="text-muted small fw-medium">Ir a:</span>
-          <input type="text" class="form-control form-control-sm text-center shadow-sm"
-            style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;" [placeholder]="currentPage()"
-            inputmode="numeric" pattern="[0-9]*" (input)="onPageInput($event)" (keydown.enter)="jumpToPage($event)"
-            (blur)="jumpToPage($event)" />
-          <span class="text-muted small fw-medium">de {{ totalPages() }}</span>
-        </div>
-      </div>
+      <!-- Paginación (REUTILIZABLE DRY) -->
+      @if (!tempFilters().imageSearchUrl) {
+      <app-pagination-controls
+        [currentPage]="currentPage()"
+        [totalPages]="totalPages()"
+        [visiblePages]="visiblePages()"
+        (pageChange)="setPage($event)">
+      </app-pagination-controls>
       }
     </div>
   </div>

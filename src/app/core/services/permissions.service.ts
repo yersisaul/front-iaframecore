@@ -324,7 +324,6 @@ export class PermissionsService {
     if (mod === 'horarios') mod = 'schedules';
     if (mod === 'listas') mod = 'lists';
     if (mod === 'detalles listas' || mod === 'detalles_listas') mod = 'list_details';
-    // Nota: 'eventos', 'dashboard' y 'configuración' no tienen permisos en el backend — son rutas públicas
 
     return `${mod}.${act}`;
   }
@@ -332,11 +331,6 @@ export class PermissionsService {
   hasPermission(module: string, action: string): boolean {
     const user = this.authService.currentUser();
     if (!user) return false;
-
-    // ADMIN (roles.create es exclusivo de ADMIN) tiene acceso total
-    if (this.activePermissionCodes().has('roles.create')) {
-      return true;
-    }
 
     const code = this.mapToPermissionCode(module, action);
     return this.activePermissionCodes().has(code);
@@ -348,9 +342,8 @@ export class PermissionsService {
 
   getDefaultRedirectRoute(): string {
     const active = this.activePermissionCodes();
-    const isAdmin = active.has('roles.create');
 
-    if (isAdmin || active.has('hosts.read')) return '/dashboard/nodos';
+    if (active.has('hosts.read')) return '/dashboard/nodos';
     if (active.has('cameras.read')) return '/dashboard/camaras';
     if (active.has('schedules.read')) return '/dashboard/horarios';
     if (active.has('lists.read')) return '/dashboard/listas';

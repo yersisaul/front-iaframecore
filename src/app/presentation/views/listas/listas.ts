@@ -7,6 +7,8 @@ import { ListService } from '../../../core/services/list.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { List, ListDetail } from '../../../core/domain/entities/list.models';
+import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 export interface SubjectDetectionPostura {
   postura: string;
@@ -48,7 +50,7 @@ export interface SubjectImportDraft {
 @Component({
   selector: 'app-listas',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent],
   templateUrl: './listas.html',
   styleUrl: './listas.css'
 })

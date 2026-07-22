@@ -16,6 +16,8 @@ import { IAnalyticRepository } from '../../../core/domain/repositories/analytic.
 import { Host } from '../../../core/domain/entities/host.models';
 import { Camera } from '../../../core/domain/entities/camera.models';
 import { Analytic } from '../../../core/domain/entities/analytic.models';
+import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 function getDateString(d: Date): string {
   const pad = (num: number) => num.toString().padStart(2, '0');
@@ -33,7 +35,7 @@ function getTimeString(d: Date): string {
 @Component({
   selector: 'app-horarios',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ConfirmDeleteModalComponent, PageHeaderComponent],
   templateUrl: './horarios.html',
   styleUrl: './horarios.css',
 })

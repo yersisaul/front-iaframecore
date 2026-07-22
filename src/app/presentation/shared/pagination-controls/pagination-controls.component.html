@@ -1,0 +1,37 @@
+@if (totalPages > 1) {
+<div class="d-flex justify-content-center align-items-center mt-5 gap-4 flex-wrap">
+  <nav aria-label="Page navigation">
+    <ul class="pagination pagination-md align-items-center mb-0" style="gap: 6px; padding: 0; list-style: none;">
+      <li class="page-item" [class.disabled]="currentPage === 1">
+        <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center"
+          (click)="prevPage()" aria-label="Previous">
+          <span class="icon-svg icon-chevron-left" style="width: 18px; height: 18px;"></span>
+        </button>
+      </li>
+      @for (page of visiblePages; track page) {
+      <li class="page-item" [class.active]="currentPage === page">
+        <button class="page-link-ghost" (click)="setPage(page)">
+          {{ page }}
+        </button>
+      </li>
+      }
+      <li class="page-item" [class.disabled]="currentPage === totalPages">
+        <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center"
+          (click)="nextPage()" aria-label="Next">
+          <span class="icon-svg icon-chevron-right" style="width: 18px; height: 18px;"></span>
+        </button>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Jump to Page Input Container -->
+  <div class="d-flex align-items-center gap-2 jump-to-page-container">
+    <span class="text-muted small fw-medium">Ir a:</span>
+    <input type="text" class="form-control form-control-sm text-center shadow-sm"
+      style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;" [placeholder]="currentPage"
+      inputmode="numeric" pattern="[0-9]*" (input)="onPageInput($event)" (keydown.enter)="jumpToPage($event)"
+      (blur)="jumpToPage($event)" />
+    <span class="text-muted small fw-medium">de {{ totalPages }}</span>
+  </div>
+</div>
+}

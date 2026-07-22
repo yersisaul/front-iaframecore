@@ -1,32 +1,10 @@
 <div class="users-view-container container-fluid py-4 position-relative">
-  <!-- Header Section -->
-  <div class="users-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-    <div class="d-flex align-items-center gap-3">
-      <!-- Botón de Collapse Sidebar (Ghost Button) -->
-      <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
-        (click)="toggleSidebar()" aria-label="Toggle Sidebar">
-        @if (isSidebarCollapsed()) {
-        <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
-        } @else {
-        <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
-        }
-      </button>
-
-      <div>
-        <h2 class="fw-bold mb-0 header-page-title">Gestión de Accesos</h2>
-        <p class="text-muted mb-0 small mt-1">
-          @if (activeTab() === 'usuarios') {
-          Se encontraron <span class="fw-semibold text-primary">{{ filteredUsers().length }}</span> cuentas de acceso en
-          el sistema.
-          } @else {
-          Configura y define permisos específicos en tiempo real para cada rol del sistema.
-          }
-        </p>
-      </div>
-    </div>
-
-    <!-- Controles de Navegación y Botones de Acción (Lado Derecho del Encabezado - Fila 1) -->
-    <div class="d-flex align-items-center gap-3">
+  <!-- Header Section REFACTORIZADO DRY -->
+  <app-page-header
+    title="Gestión de Accesos"
+    [subtitle]="activeTab() === 'usuarios' ? 'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + filteredUsers().length + '</span> cuentas de acceso en el sistema.' : 'Configura y define permisos específicos en tiempo real para cada rol del sistema.'">
+    
+    <ng-container header-actions>
       <!-- Tabs "Cuentas de Usuarios" y "Roles y Permisos" -->
       @if (permissionsService.hasPermission('Usuarios', 'ver') && permissionsService.hasPermission('Roles', 'ver')) {
       <div class="view-tabs-group d-flex align-items-center gap-1">
@@ -41,15 +19,11 @@
           <span class="ms-1.5 d-inline d-sm-none">Roles</span>
         </button>
       </div>
-
-      <!-- Separador vertical -->
-      <div class="header-separator"></div>
       }
 
-      <!-- Botón de acción principal correspondiente (Fila 1) -->
+      <!-- Botón de acción principal correspondiente -->
       @if (activeTab() === 'usuarios') {
-      @if (permissionsService.hasPermission('Usuarios', 'crear') || permissionsService.hasPermission('Usuarios',
-      'agregar')) {
+      @if (permissionsService.hasPermission('Usuarios', 'crear') || permissionsService.hasPermission('Usuarios', 'agregar')) {
       <button class="btn-migrate-config" (click)="openRegisterModal()">
         <span class="icon-svg icon-user-plus" style="width: 16px; height: 16px;"></span>
         <span class="d-none d-md-inline">Nuevo Usuario</span>
@@ -63,8 +37,8 @@
       </button>
       }
       }
-    </div>
-  </div>
+    </ng-container>
+  </app-page-header>
 
   <!-- Fila 2: Búsqueda y Filtros (Solo para la pestaña de Usuarios) -->
   @if (activeTab() === 'usuarios') {
@@ -431,7 +405,7 @@
   <div class="modal-premium-overlay" (click)="closeEditModal()">
     <div class="modal-premium-card" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
-      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4">
         <div class="d-flex align-items-center gap-3">
           <div class="modal-header-icon-wrap icon-edit-theme">
             <span class="icon-svg icon-edit" style="width: 22px; height: 22px;"></span>
@@ -491,8 +465,7 @@
         <div class="premium-input-group mb-4">
           <label class="premium-input-label">Rol del Sistema</label>
           <div class="input-icon-wrapper">
-            <span class="icon-svg icon-lock"
-              style="width: 16px; height: 16px; color: var(--text-muted); margin-left: 12px; position: absolute; z-index: 2;"></span>
+            <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
             <select class="premium-input-control select-premium" formControlName="rol_id">
               @for (rol of availableRoles(); track rol.rol_id) {
               <option [value]="rol.rol_id">{{ rol.nombre }}</option>
@@ -528,7 +501,7 @@
   <div class="modal-premium-overlay" (click)="closePasswordModal()">
     <div class="modal-premium-card" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
-      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4">
         <div class="d-flex align-items-center gap-3">
           <div class="modal-header-icon-wrap icon-password-theme">
             <span class="icon-svg icon-lock" style="width: 22px; height: 22px;"></span>
@@ -600,51 +573,24 @@
   </div>
   }
 
-  <!-- MODAL: CONFIRMACIÓN DE ELIMINACIÓN -->
-  @if (showDeleteModal()) {
-  <div class="delete-camera-modal-overlay" (click)="closeDeleteModal()" aria-modal="true" role="dialog">
-    <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
-
-      <!-- Icono de advertencia -->
-      <div class="delete-modal-icon-wrap">
-        <span class="icon-svg icon-warning"
-          style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
-      </div>
-
-      <!-- Título y mensaje -->
-      <h5 class="delete-modal-title">Eliminar usuario</h5>
-      <p class="delete-modal-message">
-        ¿Estás seguro de que deseas eliminar permanentemente la cuenta de
-        <strong class="delete-modal-camera-name">{{ selectedUser()?.name }}</strong> ({{ selectedUser()?.email }})?
-        Esta acción no se puede deshacer.
-      </p>
-
-      <!-- Acciones -->
-      <div class="delete-modal-actions">
-        <button class="delete-modal-btn-cancel" (click)="closeDeleteModal()" [disabled]="isSaving()">
-          Cancelar
-        </button>
-        <button class="delete-modal-btn-confirm" (click)="deleteUser()" [disabled]="isSaving()">
-          @if (isSaving()) {
-          <span class="delete-modal-spinner"></span>
-          Eliminando...
-          } @else {
-          <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-          Eliminar
-          }
-        </button>
-      </div>
-
-    </div>
-  </div>
-  }
+  <!-- MODAL: CONFIRMACIÓN DE ELIMINACIÓN DE USUARIO (REUTILIZABLE DRY) -->
+  <app-confirm-delete-modal
+    [show]="showDeleteModal()"
+    title="Eliminar usuario"
+    [itemName]="selectedUser()?.name ? selectedUser()!.name + ' (' + selectedUser()!.email + ')' : ''"
+    messagePrefix="¿Estás seguro de que deseas eliminar permanentemente la cuenta de "
+    messageSuffix="? Esta acción no se puede deshacer."
+    [isDeleting]="isSaving()"
+    (confirm)="deleteUser()"
+    (cancel)="closeDeleteModal()">
+  </app-confirm-delete-modal>
 
   <!-- MODAL: REGISTRAR NUEVO USUARIO -->
   @if (showRegisterModal()) {
   <div class="modal-premium-overlay" (click)="closeRegisterModal()">
     <div class="modal-premium-card" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
-      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4 pb-3">
+      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4">
         <div class="d-flex align-items-center gap-3">
           <div class="modal-header-icon-wrap icon-edit-theme"
             style="background: rgba(16, 185, 129, 0.1) !important; color: #10b981 !important;">
@@ -717,8 +663,7 @@
         <div class="premium-input-group mb-4">
           <label class="premium-input-label">Rol del Sistema</label>
           <div class="input-icon-wrapper">
-            <span class="icon-svg icon-lock"
-              style="width: 16px; height: 16px; color: var(--text-muted); margin-left: 12px; position: absolute; z-index: 2;"></span>
+            <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
             <select class="premium-input-control select-premium" formControlName="rol_id">
               @for (rol of availableRoles(); track rol.rol_id) {
               <option [value]="rol.rol_id">{{ rol.nombre }}</option>
@@ -755,7 +700,7 @@
   <div class="modal-premium-overlay" (click)="closeCreateRoleModal()">
     <div class="modal-premium-card" style="max-width: 600px;" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
-      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4 pb-3">
+      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4">
         <div class="d-flex align-items-center gap-3">
           <div class="modal-header-icon-wrap icon-edit-theme"
             style="background: rgba(13, 110, 253, 0.1) !important; color: var(--primary) !important;">
@@ -820,43 +765,15 @@
     </div>
   </div>
   }
-  <!-- MODAL: CONFIRMACIÓN DE ELIMINACIÓN DE ROL -->
-  @if (showDeleteRoleModal()) {
-  <div class="delete-camera-modal-overlay" (click)="closeDeleteRoleModal()" aria-modal="true" role="dialog">
-    <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
-
-      <!-- Icono de advertencia -->
-      <div class="delete-modal-icon-wrap">
-        <span class="icon-svg icon-warning"
-          style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
-      </div>
-
-      <!-- Título y mensaje -->
-      <h5 class="delete-modal-title">Eliminar rol</h5>
-      <p class="delete-modal-message">
-        ¿Estás seguro de que deseas eliminar permanentemente el rol de sistema
-        <strong class="delete-modal-camera-name">{{ roleToDelete()?.nombre }}</strong>?
-        Esta acción removerá el rol y dejará sin permisos asociados a los usuarios que lo posean. Esta acción no se
-        puede deshacer.
-      </p>
-
-      <!-- Acciones -->
-      <div class="delete-modal-actions">
-        <button class="delete-modal-btn-cancel" (click)="closeDeleteRoleModal()" [disabled]="isDeletingRole()">
-          Cancelar
-        </button>
-        <button class="delete-modal-btn-confirm" (click)="deleteRoleSubmit()" [disabled]="isDeletingRole()">
-          @if (isDeletingRole()) {
-          <span class="delete-modal-spinner"></span>
-          Eliminando...
-          } @else {
-          <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-          Eliminar
-          }
-        </button>
-      </div>
-
-    </div>
-  </div>
-  }
+  <!-- MODAL: CONFIRMACIÓN DE ELIMINACIÓN DE ROL (REUTILIZABLE DRY) -->
+  <app-confirm-delete-modal
+    [show]="showDeleteRoleModal()"
+    title="Eliminar rol"
+    [itemName]="roleToDelete()?.nombre || ''"
+    messagePrefix="¿Estás seguro de que deseas eliminar permanentemente el rol de sistema "
+    messageSuffix="? Esta acción removerá el rol y dejará sin permisos asociados a los usuarios que lo posean. Esta acción no se puede deshacer."
+    [isDeleting]="isDeletingRole()"
+    (confirm)="deleteRoleSubmit()"
+    (cancel)="closeDeleteRoleModal()">
+  </app-confirm-delete-modal>
 </div>

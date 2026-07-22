@@ -15,11 +15,15 @@ import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ListService } from '../../../core/services/list.service';
 import { CameraService } from '../../../core/services/camera.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
- 
+import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
+import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { SearchInputComponent } from '../../shared/search-input/search-input.component';
+
 @Component({
   selector: 'app-metadatos',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent],
   templateUrl: './metadatos.html',
   styleUrl: './metadatos.css'
 })
@@ -149,7 +153,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   readonly activeDropdown = signal<string | null>(null);
 
   // Toggle state to hide/show horizontal filters
-  readonly showFilters = signal<boolean>(true);
+  readonly showFilters = signal<boolean>(false);
 
   // Unified search control
   readonly searchControl = new FormControl('');
@@ -704,8 +708,8 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     this.showFilters.update(v => !v);
   }
 
-  toggleDropdown(dropdownName: string, event: Event): void {
-    event.stopPropagation();
+  toggleDropdown(dropdownName: string, event?: Event): void {
+    if (event) event.stopPropagation();
     if (this.activeDropdown() === dropdownName) {
       this.activeDropdown.set(null);
     } else {
@@ -846,6 +850,14 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       this.timeHastaStr.set('23:59');
       this.tempFilters.update(f => ({ ...f, timestampDesde: null, timestampHasta: null }));
     }
+  }
+
+  onDateRangeChange(range: { desde: Date | null; hasta: Date | null }): void {
+    this.tempFilters.update(f => ({
+      ...f,
+      timestampDesde: range.desde,
+      timestampHasta: range.hasta
+    }));
   }
 
   // Pagination controls

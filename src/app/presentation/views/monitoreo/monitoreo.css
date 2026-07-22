@@ -3718,28 +3718,12 @@ body.is-timeline-dragging *,
 
 /* Barra de Filtros Horizontal */
 .horizontal-filters-bar {
+  position: relative;
+  overflow: visible !important;
+  z-index: 100;
+  margin-bottom: 1rem !important;
   padding: 0.5rem 0;
-  background-color: transparent !important;
-  border: none !important;
-  border-radius: 0;
-  box-shadow: none !important;
-  margin-bottom: 1rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  max-height: 200px;
-  opacity: 1;
-  overflow: visible;
-}
-
-.horizontal-filters-bar.hidden {
-  max-height: 0 !important;
-  opacity: 0 !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  border-color: transparent !important;
-  pointer-events: none;
-  overflow: hidden;
+  animation: filterBarSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Redefine dropdown position under horizontal filter badge */
@@ -3894,27 +3878,65 @@ body.is-timeline-dragging *,
 .camera-analytic-accordion-card {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color) !important;
-  border-radius: 0.75rem !important;
+  border-radius: 0.85rem !important;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .camera-analytic-accordion-card:hover {
+  border-color: rgba(var(--primary-rgb), 0.35) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+
+.camera-analytic-accordion-card.is-expanded {
   border-color: rgba(var(--primary-rgb), 0.3) !important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 16px rgba(var(--primary-rgb), 0.08);
 }
 
 .camera-accordion-header {
-  padding: 0.85rem 1rem !important;
-  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.03) 0%, transparent 100%);
+  padding: 0.75rem 0.9rem !important;
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.04) 0%, transparent 100%);
   cursor: pointer;
   user-select: none;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .camera-accordion-header:hover {
   background-color: var(--bg-header-light) !important;
+}
+
+/* Avatar del icono de la cámara */
+.camera-header-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background-color: rgba(var(--primary-rgb), 0.08);
+  border: 1px solid rgba(var(--primary-rgb), 0.16);
+  transition: all 0.25s ease;
+}
+
+[data-bs-theme="dark"] .camera-header-avatar,
+.dark .camera-header-avatar {
+  background-color: rgba(59, 130, 246, 0.14);
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.camera-accordion-header:hover .camera-header-avatar {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 3px 10px rgba(var(--primary-rgb), 0.3);
+}
+
+.camera-avatar-icon {
+  width: 16px;
+  height: 16px;
+  background-color: var(--primary);
+  transition: background-color 0.25s ease;
+}
+
+.camera-accordion-header:hover .camera-avatar-icon {
+  background-color: #ffffff;
 }
 
 .camera-accordion-title {
@@ -3922,16 +3944,83 @@ body.is-timeline-dragging *,
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
 .camera-accordion-badge {
-  background-color: var(--primary-light) !important;
-  border: 1px solid rgba(var(--primary-rgb), 0.2) !important;
+  background-color: rgba(var(--primary-rgb), 0.08) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.18) !important;
   color: var(--primary) !important;
-  font-size: 0.7rem !important;
+  font-size: 0.66rem !important;
   font-weight: 700 !important;
-  padding: 0.2rem 0.6rem !important;
-  border-radius: 1rem !important;
+  padding: 0.15rem 0.5rem !important;
+  border-radius: 0.75rem !important;
+  line-height: 1.2;
+}
+
+/* Acciones en la cabecera (Botón Configuración + Toggle Chevron) */
+.camera-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-camera-config-action,
+.btn-camera-toggle-action {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-camera-config-action:hover {
+  background-color: rgba(var(--primary-rgb), 0.1) !important;
+  border-color: rgba(var(--primary-rgb), 0.22) !important;
+  color: var(--primary) !important;
+  box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.18);
+}
+
+.btn-camera-config-action:hover .config-icon {
+  background-color: var(--primary) !important;
+  transform: rotate(45deg);
+}
+
+.btn-camera-config-action:active {
+  transform: scale(0.92);
+}
+
+.btn-camera-toggle-action:hover {
+  background-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.config-icon {
+  width: 14px;
+  height: 14px;
+  background-color: var(--text-secondary);
+  transition: all 0.25s ease;
+}
+
+.toggle-chevron-icon {
+  width: 14px;
+  height: 14px;
+  background-color: var(--text-muted);
+  transform: rotate(-90deg);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
+}
+
+.toggle-chevron-icon.is-expanded {
+  transform: rotate(0deg);
+}
+
+.btn-camera-toggle-action:hover .toggle-chevron-icon {
+  background-color: var(--text-primary);
 }
 
 .camera-accordion-body {

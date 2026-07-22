@@ -1,0 +1,68 @@
+.page-link-ghost,
+.page-nav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.page-link-ghost {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-secondary, #64748b);
+  font-weight: 500;
+  font-size: 0.88rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.page-link-ghost:hover {
+  background-color: var(--border-color, #e2e8f0);
+  color: var(--text-primary, #0f172a);
+}
+
+.page-item.active .page-link-ghost {
+  background-color: var(--color-primary-light, var(--primary-light, rgba(43, 127, 255, 0.12)));
+  color: var(--primary, #2b7fff);
+  font-weight: 700;
+}
+
+.page-nav-btn {
+  background: transparent;
+  border: none;
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .25s;
+  color: var(--text-secondary, #64748b);
+}
+
+.page-nav-btn:hover {
+  background-color: var(--border-color, #e2e8f0);
+  color: var(--text-primary, #0f172a);
+}
+
+.page-item.disabled .page-nav-btn {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.page-item.disabled .page-nav-btn:hover {
+  background: transparent;
+}
+
+.jump-to-page-container input {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  color: var(--text-primary, #0f172a);
+}
+
+.jump-to-page-container input:focus {
+  border-color: var(--primary, #2b7fff);
+  box-shadow: 0 0 0 3px rgba(43, 127, 255, 0.15);
+}

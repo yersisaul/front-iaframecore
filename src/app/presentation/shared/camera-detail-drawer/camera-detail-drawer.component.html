@@ -1,0 +1,324 @@
+<!-- Backdrop Overlay para el Drawer Lateral Derecho -->
+@if (show) {
+<div class="drawer-backdrop" (click)="closeDrawer()"></div>
+}
+
+<!-- Drawer Lateral Derecho -->
+<div class="right-drawer" [class.open]="show">
+  <div class="drawer-content p-4 h-100 d-flex flex-column justify-content-between">
+    @if (camera; as cam) {
+    <div class="drawer-scroll-area">
+      <!-- Cabecera del Drawer -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-uppercase fw-bold text-muted"
+            style="font-size: 0.72rem; letter-spacing: 0.08em;">Información de Cámara</span>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn-ghost close-drawer-btn d-flex align-items-center justify-content-center"
+            style="width: 32px; height: 32px; border-radius: 50%;" (click)="closeDrawer()" aria-label="Cerrar panel">
+            <span class="icon-svg icon-close text-muted" style="width: 16px; height: 16px;"></span>
+          </button>
+        </div>
+      </div>
+
+      @if (isEditingCamera()) {
+      <!-- Formulario de Edición -->
+      <div class="edit-camera-form-container mb-4 shadow-sm" style="animation: slideDown 0.25s ease-out;">
+        <h6 class="text-uppercase fw-bold text-muted mb-3" style="font-size: 0.68rem; letter-spacing: 0.08em;">Editar
+          Configuración</h6>
+
+        <div class="mb-3">
+          <label class="form-label text-muted small fw-semibold">Nombre de la Cámara</label>
+          <input type="text" class="form-control" [class.is-invalid]="isNameInvalid" [(ngModel)]="editCameraName"
+            placeholder="Ingrese el nombre de la cámara" />
+          @if (isNameInvalid) {
+          <div class="invalid-feedback">
+            El nombre de la cámara es obligatorio.
+          </div>
+          }
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label text-muted small fw-semibold">Latitud</label>
+            <input type="number" step="any" min="-90" max="90" class="form-control" [class.is-invalid]="isLatInvalid"
+              [(ngModel)]="editCameraLat" placeholder="Latitud" />
+            @if (isLatInvalid) {
+            <div class="invalid-feedback">
+              Rango: -90 a 90.
+            </div>
+            }
+          </div>
+          <div class="col-6">
+            <label class="form-label text-muted small fw-semibold">Longitud</label>
+            <input type="number" step="any" min="-180" max="180" class="form-control"
+              [class.is-invalid]="isLonInvalid" [(ngModel)]="editCameraLon" placeholder="Longitud" />
+            @if (isLonInvalid) {
+            <div class="invalid-feedback">
+              Rango: -180 a 180.
+            </div>
+            }
+          </div>
+        </div>
+        <div class="d-flex gap-3 mt-4 pt-3 w-100">
+          <button type="button" class="btn btn-clear-filters flex-fill py-2.5" (click)="cancelEditingCamera()">
+            Cancelar
+          </button>
+          <button type="button" class="btn btn-apply-filters flex-fill py-2.5" (click)="saveCameraInfo(cam)"
+            [disabled]="isFormInvalid">
+            Guardar
+          </button>
+        </div>
+      </div>
+      } @else {
+      <!-- Tarjeta de Información de la Cámara -->
+      <div class="card p-3 mb-4"
+        style="background-color: var(--bg-card); border: 1px solid var(--border-color); box-shadow: var(--card-shadow); border-radius: var(--radius-lg);">
+        <!-- Fila Superior: Icono de Cámara, Nombre y Estado -->
+        <div class="d-flex align-items-center gap-3">
+          <div class="d-flex align-items-center justify-content-center rounded-circle border"
+            [style.border-color]="isCameraOnline(cam) ? 'var(--color-online)' : 'var(--border-color)'"
+            [style.color]="isCameraOnline(cam) ? 'var(--color-online)' : 'var(--text-secondary)'"
+            [style.background-color]="isCameraOnline(cam) ? 'var(--color-online-bg)' : 'var(--bg-primary)'"
+            style="width: 38px; height: 38px; flex-shrink: 0; border-width: 1.5px !important; border-radius: 50%;">
+            <span class="icon-svg icon-camara"
+              style="width: 18px; height: 18px; color: inherit; background-color: currentColor;"></span>
+          </div>
+
+          <!-- Contenedor del nombre y el botón de editar -->
+          <div class="d-flex align-items-center gap-2 overflow-hidden" style="flex: 1;">
+            <h5 class="fw-bold mb-0 text-truncate text-body" style="font-size: 1.05rem;" [title]="cam.name">
+              {{ cam.name }}
+            </h5>
+            @if (permissionsService.hasPermission('Cámaras', 'editar')) {
+            <button class="btn-ghost d-flex align-items-center justify-content-center"
+              style="width: 26px; height: 26px; border-radius: 50%; padding: 0; flex-shrink: 0;"
+              (click)="startEditingCamera(cam)" title="Editar Información">
+              <span class="icon-svg icon-edit" style="width: 13px; height: 13px;"></span>
+            </button>
+            }
+          </div>
+
+          <!-- Botón de eliminar (al lado derecho del todo) -->
+          @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
+          <button class="btn-ghost d-flex align-items-center justify-content-center text-danger"
+            style="width: 30px; height: 30px; border-radius: 50%; padding: 0; flex-shrink: 0;"
+            (click)="openDeleteModal(cam)" title="Eliminar Cámara">
+            <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+          </button>
+          }
+        </div>
+
+        <!-- Fila de Detalles Técnicos en Lista -->
+        <div class="specs-list d-flex flex-column gap-1 mt-3">
+          <div class="spec-row" [class.copied-flash]="copiedRowId() === cam.id + '-drawer-id'"
+            (click)="copyRowContent(cam.id, cam.id + '-drawer-id'); $event.stopPropagation()">
+            <span class="spec-lbl">Camera ID</span>
+            @if (copiedRowId() === cam.id + '-drawer-id') {
+            <span class="copied-badge text-success fw-bold ms-auto"
+              style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+            } @else {
+            <span
+              class="spec-val font-monospace text-truncate text-end d-flex align-items-center justify-content-end gap-1.5 w-100">
+              {{ cam.id }}
+            </span>
+            }
+          </div>
+          <div class="spec-row" [class.copied-flash]="copiedRowId() === cam.id + '-drawer-lat'"
+            (click)="copyRowContent((cam.location.lat || 0).toString(), cam.id + '-drawer-lat'); $event.stopPropagation()">
+            <span class="spec-lbl">Latitud</span>
+            @if (copiedRowId() === cam.id + '-drawer-lat') {
+            <span class="copied-badge text-success fw-bold ms-auto"
+              style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+            } @else {
+            <span class="spec-val font-monospace text-truncate text-end w-100">
+              {{ cam.location.lat || '0.0' }}
+            </span>
+            }
+          </div>
+          <div class="spec-row" [class.copied-flash]="copiedRowId() === cam.id + '-drawer-lon'"
+            (click)="copyRowContent((cam.location.lon || 0).toString(), cam.id + '-drawer-lon'); $event.stopPropagation()">
+            <span class="spec-lbl">Longitud</span>
+            @if (copiedRowId() === cam.id + '-drawer-lon') {
+            <span class="copied-badge text-success fw-bold ms-auto"
+              style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+            } @else {
+            <span class="spec-val font-monospace text-truncate text-end w-100">
+              {{ cam.location.lon || '0.0' }}
+            </span>
+            }
+          </div>
+        </div>
+      </div>
+      }
+
+      <!-- Analíticas de IA asignadas a esta cámara -->
+      <div class="ai-control-panel-drawer mb-4">
+        <h6 class="text-muted text-uppercase fw-bold mb-3" style="font-size: 0.7rem; letter-spacing: 0.05em;">Sistemas
+          de IA</h6>
+
+        @if (getAnalyticsForCamera(cam.id).length === 0) {
+        <div class="text-muted small text-center p-3 border rounded bg-light-translucent" style="font-style: italic;">
+          No hay analíticas configuradas para esta cámara
+        </div>
+        }
+
+        <div class="d-flex flex-column gap-2">
+          @for (analytic of getAnalyticsForCamera(cam.id); track analytic.id) {
+          <div class="ai-control-card-wrapper mb-2" [class.ai-active]="analytic.status === 'active'"
+            [class.expanded]="isAnalyticDetailsExpanded(analytic.id)"
+            [class.dropdown-open]="activeAddScheduleDropdown() === analytic.id"
+            [class.card-crud-new]="analyticNewIds().has(analytic.id)"
+            [class.card-crud-updated]="analyticUpdatedIds().has(analytic.id)"
+            [class.card-crud-deleting]="analyticDeletingIds().has(analytic.id)"
+            [class.card-crud-status-active]="analyticActiveStatusIds().has(analytic.id)"
+            [class.card-crud-status-inactive]="analyticInactiveStatusIds().has(analytic.id)">
+            <div class="ai-control-header" (click)="toggleAnalyticDetails(analytic.id)">
+              <div class="d-flex align-items-center gap-3">
+                <span class="analytic-color-dot shadow-sm"
+                  [style.background-color]="getAnalyticColor(analytic.type)"></span>
+                <div>
+                  <span class="fw-bold d-block" style="font-size: 0.85rem;">{{ getAnalyticLabel(analytic.type)
+                    }}</span>
+                  @if (analytic.detectionClasses.length > 0) {
+                  <span class="text-muted" style="font-size: 0.72rem;">
+                    {{ analytic.detectionClasses.slice(0, 3).join(', ') }}{{ analytic.detectionClasses.length > 3 ?
+                    '...' : '' }}
+                  </span>
+                  }
+                </div>
+              </div>
+              <!-- Contenedor de acciones en cabecera: Switch, Eliminar y Chevron Toggle -->
+              <div class="d-flex align-items-center gap-2">
+                <!-- Control de estado por switch -->
+                <div class="form-check form-switch m-0 d-flex align-items-center" (click)="$event.stopPropagation()">
+                  <input class="form-check-input" type="checkbox" role="switch" [id]="'switch-' + analytic.id"
+                    [checked]="analytic.status === 'active'"
+                    [disabled]="!permissionsService.hasPermission('Analíticas', 'activar_desactivar')"
+                    (change)="toggleAnalyticStatus(analytic)">
+                </div>
+                <!-- Botón Eliminar Analítica -->
+                @if (permissionsService.hasPermission('Analíticas', 'eliminar')) {
+                <button class="cam-icon-btn cam-icon-btn-delete d-flex align-items-center justify-content-center"
+                  (click)="openDeleteAnalyticModal(analytic); $event.stopPropagation()" title="Eliminar Analítica"
+                  aria-label="Eliminar analítica">
+                  <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+                </button>
+                }
+                <!-- Chevron decorativo para indicar expansión -->
+                <div class="btn-toggle-details transition-all d-flex align-items-center justify-content-center"
+                  [class.open]="isAnalyticDetailsExpanded(analytic.id)">
+                  <span class="icon-svg icon-chevron-down"
+                    style="width: 14px; height: 14px; transition: transform 0.2s ease;"></span>
+                </div>
+              </div>
+            </div>
+
+            @if (isAnalyticDetailsExpanded(analytic.id)) {
+            <div class="analytic-details-expanded" style="animation: slideDown 0.2s ease-out;">
+              <!-- Lista vertical de horarios asociados -->
+              <div class="d-flex flex-column gap-2 mb-3">
+                @for (sched of getSchedulesForAnalytic(analytic.id); track sched.id) {
+                <!-- Tarjeta de Horario estilo Bento -->
+                <div class="schedule-bento-card freq-{{ sched.frequency }}"
+                  [class.schedule-bento-card--desactivado]="sched.status !== 'activo'"
+                  [class.readonly-card]="!permissionsService.hasPermission('Analíticas', 'editar')"
+                  (click)="permissionsService.hasPermission('Analíticas', 'editar') ? toggleScheduleAssociation(sched, analytic.id, false) : null"
+                  [title]="permissionsService.hasPermission('Analíticas', 'editar') ? 'Click para remover este horario de la analítica' : ''">
+                  <div class="card-left-section">
+                    <span class="schedule-name">{{ sched.name }}</span>
+                    <span class="schedule-meta-frequency">{{ sched.frequency | titlecase }}</span>
+                  </div>
+                  <div class="card-right-section">
+                    <span class="schedule-meta-date">{{ getScheduleDateLabelCompact(sched) }}</span>
+                    <span class="schedule-meta-time">{{ getScheduleTimeLabelCompact(sched) }}</span>
+                  </div>
+                  @if (sched.status !== 'activo') {
+                  <div class="schedule-deactivated-overlay">
+                    <span class="schedule-deactivated-overlay-badge">Desactivado</span>
+                  </div>
+                  }
+                  @if (permissionsService.hasPermission('Analíticas', 'editar')) {
+                  <div class="card-delete-hover">
+                    <span class="icon-svg icon-trash text-danger" style="width: 14px; height: 14px;"></span>
+                  </div>
+                  }
+                </div>
+                } @empty {
+                <span class="text-muted small italic" style="font-size: 0.72rem; padding-left: 4px;">Sin horarios
+                  programados (opera 24/7)</span>
+                }
+              </div>
+
+              <!-- Botón/Dropdown para añadir horario (siempre visible) -->
+              <div class="position-relative w-100 d-block">
+                @if (permissionsService.hasPermission('Analíticas', 'editar')) {
+                <button class="btn-add-schedule-dashed" (click)="toggleAddScheduleDropdown(analytic.id, $event)">
+                  <span class="icon-svg icon-plus" style="width: 12px; height: 12px;"></span>
+                  <span>Añadir Horario</span>
+                </button>
+                }
+
+                @if (activeAddScheduleDropdown() === analytic.id) {
+                <div class="add-schedule-dropdown-menu shadow" (click)="$event.stopPropagation()">
+                  <div class="dropdown-header-title">Asociar Horario</div>
+                  @for (sched of getUnassociatedSchedules(analytic.id); track sched.id) {
+                  <div class="add-schedule-dropdown-item"
+                    (click)="toggleScheduleAssociation(sched, analytic.id, true); toggleAddScheduleDropdown(analytic.id, $event)">
+                    <span class="item-name">{{ sched.name }}</span>
+                    <span class="item-meta">{{ sched.frequency | titlecase }}</span>
+                  </div>
+                  } @empty {
+                  <div class="dropdown-empty-state">No hay más horarios disponibles</div>
+                  }
+                  <div class="dropdown-divider"></div>
+                  <a [routerLink]="['/dashboard/horarios']" class="dropdown-manage-link"
+                    (click)="toggleAddScheduleDropdown(analytic.id, $event); closeDrawer()">
+                    <span class="icon-svg icon-settings" style="width: 12px; height: 12px;"></span>
+                    <span>Gestionar Horarios</span>
+                  </a>
+                </div>
+                }
+              </div>
+            </div>
+            }
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Botón de Cerrar -->
+    <div class="mt-4 pt-3">
+      <button class="btn btn-clear-filters w-100 py-2" (click)="closeDrawer()">
+        Cerrar Panel
+      </button>
+    </div>
+    }
+  </div>
+</div>
+
+<!-- Modal de Confirmación: Eliminar Cámara -->
+<app-confirm-delete-modal
+  [show]="showDeleteModal()"
+  title="Eliminar cámara"
+  [itemName]="cameraToDelete()?.name || ''"
+  messagePrefix="¿Estás seguro de que deseas eliminar la cámara "
+  messageSuffix="? Esta acción no se puede deshacer."
+  [isDeleting]="isDeletingCamera()"
+  (confirm)="confirmDeleteCamera()"
+  (cancel)="closeDeleteModal()">
+</app-confirm-delete-modal>
+
+<!-- Modal de Confirmación: Eliminar Analítica -->
+<app-confirm-delete-modal
+  [show]="showDeleteAnalyticModal()"
+  title="Eliminar analítica"
+  [itemName]="getAnalyticLabel(analyticToDelete()?.type || '')"
+  messagePrefix="¿Estás seguro de que deseas eliminar la analítica "
+  messageSuffix="? Esta acción no se puede deshacer."
+  [isDeleting]="isDeletingAnalytic()"
+  (confirm)="confirmDeleteAnalytic()"
+  (cancel)="closeDeleteAnalyticModal()">
+</app-confirm-delete-modal>

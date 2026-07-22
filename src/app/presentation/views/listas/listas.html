@@ -1,44 +1,28 @@
 <div class="listas-view-container container-fluid py-4">
-  <!-- Cabecera Premium -->
-  <div class="d-flex justify-content-between align-items-center header-section">
-    <div class="d-flex align-items-center gap-3">
-      <!-- Botón de Collapse Sidebar (Ghost Button) -->
-      <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
-        (click)="toggleSidebar()" aria-label="Toggle Sidebar">
-        @if (isSidebarCollapsed()) {
-        <span class="icon-svg icon-sidebar-expand icon-size-28"></span>
-        } @else {
-        <span class="icon-svg icon-sidebar-collapse icon-size-28"></span>
-        }
+  <!-- Cabecera REFACTORIZADA DRY -->
+  <app-page-header
+    [title]="'Listas de Control de ' + (listType() === 'face_recognition' ? 'Rostros' : 'Placas')"
+    subtitle="Gestión global de watchlists y control de alertas en todos los nodos.">
+    <ng-container header-actions>
+      @if (permissionsService.hasPermission('Listas', 'crear')) {
+      <button class="btn-migrate-config" (click)="openListModal('create')">
+        <span class="icon-svg icon-plus" style="width: 14px; height: 14px;"></span>
+        <span>Crear Lista</span>
       </button>
-
-      <div>
-        <h2 class="fw-bold mb-0 header-page-title text-body">
-          Listas de Control de {{ listType() === 'face_recognition' ? 'Rostros' : 'Placas' }}
-        </h2>
-        <p class="text-muted mb-0 header-page-subtitle mt-1">
-          Gestión global de watchlists y control de alertas en todos los nodos.
-        </p>
-      </div>
-    </div>
-
-    @if (permissionsService.hasPermission('Listas', 'crear')) {
-    <button class="btn-migrate-config" (click)="openListModal('create')">
-      <span class="icon-svg icon-plus" style="width: 14px; height: 14px;"></span>
-      <span>Crear Lista</span>
-    </button>
-    }
-  </div>
+      }
+    </ng-container>
+  </app-page-header>
 
   <!-- Grid & Inspector Drawer Layout -->
   <div class="row g-4 align-items-stretch container-lists-layout">
     <!-- Column 1: Watchlists Selector (Left Pane) -->
     <div class="col-12 col-lg-4 d-flex flex-column container-lists-left">
       <div class="card bento-card p-4 h-100 d-flex flex-column">
-        <div class="mb-3">
-          <h5 class="fw-bold fs-6 mb-1 text-body">Listas Disponibles</h5>
-          <p class="text-muted small mb-0">Seleccione una watchlist para gestionar sus registros.</p>
-        </div>
+        <h5 class="fw-bold fs-6 mb-3 d-flex align-items-center gap-2 text-primary">
+          <span class="icon-svg icon-list details-header-icon" style="width: 18px; height: 18px;"></span>
+          <span>Listas Disponibles</span>
+          <span class="badge bg-secondary-light text-primary fs-8 rounded-pill ms-auto">{{ filteredLists().length }}</span>
+        </h5>
 
         @if (isListsLoading()) {
         <div class="text-center py-4 my-auto">
@@ -159,8 +143,9 @@
         </div>
         }
 
-        <!-- Barra de Filtros Horizontal inside the card -->
-        <div class="horizontal-filters-bar" [class.hidden]="!showFilters()">
+               <!-- Barra de Filtros Horizontal inside the card -->
+        @if (showFilters()) {
+        <div class="horizontal-filters-bar mb-3">
           <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
             <!-- 1. UMBRAL DE DETECCIÓN (Solo para Rostros) -->
@@ -197,8 +182,7 @@
                 <div>
                   <label class="filter-label d-flex justify-content-between small mb-1.5 fw-medium text-muted">
                     <span>Similitud Mínima</span>
-                    <span class="text-primary fw-semibold">{{ (tempSimilarityThreshold() * 100) | number:'1.0-0'
-                      }}%</span>
+                    <span class="text-primary fw-semibold">{{ (tempSimilarityThreshold() * 100) | number:'1.0-0' }}%</span>
                   </label>
                   <input type="range" class="form-range" min="0.5" max="1.0" step="0.01"
                     [value]="tempSimilarityThreshold()" (input)="onSimilarityThresholdChange($event)">
@@ -215,15 +199,13 @@
                 <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
                 <span>
                   Avistamientos:
-                  {{ tempAvistamientosFilter() === 'all' ? 'Todos' : (tempAvistamientosFilter() === 'with' ? 'Con
-                  avistamientos' :
-                  'Sin avistamientos') }}
+                  {{ tempAvistamientosFilter() === 'all' ? 'Todos' : (tempAvistamientosFilter() === 'with' ? 'Con avistamientos' : 'Sin avistamientos') }}
                 </span>
                 <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
                   [class.rotated]="activeDropdown() === 'avistamientos'" style="width: 10px; height: 10px;"></span>
               </button>
               @if (activeDropdown() === 'avistamientos') {
-              <div class="filter-dropdown-menu dropdown-coincidenciaFiltro p-2" (click)="$event.stopPropagation()">
+              <div class="filter-dropdown-menu dropdown-avistamientos p-2" (click)="$event.stopPropagation()">
                 <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempAvistamientosFilter() === 'all'"
                   (click)="selectAvistamientosFilter('all')">
                   Todos los Sujetos
@@ -262,6 +244,7 @@
             </div>
           </div>
         </div>
+        }
 
         <!-- Grid Scrollable Viewport -->
         <div class="flex-grow-1 overflow-y-auto scroll-container pe-1 min-h-0">
@@ -1153,79 +1136,29 @@
   </div>
   }
 
-  <!-- Modal de Confirmación: Eliminar Lista de Control -->
-  @if (showDeleteListModal()) {
-  <div class="delete-camera-modal-overlay" (click)="closeDeleteListModal()" aria-modal="true" role="dialog">
-    <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
-      <!-- Icono de advertencia -->
-      <div class="delete-modal-icon-wrap">
-        <span class="icon-svg icon-warning text-warning"
-          style="width: 28px; height: 28px; background-color: currentColor;"></span>
-      </div>
+  <!-- Modal de Confirmación: Eliminar Lista de Control (REUTILIZABLE DRY) -->
+  <app-confirm-delete-modal
+    [show]="showDeleteListModal()"
+    title="Eliminar Lista de Control"
+    [itemName]="listToDelete()?.name || ''"
+    messagePrefix="¿Estás seguro de que deseas eliminar la lista "
+    messageSuffix="? Se eliminarán todos los sujetos asociados y esta acción no se puede deshacer."
+    [isDeleting]="isDeletingList()"
+    (confirm)="confirmDeleteWatchlist()"
+    (cancel)="closeDeleteListModal()">
+  </app-confirm-delete-modal>
 
-      <!-- Título y mensaje -->
-      <h5 class="delete-modal-title">Eliminar Lista de Control</h5>
-      <p class="delete-modal-message">
-        ¿Estás seguro de que deseas eliminar la lista
-        <strong class="delete-modal-camera-name">{{ listToDelete()?.name }}</strong>?
-        Se eliminarán todos los sujetos asociados y esta acción no se puede deshacer.
-      </p>
-
-      <!-- Acciones -->
-      <div class="delete-modal-actions">
-        <button class="delete-modal-btn-cancel" (click)="closeDeleteListModal()" [disabled]="isDeletingList()">
-          Cancelar
-        </button>
-        <button class="delete-modal-btn-confirm" (click)="confirmDeleteWatchlist()" [disabled]="isDeletingList()">
-          @if (isDeletingList()) {
-          <span class="delete-modal-spinner"></span>
-          Eliminando...
-          } @else {
-          <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-          Eliminar
-          }
-        </button>
-      </div>
-    </div>
-  </div>
-  }
-
-  <!-- Modal de Confirmación: Eliminar Sujeto -->
-  @if (showDeleteSubjectModal()) {
-  <div class="delete-camera-modal-overlay" (click)="closeDeleteSubjectModal()" aria-modal="true" role="dialog">
-    <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
-      <!-- Icono de advertencia -->
-      <div class="delete-modal-icon-wrap">
-        <span class="icon-svg icon-warning text-warning"
-          style="width: 28px; height: 28px; background-color: currentColor;"></span>
-      </div>
-
-      <!-- Título y mensaje -->
-      <h5 class="delete-modal-title">Eliminar Registro</h5>
-      <p class="delete-modal-message">
-        ¿Estás seguro de que deseas eliminar a
-        <strong class="delete-modal-camera-name">{{ subjectToDeleteName() }}</strong>
-        de la lista de control? Esta acción no se puede deshacer.
-      </p>
-
-      <!-- Acciones -->
-      <div class="delete-modal-actions">
-        <button class="delete-modal-btn-cancel" (click)="closeDeleteSubjectModal()" [disabled]="isDeletingSubject()">
-          Cancelar
-        </button>
-        <button class="delete-modal-btn-confirm" (click)="confirmDeleteSubject()" [disabled]="isDeletingSubject()">
-          @if (isDeletingSubject()) {
-          <span class="delete-modal-spinner"></span>
-          Eliminando...
-          } @else {
-          <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-          Eliminar
-          }
-        </button>
-      </div>
-    </div>
-  </div>
-  }
+  <!-- Modal de Confirmación: Eliminar Sujeto (REUTILIZABLE DRY) -->
+  <app-confirm-delete-modal
+    [show]="showDeleteSubjectModal()"
+    title="Eliminar Registro"
+    [itemName]="subjectToDeleteName() || ''"
+    messagePrefix="¿Estás seguro de que deseas eliminar a "
+    messageSuffix=" de la lista de control? Esta acción no se puede deshacer."
+    [isDeleting]="isDeletingSubject()"
+    (confirm)="confirmDeleteSubject()"
+    (cancel)="closeDeleteSubjectModal()">
+  </app-confirm-delete-modal>
   <!-- Modal Editar Persona (Rostros) -->
   @if (showEditFaceSubjectModal()) {
   <div class="modal-backdrop-custom d-flex align-items-center justify-content-center"

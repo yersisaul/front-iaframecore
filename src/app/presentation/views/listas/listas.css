@@ -263,31 +263,13 @@
 }
 
 .horizontal-filters-bar {
-  max-height: 800px;
-  opacity: 1;
+  position: relative;
+  overflow: visible !important;
+  z-index: 100;
   margin-top: 0.25rem !important;
   margin-bottom: 0.75rem !important;
   padding: 0.15rem 0;
-  background-color: transparent !important;
-  border: none !important;
-  border-radius: 0;
-  box-shadow: none !important;
-  transition: max-height 0.35s ease-in-out,
-    opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    margin-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.horizontal-filters-bar.hidden {
-  max-height: 0 !important;
-  opacity: 0 !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  overflow: hidden;
-  pointer-events: none;
+  animation: filterBarSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .filter-dropdown-wrapper {

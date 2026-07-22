@@ -1,0 +1,23 @@
+.empty-state-view {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px dashed var(--border-color, #e2e8f0) !important;
+  color: var(--text-primary, #0f172a);
+}
+
+.empty-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-icon-wrapper .icon-svg {
+  display: inline-block;
+  background-color: currentColor;
+}
+
+.btn-premium {
+  padding: 0.5rem 1.25rem;
+  font-weight: 600;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}

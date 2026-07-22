@@ -1,34 +1,12 @@
 <div #eventosContainer class="eventos-view-container container-fluid py-4 position-relative">
-  <!-- Header Section -->
-  <div class="eventos-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-    <div class="d-flex align-items-center gap-3">
-      <!-- Botón de Collapse Sidebar (Ghost Button) -->
-      <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
-        (click)="toggleSidebar()" aria-label="Toggle Sidebar">
-        @if (isSidebarCollapsed()) {
-        <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
-        } @else {
-        <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
-        }
-      </button>
-      <div>
-        <h2 class="fw-bold mb-0 header-page-title text-body">Eventos y Alertas</h2>
-        <p class="text-muted mb-0 header-page-subtitle mt-1">
-          Se encontraron <span class="fw-semibold text-primary">{{ formatTotalRecords(totalRecords()) }}</span> eventos
-          registrados en el sistema.
-        </p>
-      </div>
-    </div>
-
-    <div class="d-flex align-items-center gap-3">
+  <!-- Header Section REFACTORIZADO DRY -->
+  <app-page-header
+    title="Eventos y Alertas"
+    [subtitle]="'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + formatTotalRecords(totalRecords()) + '</span> eventos registrados en el sistema.'">
+    <ng-container header-actions>
       <!-- Search and Page Size Selector -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
-        <div class="search-input-wrapper position-relative d-flex align-items-center pl-1">
-          <span class="icon-svg icon-search search-icon-prefix text-muted"
-            style="width: 18px; height: 18px; opacity: 0.5;"></span>
-          <input type="text" [formControl]="searchControl" placeholder="Buscar eventos..."
-            class="search-input-control border-0 ms-2" style="font-size: 0.82rem; outline: none; width: 180px;" />
-        </div>
+        <app-search-input [control]="searchControl" placeholder="Buscar eventos..." inputWidth="180px"></app-search-input>
 
         <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
           (click)="toggleFiltersVisibility()" [class.active]="hasActiveFilters()" [class.open]="showFilters()"
@@ -50,11 +28,12 @@
           }
         </select>
       </div>
-    </div>
-  </div>
+    </ng-container>
+  </app-page-header>
 
   <!-- Horizontal Filter Bar -->
-  <div class="horizontal-filters-bar mb-4" [class.hidden]="!showFilters()">
+  @if (showFilters()) {
+  <div class="horizontal-filters-bar mb-4">
     <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
       <!-- 1. FILTRO CÁMARAS -->
@@ -260,7 +239,7 @@
                     style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
                     <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
                   </div>
-                  <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
+                  <div class="d-grid gap-1 text-center">
                     @for (empty of calendarGrid().emptyDays; track empty) {
                     <div style="width: 28px; height: 28px;"></div>
                     }
@@ -333,6 +312,7 @@
 
     </div>
   </div>
+  }
 
   <!-- Main Grid Content Area -->
   <div class="main-content-layout position-relative">
@@ -363,16 +343,15 @@
       </div>
       }
 
-      <!-- Empty State -->
+      <!-- Empty State (REUTILIZABLE DRY) -->
       @if (!isLoading() && records().length === 0) {
-      <div class="empty-state-view text-center py-5 rounded bg-white shadow-sm border">
-        <div class="empty-icon-wrapper mb-3 text-muted">
-          <span class="icon-svg icon-warning text-muted" style="width: 48px; height: 48px;"></span>
-        </div>
-        <h4 class="fw-bold">Sin Eventos</h4>
-        <p class="text-muted">No se encontraron registros de eventos para los filtros seleccionados.</p>
-        <button (click)="onResetFilters()" class="btn btn-primary btn-premium mt-2">Restablecer Filtros</button>
-      </div>
+      <app-empty-state
+        title="Sin Eventos"
+        description="No se encontraron registros de eventos para los filtros seleccionados."
+        iconClass="icon-warning"
+        actionText="Restablecer Filtros"
+        (action)="onResetFilters()">
+      </app-empty-state>
       }
 
       <!-- Events Cards Grid -->
@@ -508,267 +487,20 @@
       </div>
       }
 
-      <!-- Pagination -->
-      @if (totalPages() > 1) {
-      <div class="d-flex justify-content-center align-items-center mt-5 gap-4 flex-wrap">
-        <nav aria-label="Page navigation">
-          <ul class="pagination pagination-md align-items-center mb-0" style="gap: 6px; padding: 0; list-style: none;">
-            <li class="page-item" [class.disabled]="currentPage() === 1">
-              <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center"
-                (click)="prevPage()" aria-label="Previous">
-                <span class="icon-svg icon-chevron-left" style="width: 18px; height: 18px;"></span>
-              </button>
-            </li>
-            @for (page of visiblePages(); track page) {
-            <li class="page-item" [class.active]="currentPage() === page">
-              <button class="page-link-ghost" (click)="setPage(page)">
-                {{ page }}
-              </button>
-            </li>
-            }
-            <li class="page-item" [class.disabled]="currentPage() === totalPages()">
-              <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center"
-                (click)="nextPage()" aria-label="Next">
-                <span class="icon-svg icon-chevron-right" style="width: 18px; height: 18px;"></span>
-              </button>
-            </li>
-          </ul>
-        </nav>
-
-        <!-- Jump to Page -->
-        <div class="d-flex align-items-center gap-2 jump-to-page-container">
-          <span class="text-muted small fw-medium">Ir a:</span>
-          <input type="text" class="form-control form-control-sm text-center shadow-sm"
-            style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;" [placeholder]="currentPage()"
-            inputmode="numeric" pattern="[0-9]*" (input)="onPageInput($event)" (keydown.enter)="jumpToPage($event)"
-            (blur)="jumpToPage($event)" />
-          <span class="text-muted small fw-medium">de {{ totalPages() }}</span>
-        </div>
-      </div>
-      }
+      <!-- Pagination (REUTILIZABLE DRY) -->
+      <app-pagination-controls
+        [currentPage]="currentPage()"
+        [totalPages]="totalPages()"
+        [visiblePages]="visiblePages()"
+        (pageChange)="setPage($event)">
+      </app-pagination-controls>
 
     </div>
   </div>
 </div>
 
-<!-- Premium Image Detail Modal with 80% Image and 20% Info + Circular Lens Magnifier -->
-@if (selectedEventForModal(); as selectedEvent) {
-<div class="modal-backdrop-blur d-flex align-items-center justify-content-center" (click)="closeImageDetailsModal()">
-  <div class="premium-detail-modal d-flex flex-column flex-md-row overflow-hidden shadow-2xl"
-    (click)="$event.stopPropagation()">
-
-    <!-- Left side: Image (80%) -->
-    <div
-      class="modal-image-panel d-flex align-items-center justify-content-center bg-dark position-relative overflow-hidden">
-      <!-- Fallback placeholder (visible if no image or if image fails 404) -->
-      <div class="placeholder-img-icon">
-        <span class="icon-svg icon-warning fallback-icon" style="width: 48px; height: 48px;"></span>
-        <span class="fallback-text" style="font-size: 0.85rem;">SIN IMAGEN</span>
-      </div>
-
-      @if (selectedEvent.urlImg) {
-      <div class="modal-img-wrapper position-relative overflow-hidden shadow-lg" style="z-index: 1;" (mousemove)="onZoomMouseMove($event)"
-        (click)="toggleZoom($event)" [class.zoom-active-cursor]="isZoomed()">
-        <!-- Normal image -->
-        <img [src]="selectedEvent.urlImg" (error)="onImageError($event)" class="w-100 h-100 select-none object-fit-cover transition-all"
-          alt="Full screen preview" />
-
-        <!-- Magnifier circular lens -->
-        @if (isZoomed()) {
-        <div class="magnifier-lens" [style.left.px]="zoomX()" [style.top.px]="zoomY()"
-          [style.background-image]="'url(' + selectedEvent.urlImg + ')'"
-          [style.background-position]="zoomBgX() + 'px ' + zoomBgY() + 'px'"
-          [style.background-size]="zoomBgWidth() + 'px ' + zoomBgHeight() + 'px'">
-        </div>
-        }
-      </div>
-      }
-    </div>
-
-    <!-- Right side: Event Detail Panel (20%) -->
-    <div class="modal-details-panel">
-
-      <!-- Sighting Preview Header (Clean, No bottom border) -->
-      <div class="sighting-preview-body-header p-4 pb-2 d-flex justify-content-between align-items-start">
-        <div>
-          <h5 class="sighting-preview-title fw-bold mb-1">Detalle del Evento</h5>
-          <p class="text-muted small mb-0">Información capturada en el evento de detección</p>
-        </div>
-        <!-- Close Button (Ghost Style) -->
-        <button class="btn-ghost d-flex align-items-center justify-content-center"
-          style="width: 32px; height: 32px; border-radius: 50%; margin-top: -4px; margin-right: -8px;"
-          (click)="closeImageDetailsModal()" aria-label="Cerrar modal">
-          <span class="icon-svg icon-close text-muted" style="width: 16px; height: 16px;"></span>
-        </button>
-      </div>
-
-      <!-- Scrollable body -->
-      <div class="scroll-details-content"> <!-- Meta list -->
-        <div class="sighting-preview-meta">
-          <!-- Cámara -->
-          <div class="sighting-preview-row">
-            <div class="sighting-preview-icon sp-icon--camera">
-              <span class="icon-svg icon-camara"
-                style="width: 14px; height: 14px; background-color: currentColor;"></span>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">Cámara</span>
-              <span class="sp-value">{{ selectedEvent.nombreCamara }}</span>
-            </div>
-          </div>
-
-          <!-- ID Cámara (Click to copy) -->
-          <div class="sighting-preview-row" [class.copied-flash]="copiedField() === 'camId'"
-            (click)="copyToClipboard(selectedEvent.idCamara, 'camId'); $event.stopPropagation()"
-            style="cursor: pointer;">
-            <div class="sighting-preview-icon sp-icon--id">
-              <span class="icon-svg icon-box" style="width: 14px; height: 14px; background-color: currentColor;"></span>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">ID Cámara</span>
-              @if (copiedField() === 'camId') {
-              <span class="text-success fw-bold font-monospace" style="font-size: 0.875rem;">¡Copiado!</span>
-              } @else {
-              <span class="sp-value font-monospace text-truncate d-block" [title]="selectedEvent.idCamara">
-                {{ selectedEvent.idCamara }}
-              </span>
-              }
-            </div>
-          </div>
-
-          <!-- Fecha y Hora -->
-          <div class="sighting-preview-row">
-            <div class="sighting-preview-icon sp-icon--time">
-              <span class="icon-svg icon-clock"
-                style="width: 14px; height: 14px; background-color: currentColor;"></span>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">Fecha y Hora</span>
-              <span class="sp-value font-monospace">{{ selectedEvent.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
-            </div>
-          </div>
-
-          <!-- Sistema de IA -->
-          <div class="sighting-preview-row">
-            <div class="sighting-preview-icon sp-icon--subject"
-              [style.color]="getAnalyticColor(selectedEvent.analitica)"
-              style="background-color: var(--color-primary-light-bg);">
-              <span class="icon-svg icon-activity"
-                style="width: 14px; height: 14px; background-color: currentColor;"></span>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">Sistema de IA</span>
-              <span class="sp-value text-capitalize">{{ selectedEvent.analitica }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Atributos Detallados Section -->
-        <h6 class="sighting-preview-section-title fw-bold text-uppercase"
-          style="font-size: 0.75rem; letter-spacing: 0.08em; color: var(--text-muted);">Atributos Detectados</h6>
-
-        <div class="sighting-attributes-container d-flex flex-column gap-3">
-          <!-- Identificación -->
-          <div class="popover-section">
-            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
-              style="font-size: 0.65rem; letter-spacing: 0.05em;">Identificación</div>
-            <div class="attributes-grid">
-              <span class="attribute-pill object-type-pill text-capitalize">
-                <span class="pill-dot"></span>
-                Objeto: {{ selectedEvent.objeto }}
-              </span>
-              @if (selectedEvent.direccion) {
-              <span class="attribute-pill recognition-pill text-capitalize"
-                [class.gender-pill]="selectedEvent.direccion.toLowerCase() === 'entrada'"
-                [class.posture-pill]="selectedEvent.direccion.toLowerCase() === 'salida'">
-                Dirección: {{ selectedEvent.direccion }}
-              </span>
-              }
-            </div>
-          </div>
-
-          <!-- Métricas -->
-          @if (hasMetrics(selectedEvent)) {
-          <div class="popover-section">
-            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
-              style="font-size: 0.65rem; letter-spacing: 0.05em;">Métricas</div>
-            <div class="attributes-grid">
-              @if (selectedEvent.conteoAforo !== null) {
-              <span class="attribute-pill age-pill text-capitalize">
-                Aforo: {{ selectedEvent.conteoAforo }}
-              </span>
-              }
-              @if (selectedEvent.tiempoPermanencia !== null) {
-              <span class="attribute-pill gender-pill text-capitalize">
-                Permanencia: {{ selectedEvent.tiempoPermanencia | number:'1.1-1' }}s
-              </span>
-              }
-              @if (selectedEvent.objetosEnArea !== null) {
-              <span class="attribute-pill object-type-pill text-capitalize">
-                En Área: {{ selectedEvent.objetosEnArea }}
-              </span>
-              }
-              @if (selectedEvent.espaciosLibres !== null) {
-              <span class="attribute-pill recognition-pill text-capitalize">
-                Libres: {{ selectedEvent.espaciosLibres }}
-              </span>
-              }
-            </div>
-          </div>
-          }
-
-          <!-- Localización -->
-          @if (selectedEvent.location) {
-          <div class="popover-section">
-            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
-              style="font-size: 0.65rem; letter-spacing: 0.05em;">Localización</div>
-            <div class="attributes-grid">
-              <span class="attribute-pill recognition-pill font-monospace"
-                (click)="copyToClipboard(selectedEvent.location.lat + ', ' + selectedEvent.location.lon, 'geo')"
-                [class.copied-flash]="copiedField() === 'geo'" style="cursor: pointer;">
-                <span class="pill-dot"></span>
-                @if (copiedField() === 'geo') {
-                <span class="text-success fw-bold">¡Copiado!</span>
-                } @else {
-                Geo: {{ selectedEvent.location.lat | number:'1.5-5' }}, {{ selectedEvent.location.lon | number:'1.5-5'
-                }}
-                }
-              </span>
-            </div>
-          </div>
-          }
-
-          <!-- Descripción -->
-          <div class="popover-section">
-            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
-              style="font-size: 0.65rem; letter-spacing: 0.05em;">Descripción</div>
-            <p class="text-secondary small mb-0" style="line-height: 1.5; word-break: break-word;">
-              {{ selectedEvent.detalleEvento }}
-            </p>
-          </div>
-        </div>
-
-      </div><!-- /scroll-details-content -->
-
-      <!-- Footer Action -->
-      <div class="modal-footer-action p-3 bg-transparent">
-        @if (selectedEvent.location) {
-        <a class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 py-2 px-3 rounded-3"
-          [href]="getGoogleMapsUrl(selectedEvent)" target="_blank" rel="noopener noreferrer"
-          (click)="$event.stopPropagation()"
-          style="font-size: 0.8rem; font-weight: 600; width: 100%; justify-content: center;">
-          <span class="icon-svg icon-location-pin"
-            style="width: 13px; height: 13px; background-color: currentColor;"></span>
-          Ver en Google Maps
-          <span class="icon-svg icon-external-link" style="width: 11px; height: 11px; opacity: 0.55;"></span>
-        </a>
-        } @else {
-        <span class="text-muted small w-100 text-center">Sin localización disponible</span>
-        }
-      </div>
-
-    </div>
-
-  </div>
-</div>
-}
+<!-- Modal Reutilizable de Detalle del Evento (DRY) -->
+<app-event-detail-modal
+  [event]="selectedEventForModal()"
+  (close)="closeImageDetailsModal()">
+</app-event-detail-modal>

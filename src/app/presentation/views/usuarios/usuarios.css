@@ -16,6 +16,7 @@
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -50,10 +51,6 @@
   transform: translateY(-2px);
   border-color: var(--primary);
   box-shadow: 0 8px 24px rgba(var(--primary-rgb), .12);
-}
-
-.user-header-block {
-  border-bottom: 1px solid var(--border-color-translucent, rgba(255, 255, 255, 0.08));
 }
 
 /* Role-specific highlights */
@@ -150,8 +147,13 @@
 }
 
 @keyframes fadeInBackdrop {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-card-custom {
@@ -168,6 +170,7 @@
     opacity: 0;
     transform: scale(0.95) translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -227,6 +230,7 @@
     opacity: 0;
     transform: translate(-50%, -20px);
   }
+
   to {
     opacity: 1;
     transform: translate(-50%, 0);
@@ -351,16 +355,12 @@
 
 /* --- Horizontal Filters Bar --- */
 .horizontal-filters-bar {
+  position: relative;
+  overflow: visible !important;
+  z-index: 100;
+  margin-bottom: 1.5rem !important;
   padding: 0.5rem 0;
-  background-color: transparent !important;
-  border: none !important;
-  border-radius: 0;
-  box-shadow: none !important;
-  transition: all 0.2s ease;
-}
-
-.horizontal-filters-bar.hidden {
-  display: none !important;
+  animation: filterBarSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .filter-dropdown-wrapper {
@@ -431,6 +431,7 @@
     opacity: 0;
     transform: translateY(-6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -555,6 +556,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -580,6 +582,7 @@
     opacity: 0;
     transform: translateY(24px) scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -722,10 +725,6 @@
   animation: slideUpModal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.modal-premium-header {
-  border-bottom: none;
-}
-
 .modal-header-icon-wrap {
   width: 46px;
   height: 46px;
@@ -774,9 +773,11 @@
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
+  background-color: var(--text-muted);
   opacity: 0.75;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
+  z-index: 2;
 }
 
 .premium-input-control {
@@ -854,6 +855,7 @@ form[formGroup="registerForm"] .premium-input-control:focus {
     opacity: 0;
     transform: translateY(-4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1015,7 +1017,8 @@ form[formGroup="registerForm"] .premium-input-control:focus {
 }
 
 .btn-premium-tab.active {
-  background-color: rgba(13, 110, 253, 0.08); /* 8% primary background */
+  background-color: rgba(13, 110, 253, 0.08);
+  /* 8% primary background */
   color: var(--primary) !important;
 }
 
@@ -1057,22 +1060,22 @@ form[formGroup="registerForm"] .premium-input-control:focus {
   background-color: white;
   transition: .2s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
-input:checked + .switch-slider {
+input:checked+.switch-slider {
   background-color: var(--primary, #0d6efd);
 }
 
-.role-perm-card .supervisor-card input:checked + .switch-slider {
+.role-perm-card .supervisor-card input:checked+.switch-slider {
   background-color: #8b5cf6;
 }
 
-.role-perm-card .operador-card input:checked + .switch-slider {
+.role-perm-card .operador-card input:checked+.switch-slider {
   background-color: #10b981;
 }
 
-input:checked + .switch-slider:before {
+input:checked+.switch-slider:before {
   transform: translateX(16px);
 }
 
@@ -1130,18 +1133,18 @@ input:checked + .switch-slider:before {
   cursor: not-allowed;
 }
 
-.switch-disabled input:checked + .switch-slider {
+.switch-disabled input:checked+.switch-slider {
   background-color: var(--primary, #0d6efd) !important;
   opacity: 0.65;
 }
 
 /* Supervisor Switch (Purple) */
-.switch-supervisor input:checked + .switch-slider {
+.switch-supervisor input:checked+.switch-slider {
   background-color: #8b5cf6 !important;
 }
 
 /* Operador Switch (Emerald Green) */
-.switch-operador input:checked + .switch-slider {
+.switch-operador input:checked+.switch-slider {
   background-color: #10b981 !important;
 }
 
@@ -1165,15 +1168,6 @@ input:checked + .switch-slider:before {
   overflow-y: auto;
   scrollbar-width: thin;
   min-height: 0;
-}
-
-/* Header Separator and Tabs Group */
-.header-separator {
-  width: 1px;
-  height: 24px;
-  background-color: var(--border-color);
-  opacity: 0.7;
-  flex-shrink: 0;
 }
 
 .view-tabs-group {
@@ -1285,12 +1279,14 @@ input:checked + .switch-slider:before {
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
     border-color: #10b981 !important;
   }
+
   30% {
     transform: scale(1.02) translateY(0);
     opacity: 1;
     box-shadow: 0 0 0 10px rgba(16, 185, 129, 0.2);
     border-color: #10b981 !important;
   }
+
   100% {
     transform: scale(1) translateY(0);
     opacity: 1;
@@ -1304,10 +1300,12 @@ input:checked + .switch-slider:before {
     box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.5);
     border-color: #8b5cf6 !important;
   }
+
   40% {
     box-shadow: 0 0 0 8px rgba(139, 92, 246, 0.2);
     border-color: #8b5cf6 !important;
   }
+
   100% {
     box-shadow: var(--card-shadow);
     border-color: var(--border-color) !important;
@@ -1321,11 +1319,13 @@ input:checked + .switch-slider:before {
     max-height: 500px;
     margin-bottom: 24px;
   }
+
   40% {
     transform: scale(0.95);
     opacity: 0.5;
     max-height: 500px;
   }
+
   100% {
     transform: scale(0.9);
     opacity: 0;
@@ -1337,15 +1337,18 @@ input:checked + .switch-slider:before {
   }
 }
 
-.user-card--new, .role-card--new {
+.user-card--new,
+.role-card--new {
   animation: cardCreatedGlow 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
-.user-card--updated, .role-card--updated {
+.user-card--updated,
+.role-card--updated {
   animation: cardUpdatedGlow 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
-.user-card--deleting, .role-card--deleting {
+.user-card--deleting,
+.role-card--deleting {
   animation: cardDeletedCollapse 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   pointer-events: none !important;
 }
@@ -1398,9 +1401,9 @@ input:checked + .switch-slider:before {
     opacity: 0;
     transform: translateY(-4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
-

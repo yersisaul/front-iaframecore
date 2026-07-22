@@ -340,7 +340,7 @@ describe('Camaras', () => {
     expect(component.getAnalyticColor('Unknown analytic')).toBe('var(--color-analytic-unknown)');
   });
 
-  it('should search cameras by name/id using startsWith and filter by advanced filters (status, streamType, decoder, analyticType)', async () => {
+  it('should search cameras by name/id using includes and filter by advanced filters (status, streamType, decoder, analyticType)', async () => {
     component.hostId.set('HOST-ABC123XYZ');
     const mockCameras: Camera[] = [
       {
@@ -374,16 +374,17 @@ describe('Camaras', () => {
     component.filterAnalyticType.set('all');
     expect(component.filteredCameras().length).toBe(2);
 
-    // 1. Search by name (Front) - startsWith prefix matching
+    // 1. Search by name (Front) - substring matching
     component.searchControl.setValue('front');
     component.searchTerm.set('front');
     expect(component.filteredCameras().length).toBe(1);
     expect(component.filteredCameras()[0].id).toBe('cam-001');
 
-    // Search by middle name (Door) - startsWith prefix matching should fail to match "Front Door Camera"
+    // Search by middle name (Door) - substring matching matches "Front Door Camera"
     component.searchControl.setValue('door');
     component.searchTerm.set('door');
-    expect(component.filteredCameras().length).toBe(0);
+    expect(component.filteredCameras().length).toBe(1);
+    expect(component.filteredCameras()[0].id).toBe('cam-001');
 
     // 2. Search by ID (cam-002) - startsWith prefix matching
     component.searchControl.setValue('cam-002');

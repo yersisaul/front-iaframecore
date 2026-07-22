@@ -1,0 +1,204 @@
+<div class="filter-dropdown-wrapper position-relative">
+  <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+    [class.active]="timestampDesde || timestampHasta"
+    (click)="onToggleDropdown($event)">
+    <span class="icon-svg icon-calendar filter-icon" style="width: 14px; height: 14px;"></span>
+    <span>Rango de Fechas</span>
+    @if (timestampDesde || timestampHasta) {
+    <span class="badge-dot-active bg-primary animate-pulse"
+      style="width: 6px; height: 6px; border-radius: 50%;"></span>
+    }
+    <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+      [class.rotated]="activeDropdown === dropdownName" style="width: 10px; height: 10px;"></span>
+  </button>
+
+  @if (activeDropdown === dropdownName) {
+  <div class="filter-dropdown-menu dropdown-fechas p-3" (click)="$event.stopPropagation()">
+    <div class="dropdown-header-title mb-3 text-uppercase text-muted fw-bold">Rango de Fechas</div>
+
+    <!-- Presets -->
+    <div class="d-flex flex-wrap gap-2 mb-3 preset-buttons-row">
+      <button type="button" class="preset-btn" (click)="setDatePreset('24h')">24h</button>
+      <button type="button" class="preset-btn" (click)="setDatePreset('7d')">7 días</button>
+      <button type="button" class="preset-btn" (click)="setDatePreset('today')">Hoy</button>
+      <button type="button" class="preset-btn text-danger-hover" (click)="setDatePreset('clear')">Limpiar</button>
+    </div>
+
+    <!-- Desde: Date + Time custom pickers -->
+    <div class="mb-3">
+      <label class="form-label small mb-2 fw-semibold text-muted d-block">Desde</label>
+      <div class="row g-2">
+        <!-- Fecha Desde -->
+        <div class="col-7 position-relative">
+          <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
+            (click)="openCalendarField('desde', $event)">
+            <span>{{ formatCalendarDateLabel(dateDesdeStr()) || 'Elegir fecha' }}</span>
+            <span class="icon-svg icon-calendar text-muted opacity-75" style="width: 13px; height: 13px;"></span>
+          </button>
+
+          @if (activeCalendarField() === 'desde') {
+          <div class="custom-calendar-popover position-absolute top-100 start-0"
+            (click)="$event.stopPropagation()">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <button type="button" class="calendar-header-btn btn-ghost" (click)="prevCalendarMonth($event)">
+                &lt;
+              </button>
+              <span class="fw-bold text-capitalize" style="font-size: 0.85rem; color: var(--text-primary);">
+                {{ getMonths()[calendarViewMonth()] }} {{ calendarViewYear() }}
+              </span>
+              <button type="button" class="calendar-header-btn btn-ghost" (click)="nextCalendarMonth($event)">
+                &gt;
+              </button>
+            </div>
+
+            <div class="d-grid text-center text-muted small mb-1"
+              style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
+              <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
+            </div>
+
+            <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
+              @for (empty of calendarGrid().emptyDays; track empty) {
+              <div style="width: 28px; height: 28px;"></div>
+              }
+              @for (day of calendarGrid().days; track day) {
+              <button type="button" class="calendar-day-btn" [class.selected]="isCalendarDaySelected(day)"
+                (click)="selectCalendarDay(day)">
+                {{ day }}
+              </button>
+              }
+            </div>
+          </div>
+          }
+        </div>
+
+        <!-- Hora Desde -->
+        <div class="col-5 position-relative">
+          <button type="button" class="calendar-trigger-btn w-100 font-monospace"
+            (click)="openTimePickerField('desde', $event)">
+            <span>{{ timeDesdeStr() || '00:00' }}</span>
+            <span class="icon-svg icon-clock text-muted opacity-75" style="width: 13px; height: 13px;"></span>
+          </button>
+
+          @if (activeTimeField() === 'desde') {
+          <div class="custom-time-popover position-absolute top-100 start-0" (click)="$event.stopPropagation()">
+            <div class="time-picker-container">
+              <div class="time-column-wrapper">
+                <div class="time-column-header">Hora</div>
+                <div class="time-column scroll-container">
+                  @for (h of hoursList; track h) {
+                  <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
+                    (click)="selectTimeHour(h)">
+                    {{ h | number:'2.0-0' }}
+                  </button>
+                  }
+                </div>
+              </div>
+              <div class="time-separator">:</div>
+              <div class="time-column-wrapper">
+                <div class="time-column-header">Min</div>
+                <div class="time-column scroll-container">
+                  @for (m of minutesList; track m) {
+                  <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
+                    (click)="selectTimeMinute(m)">
+                    {{ m | number:'2.0-0' }}
+                  </button>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Hasta: Date + Time custom pickers -->
+    <div>
+      <label class="form-label small mb-2 fw-semibold text-muted d-block">Hasta</label>
+      <div class="row g-2">
+        <!-- Fecha Hasta -->
+        <div class="col-7 position-relative">
+          <button type="button" class="calendar-trigger-btn w-100 font-monospace text-capitalize"
+            (click)="openCalendarField('hasta', $event)">
+            <span>{{ formatCalendarDateLabel(dateHastaStr()) || 'Elegir fecha' }}</span>
+            <span class="icon-svg icon-calendar text-muted opacity-75" style="width: 13px; height: 13px;"></span>
+          </button>
+
+          @if (activeCalendarField() === 'hasta') {
+          <div class="custom-calendar-popover position-absolute top-100 start-0"
+            (click)="$event.stopPropagation()">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <button type="button" class="calendar-header-btn btn-ghost" (click)="prevCalendarMonth($event)">
+                &lt;
+              </button>
+              <span class="fw-bold text-capitalize" style="font-size: 0.85rem; color: var(--text-primary);">
+                {{ getMonths()[calendarViewMonth()] }} {{ calendarViewYear() }}
+              </span>
+              <button type="button" class="calendar-header-btn btn-ghost" (click)="nextCalendarMonth($event)">
+                &gt;
+              </button>
+            </div>
+
+            <div class="d-grid text-center text-muted small mb-1"
+              style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
+              <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
+            </div>
+
+            <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
+              @for (empty of calendarGrid().emptyDays; track empty) {
+              <div style="width: 28px; height: 28px;"></div>
+              }
+              @for (day of calendarGrid().days; track day) {
+              <button type="button" class="calendar-day-btn" [class.selected]="isCalendarDaySelected(day)"
+                (click)="selectCalendarDay(day)">
+                {{ day }}
+              </button>
+              }
+            </div>
+          </div>
+          }
+        </div>
+
+        <!-- Hora Hasta -->
+        <div class="col-5 position-relative">
+          <button type="button" class="calendar-trigger-btn w-100 font-monospace"
+            (click)="openTimePickerField('hasta', $event)">
+            <span>{{ timeHastaStr() || '23:59' }}</span>
+            <span class="icon-svg icon-clock text-muted opacity-75" style="width: 13px; height: 13px;"></span>
+          </button>
+
+          @if (activeTimeField() === 'hasta') {
+          <div class="custom-time-popover position-absolute top-100 start-0" (click)="$event.stopPropagation()">
+            <div class="time-picker-container">
+              <div class="time-column-wrapper">
+                <div class="time-column-header">Hora</div>
+                <div class="time-column scroll-container">
+                  @for (h of hoursList; track h) {
+                  <button type="button" class="time-select-option" [class.selected]="isTimeHourSelected(h)"
+                    (click)="selectTimeHour(h)">
+                    {{ h | number:'2.0-0' }}
+                  </button>
+                  }
+                </div>
+              </div>
+              <div class="time-separator">:</div>
+              <div class="time-column-wrapper">
+                <div class="time-column-header">Min</div>
+                <div class="time-column scroll-container">
+                  @for (m of minutesList; track m) {
+                  <button type="button" class="time-select-option" [class.selected]="isTimeMinuteSelected(m)"
+                    (click)="selectTimeMinute(m)">
+                    {{ m | number:'2.0-0' }}
+                  </button>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+</div>

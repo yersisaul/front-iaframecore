@@ -10,19 +10,25 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Subject, Subscription, interval } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { HostService, HostFilterOptions } from '../../../core/services/host.service';
+import { CameraService } from '../../../core/services/camera.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { Host } from '../../../core/domain/entities/host.models';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
- 
+import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { SearchInputComponent } from '../../shared/search-input/search-input.component';
+import { ViewModeToggleComponent } from '../../shared/view-mode-toggle/view-mode-toggle.component';
+
 @Component({
   selector: 'app-nodos',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent],
   templateUrl: './nodos.html',
   styleUrl: './nodos.css',
 })
 export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   public hostService = inject(HostService);
+  public cameraService = inject(CameraService);
   public permissionsService = inject(PermissionsService);
   private sidebarService = inject(SidebarService);
   private router = inject(Router);
@@ -99,7 +105,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     if (!term) return all;
     return all.filter(h =>
       (h.hostname && h.hostname.toLowerCase().includes(term)) ||
-      (h.fingerprint && h.fingerprint.toLowerCase().startsWith(term)) ||
+      (h.fingerprint && h.fingerprint.toLowerCase().includes(term)) ||
       (h.ipAddress && h.ipAddress.toLowerCase().includes(term))
     );
   });
@@ -117,12 +123,27 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     if (!term) return candidates;
     return candidates.filter(h =>
       (h.hostname && h.hostname.toLowerCase().includes(term)) ||
-      (h.fingerprint && h.fingerprint.toLowerCase().startsWith(term)) ||
+      (h.fingerprint && h.fingerprint.toLowerCase().includes(term)) ||
       (h.ipAddress && h.ipAddress.toLowerCase().includes(term))
     );
   });
   readonly allHosts = this.hostService.allHosts;
 
+  // ── Camera Count Computation ─────────────────────────────────────────────────
+  readonly cameraCountsByHost = computed<Record<string, number>>(() => {
+    const cams = this.cameraService.cameras();
+    const map: Record<string, number> = {};
+    for (const c of cams) {
+      if (c.hostFingerprint) {
+        map[c.hostFingerprint] = (map[c.hostFingerprint] || 0) + 1;
+      }
+    }
+    return map;
+  });
+
+  getCameraCount(fingerprint: string): number {
+    return this.cameraCountsByHost()[fingerprint] || 0;
+  }
 
   // ── Dynamic filter option lists (built from loaded data) ────────────────────
   readonly filterOptions = signal<HostFilterOptions | null>(null);
@@ -139,11 +160,11 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     const ver  = this.filterVersion();
 
     const filtered = all.filter(h => {
-      // Search by hostname or IP (strict prefix matching)
+      // Search by hostname, IP or fingerprint (substring matching)
       if (term) {
-        const matchesHostname = h.hostname.toLowerCase().startsWith(term);
-        const matchesIp       = h.ipAddress.toLowerCase().startsWith(term);
-        const matchesFp       = h.fingerprint.toLowerCase().startsWith(term);
+        const matchesHostname = h.hostname.toLowerCase().includes(term);
+        const matchesIp       = h.ipAddress.toLowerCase().includes(term);
+        const matchesFp       = h.fingerprint.toLowerCase().includes(term);
         if (!matchesHostname && !matchesIp && !matchesFp) return false;
       }
       // Status filter — backend uses 'online'/'offline' but also 'active'/'inactive'
@@ -280,6 +301,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
       // Consultar el estado y métricas iniciales una única vez al iniciar
       this.fetchInitialHeartbeats();
     });
+    this.cameraService.getAllCameras().subscribe();
   }
 
   fetchInitialHeartbeats(): void {
@@ -485,7 +507,6 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.filterVram.set(this.tempFilterVram());
     this.filterVersion.set(this.tempFilterVersion());
     this.currentPage.set(1);
-    this.showFilterPanel.set(false);
     this.syncUrl();
   }
 
@@ -499,10 +520,18 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.filterVram.set('all');    this.tempFilterVram.set('all');
     this.filterVersion.set('all'); this.tempFilterVersion.set('all');
     this.currentPage.set(1);
-    this.showFilterPanel.set(false);
     this.activeDropdown.set(null);
     this.syncUrl();
   }
+
+  readonly hasPendingFilterChanges = computed<boolean>(() => {
+    return this.tempFilterStatus()  !== this.filterStatus()  ||
+           this.tempFilterOS()      !== this.filterOS()      ||
+           this.tempFilterArch()    !== this.filterArch()    ||
+           this.tempFilterGPU()     !== this.filterGPU()     ||
+           this.tempFilterVram()    !== this.filterVram()    ||
+           this.tempFilterVersion() !== this.filterVersion();
+  });
 
   // Dropdown helpers
   toggleDropdown(name: string, event: Event): void {
@@ -510,20 +539,17 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.activeDropdown.update(cur => cur === name ? null : name);
   }
 
-  selectFilterValue(filterName: string, value: string, event: Event): void {
-    event.stopPropagation();
-    // Update both temp AND active immediately — no "Apply" click needed for dropdowns
+  selectFilterValue(filterName: string, value: string, event?: Event): void {
+    if (event) event.stopPropagation();
     switch (filterName) {
-      case 'status':  this.tempFilterStatus.set(value);  this.filterStatus.set(value);  break;
-      case 'os':      this.tempFilterOS.set(value);      this.filterOS.set(value);      break;
-      case 'arch':    this.tempFilterArch.set(value);    this.filterArch.set(value);    break;
-      case 'gpu':     this.tempFilterGPU.set(value);     this.filterGPU.set(value);     break;
-      case 'vram':    this.tempFilterVram.set(value);    this.filterVram.set(value);    break;
-      case 'version': this.tempFilterVersion.set(value); this.filterVersion.set(value); break;
+      case 'status':  this.tempFilterStatus.set(value);  break;
+      case 'os':      this.tempFilterOS.set(value);      break;
+      case 'arch':    this.tempFilterArch.set(value);    break;
+      case 'gpu':     this.tempFilterGPU.set(value);     break;
+      case 'vram':    this.tempFilterVram.set(value);    break;
+      case 'version': this.tempFilterVersion.set(value); break;
     }
-    this.currentPage.set(1);
     this.activeDropdown.set(null);
-    this.syncUrl();
   }
 
   @HostListener('document:click')
@@ -621,6 +647,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
       next: () => {
         this.isMigrating.set(false);
         this.closeMigrateModal();
+        this.cameraService.getAllCameras().subscribe();
         alert('Migración de configuración completada con éxito.');
       },
       error: (err) => {

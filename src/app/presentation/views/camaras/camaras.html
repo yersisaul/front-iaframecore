@@ -4,143 +4,74 @@
   <!-- ══════════════════════════════════════════════════════
        CABECERA — 2 FILAS (Mismo formato que Nodos)
        ══════════════════════════════════════════════════════ -->
-  <div class="view-header mb-4">
+  <!-- CABECERA REFACTORIZADA DRY -->
+  <app-page-header
+    [showSidebarToggle]="!hostId()"
+    [title]="hostId() ? 'Cámaras del Nodo' + (currentHost()?.hostname ? ' &quot;' + currentHost()?.hostname + '&quot;' : '') : 'Todas las Cámaras'"
+    [subtitle]="'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + filteredCameras().length + '</span> cámaras y <span class=&quot;fw-semibold text-primary&quot;>' + filteredAnalyticsCount() + '</span> analíticas ' + (hostId() ? 'en este nodo.' : 'en el sistema.')">
 
-    <!-- ─── FILA 1: Identidad + Controles principales ─── -->
-    <div class="header-row-top d-flex align-items-center justify-content-between gap-3">
-
-      <!-- IZQUIERDA: Botón volver/sidebar + Identidad de página -->
-      <div class="d-flex align-items-center gap-3">
-        @if (hostId()) {
-        <!-- Botón de volver a Nodos -->
-        <a routerLink="/dashboard/nodos"
-          class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
-          aria-label="Volver a Nodos" title="Volver a Nodos">
-          <span class="icon-svg icon-chevron-left" style="width: 24px; height: 24px;"></span>
-        </a>
-        } @else {
-        <!-- Botón de Collapse Sidebar -->
-        <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
-          (click)="toggleSidebar()" aria-label="Toggle Sidebar">
-          @if (isSidebarCollapsed()) {
-          <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
-          } @else {
-          <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
-          }
-        </button>
-        }
-
-        <!-- Bloque de identidad: título + subtítulo -->
-        <div class="header-identity">
-          <h2 class="fw-bold mb-0 header-page-title">
-            @if (hostId()) {
-            Cámaras del Nodo{{ currentHost()?.hostname ? ' "' + currentHost()?.hostname + '"' : '' }}
-            } @else {
-            Todas las Cámaras
-            }
-          </h2>
-          <p class="text-muted mb-0 header-page-subtitle mt-1">
-            Se encontraron <span class="fw-semibold text-primary">{{ filteredCameras().length }}</span> cámaras y <span
-              class="fw-semibold text-primary">{{ analytics().length }}</span> analíticas
-            @if (hostId()) { en este nodo. } @else { en el sistema. }
-          </p>
-        </div>
-      </div>
-
-      <!-- DERECHA: Acciones (Modo Nodo) o Buscador/Filtros (Modo Global) -->
-      <div class="d-flex align-items-center gap-3">
-
-        @if (hostId()) {
-        <!-- Tabs de Vista (Tarjetas / Lista) -->
-        <div class="view-tabs-group d-flex align-items-center gap-1">
-          <button class="btn-premium-tab" [class.active]="viewMode() === 'cards'" (click)="setViewMode('cards')">
-            <span class="icon-svg icon-grid" style="width: 14px; height: 14px;"></span>
-            <span>Tarjetas</span>
-          </button>
-          <button class="btn-premium-tab" [class.active]="viewMode() === 'list'" (click)="setViewMode('list')">
-            <span class="icon-svg icon-list" style="width: 14px; height: 14px;"></span>
-            <span>Lista</span>
-          </button>
-        </div>
-
-        <!-- Separador vertical + Botón Licencia y Cuotas (condicional) -->
-        @if (license()) {
-        <div class="header-separator"></div>
-
-        <button class="btn-migrate-config" (click)="openLicenseModal()">
-          <span class="icon-svg icon-shield" style="width: 15px; height: 15px;"></span>
-          <span>Licencia y Cuotas</span>
-        </button>
-        }
-
-        @if (permissionsService.hasPermission('Hosts', 'eliminar')) {
-        <button class="btn-delete-host ms-2" (click)="openDeleteHostModal()">
-          <span class="icon-svg icon-trash" style="width: 15px; height: 15px;"></span>
-          <span>Eliminar Nodo</span>
-        </button>
-        }
-        } @else {
-        <!-- Tabs de Vista (Tarjetas / Lista) -->
-        <div class="view-tabs-group d-flex align-items-center gap-1">
-          <button class="btn-premium-tab" [class.active]="viewMode() === 'cards'" (click)="setViewMode('cards')">
-            <span class="icon-svg icon-grid" style="width: 14px; height: 14px;"></span>
-            <span>Tarjetas</span>
-          </button>
-          <button class="btn-premium-tab" [class.active]="viewMode() === 'list'" (click)="setViewMode('list')">
-            <span class="icon-svg icon-list" style="width: 14px; height: 14px;"></span>
-            <span>Lista</span>
-          </button>
-        </div>
-
-        <div class="header-separator"></div>
-
-        <!-- Barra de Búsqueda + Botón de Filtros -->
-        <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
-          <div class="search-input-wrapper d-flex align-items-center flex-grow-1">
-            <span class="icon-svg icon-search search-icon-prefix text-muted flex-shrink-0"
-              style="width: 18px; height: 18px; opacity: 0.5;"></span>
-            <input type="text" [formControl]="searchControl" placeholder="Buscar cámara..."
-              class="search-input-control border-0 ms-2" style="outline: none; flex: 1; min-width: 0;" />
-          </div>
-          <button
-            class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
-            (click)="toggleFilterPanel()" [class.active]="hasActiveFilters()" [class.open]="showFilterPanel()"
-            title="Filtros avanzados" aria-label="Filtros avanzados">
-            <span class="icon-svg icon-filter filter-icon"></span>
-            @if (hasActiveFilters()) {
-            <span class="active-badge-dot"></span>
-            }
-          </button>
-        </div>
-
-        <!-- Selector de Cámaras por Página -->
-        <div class="d-flex align-items-center gap-2">
-          <label for="cam-limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Cámaras/Pág:</label>
-          <select id="cam-limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
-            (change)="onLimitChange($event)">
-            @for (opt of limitOptions(); track $index) {
-            <option [value]="opt" [selected]="limit() === opt">{{ opt }}</option>
-            }
-          </select>
-        </div>
-        }
-
-      </div>
-    </div>
-    <!-- /FILA 1 -->
-
-    <!-- ─── FILA 2: Búsqueda + Paginación (Solo en Modo Nodo) ─── -->
+    <!-- Botón Volver a Nodos cuando está en modo nodo -->
     @if (hostId()) {
-    <div class="header-row-bottom d-flex align-items-center gap-3 mt-3">
+    <a header-prefix routerLink="/dashboard/nodos"
+      class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all me-1"
+      aria-label="Volver a Nodos" title="Volver a Nodos">
+      <span class="icon-svg icon-chevron-left" style="width: 24px; height: 24px;"></span>
+    </a>
+    }
+
+    <ng-container header-actions>
+      @if (hostId()) {
+      <!-- Tabs de Vista (Tarjetas / Lista) REFACTORIZADO DRY -->
+      <app-view-mode-toggle [viewMode]="viewMode()" (viewModeChange)="setViewMode($event)"></app-view-mode-toggle>
+
+      @if (license()) {
+      <button class="btn-migrate-config" (click)="openLicenseModal()">
+        <span class="icon-svg icon-shield" style="width: 15px; height: 15px;"></span>
+        <span>Licencia y Cuotas</span>
+      </button>
+      }
+
+      @if (permissionsService.hasPermission('Hosts', 'eliminar')) {
+      <button class="btn-delete-host ms-2" (click)="openDeleteHostModal()">
+        <span class="icon-svg icon-trash" style="width: 15px; height: 15px;"></span>
+        <span>Eliminar Nodo</span>
+      </button>
+      }
+      } @else {
+      <!-- Tabs de Vista (Tarjetas / Lista) REFACTORIZADO DRY -->
+      <app-view-mode-toggle [viewMode]="viewMode()" (viewModeChange)="setViewMode($event)"></app-view-mode-toggle>
 
       <!-- Barra de Búsqueda + Botón de Filtros -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
-        <div class="search-input-wrapper d-flex align-items-center flex-grow-1">
-          <span class="icon-svg icon-search search-icon-prefix text-muted flex-shrink-0"
-            style="width: 18px; height: 18px; opacity: 0.5;"></span>
-          <input type="text" [formControl]="searchControl" placeholder="Buscar cámara..."
-            class="search-input-control border-0 ms-2" style="outline: none; flex: 1; min-width: 0;" />
-        </div>
+        <app-search-input [control]="searchControl" placeholder="Buscar cámara..."></app-search-input>
+        <button
+          class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
+          (click)="toggleFilterPanel()" [class.active]="hasActiveFilters()" [class.open]="showFilterPanel()"
+          title="Filtros avanzados" aria-label="Filtros avanzados">
+          <span class="icon-svg icon-filter filter-icon"></span>
+          @if (hasActiveFilters()) {
+          <span class="active-badge-dot"></span>
+          }
+        </button>
+      </div>
+
+      <!-- Selector de Cámaras por Página -->
+      <div class="d-flex align-items-center gap-2">
+        <label for="cam-limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Cámaras/Pág:</label>
+        <select id="cam-limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
+          (change)="onLimitChange($event)">
+          @for (opt of limitOptions(); track $index) {
+          <option [value]="opt" [selected]="limit() === opt">{{ opt }}</option>
+          }
+        </select>
+      </div>
+      }
+    </ng-container>
+
+    @if (hostId()) {
+    <div header-bottom class="header-row-bottom d-flex align-items-center gap-3 mt-3">
+      <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
+        <app-search-input [control]="searchControl" placeholder="Buscar cámara..."></app-search-input>
         <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
           (click)="toggleFilterPanel()" [class.active]="hasActiveFilters()" [class.open]="showFilterPanel()"
           title="Filtros avanzados" aria-label="Filtros avanzados">
@@ -151,10 +82,8 @@
         </button>
       </div>
 
-      <!-- Espaciador flexible -->
       <div class="flex-grow-1"></div>
 
-      <!-- Selector de Cámaras por Página -->
       <div class="d-flex align-items-center gap-2">
         <label for="cam-limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Cámaras por página:</label>
         <select id="cam-limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
@@ -164,173 +93,178 @@
           }
         </select>
       </div>
-
     </div>
     }
-    <!-- /FILA 2 -->
-
-  </div>
+  </app-page-header>
   <!-- /view-header -->
 
-  <!-- Backdrop Overlay para el Drawer Superior -->
+  <!-- Barra de Filtros Horizontal -->
   @if (showFilterPanel()) {
-  <div class="drawer-backdrop" (click)="toggleFilterPanel()"></div>
-  }
+  <div class="horizontal-filters-bar mb-4">
+    <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
-  <!-- Modal / Drawer Superior Deslizable -->
-  <div class="top-drawer" [class.open]="showFilterPanel()">
-    <div class="drawer-content p-4">
-      <div class="container-fluid">
-        <!-- Drawer Header -->
-        <div class="d-flex justify-content-between align-items-start mb-3 pb-3">
-          <div>
-            <div class="d-flex align-items-center gap-2">
-              <span class="icon-svg drawer-header-icon icon-filter"></span>
-              <h5 class="fw-bold mb-0">Filtros de Cámaras</h5>
-            </div>
-            <p class="text-muted small mb-0" style="margin-top: 2px;">Filtra y organiza los canales de cámaras del nodo
-              en tiempo real.</p>
-          </div>
-          <button class="btn-ghost close-drawer-btn" (click)="toggleFilterPanel()" aria-label="Cerrar filtros">
-            <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
+      <!-- 1. ESTADO DE ACTIVIDAD -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilterStatus() !== 'all'" (click)="toggleDropdown('status', $event)">
+          <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>
+            Estado: {{ tempFilterStatus() === 'all' ? 'Todos' : (tempFilterStatus() === 'active' || tempFilterStatus()
+            === 'online' ? 'Online' : 'Offline') }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'status'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'status') {
+        <div class="filter-dropdown-menu dropdown-status p-2" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterStatus() === 'all'"
+            (click)="selectFilterValue('status', 'all', $event)">
+            Todos los Estados
+          </button>
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+            [class.active]="tempFilterStatus() === 'active' || tempFilterStatus() === 'online'"
+            (click)="selectFilterValue('status', 'active', $event)">
+            Online
+          </button>
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+            [class.active]="tempFilterStatus() === 'inactive' || tempFilterStatus() === 'offline'"
+            (click)="selectFilterValue('status', 'inactive', $event)">
+            Offline
           </button>
         </div>
-
-        <!-- Cuadrícula de Filtros Bento Style -->
-        <div class="filters-bento-grid">
-          <!-- Filtro Estado -->
-          <div class="filter-cell position-relative" (click)="toggleDropdown('status', $event)">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-activity"></span>
-              <span class="filter-lbl mb-0">Estado de Actividad</span>
-            </div>
-            <div class="filter-display-val">
-              <span class="filter-current-value">
-                {{ tempFilterStatus() === 'all' ? 'Todos los Estados' : (tempFilterStatus() === 'active' ||
-                tempFilterStatus() === 'online' ? 'Online' : 'Offline') }}
-              </span>
-              <span class="icon-svg filter-chevron icon-chevron-right"
-                [class.rotated]="activeDropdown() === 'status'"></span>
-            </div>
-            @if (activeDropdown() === 'status') {
-            <div class="custom-dropdown-options-menu">
-              <div class="custom-dropdown-option" [class.active]="tempFilterStatus() === 'all'"
-                (click)="selectFilterValue('status', 'all', $event)">
-                Todos los Estados
-              </div>
-              <div class="custom-dropdown-option"
-                [class.active]="tempFilterStatus() === 'active' || tempFilterStatus() === 'online'"
-                (click)="selectFilterValue('status', 'active', $event)">
-                Online
-              </div>
-              <div class="custom-dropdown-option"
-                [class.active]="tempFilterStatus() === 'inactive' || tempFilterStatus() === 'offline'"
-                (click)="selectFilterValue('status', 'inactive', $event)">
-                Offline
-              </div>
-            </div>
-            }
-          </div>
-
-          <!-- Filtro Tipo de Stream -->
-          <div class="filter-cell position-relative" (click)="toggleDropdown('streamType', $event)">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-wifi"></span>
-              <span class="filter-lbl mb-0">Tipo de Stream</span>
-            </div>
-            <div class="filter-display-val">
-              <span class="filter-current-value text-uppercase">{{ tempFilterStreamType() === 'all' ? 'Todos los
-                Streams' : tempFilterStreamType() }}</span>
-              <span class="icon-svg filter-chevron icon-chevron-right"
-                [class.rotated]="activeDropdown() === 'streamType'"></span>
-            </div>
-            @if (activeDropdown() === 'streamType') {
-            <div class="custom-dropdown-options-menu">
-              <div class="custom-dropdown-option" [class.active]="tempFilterStreamType() === 'all'"
-                (click)="selectFilterValue('streamType', 'all', $event)">
-                Todos los Streams
-              </div>
-              @for (st of filterOptions().streamType; track st) {
-              <div class="custom-dropdown-option text-uppercase" [class.active]="tempFilterStreamType() === st"
-                (click)="selectFilterValue('streamType', st, $event)">
-                {{ st }}
-              </div>
-              }
-            </div>
-            }
-          </div>
-
-          <!-- Filtro Decodificador -->
-          <div class="filter-cell position-relative" (click)="toggleDropdown('decoder', $event)">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-settings"></span>
-              <span class="filter-lbl mb-0">Decodificador</span>
-            </div>
-            <div class="filter-display-val">
-              <span class="filter-current-value text-uppercase">{{ tempFilterDecoder() === 'all' ? 'Todos los
-                Decodificadores' : tempFilterDecoder() }}</span>
-              <span class="icon-svg filter-chevron icon-chevron-right"
-                [class.rotated]="activeDropdown() === 'decoder'"></span>
-            </div>
-            @if (activeDropdown() === 'decoder') {
-            <div class="custom-dropdown-options-menu">
-              <div class="custom-dropdown-option" [class.active]="tempFilterDecoder() === 'all'"
-                (click)="selectFilterValue('decoder', 'all', $event)">
-                Todos los Decodificadores
-              </div>
-              @for (dec of filterOptions().decoder; track dec) {
-              <div class="custom-dropdown-option text-uppercase" [class.active]="tempFilterDecoder() === dec"
-                (click)="selectFilterValue('decoder', dec, $event)">
-                {{ dec }}
-              </div>
-              }
-            </div>
-            }
-          </div>
-
-          <!-- Filtro Analítica de IA -->
-          <div class="filter-cell position-relative" (click)="toggleDropdown('analyticType', $event)">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="icon-svg filter-cell-icon icon-info-circle"></span>
-              <span class="filter-lbl mb-0">Analítica de IA</span>
-            </div>
-            <div class="filter-display-val">
-              <span class="filter-current-value">
-                {{ tempFilterAnalyticType() === 'all' ? 'Todas las Analíticas' :
-                getAnalyticLabel(tempFilterAnalyticType()) }}
-              </span>
-              <span class="icon-svg filter-chevron icon-chevron-right"
-                [class.rotated]="activeDropdown() === 'analyticType'"></span>
-            </div>
-            @if (activeDropdown() === 'analyticType') {
-            <div class="custom-dropdown-options-menu">
-              <div class="custom-dropdown-option" [class.active]="tempFilterAnalyticType() === 'all'"
-                (click)="selectFilterValue('analyticType', 'all', $event)">
-                Todas las Analíticas
-              </div>
-              @for (type of filterOptions().analyticType; track type) {
-              <div class="custom-dropdown-option" [class.active]="tempFilterAnalyticType() === type"
-                (click)="selectFilterValue('analyticType', type, $event)">
-                {{ getAnalyticLabel(type) }}
-              </div>
-              }
-            </div>
-            }
-          </div>
-        </div>
-
-        <!-- Acciones del Modal: Limpiar y Aplicar -->
-        <div class="d-flex gap-3 mt-4 pt-3 w-100">
-          <button class="btn btn-clear-filters flex-fill py-2.5" (click)="resetFilters()">
-            Limpiar Filtros
-          </button>
-          <button class="btn btn-apply-filters flex-fill py-2.5" (click)="applyFilters()">
-            Aplicar Cambios
-          </button>
-        </div>
+        }
       </div>
+
+      <!-- 2. NODO / HOST (SOLO EN MODO "TODAS LAS CÁMARAS") -->
+      @if (!hostId() && filterOptions().hosts.length > 0) {
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilterHost() !== 'all'" (click)="toggleDropdown('host', $event)">
+          <span class="icon-svg icon-nodos filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Nodo: {{ tempFilterHost() === 'all' ? 'Todos' : getHostName(tempFilterHost()) }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'host'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'host') {
+        <div class="filter-dropdown-menu dropdown-host p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterHost() === 'all'"
+            (click)="selectFilterValue('host', 'all', $event)">
+            Todos los Nodos
+          </button>
+          @for (h of filterOptions().hosts; track h.fingerprint) {
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+            [class.active]="tempFilterHost() === h.fingerprint"
+            (click)="selectFilterValue('host', h.fingerprint, $event)">
+            {{ h.name }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+      }
+
+      <!-- 3. TIPO DE STREAM -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilterStreamType() !== 'all'" (click)="toggleDropdown('streamType', $event)">
+          <span class="icon-svg icon-wifi filter-icon" style="width: 14px; height: 14px;"></span>
+          <span class="text-uppercase">Stream: {{ tempFilterStreamType() === 'all' ? 'Todos' : tempFilterStreamType()
+            }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'streamType'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'streamType') {
+        <div class="filter-dropdown-menu dropdown-streamType p-2" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+            [class.active]="tempFilterStreamType() === 'all'" (click)="selectFilterValue('streamType', 'all', $event)">
+            Todos los Streams
+          </button>
+          @for (st of filterOptions().streamType; track st) {
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded text-uppercase"
+            [class.active]="tempFilterStreamType() === st" (click)="selectFilterValue('streamType', st, $event)">
+            {{ st }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- 4. DECODIFICADOR -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilterDecoder() !== 'all'" (click)="toggleDropdown('decoder', $event)">
+          <span class="icon-svg icon-settings filter-icon" style="width: 14px; height: 14px;"></span>
+          <span class="text-uppercase">Decodificador: {{ tempFilterDecoder() === 'all' ? 'Todos' : tempFilterDecoder()
+            }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'decoder'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'decoder') {
+        <div class="filter-dropdown-menu dropdown-decoder p-2" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterDecoder() === 'all'"
+            (click)="selectFilterValue('decoder', 'all', $event)">
+            Todos los Decodificadores
+          </button>
+          @for (dec of filterOptions().decoder; track dec) {
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded text-uppercase"
+            [class.active]="tempFilterDecoder() === dec" (click)="selectFilterValue('decoder', dec, $event)">
+            {{ dec }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- 5. ANALÍTICA DE IA -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilterAnalyticType() !== 'all'" (click)="toggleDropdown('analyticType', $event)">
+          <span class="icon-svg icon-info-circle filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Analítica: {{ tempFilterAnalyticType() === 'all' ? 'Todas' : getAnalyticLabel(tempFilterAnalyticType())
+            }}</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'analyticType'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'analyticType') {
+        <div class="filter-dropdown-menu dropdown-analyticType p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+            [class.active]="tempFilterAnalyticType() === 'all'"
+            (click)="selectFilterValue('analyticType', 'all', $event)">
+            Todas las Analíticas
+          </button>
+          @for (type of filterOptions().analyticType; track type) {
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded text-capitalize"
+            [class.active]="tempFilterAnalyticType() === type"
+            (click)="selectFilterValue('analyticType', type, $event)">
+            {{ getAnalyticLabel(type) }}
+          </button>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- BOTONES DE APLICAR Y LIMPIAR FILTROS -->
+      <div class="filter-actions-group d-flex align-items-center gap-2 ms-auto">
+        @if (hasActiveFilters()) {
+        <button type="button" (click)="resetFilters()"
+          class="btn btn-outline-secondary btn-premium-action d-flex align-items-center gap-2">
+          <span class="icon-svg icon-close" style="width: 14px; height: 14px;"></span>
+          Limpiar Filtros
+        </button>
+        }
+
+        @if (hasPendingFilterChanges()) {
+        <button type="button" (click)="applyFilters()"
+          class="btn btn-primary btn-premium-action d-flex align-items-center gap-2">
+          <span class="icon-svg icon-save" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+          Aplicar Filtros
+        </button>
+        }
+      </div>
+
     </div>
   </div>
+  }
 
   <!-- Estado de carga -->
   @if (isLoading()) {
@@ -341,22 +275,16 @@
   </div>
   }
 
-  <!-- Lista vacía -->
+  <!-- Lista vacía (REUTILIZABLE DRY) -->
   @if (!isLoading() && filteredCameras().length === 0) {
-  <div class="card border-0 shadow-sm rounded-3 p-5 text-center mb-4 bg-card">
-    <div class="py-4">
-      <span class="icon-svg icon-camara text-muted"
-        style="width: 48px; height: 48px; opacity: 0.5; margin-bottom: 1rem;"></span>
-      <h5 class="fw-bold">No se encontraron cámaras</h5>
-      <p class="text-muted">
-        @if (cameras().length === 0) {
-        Este nodo no tiene canales de cámaras registrados actualmente.
-        } @else {
-        No hay cámaras registradas que coincidan con los filtros aplicados en la página actual.
-        }
-      </p>
-    </div>
-  </div>
+  <app-empty-state
+    title="No se encontraron cámaras"
+    [description]="cameras().length === 0 ? 'Este nodo no tiene canales de cámaras registrados actualmente.' : 'No hay cámaras registradas que coincidan con los filtros aplicados en la página actual.'"
+    iconClass="icon-camara"
+    actionText="Restablecer Filtros"
+    [showAction]="hasActiveFilters()"
+    (action)="resetFilters()">
+  </app-empty-state>
   }
 
   <!-- Cuadrícula de Cámaras (Estilo Bento Nodos) o Tabla Premium -->
@@ -565,453 +493,39 @@
   }
   }
 
-  <!-- Paginación -->
-  @if (totalPages() > 1) {
-  <div class="d-flex justify-content-center align-items-center gap-4 mt-5">
-    <nav aria-label="Page navigation">
-      <ul class="pagination pagination-md align-items-center" style="gap: 6px;">
-        <li class="page-item" [class.disabled]="currentPage() === 1">
-          <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center" (click)="prevPage()"
-            aria-label="Previous">
-            <span class="icon-svg icon-chevron-left" style="width: 18px; height: 18px;"></span>
-          </button>
-        </li>
-        @for (page of visiblePages(); track page) {
-        <li class="page-item" [class.active]="currentPage() === page">
-          <button class="page-link-ghost" (click)="setPage(page)">
-            {{ page }}
-          </button>
-        </li>
-        }
-        <li class="page-item" [class.disabled]="currentPage() === totalPages()">
-          <button class="btn-ghost page-nav-btn d-flex align-items-center justify-content-center" (click)="nextPage()"
-            aria-label="Next">
-            <span class="icon-svg icon-chevron-right" style="width: 18px; height: 18px;"></span>
-          </button>
-        </li>
-      </ul>
-    </nav>
+  <!-- Paginación (REUTILIZABLE DRY) -->
+  <app-pagination-controls
+    [currentPage]="currentPage()"
+    [totalPages]="totalPages()"
+    [visiblePages]="visiblePages()"
+    (pageChange)="setPage($event)">
+  </app-pagination-controls>
 
-    <!-- Jump to Page Input Container -->
-    <div class="d-flex align-items-center gap-2 jump-to-page-container">
-      <span class="text-muted small fw-medium">Ir a:</span>
-      <input type="text" class="form-control form-control-sm text-center shadow-sm"
-        style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;" [placeholder]="currentPage()"
-        inputmode="numeric" pattern="[0-9]*" (input)="onPageInput($event)" (keydown.enter)="jumpToPage($event)"
-        (blur)="jumpToPage($event)" />
-      <span class="text-muted small fw-medium">de {{ totalPages() }}</span>
-    </div>
-  </div>
-  }
-
-  <!-- Backdrop Overlay para el Drawer Lateral Derecho -->
-  @if (showAiPanel()) {
-  <div class="drawer-backdrop" (click)="closeAiPanel()"></div>
-  }
-
-  <!-- Drawer Lateral Derecho -->
-  <div class="right-drawer" [class.open]="showAiPanel()">
-    <div class="drawer-content p-4 h-100 d-flex flex-column justify-content-between">
-      @if (activeCamera(); as camera) {
-      <div class="drawer-scroll-area">
-        <!-- Cabecera del Drawer (Estilo Consistente) -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-          <div class="d-flex align-items-center gap-2">
-            <span class="text-uppercase fw-bold text-muted"
-              style="font-size: 0.72rem; letter-spacing: 0.08em;">Información de Cámara</span>
-          </div>
-
-          <div class="d-flex align-items-center gap-2">
-            <button class="btn-ghost close-drawer-btn d-flex align-items-center justify-content-center"
-              style="width: 32px; height: 32px; border-radius: 50%;" (click)="closeAiPanel()" aria-label="Cerrar panel">
-              <span class="icon-svg icon-close text-muted" style="width: 16px; height: 16px;"></span>
-            </button>
-          </div>
-        </div>
-
-        @if (isEditingCamera()) {
-        <!-- Formulario de Edición (Estilo Premium) -->
-        <div class="edit-camera-form-container mb-4 shadow-sm" style="animation: slideDown 0.25s ease-out;">
-          <h6 class="text-uppercase fw-bold text-muted mb-3" style="font-size: 0.68rem; letter-spacing: 0.08em;">Editar
-            Configuración</h6>
-
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-semibold">Nombre de la Cámara</label>
-            <input type="text" class="form-control" [class.is-invalid]="isNameInvalid" [(ngModel)]="editCameraName"
-              placeholder="Ingrese el nombre de la cámara" />
-            @if (isNameInvalid) {
-            <div class="invalid-feedback">
-              El nombre de la cámara es obligatorio.
-            </div>
-            }
-          </div>
-          <div class="row g-2 mb-3">
-            <div class="col-6">
-              <label class="form-label text-muted small fw-semibold">Latitud</label>
-              <input type="number" step="any" min="-90" max="90" class="form-control" [class.is-invalid]="isLatInvalid"
-                [(ngModel)]="editCameraLat" placeholder="Latitud" />
-              @if (isLatInvalid) {
-              <div class="invalid-feedback">
-                Rango: -90 a 90.
-              </div>
-              }
-            </div>
-            <div class="col-6">
-              <label class="form-label text-muted small fw-semibold">Longitud</label>
-              <input type="number" step="any" min="-180" max="180" class="form-control"
-                [class.is-invalid]="isLonInvalid" [(ngModel)]="editCameraLon" placeholder="Longitud" />
-              @if (isLonInvalid) {
-              <div class="invalid-feedback">
-                Rango: -180 a 180.
-              </div>
-              }
-            </div>
-          </div>
-          <div class="d-flex gap-3 mt-4 pt-3 w-100">
-            <button type="button" class="btn btn-clear-filters flex-fill py-2.5" (click)="cancelEditingCamera()">
-              Cancelar
-            </button>
-            <button type="button" class="btn btn-apply-filters flex-fill py-2.5" (click)="saveCameraInfo(camera)"
-              [disabled]="isFormInvalid">
-              Guardar
-            </button>
-          </div>
-        </div>
-        } @else {
-        <!-- Tarjeta de Información de la Cámara (Cohesiva con el Sistema) -->
-        <div class="card p-3 mb-4"
-          style="background-color: var(--bg-card); border: 1px solid var(--border-color); box-shadow: var(--card-shadow); border-radius: var(--radius-lg);">
-          <!-- Fila Superior: Icono de Cámara, Nombre y Estado -->
-          <div class="d-flex align-items-center gap-3">
-            <div class="d-flex align-items-center justify-content-center rounded-circle border"
-              [style.border-color]="isCameraOnline(camera) ? 'var(--color-online)' : 'var(--border-color)'"
-              [style.color]="isCameraOnline(camera) ? 'var(--color-online)' : 'var(--text-secondary)'"
-              [style.background-color]="isCameraOnline(camera) ? 'var(--color-online-bg)' : 'var(--bg-primary)'"
-              style="width: 38px; height: 38px; flex-shrink: 0; border-width: 1.5px !important; border-radius: 50%;">
-              <span class="icon-svg icon-camara"
-                style="width: 18px; height: 18px; color: inherit; background-color: currentColor;"></span>
-            </div>
-
-            <!-- Contenedor del nombre y el botón de editar -->
-            <div class="d-flex align-items-center gap-2 overflow-hidden" style="flex: 1;">
-              <h5 class="fw-bold mb-0 text-truncate text-body" style="font-size: 1.05rem;" [title]="camera.name">
-                {{ camera.name }}
-              </h5>
-              @if (permissionsService.hasPermission('Cámaras', 'editar')) {
-              <button class="btn-ghost d-flex align-items-center justify-content-center"
-                style="width: 26px; height: 26px; border-radius: 50%; padding: 0; flex-shrink: 0;"
-                (click)="startEditingCamera(camera)" title="Editar Información">
-                <span class="icon-svg icon-edit" style="width: 13px; height: 13px;"></span>
-              </button>
-              }
-            </div>
-
-            <!-- Botón de eliminar (al lado derecho del todo) -->
-            @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
-            <button class="btn-ghost d-flex align-items-center justify-content-center text-danger"
-              style="width: 30px; height: 30px; border-radius: 50%; padding: 0; flex-shrink: 0;"
-              (click)="openDeleteModal(camera)" title="Eliminar Cámara">
-              <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-            </button>
-            }
-          </div>
-
-          <!-- Fila de Detalles Técnicos en Lista (Idéntico a Nodos) -->
-          <div class="specs-list d-flex flex-column gap-1">
-            <div class="spec-row" [class.copied-flash]="copiedRowId() === camera.id + '-drawer-id'"
-              (click)="copyRowContent(camera.id, camera.id + '-drawer-id'); $event.stopPropagation()">
-              <span class="spec-lbl">Camera ID</span>
-              @if (copiedRowId() === camera.id + '-drawer-id') {
-              <span class="copied-badge text-success fw-bold ms-auto"
-                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
-              } @else {
-              <span
-                class="spec-val font-monospace text-truncate text-end d-flex align-items-center justify-content-end gap-1.5 w-100">
-                {{ camera.id }}
-              </span>
-              }
-            </div>
-            <div class="spec-row" [class.copied-flash]="copiedRowId() === camera.id + '-drawer-lat'"
-              (click)="copyRowContent((camera.location.lat || 0).toString(), camera.id + '-drawer-lat'); $event.stopPropagation()">
-              <span class="spec-lbl">Latitud</span>
-              @if (copiedRowId() === camera.id + '-drawer-lat') {
-              <span class="copied-badge text-success fw-bold ms-auto"
-                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
-              } @else {
-              <span class="spec-val font-monospace text-truncate text-end w-100">
-                {{ camera.location.lat || '0.0' }}
-              </span>
-              }
-            </div>
-            <div class="spec-row" [class.copied-flash]="copiedRowId() === camera.id + '-drawer-lon'"
-              (click)="copyRowContent((camera.location.lon || 0).toString(), camera.id + '-drawer-lon'); $event.stopPropagation()">
-              <span class="spec-lbl">Longitud</span>
-              @if (copiedRowId() === camera.id + '-drawer-lon') {
-              <span class="copied-badge text-success fw-bold ms-auto"
-                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
-              } @else {
-              <span class="spec-val font-monospace text-truncate text-end w-100">
-                {{ camera.location.lon || '0.0' }}
-              </span>
-              }
-            </div>
-          </div>
-        </div>
-        }
-
-        <!-- Analíticas de IA asignadas a esta cámara -->
-        <div class="ai-control-panel-drawer mb-4">
-          <h6 class="text-muted text-uppercase fw-bold mb-3" style="font-size: 0.7rem; letter-spacing: 0.05em;">Sistemas
-            de IA</h6>
-
-          @if (getAnalyticsForCamera(camera.id).length === 0) {
-          <div class="text-muted small text-center p-3 border rounded bg-light-translucent" style="font-style: italic;">
-            No hay analíticas configuradas para esta cámara
-          </div>
-          }
-
-          <div class="d-flex flex-column gap-2">
-            @for (analytic of getAnalyticsForCamera(camera.id); track analytic.id) {
-            <div class="ai-control-card-wrapper mb-2" [class.ai-active]="analytic.status === 'active'"
-              [class.expanded]="isAnalyticDetailsExpanded(analytic.id)"
-              [class.dropdown-open]="activeAddScheduleDropdown() === analytic.id"
-              [class.card-crud-new]="analyticNewIds().has(analytic.id)"
-              [class.card-crud-updated]="analyticUpdatedIds().has(analytic.id)"
-              [class.card-crud-deleting]="analyticDeletingIds().has(analytic.id)"
-              [class.card-crud-status-active]="analyticActiveStatusIds().has(analytic.id)"
-              [class.card-crud-status-inactive]="analyticInactiveStatusIds().has(analytic.id)">
-              <div class="ai-control-header" (click)="toggleAnalyticDetails(analytic.id)">
-                <div class="d-flex align-items-center gap-3">
-                  <span class="analytic-color-dot shadow-sm"
-                    [style.background-color]="getAnalyticColor(analytic.type)"></span>
-                  <div>
-                    <span class="fw-bold d-block" style="font-size: 0.85rem;">{{ getAnalyticLabel(analytic.type)
-                      }}</span>
-                    @if (analytic.detectionClasses.length > 0) {
-                    <span class="text-muted" style="font-size: 0.72rem;">
-                      {{ analytic.detectionClasses.slice(0, 3).join(', ') }}{{ analytic.detectionClasses.length > 3 ?
-                      '...' : '' }}
-                    </span>
-                    }
-                  </div>
-                </div>
-                <!-- Contenedor de acciones en cabecera: Switch, Eliminar y Chevron Toggle -->
-                <div class="d-flex align-items-center gap-2">
-                  <!-- Control de estado por switch -->
-                  <div class="form-check form-switch m-0 d-flex align-items-center" (click)="$event.stopPropagation()">
-                    <input class="form-check-input" type="checkbox" role="switch" [id]="'switch-' + analytic.id"
-                      [checked]="analytic.status === 'active'"
-                      [disabled]="!permissionsService.hasPermission('Analíticas', 'activar_desactivar')"
-                      (change)="toggleAnalyticStatus(analytic)">
-                  </div>
-                  <!-- Botón Eliminar Analítica -->
-                  @if (permissionsService.hasPermission('Analíticas', 'eliminar')) {
-                  <button class="cam-icon-btn cam-icon-btn-delete d-flex align-items-center justify-content-center"
-                    (click)="openDeleteAnalyticModal(analytic); $event.stopPropagation()" title="Eliminar Analítica"
-                    aria-label="Eliminar analítica">
-                    <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-                  </button>
-                  }
-                  <!-- Chevron decorativo para indicar expansión -->
-                  <div class="btn-toggle-details transition-all d-flex align-items-center justify-content-center"
-                    [class.open]="isAnalyticDetailsExpanded(analytic.id)">
-                    <span class="icon-svg icon-chevron-down"
-                      style="width: 14px; height: 14px; transition: transform 0.2s ease;"></span>
-                  </div>
-                </div>
-              </div>
-
-              @if (isAnalyticDetailsExpanded(analytic.id)) {
-              <div class="analytic-details-expanded" style="animation: slideDown 0.2s ease-out;">
-                <!-- Lista vertical de horarios asociados -->
-                <div class="d-flex flex-column gap-2 mb-3">
-                  @for (sched of getSchedulesForAnalytic(analytic.id); track sched.id) {
-                  <!-- Tarjeta de Horario estilo Bento -->
-                  <div class="schedule-bento-card freq-{{ sched.frequency }}"
-                    [class.schedule-bento-card--desactivado]="sched.status !== 'activo'"
-                    [class.readonly-card]="!permissionsService.hasPermission('Analíticas', 'editar')"
-                    (click)="permissionsService.hasPermission('Analíticas', 'editar') ? toggleScheduleAssociation(sched, analytic.id, false) : null"
-                    [title]="permissionsService.hasPermission('Analíticas', 'editar') ? 'Click para remover este horario de la analítica' : ''">
-                    <div class="card-left-section">
-                      <span class="schedule-name">{{ sched.name }}</span>
-                      <span class="schedule-meta-frequency">{{ sched.frequency | titlecase }}</span>
-                    </div>
-                    <div class="card-right-section">
-                      <span class="schedule-meta-date">{{ getScheduleDateLabelCompact(sched) }}</span>
-                      <span class="schedule-meta-time">{{ getScheduleTimeLabelCompact(sched) }}</span>
-                    </div>
-                    @if (sched.status !== 'activo') {
-                    <div class="schedule-deactivated-overlay">
-                      <span class="schedule-deactivated-overlay-badge">Desactivado</span>
-                    </div>
-                    }
-                    @if (permissionsService.hasPermission('Analíticas', 'editar')) {
-                    <div class="card-delete-hover">
-                      <span class="icon-svg icon-trash text-danger" style="width: 14px; height: 14px;"></span>
-                    </div>
-                    }
-                  </div>
-                  } @empty {
-                  <span class="text-muted small italic" style="font-size: 0.72rem; padding-left: 4px;">Sin horarios
-                    programados (opera 24/7)</span>
-                  }
-                </div>
-
-                <!-- Botón/Dropdown para añadir horario (siempre visible) -->
-                <div class="position-relative w-100 d-block">
-                  @if (permissionsService.hasPermission('Analíticas', 'editar')) {
-                  <button class="btn-add-schedule-dashed" (click)="toggleAddScheduleDropdown(analytic.id, $event)">
-                    <span class="icon-svg icon-plus" style="width: 12px; height: 12px;"></span>
-                    <span>Añadir Horario</span>
-                  </button>
-                  }
-
-                  @if (activeAddScheduleDropdown() === analytic.id) {
-                  <div class="add-schedule-dropdown-menu shadow" (click)="$event.stopPropagation()">
-                    <div class="dropdown-header-title">Asociar Horario</div>
-                    @for (sched of getUnassociatedSchedules(analytic.id); track sched.id) {
-                    <div class="add-schedule-dropdown-item"
-                      (click)="toggleScheduleAssociation(sched, analytic.id, true); toggleAddScheduleDropdown(analytic.id, $event)">
-                      <span class="item-name">{{ sched.name }}</span>
-                      <span class="item-meta">{{ sched.frequency | titlecase }}</span>
-                    </div>
-                    } @empty {
-                    <div class="dropdown-empty-state">No hay más horarios disponibles</div>
-                    }
-                    <div class="dropdown-divider"></div>
-                    <a [routerLink]="['/dashboard/horarios']" class="dropdown-manage-link"
-                      (click)="toggleAddScheduleDropdown(analytic.id, $event)">
-                      <span class="icon-svg icon-settings" style="width: 12px; height: 12px;"></span>
-                      <span>Gestionar Horarios</span>
-                    </a>
-                  </div>
-                  }
-                </div>
-              </div>
-              }
-            </div>
-            }
-          </div>
-        </div>
-      </div>
-
-      <!-- Botón de Cerrar -->
-      <div class="mt-4 pt-3">
-        <button class="btn btn-clear-filters w-100 py-2" (click)="closeAiPanel()">
-          Cerrar Panel
-        </button>
-      </div>
-      }
-    </div>
-  </div>
-
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════════════
-  Modal de Confirmación: Eliminar Cámara
-══════════════════════════════════════════════════════════════════════════ -->
-@if (showDeleteModal()) {
-<div class="delete-camera-modal-overlay" (click)="closeDeleteModal()" aria-modal="true" role="dialog">
-  <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
-
-    <!-- Icono de advertencia -->
-    <div class="delete-modal-icon-wrap">
-      <span class="icon-svg icon-warning" style="width: 28px; height: 28px; color: var(--color-warning);"></span>
-    </div>
-
-    <!-- Título y mensaje -->
-    <h5 class="delete-modal-title">Eliminar cámara</h5>
-    <p class="delete-modal-message">
-      ¿Estás seguro de que deseas eliminar la cámara
-      <strong class="delete-modal-camera-name">{{ cameraToDelete()?.name }}</strong>?
-      Esta acción no se puede deshacer.
-    </p>
-
-    <!-- Acciones -->
-    <div class="delete-modal-actions">
-      <button class="delete-modal-btn-cancel" (click)="closeDeleteModal()" [disabled]="isDeletingCamera()">
-        Cancelar
-      </button>
-      <button class="delete-modal-btn-confirm" (click)="confirmDeleteCamera()" [disabled]="isDeletingCamera()">
-        @if (isDeletingCamera()) {
-        <span class="delete-modal-spinner"></span>
-        Eliminando...
-        } @else {
-        <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-        Eliminar
-        }
-      </button>
-    </div>
-
-  </div>
-</div>
-}
-
-<!-- ═══════════════════════════════════════════════════════════════════════
-  Modal de Confirmación: Eliminar Analítica
-══════════════════════════════════════════════════════════════════════════ -->
-@if (showDeleteAnalyticModal()) {
-<div class="delete-camera-modal-overlay" (click)="closeDeleteAnalyticModal()" aria-modal="true" role="dialog">
-  <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
-
-    <!-- Icono de advertencia -->
-    <div class="delete-modal-icon-wrap">
-      <span class="icon-svg icon-warning" style="width: 28px; height: 28px; color: var(--color-warning);"></span>
-    </div>
-
-    <!-- Título y mensaje -->
-    <h5 class="delete-modal-title">Eliminar analítica</h5>
-    <p class="delete-modal-message">
-      ¿Estás seguro de que deseas eliminar la analítica
-      <strong class="delete-modal-camera-name">{{ getAnalyticLabel(analyticToDelete()?.type || '') }}</strong>?
-      Esta acción no se puede deshacer.
-    </p>
-
-    <!-- Acciones -->
-    <div class="delete-modal-actions">
-      <button class="delete-modal-btn-cancel" (click)="closeDeleteAnalyticModal()" [disabled]="isDeletingAnalytic()">
-        Cancelar
-      </button>
-      <button class="delete-modal-btn-confirm" (click)="confirmDeleteAnalytic()" [disabled]="isDeletingAnalytic()">
-        @if (isDeletingAnalytic()) {
-        <span class="delete-modal-spinner"></span>
-        Eliminando...
-        } @else {
-        <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-        Eliminar
-        }
-      </button>
-    </div>
-
-  </div>
-</div>
-}
+  <!-- Componente Compartido Reutilizable (DRY): Drawer Lateral de Configuración de Cámara -->
+  <app-camera-detail-drawer
+    [show]="showAiPanel()"
+    [camera]="activeCamera()"
+    [hostId]="hostId()"
+    (close)="closeAiPanel()">
+  </app-camera-detail-drawer>
 
 
 <!-- ═══════════════════════════════════════════════════════════════════════
-  Modal de Licencia y Cuotas Bento
+  Modal de Licencia y Cuotas Bento (Diseño Premium 2 Columnas)
 ══════════════════════════════════════════════════════════════════════════ -->
 @if (showLicenseModal()) {
 <div class="license-modal-overlay" (click)="showLicenseModal.set(false)" aria-modal="true" role="dialog">
   <div class="license-modal-card" (click)="$event.stopPropagation()">
-    <!-- Cabecera del Modal -->
-    <div class="license-modal-header d-flex justify-content-between align-items-start pb-2 mb-3">
+
+    <!-- Cabecera del Modal (Sin divisores) -->
+    <div class="license-modal-header d-flex justify-content-between align-items-center mb-4">
       <div class="d-flex align-items-center gap-3">
         <div class="license-icon-container">
-          <span class="icon-svg icon-shield" style="width: 28px; height: 28px; color: var(--primary);"></span>
+          <span class="icon-svg icon-shield" style="width: 26px; height: 26px; color: var(--primary);"></span>
         </div>
         <div>
-          <div class="d-flex align-items-center gap-2 mb-1">
-            <h4 class="fw-bold mb-0">Licencia del Nodo</h4>
-            @if (license(); as lic) {
-            <span class="badge-license-type text-capitalize mb-0.5" [class.badge-license-temp]="lic.tipo === 'temporal'"
-              [class.badge-license-perm]="lic.tipo === 'permanente'" style="font-size: 0.68rem; padding: 2px 8px;">
-              <span class="badge-license-indicator"></span>
-              {{ lic.tipo }}
-            </span>
-            }
-          </div>
-          <p class="text-muted small mb-0">Detalles de la licencia activa y límites de analíticas</p>
+          <h4 class="fw-bold mb-0 fs-5">Licencia del Nodo</h4>
+          <p class="text-muted small mb-0">Información del servidor y consumo de analíticas asignadas</p>
         </div>
       </div>
       <button class="btn-ghost close-drawer-btn" (click)="showLicenseModal.set(false)" aria-label="Cerrar modal">
@@ -1019,122 +533,233 @@
       </button>
     </div>
 
-    <!-- Contenido del Modal -->
     @if (license(); as lic) {
-    <!-- Fila 1: Fingerprint del Nodo -->
-    <div class="row g-3 mb-3">
-      <div class="col-12">
-        <div class="license-fingerprint-container p-3 rounded-3 d-flex align-items-center justify-content-between">
-          <div class="d-flex align-items-center gap-3 flex-grow-1 overflow-hidden">
-            <div class="license-fingerprint-icon">
-              <span class="icon-svg icon-server" style="width: 18px; height: 18px;"></span>
-            </div>
-            <div class="overflow-hidden flex-grow-1">
-              <span class="license-meta-label">Fingerprint del Nodo</span>
-              <code class="license-fingerprint-text font-monospace d-block text-break">{{ hostId() }}</code>
-            </div>
+    <!-- ── Hero Banner Ancho Completo: Fingerprint del Nodo (Premium Glassmorphism) ── -->
+    <div class="license-fingerprint-banner mb-4 p-4 rounded-4 d-flex align-items-center justify-content-between gap-3">
+      <div class="d-flex align-items-center gap-3 overflow-hidden flex-grow-1">
+        <div class="license-fingerprint-icon-glow flex-shrink-0">
+          <span class="icon-svg icon-server" style="width: 22px; height: 22px;"></span>
+        </div>
+        <div class="overflow-hidden flex-grow-1">
+          <span class="license-bento-label d-block mb-1.5">Fingerprint del Nodo</span>
+          <div class="license-fingerprint-box">
+            <code class="license-fingerprint-code font-monospace" [title]="hostId()">{{ hostId() }}</code>
           </div>
-          <button class="btn btn-ghost btn-copy-fingerprint ms-3" (click)="copyFingerprint()"
-            title="Copiar Fingerprint">
-            <span class="icon-svg icon-copy" style="width: 16px; height: 16px;"></span>
-          </button>
         </div>
       </div>
+      <button class="btn btn-copy-fingerprint-premium flex-shrink-0 d-flex align-items-center gap-2"
+        (click)="copyFingerprint()" title="Copiar Fingerprint">
+        <span class="icon-svg icon-copy" style="width: 16px; height: 16px;"></span>
+        <span class="fw-semibold small">Copiar</span>
+      </button>
     </div>
 
-    <!-- Fila 2: Fecha de emisión, Fecha de expiración -->
-    <div class="row g-3 mb-4">
-      <!-- Fecha de Emisión -->
-      <div class="col-12 col-md-6">
-        <div class="license-meta-card card-emission">
-          <div class="license-meta-card-header">
-            <div class="license-meta-card-icon">
-              <span class="icon-svg icon-calendar" style="width: 14px; height: 14px;"></span>
-            </div>
-            <span class="license-meta-label">Fecha de Emisión</span>
-          </div>
-          <div class="license-meta-card-value font-monospace mt-1" style="font-size: 0.88rem;">
-            {{ lic.emision | date:'dd/MM/yyyy HH:mm' }}
-          </div>
-        </div>
-      </div>
+    <!-- ── Grid Inferior en 2 Columnas (CSS Grid Limpio) ── -->
+    <div class="license-modal-grid-body flex-grow-1 min-h-0">
 
-      <!-- Fecha de Expiración -->
-      <div class="col-12 col-md-6">
-        <div class="license-meta-card card-expiration" [class.expiration-temp]="lic.tipo === 'temporal'">
-          <div class="license-meta-card-header">
-            <div class="license-meta-card-icon">
-              <span class="icon-svg icon-clock" style="width: 14px; height: 14px;"></span>
+      <!-- ── COLUMNA IZQUIERDA: Información del Nodo + 3 Tarjetas Bento ── -->
+      <div class="license-left-column d-flex flex-column gap-3 overflow-y-auto pe-1">
+
+        <!-- ── COMPONENTE SUPERIOR: Información Detallada del Nodo ── -->
+        <div class="license-bento-card bento-card-node p-3 rounded-4 d-flex flex-column gap-2.5">
+          <!-- Cabecera del Nodo con Estado (Con padding y espaciado corregido, sin línea divisoria) -->
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2 overflow-hidden pb-2">
+              <div class="bento-card-icon-wrap icon-wrap-node flex-shrink-0">
+                <span class="icon-svg icon-server" style="width: 20px; height: 20px; background-color: #0ea5e9;"></span>
+              </div>
+              <div class="overflow-hidden ps-1">
+                <span class="license-bento-label d-block text-truncate mb-0.5">Información del Nodo</span>
+                <h6 class="fw-bold mb-0 fs-6 text-truncate"
+                  [title]="currentHost()?.hostname || (hostId() ? getHostName(hostId()!) : 'Servidor Nodo')">
+                  {{ currentHost()?.hostname || (hostId() ? getHostName(hostId()!) : 'Servidor Nodo') }}
+                </h6>
+              </div>
             </div>
-            <span class="license-meta-label">Fecha de Expiración</span>
+            <span
+              class="badge rounded-pill px-2.5 py-1 small fw-semibold flex-shrink-0 d-inline-flex align-items-center gap-1.5 ms-2"
+              [class.bg-success-subtle]="currentHost()?.status === 'online' || currentHost()?.status === 'active'"
+              [class.text-success]="currentHost()?.status === 'online' || currentHost()?.status === 'active'"
+              [class.bg-danger-subtle]="currentHost()?.status !== 'online' && currentHost()?.status !== 'active'"
+              [class.text-danger]="currentHost()?.status !== 'online' && currentHost()?.status !== 'active'">
+              <span class="quota-status-dot"
+                [class.quota-dot-success]="currentHost()?.status === 'online' || currentHost()?.status === 'active'"
+                [class.quota-dot-danger]="currentHost()?.status !== 'online' && currentHost()?.status !== 'active'">
+              </span>
+              {{ (currentHost()?.status === 'online' || currentHost()?.status === 'active') ? 'Online' : 'Offline' }}
+            </span>
           </div>
-          <div class="license-meta-card-value mt-1">
-            @if (lic.tipo === 'temporal' && lic.expiracion) {
-            <span class="text-danger font-monospace" style="font-size: 0.88rem; font-weight: 600;">
-              {{ lic.expiracion | date:'dd/MM/yyyy HH:mm' }}
-            </span>
-            } @else {
-            <span class="text-success d-flex align-items-center gap-1.5" style="font-size: 0.88rem; font-weight: 600;">
-              <span class="icon-svg icon-check" style="width: 14px; height: 14px;"></span>
-              Sin expiración
-            </span>
+
+          <!-- Detalles de Hardware, Red y SO del Nodo (Iconos reales SVG del sistema) -->
+          <div class="d-flex flex-column gap-2 mt-2 px-2">
+            <div class="d-flex justify-content-between align-items-center small">
+              <span class="text-muted d-flex align-items-center gap-2">
+                <span class="icon-svg icon-wifi flex-shrink-0"
+                  style="width: 14px; height: 14px; background-color: var(--text-muted);"></span>
+                Dirección IP
+              </span>
+              <span class="font-monospace fw-semibold">{{ currentHost()?.ipAddress || 'Sin IP' }}</span>
+            </div>
+
+            @if (currentHost()?.hwInfo; as hw) {
+            <div class="d-flex justify-content-between align-items-center small">
+              <span class="text-muted d-flex align-items-center gap-2">
+                <span class="icon-svg icon-cpu flex-shrink-0"
+                  style="width: 14px; height: 14px; background-color: var(--text-muted);"></span>
+                Sistema / RAM
+              </span>
+              <span class="fw-semibold text-truncate ms-2" style="max-width: 13rem;"
+                [title]="hw.system + ' ' + hw.release">
+                {{ hw.system }} {{ hw.release }} {{ hw.totalRam ? '(' + hw.totalRam + ')' : '' }}
+              </span>
+            </div>
+            }
+
+            @if (currentHost()?.gpuInfo; as gpu) {
+            <div class="d-flex justify-content-between align-items-center small">
+              <span class="text-muted d-flex align-items-center gap-2">
+                <span class="icon-svg icon-gpu flex-shrink-0"
+                  style="width: 14px; height: 14px; background-color: var(--text-muted);"></span>
+                Aceleración GPU
+              </span>
+              <span class="fw-semibold text-truncate ms-2" style="max-width: 13rem;" [title]="gpu.model || gpu.gpu">
+                {{ gpu.model || gpu.gpu }} {{ gpu.totalMemory ? '(' + gpu.totalMemory + ')' : '' }}
+              </span>
+            </div>
+            }
+
+            @if (currentHost()?.version) {
+            <div class="d-flex justify-content-between align-items-center small">
+              <span class="text-muted d-flex align-items-center gap-2">
+                <span class="icon-svg icon-info-circle flex-shrink-0"
+                  style="width: 14px; height: 14px; background-color: var(--text-muted);"></span>
+                Versión Core
+              </span>
+              <span class="badge bg-secondary-subtle text-body-secondary font-monospace px-2 py-0.5 small rounded">
+                v{{ currentHost()?.version }}
+              </span>
+            </div>
             }
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Título de la Sección (Fijo arriba) -->
-    <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
-      <span class="icon-svg icon-layout-dashboard text-primary" style="width: 18px; height: 18px;"></span>
-      Cuotas y Consumo de Analíticas
-    </h5>
+        <!-- ── 3 TARJETAS INFERIORES: Licencia, Emisión y Expiración ── -->
 
-    <!-- Cuerpo Scrolleable (Solo las analíticas) -->
-    <div class="license-scroll-wrapper position-relative flex-grow-1 overflow-hidden d-flex flex-column"
-      style="max-height: 400px;">
-      <div class="license-modal-body scroll-container overflow-y-auto pe-1" (scroll)="onLicenseScroll($event)"
-        style="max-height: 400px;">
-        <div class="quota-list-container d-flex flex-column gap-3">
-          @for (feat of sortedLicenseFeatures(); track feat.key) {
-          <div class="quota-row-item transition-all" [class.quota-row-high]="getQuotaColorClass(feat.key) === 'danger'">
-            <!-- Fila 1: Nombre de la analítica a la izquierda, Consumo y Porcentaje a la derecha -->
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <div class="d-flex align-items-center">
-                <span class="quota-status-dot" [class]="'quota-dot-' + getQuotaColorClass(feat.key)"></span>
-                <span class="quota-row-name text-capitalize" [title]="feat.key">
-                  {{ feat.key.split('_').join(' ') }}
-                </span>
-              </div>
-              <div class="d-flex align-items-center gap-2">
-                <span class="quota-item-ratio font-monospace small">
-                  <strong>{{ licenseQuotaUsage()[feat.key] || 0 }}</strong><span class="text-muted"> / {{ feat.limit
-                    }}</span>
-                </span>
-                <span class="quota-percentage-pill" [class]="'quota-pill-' + getQuotaColorClass(feat.key)">
-                  {{ getQuotaPercentage(feat.key) | number:'1.0-0' }}%
-                </span>
-              </div>
+        <!-- Tarjeta 1: Tipo de Licencia -->
+        <div class="license-bento-card bento-card-type p-3 rounded-4 d-flex align-items-center gap-3">
+          <div class="bento-card-icon-wrap icon-wrap-type">
+            <span class="icon-svg icon-shield"
+              style="width: 20px; height: 20px; background-color: var(--primary);"></span>
+          </div>
+          <div class="flex-grow-1">
+            <span class="license-bento-label d-block mb-1">Tipo de Licencia</span>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge-license-bento text-capitalize" [class.bento-temp]="lic.tipo === 'temporal'"
+                [class.bento-perm]="lic.tipo === 'permanente'">
+                <span class="badge-license-indicator"></span>
+                Licencia {{ lic.tipo }}
+              </span>
             </div>
+          </div>
+        </div>
 
-            <!-- Fila 2: Barra de Progreso -->
-            <div class="quota-progress-container">
-              <div class="quota-progress-bar animate-progress"
-                [class]="'quota-progress-' + getQuotaColorClass(feat.key)"
-                [style.width.%]="getQuotaPercentage(feat.key)">
+        <!-- Tarjeta 2: Fecha de Emisión -->
+        <div class="license-bento-card bento-card-emission p-3 rounded-4 d-flex align-items-center gap-3">
+          <div class="bento-card-icon-wrap icon-wrap-emission">
+            <span class="icon-svg icon-calendar" style="width: 20px; height: 20px; background-color: #8b5cf6;"></span>
+          </div>
+          <div>
+            <span class="license-bento-label d-block mb-1">Fecha de Emisión</span>
+            <div class="bento-card-value font-monospace">
+              {{ lic.emision | date:'dd/MM/yyyy HH:mm' }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjeta 3: Fecha de Expiración -->
+        <div class="license-bento-card bento-card-expiration p-3 rounded-4 d-flex align-items-center gap-3"
+          [class.expiration-temp]="lic.tipo === 'temporal'">
+          <div class="bento-card-icon-wrap icon-wrap-expiration">
+            <span class="icon-svg icon-clock" style="width: 20px; height: 20px;"
+              [style.background-color]="lic.tipo === 'temporal' ? '#ef4444' : '#10b981'"></span>
+          </div>
+          <div>
+            <span class="license-bento-label d-block mb-1">Fecha de Expiración</span>
+            <div class="bento-card-value">
+              @if (lic.tipo === 'temporal' && lic.expiracion) {
+              <span class="text-danger font-monospace fw-semibold">
+                {{ lic.expiracion | date:'dd/MM/yyyy HH:mm' }}
+              </span>
+              } @else {
+              <span class="text-success d-flex align-items-center gap-1.5 fw-semibold">
+                <span class="icon-svg icon-check" style="width: 14px; height: 14px; background-color: #10b981;"></span>
+                Sin expiración
+              </span>
+              }
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── COLUMNA DERECHA: Cuotas y Consumo de Analíticas ── -->
+      <div class="license-right-column d-flex flex-column min-h-0 overflow-hidden">
+        <div class="license-right-column-card p-4 rounded-4 d-flex flex-column flex-grow-1 overflow-hidden">
+
+          <!-- Encabezado de la Sección -->
+          <div class="d-flex align-items-center justify-content-between mb-3 flex-shrink-0">
+            <h5 class="fw-bold mb-0 fs-6 d-flex align-items-center gap-2">
+              <span class="icon-svg icon-layout-dashboard text-primary"
+                style="width: 18px; height: 18px; background-color: var(--primary);"></span>
+              Cuotas y Consumo de Analíticas
+            </h5>
+            <span class="badge bg-primary-subtle text-primary fw-semibold rounded-pill px-2.5 py-1 small">
+              {{ sortedLicenseFeatures().length }} analíticas
+            </span>
+          </div>
+
+          <!-- Cuerpo Scrolleable Adaptativo Limpio -->
+          <div class="license-scroll-wrapper flex-grow-1 overflow-hidden d-flex flex-column">
+            <div class="license-modal-body scroll-container overflow-y-auto pe-2 h-100 flex-grow-1">
+              <div class="quota-list-container d-flex flex-column gap-2.5">
+                @for (feat of sortedLicenseFeatures(); track feat.key) {
+                <div class="quota-row-item transition-all"
+                  [class.quota-row-high]="getQuotaColorClass(feat.key) === 'danger'">
+                  <!-- Fila 1: Nombre de la analítica a la izquierda, Consumo y Porcentaje a la derecha -->
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex align-items-center">
+                      <span class="quota-status-dot" [class]="'quota-dot-' + getQuotaColorClass(feat.key)"></span>
+                      <span class="quota-row-name text-capitalize" [title]="feat.key">
+                        {{ feat.key.split('_').join(' ') }}
+                      </span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="quota-item-ratio font-monospace small">
+                        <strong>{{ licenseQuotaUsage()[feat.key] || 0 }}</strong><span class="text-muted"> / {{
+                          feat.limit }}</span>
+                      </span>
+                      <span class="quota-percentage-pill" [class]="'quota-pill-' + getQuotaColorClass(feat.key)">
+                        {{ getQuotaPercentage(feat.key) | number:'1.0-0' }}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Fila 2: Barra de Progreso -->
+                  <div class="quota-progress-container">
+                    <div class="quota-progress-bar animate-progress"
+                      [class]="'quota-progress-' + getQuotaColorClass(feat.key)"
+                      [style.width.%]="getQuotaPercentage(feat.key)">
+                    </div>
+                  </div>
+                </div>
+                }
               </div>
             </div>
           </div>
-          }
+
         </div>
       </div>
 
-      <!-- Scroll Hint Overlay (Premium) -->
-      <div class="drawer-scroll-hint" [class.hidden]="licenseScrolledToBottom()" aria-hidden="true">
-        <div class="scroll-hint-chevron">
-          <span class="icon-svg icon-chevron-down" style="width: 16px; height: 16px;"></span>
-        </div>
-      </div>
     </div>
     } @else {
     <div class="license-modal-body">
@@ -1144,44 +769,18 @@
     </div>
     }
 
-    <!-- Pie del Modal -->
-    <div class="license-modal-footer pt-3 mt-2 text-end">
-      <button class="btn btn-clear-filters px-4 py-2" (click)="showLicenseModal.set(false)">
-        Cerrar
-      </button>
-    </div>
   </div>
 </div>
 }
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-  Modal de Confirmación: Eliminar Nodo
-══════════════════════════════════════════════════════════════════════════ -->
-@if (showDeleteHostModal()) {
-<div class="delete-camera-modal-overlay" (click)="closeDeleteHostModal()" aria-modal="true" role="dialog">
-  <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
-    <div class="delete-modal-icon-wrap">
-      <span class="icon-svg icon-warning" style="width: 28px; height: 28px; color: var(--color-warning);"></span>
-    </div>
-    <h5 class="delete-modal-title">Eliminar Nodo</h5>
-    <p class="delete-modal-message">
-      ¿Estás seguro de que deseas eliminar el nodo <strong>{{ currentHost()?.hostname }}</strong>?
-      Esta acción eliminará de forma permanente el nodo y todas sus cámaras asociadas. Esta acción no se puede deshacer.
-    </p>
-    <div class="delete-modal-actions">
-      <button class="delete-modal-btn-cancel" (click)="closeDeleteHostModal()" [disabled]="isDeletingHost()">
-        Cancelar
-      </button>
-      <button class="delete-modal-btn-confirm" (click)="confirmDeleteHost()" [disabled]="isDeletingHost()">
-        @if (isDeletingHost()) {
-        <span class="delete-modal-spinner"></span>
-        Eliminando...
-        } @else {
-        <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-        Eliminar
-        }
-      </button>
-    </div>
-  </div>
-</div>
-}
+<!-- Modal de Confirmación: Eliminar Nodo (REUTILIZABLE DRY) -->
+<app-confirm-delete-modal
+  [show]="showDeleteHostModal()"
+  title="Eliminar Nodo"
+  [itemName]="currentHost()?.hostname || ''"
+  messagePrefix="¿Estás seguro de que deseas eliminar el nodo "
+  messageSuffix="? Esta acción eliminará de forma permanente el nodo y todas sus cámaras asociadas. Esta acción no se puede deshacer."
+  [isDeleting]="isDeletingHost()"
+  (confirm)="confirmDeleteHost()"
+  (cancel)="closeDeleteHostModal()">
+</app-confirm-delete-modal>

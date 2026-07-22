@@ -1,0 +1,221 @@
+@if (event; as selectedEvent) {
+<div class="modal-backdrop-blur d-flex align-items-center justify-content-center" (click)="onClose()">
+  <div class="premium-detail-modal d-flex flex-column flex-md-row overflow-hidden shadow-2xl"
+    (click)="$event.stopPropagation()">
+
+    <!-- Left side: Image (80%) -->
+    <div
+      class="modal-image-panel d-flex align-items-center justify-content-center bg-dark position-relative overflow-hidden">
+      <!-- Fallback placeholder (visible if no image or if image fails 404) -->
+      <div class="placeholder-img-icon">
+        <span class="icon-svg icon-warning fallback-icon" style="width: 48px; height: 48px;"></span>
+        <span class="fallback-text" style="font-size: 0.85rem;">SIN IMAGEN</span>
+      </div>
+
+      @if (selectedEvent.urlImg) {
+      <div class="modal-img-wrapper position-relative overflow-hidden shadow-lg" style="z-index: 1;" (mousemove)="onZoomMouseMove($event)"
+        (click)="toggleZoom($event)" [class.zoom-active-cursor]="isZoomed()">
+        <!-- Normal image -->
+        <img [src]="selectedEvent.urlImg" (error)="onImageError($event)" class="w-100 h-100 select-none object-fit-contain transition-all"
+          alt="Full screen preview" />
+
+        <!-- Magnifier circular lens -->
+        @if (isZoomed()) {
+        <div class="magnifier-lens" [style.left.px]="zoomX()" [style.top.px]="zoomY()"
+          [style.background-image]="'url(' + selectedEvent.urlImg + ')'"
+          [style.background-position]="zoomBgX() + 'px ' + zoomBgY() + 'px'"
+          [style.background-size]="zoomBgWidth() + 'px ' + zoomBgHeight() + 'px'">
+        </div>
+        }
+      </div>
+      }
+    </div>
+
+    <!-- Right side: Event Detail Panel (20%) -->
+    <div class="modal-details-panel">
+
+      <!-- Sighting Preview Header -->
+      <div class="sighting-preview-body-header p-4 pb-2 d-flex justify-content-between align-items-start">
+        <div>
+          <h5 class="sighting-preview-title fw-bold mb-1">Detalle del Evento</h5>
+          <p class="text-muted small mb-0">Información capturada en el evento de detección</p>
+        </div>
+        <!-- Close Button (Ghost Style) -->
+        <button class="btn-ghost d-flex align-items-center justify-content-center"
+          style="width: 32px; height: 32px; border-radius: 50%; margin-top: -4px; margin-right: -8px;"
+          (click)="onClose()" aria-label="Cerrar modal">
+          <span class="icon-svg icon-close text-muted" style="width: 16px; height: 16px;"></span>
+        </button>
+      </div>
+
+      <!-- Scrollable body -->
+      <div class="scroll-details-content p-4 d-flex flex-column gap-3">
+        <!-- Meta list -->
+        <div class="sighting-preview-meta d-flex flex-column gap-2.5">
+          <!-- Cámara -->
+          <div class="sighting-preview-row">
+            <div class="sighting-preview-icon sp-icon--camera">
+              <span class="icon-svg icon-camara"
+                style="width: 14px; height: 14px; background-color: currentColor;"></span>
+            </div>
+            <div class="sighting-preview-field">
+              <span class="sp-label">Cámara</span>
+              <span class="sp-value">{{ selectedEvent.nombreCamara }}</span>
+            </div>
+          </div>
+
+          <!-- ID Cámara (Click to copy) -->
+          <div class="sighting-preview-row" [class.copied-flash]="copiedField() === 'camId'"
+            (click)="copyToClipboard(selectedEvent.idCamara, 'camId'); $event.stopPropagation()"
+            style="cursor: pointer;">
+            <div class="sighting-preview-icon sp-icon--id">
+              <span class="icon-svg icon-box" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+            </div>
+            <div class="sighting-preview-field">
+              <span class="sp-label">ID Cámara</span>
+              @if (copiedField() === 'camId') {
+              <span class="text-success fw-bold font-monospace" style="font-size: 0.875rem;">¡Copiado!</span>
+              } @else {
+              <span class="sp-value font-monospace text-truncate d-block" [title]="selectedEvent.idCamara">
+                {{ selectedEvent.idCamara }}
+              </span>
+              }
+            </div>
+          </div>
+
+          <!-- Fecha y Hora -->
+          <div class="sighting-preview-row">
+            <div class="sighting-preview-icon sp-icon--time">
+              <span class="icon-svg icon-clock"
+                style="width: 14px; height: 14px; background-color: currentColor;"></span>
+            </div>
+            <div class="sighting-preview-field">
+              <span class="sp-label">Fecha y Hora</span>
+              <span class="sp-value font-monospace">{{ selectedEvent.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
+            </div>
+          </div>
+
+          <!-- Sistema de IA -->
+          <div class="sighting-preview-row">
+            <div class="sighting-preview-icon sp-icon--subject"
+              [style.color]="getAnalyticColor(selectedEvent.analitica)"
+              style="background-color: var(--color-primary-light-bg);">
+              <span class="icon-svg icon-activity"
+                style="width: 14px; height: 14px; background-color: currentColor;"></span>
+            </div>
+            <div class="sighting-preview-field">
+              <span class="sp-label">Sistema de IA</span>
+              <span class="sp-value text-capitalize">{{ selectedEvent.analitica }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Atributos Detallados Section -->
+        <h6 class="sighting-preview-section-title fw-bold text-uppercase mt-2"
+          style="font-size: 0.75rem; letter-spacing: 0.08em; color: var(--text-muted);">Atributos Detectados</h6>
+
+        <div class="sighting-attributes-container d-flex flex-column gap-3">
+          <!-- Identificación -->
+          <div class="popover-section">
+            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
+              style="font-size: 0.65rem; letter-spacing: 0.05em;">Identificación</div>
+            <div class="attributes-grid">
+              <span class="attribute-pill object-type-pill text-capitalize">
+                <span class="pill-dot"></span>
+                Objeto: {{ selectedEvent.objeto }}
+              </span>
+              @if (selectedEvent.direccion) {
+              <span class="attribute-pill recognition-pill text-capitalize"
+                [class.gender-pill]="selectedEvent.direccion.toLowerCase() === 'entrada'"
+                [class.posture-pill]="selectedEvent.direccion.toLowerCase() === 'salida'">
+                Dirección: {{ selectedEvent.direccion }}
+              </span>
+              }
+            </div>
+          </div>
+
+          <!-- Métricas -->
+          @if (hasMetrics(selectedEvent)) {
+          <div class="popover-section">
+            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
+              style="font-size: 0.65rem; letter-spacing: 0.05em;">Métricas</div>
+            <div class="attributes-grid">
+              @if (selectedEvent.conteoAforo !== null) {
+              <span class="attribute-pill age-pill text-capitalize">
+                Aforo: {{ selectedEvent.conteoAforo }}
+              </span>
+              }
+              @if (selectedEvent.tiempoPermanencia !== null) {
+              <span class="attribute-pill gender-pill text-capitalize">
+                Permanencia: {{ selectedEvent.tiempoPermanencia | number:'1.1-1' }}s
+              </span>
+              }
+              @if (selectedEvent.objetosEnArea !== null) {
+              <span class="attribute-pill object-type-pill text-capitalize">
+                En Área: {{ selectedEvent.objetosEnArea }}
+              </span>
+              }
+              @if (selectedEvent.espaciosLibres !== null) {
+              <span class="attribute-pill recognition-pill text-capitalize">
+                Libres: {{ selectedEvent.espaciosLibres }}
+              </span>
+              }
+            </div>
+          </div>
+          }
+
+          <!-- Localización -->
+          @if (selectedEvent.location) {
+          <div class="popover-section">
+            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
+              style="font-size: 0.65rem; letter-spacing: 0.05em;">Localización</div>
+            <div class="attributes-grid">
+              <span class="attribute-pill recognition-pill font-monospace"
+                (click)="copyToClipboard(selectedEvent.location.lat + ', ' + selectedEvent.location.lon, 'geo')"
+                [class.copied-flash]="copiedField() === 'geo'" style="cursor: pointer;">
+                <span class="pill-dot"></span>
+                @if (copiedField() === 'geo') {
+                <span class="text-success fw-bold">¡Copiado!</span>
+                } @else {
+                Geo: {{ selectedEvent.location.lat | number:'1.5-5' }}, {{ selectedEvent.location.lon | number:'1.5-5'
+                }}
+                }
+              </span>
+            </div>
+          </div>
+          }
+
+          <!-- Descripción -->
+          <div class="popover-section">
+            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
+              style="font-size: 0.65rem; letter-spacing: 0.05em;">Descripción</div>
+            <p class="text-secondary small mb-0" style="line-height: 1.5; word-break: break-word;">
+              {{ selectedEvent.detalleEvento }}
+            </p>
+          </div>
+        </div>
+
+      </div><!-- /scroll-details-content -->
+
+      <!-- Footer Action -->
+      <div class="modal-footer-action p-3 bg-transparent">
+        @if (selectedEvent.location) {
+        <a class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 py-2 px-3 rounded-3"
+          [href]="getGoogleMapsUrl(selectedEvent)" target="_blank" rel="noopener noreferrer"
+          (click)="$event.stopPropagation()"
+          style="font-size: 0.8rem; font-weight: 600; width: 100%; justify-content: center;">
+          <span class="icon-svg icon-location-pin"
+            style="width: 13px; height: 13px; background-color: currentColor;"></span>
+          Ver en Google Maps
+          <span class="icon-svg icon-external-link" style="width: 11px; height: 11px; opacity: 0.55;"></span>
+        </a>
+        } @else {
+        <span class="text-muted small w-100 text-center">Sin localización disponible</span>
+        }
+      </div>
+
+    </div>
+
+  </div>
+</div>
+}

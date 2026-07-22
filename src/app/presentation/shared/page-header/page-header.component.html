@@ -1,0 +1,35 @@
+<div class="view-header mb-4">
+  <div class="header-row-top d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+    <div class="d-flex align-items-center gap-3">
+      @if (showSidebarToggle) {
+      <button type="button" class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
+        (click)="toggleSidebar()" aria-label="Toggle Sidebar">
+        @if (isSidebarCollapsed()) {
+        <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
+        } @else {
+        <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
+        }
+      </button>
+      }
+
+      <ng-content select="[header-prefix]"></ng-content>
+
+      <div class="header-identity">
+        @if (title) {
+        <h2 class="fw-bold mb-0 header-page-title">{{ title }}</h2>
+        }
+        @if (subtitle) {
+        <p class="text-muted mb-0 header-page-subtitle mt-1" [innerHTML]="subtitle"></p>
+        }
+      </div>
+    </div>
+
+    <!-- Ranura para Acciones del Lado Derecho -->
+    <div class="d-flex align-items-center gap-3">
+      <ng-content select="[header-actions]"></ng-content>
+    </div>
+  </div>
+
+  <!-- Ranura Inferior Opcional para Cabeceras de 2 Filas -->
+  <ng-content select="[header-bottom]"></ng-content>
+</div>

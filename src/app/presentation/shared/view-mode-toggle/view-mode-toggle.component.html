@@ -1,0 +1,10 @@
+<div class="view-tabs-group d-flex align-items-center gap-1">
+  <button type="button" class="btn-premium-tab" [class.active]="viewMode === 'cards'" (click)="setMode('cards')">
+    <span class="icon-svg icon-grid" style="width: 14px; height: 14px;"></span>
+    <span>Tarjetas</span>
+  </button>
+  <button type="button" class="btn-premium-tab" [class.active]="viewMode === 'list'" (click)="setMode('list')">
+    <span class="icon-svg icon-list" style="width: 14px; height: 14px;"></span>
+    <span>Lista</span>
+  </button>
+</div>

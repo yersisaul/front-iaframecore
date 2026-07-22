@@ -1,0 +1,12 @@
+<div class="empty-state-view text-center py-5 rounded bg-surface-card shadow-sm border">
+  <div class="empty-icon-wrapper mb-3 text-muted">
+    <span class="icon-svg {{ iconClass }} text-muted opacity-50" style="width: 48px; height: 48px;"></span>
+  </div>
+  <h4 class="fw-bold">{{ title }}</h4>
+  @if (description) {
+  <p class="text-muted mb-3">{{ description }}</p>
+  }
+  @if (showAction && actionText) {
+  <button (click)="onAction()" class="btn btn-primary btn-premium mt-2">{{ actionText }}</button>
+  }
+</div>

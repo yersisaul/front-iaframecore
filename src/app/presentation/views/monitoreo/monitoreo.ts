@@ -19,6 +19,10 @@ import { Analytic } from '../../../core/domain/entities/analytic.models';
 import { EventRecord } from '../../../core/domain/entities/event.models';
 import { parseUtcDate } from '../../../core/utils/date-utils';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
+import { EventDetailModalComponent } from '../../shared/event-detail-modal/event-detail-modal.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { SearchInputComponent } from '../../shared/search-input/search-input.component';
+import { CameraDetailDrawerComponent } from '../../shared/camera-detail-drawer/camera-detail-drawer.component';
 
 export interface GridSlot {
   id: string;
@@ -41,7 +45,7 @@ export interface CanvasStateSnapshot {
 @Component({
   selector: 'app-monitoreo',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, EventDetailModalComponent, PageHeaderComponent, SearchInputComponent, CameraDetailDrawerComponent],
   templateUrl: './monitoreo.html',
   styleUrl: './monitoreo.css'
 })
@@ -55,6 +59,16 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   public permissionsService = inject(PermissionsService);
   private webRtcService = inject(WebRtcService);
   private cdr = inject(ChangeDetectorRef);
+
+  // Camera Detail Drawer State (Shared Component)
+  readonly showCameraConfigDrawer = signal<boolean>(false);
+  readonly selectedConfigCamera = signal<Camera | null>(null);
+
+  openCameraConfig(camera: Camera, event?: MouseEvent): void {
+    if (event) event.stopPropagation();
+    this.selectedConfigCamera.set(camera);
+    this.showCameraConfigDrawer.set(true);
+  }
 
   // WebRTC Live Video Connections & States
   private activeWebRtcConnections = new Map<string, RTCPeerConnection>();
@@ -2975,8 +2989,14 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly camerasInCanvas = computed(() => {
     const seen = new Set<string>();
     const list: Camera[] = [];
+    const isAsync = !this.isSyncMode();
+    const selectedNames = this.selectedCameraNames();
+
     for (const slot of this.gridSlots()) {
       if (slot.camera && !seen.has(slot.camera.id)) {
+        if (isAsync && selectedNames.size > 0 && !selectedNames.has(slot.camera.name)) {
+          continue;
+        }
         seen.add(slot.camera.id);
         list.push(slot.camera);
       }

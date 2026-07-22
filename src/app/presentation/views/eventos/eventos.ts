@@ -12,11 +12,16 @@ import { PermissionsService } from '../../../core/services/permissions.service';
 import { EventFilters, EventRecord, defaultEventFilters } from '../../../core/domain/entities/event.models';
 import { parseUtcDate } from '../../../core/utils/date-utils';
 import { copyToClipboard as utilCopyToClipboard } from '../../../core/utils/clipboard.util';
+import { EventDetailModalComponent } from '../../shared/event-detail-modal/event-detail-modal.component';
+import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
+import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { SearchInputComponent } from '../../shared/search-input/search-input.component';
 
 @Component({
   selector: 'app-eventos',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, EventDetailModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent],
   templateUrl: './eventos.html',
   styleUrl: './eventos.css'
 })
@@ -57,7 +62,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
 
   // Filter dropdown toggle states
   readonly activeDropdown = signal<string | null>(null);
-  readonly showFilters = signal<boolean>(true);
+  readonly showFilters = signal<boolean>(false);
 
   // Search Control
   readonly searchControl = new FormControl('');
@@ -310,8 +315,8 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     this.showFilters.update(v => !v);
   }
 
-  toggleDropdown(dropdownName: string, event: Event): void {
-    event.stopPropagation();
+  toggleDropdown(dropdownName: string, event?: Event): void {
+    if (event) event.stopPropagation();
     if (this.activeDropdown() === dropdownName) {
       this.activeDropdown.set(null);
     } else {
@@ -531,6 +536,14 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       this.timeHastaStr.set('23:59');
       this.tempFilters.update(f => ({ ...f, timestampDesde: null, timestampHasta: null }));
     }
+  }
+
+  onDateRangeChange(range: { desde: Date | null; hasta: Date | null }): void {
+    this.tempFilters.update(f => ({
+      ...f,
+      timestampDesde: range.desde,
+      timestampHasta: range.hasta
+    }));
   }
 
   // --- Active State computations ---

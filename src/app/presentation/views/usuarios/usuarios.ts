@@ -10,11 +10,13 @@ import { UserService } from '../../../core/services/user.service';
 import { PermissionsService, BackendRol, BackendPermiso } from '../../../core/services/permissions.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { User } from '../../../core/domain/entities/user.entity';
+import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-usuarios',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent],
   templateUrl: './usuarios.html',
   styleUrl: './usuarios.css',
 })
@@ -193,7 +195,6 @@ export class Usuarios implements OnInit, OnDestroy {
   @HostListener('document:click')
   closeDropdowns(): void {
     this.activeDropdown.set(null);
-    this.showFilters.set(false);
   }
 
   setRoleFilter(role: string): void {

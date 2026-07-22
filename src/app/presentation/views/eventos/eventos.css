@@ -194,6 +194,8 @@
   border-radius: 6px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  z-index: 10;
+  pointer-events: none;
 }
 
 /* Badges styling */
@@ -281,23 +283,11 @@
 
 /* --- Horizontal Filters Bar Fade/Collapse --- */
 .horizontal-filters-bar {
-  max-height: 800px;
-  opacity: 1;
+  position: relative;
+  overflow: visible !important;
+  z-index: 100;
   margin-bottom: 1.5rem !important;
-  transition: max-height 0.4s ease-in-out,
-    opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    margin-bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    padding 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.horizontal-filters-bar.hidden {
-  max-height: 0 !important;
-  opacity: 0 !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  pointer-events: none;
+  animation: filterBarSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .btn-filter-dropdown {

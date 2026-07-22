@@ -1,45 +1,18 @@
 <div class="horarios-container container-fluid py-4 position-relative">
-  <!-- ══════════════════════════════════════════════════════
-       CABECERA ESTANDARIZADA
-       ══════════════════════════════════════════════════════ -->
-  <div class="view-header mb-4">
-    <!-- Fila 1: Identidad + Controles principales -->
-    <div class="header-row-top d-flex align-items-center justify-content-between gap-3">
-      <!-- IZQUIERDA: Sidebar toggle + Identidad de página -->
-      <div class="d-flex align-items-center gap-3">
-        <!-- Botón de Collapse Sidebar -->
-        <button class="btn-ghost sidebar-toggle-btn d-flex align-items-center justify-content-center transition-all"
-          (click)="toggleSidebar()" aria-label="Toggle Sidebar">
-          @if (isSidebarCollapsed()) {
-          <span class="icon-svg icon-sidebar-expand" style="width: 28px; height: 28px;"></span>
-          } @else {
-          <span class="icon-svg icon-sidebar-collapse" style="width: 28px; height: 28px;"></span>
-          }
-        </button>
-
-        <!-- Bloque de identidad: título + subtítulo -->
-        <div class="header-identity">
-          <h2 class="fw-bold mb-0 header-page-title">Programación de Horarios</h2>
-          <p class="text-muted mb-0 header-page-subtitle mt-1">
-            Se encontraron <span class="fw-semibold text-primary">{{ filteredSchedules().length }}</span> horarios
-            globales registrados.
-          </p>
-        </div>
-      </div>
-
-      <!-- DERECHA: Botón Crear Horario -->
+  <!-- CABECERA REFACTORIZADA DRY -->
+  <app-page-header
+    title="Programación de Horarios"
+    [subtitle]="'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + filteredSchedules().length + '</span> horarios globales registrados.'">
+    <ng-container header-actions>
       @if (permissionsService.hasPermission('Horarios', 'crear')) {
-      <div class="d-flex align-items-center gap-3">
-        <button class="btn-migrate-config d-flex align-items-center gap-2" (click)="openCreateScheduleModal()"
-          id="btn-crear-horario">
-          <span class="icon-svg icon-plus" style="width: 16px; height: 16px;"></span>
-          <span>Crear Horario</span>
-        </button>
-      </div>
+      <button class="btn-migrate-config d-flex align-items-center gap-2" (click)="openCreateScheduleModal()"
+        id="btn-crear-horario">
+        <span class="icon-svg icon-plus" style="width: 16px; height: 16px;"></span>
+        <span>Crear Horario</span>
+      </button>
       }
-    </div>
-
-  </div>
+    </ng-container>
+  </app-page-header>
 
   <!-- Estado de carga -->
   @if (isLoading() && allSchedules().length === 0) {
@@ -432,45 +405,17 @@
   }
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-  Modal de Confirmación: Eliminar Horario
-══════════════════════════════════════════════════════════════════════════ -->
-@if (showDeleteScheduleModal()) {
-<div class="delete-camera-modal-overlay" (click)="closeDeleteScheduleModal()" aria-modal="true" role="dialog">
-  <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
-
-    <!-- Icono de advertencia -->
-    <div class="delete-modal-icon-wrap">
-      <span class="icon-svg icon-warning"
-        style="width: 28px; height: 28px; background-color: var(--bs-warning, #ffc107);"></span>
-    </div>
-
-    <!-- Título y mensaje -->
-    <h5 class="delete-modal-title">Eliminar horario</h5>
-    <p class="delete-modal-message">
-      ¿Estás seguro de que deseas eliminar el horario
-      <strong class="delete-modal-camera-name">{{ scheduleToDelete()?.name }}</strong>?
-      Esta acción removerá el horario de todas las analíticas asociadas y no se puede deshacer.
-    </p>
-
-    <!-- Acciones -->
-    <div class="delete-modal-actions">
-      <button class="delete-modal-btn-cancel" (click)="closeDeleteScheduleModal()" [disabled]="isDeletingSchedule()">
-        Cancelar
-      </button>
-      <button class="delete-modal-btn-confirm" (click)="confirmDeleteSchedule()" [disabled]="isDeletingSchedule()">
-        @if (isDeletingSchedule()) {
-        <span class="delete-modal-spinner"></span>
-        Eliminando...
-        } @else {
-        <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-        Eliminar
-        }
-      </button>
-    </div>
-  </div>
-</div>
-}
+<!-- Modal de Confirmación: Eliminar Horario (REUTILIZABLE DRY) -->
+<app-confirm-delete-modal
+  [show]="showDeleteScheduleModal()"
+  title="Eliminar horario"
+  [itemName]="scheduleToDelete()?.name || ''"
+  messagePrefix="¿Estás seguro de que deseas eliminar el horario "
+  messageSuffix="? Esta acción removerá el horario de todas las analíticas asociadas y no se puede deshacer."
+  [isDeleting]="isDeletingSchedule()"
+  (confirm)="confirmDeleteSchedule()"
+  (cancel)="closeDeleteScheduleModal()">
+</app-confirm-delete-modal>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
   Modal de Registro: Crear Horario
