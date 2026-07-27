@@ -122,11 +122,35 @@
   border: 1px solid var(--color-online-border);
 }
 
+.status-badge-degraded {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.status-badge-recovering {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.status-badge-pending {
+  background: rgba(0, 229, 255, 0.15);
+  color: #00e5ff;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+}
+
 .status-badge-offline {
   background: var(--color-offline-bg);
   color: var(--color-offline);
   border: 1px solid var(--color-offline-border);
 }
+
+.status-text-online { color: #10b981 !important; }
+.status-text-offline { color: #ef4444 !important; }
+.status-text-degraded { color: #f97316 !important; }
+.status-text-recovering { color: #eab308 !important; }
+.status-text-pending { color: #00e5ff !important; }
 
 /* SPEC ROWS */
 .filter-lbl,
@@ -2201,36 +2225,36 @@ code.code-badge {
   flex-shrink: 0;
 }
 
-/* Fingerprint Banner (Hero Premium Reactivo) */
+/* Fingerprint Banner (Rediseño UX/UI Compacto Premium) */
 .license-fingerprint-banner {
-  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.06) 0%, rgba(var(--primary-rgb), 0.015) 100%), var(--bg-info-card);
-  border: 1px solid rgba(var(--primary-rgb), 0.18);
-  border-radius: clamp(0.75rem, 1.5vw, 1.25rem);
-  padding: clamp(0.85rem, 2vw, 1.25rem) !important;
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.05) 0%, rgba(var(--primary-rgb), 0.01) 100%), var(--bg-info-card);
+  border: 1px solid rgba(var(--primary-rgb), 0.16);
+  border-radius: 1rem;
+  padding: 0.65rem 1rem !important;
   transition: all 0.25s ease;
-  box-shadow: 0 0.25rem 1.25rem -0.125rem rgba(0, 0, 0, 0.03);
+  box-shadow: 0 0.25rem 1rem -0.125rem rgba(0, 0, 0, 0.03);
   flex-shrink: 0;
 }
 
 .license-fingerprint-banner:hover {
-  border-color: rgba(var(--primary-rgb), 0.35);
-  box-shadow: 0 0.5rem 1.5rem -0.25rem rgba(var(--primary-rgb), 0.08);
+  border-color: rgba(var(--primary-rgb), 0.3);
+  box-shadow: 0 0.35rem 1.25rem -0.25rem rgba(var(--primary-rgb), 0.08);
 }
 
 .license-fingerprint-icon-glow {
-  width: clamp(2.5rem, 3.5vw, 3rem);
-  height: clamp(2.5rem, 3.5vw, 3rem);
-  border-radius: clamp(0.6rem, 1vw, 0.9rem);
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 0.6rem;
   background: rgba(var(--primary-rgb), 0.12);
   color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0.25rem 0.875rem rgba(var(--primary-rgb), 0.15);
+  box-shadow: 0 0.25rem 0.75rem rgba(var(--primary-rgb), 0.12);
 }
 
 .license-bento-label {
-  font-size: 0.73rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -2240,21 +2264,19 @@ code.code-badge {
 .license-fingerprint-box {
   background-color: var(--bg-modal);
   border: 1px solid var(--border-color);
-  border-radius: 0.75rem;
-  padding: 0.55rem 1rem;
+  border-radius: 0.55rem;
+  padding: 0.3rem 0.75rem;
   overflow: hidden;
   transition: all 0.2s ease;
 }
 
 .license-fingerprint-code {
-  font-size: clamp(0.8rem, 1.1vw, 0.92rem);
+  font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--primary);
   font-family: var(--font-mono, monospace);
-  letter-spacing: 0.04em;
-  word-break: break-all;
-  line-height: 1.45;
-  display: block;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
   border: none;
   background: transparent;
   padding: 0;
@@ -2264,17 +2286,26 @@ code.code-badge {
   background-color: var(--primary-light);
   color: var(--primary);
   border: 1px solid rgba(var(--primary-rgb), 0.2);
-  border-radius: 0.75rem;
-  padding: 0.55rem 1.1rem;
+  border-radius: 0.65rem;
+  padding: 0.4rem 0.9rem;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.btn-copy-fingerprint-premium:hover {
+.btn-copy-fingerprint-compact {
+  background-color: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.2);
+  border-radius: 0.5rem;
+  padding: 0.2rem 0.65rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-copy-fingerprint-compact:hover {
   background-color: var(--primary);
   color: #ffffff;
   border-color: var(--primary);
-  transform: translateY(-0.0625rem);
-  box-shadow: 0 0.25rem 0.875rem rgba(var(--primary-rgb), 0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 0.25rem 0.75rem rgba(var(--primary-rgb), 0.2);
 }
 
 /* Grid & Columnas del Modal (CSS Grid 100% Ajustado sin desbordamientos) */
@@ -2302,6 +2333,7 @@ code.code-badge {
   height: 100%;
   width: 100%;
   overflow-y: auto;
+  padding-top: 0.35rem;
   padding-right: 0.25rem;
 }
 
@@ -2321,39 +2353,34 @@ code.code-badge {
   overflow: hidden;
 }
 
-/* 3 Bento Cards Reactivas (Columna Izquierda) */
+/* 3 Bento Cards Reactivas (Columna Izquierda Modal Licencia) - Diseño Premium Limpio */
 .license-bento-card {
   background-color: var(--bg-info-card);
-  border: 1px solid var(--border-info-card);
-  border-left: 0.25rem solid var(--border-info-card);
+  border: 1px solid var(--border-color);
   border-radius: clamp(0.85rem, 1.8vw, 1.25rem);
   padding: 1rem 1.25rem !important;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--card-shadow);
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
 }
 
 .license-bento-card:hover {
+  z-index: 5;
   transform: translateY(-0.125rem);
-  box-shadow: 0 0.5rem 1.5rem -0.25rem rgba(0, 0, 0, 0.05);
+  border-color: var(--primary);
+  box-shadow: 0 0.75rem 1.75rem -0.25rem rgba(0, 0, 0, 0.08);
 }
 
-.bento-card-type {
-  border-left-color: var(--primary) !important;
+[data-bs-theme="dark"] .license-bento-card {
+  background-color: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
-.bento-card-emission {
-  border-left-color: #8b5cf6 !important;
-}
-
-.bento-card-expiration {
-  border-left-color: #10b981 !important;
-}
-
-.bento-card-expiration.expiration-temp {
-  border-left-color: #ef4444 !important;
-}
-
-.bento-card-node {
-  border-left-color: #0ea5e9 !important;
+[data-bs-theme="dark"] .license-bento-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0.75rem 2rem -0.25rem rgba(0, 0, 0, 0.35);
 }
 
 .bento-card-icon-wrap {
@@ -2364,30 +2391,40 @@ code.code-badge {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: transform 0.25s ease, background-color 0.25s ease;
+}
+
+.license-bento-card:hover .bento-card-icon-wrap {
+  transform: scale(1.06);
 }
 
 .icon-wrap-type {
-  background-color: rgba(var(--primary-rgb), 0.1);
+  background-color: rgba(var(--primary-rgb), 0.12);
+  border: 1px solid rgba(var(--primary-rgb), 0.2);
   color: var(--primary);
 }
 
 .icon-wrap-emission {
-  background-color: rgba(139, 92, 246, 0.1);
+  background-color: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   color: #8b5cf6;
 }
 
 .icon-wrap-expiration {
-  background-color: rgba(16, 185, 129, 0.1);
+  background-color: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.2);
   color: #10b981;
 }
 
 .expiration-temp .icon-wrap-expiration {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.2);
   color: #ef4444;
 }
 
 .icon-wrap-node {
-  background-color: rgba(14, 165, 233, 0.1);
+  background-color: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(14, 165, 233, 0.2);
   color: #0ea5e9;
 }
 
@@ -3556,16 +3593,34 @@ code.code-badge {
   height: 10px;
   border-radius: 50%;
   background-color: #ef4444;
-  /* offline */
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
   display: inline-block;
   transition: all 0.2s ease;
 }
 
 .status-dot.online {
-  background-color: #10b981;
-  /* online */
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+  background-color: #10b981 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.6) !important;
+}
+
+.status-dot.degraded {
+  background-color: #f97316 !important;
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.6) !important;
+}
+
+.status-dot.recovering {
+  background-color: #eab308 !important;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.6) !important;
+}
+
+.status-dot.pending {
+  background-color: #00e5ff !important;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.6) !important;
+}
+
+.status-dot.offline {
+  background-color: #ef4444 !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5) !important;
 }
 
 /* Barra de Scroll Horizontal UX/UI Premium */

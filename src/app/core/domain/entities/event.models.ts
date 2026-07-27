@@ -1,6 +1,7 @@
 export interface EventRecord {
   id: string;
   timestamp: Date;
+  timestampMs?: number;
   hora: number;
   diaSemana: string;
   diaMes: number;

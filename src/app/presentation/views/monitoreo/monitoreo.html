@@ -5,7 +5,7 @@
       <!-- Barra de Búsqueda + Botón de Filtros -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1"
         (click)="$event.stopPropagation()" style="width: clamp(11rem, 20vw, 16rem); margin-right: 0.5rem;">
-        <app-search-input [control]="eventSearchControl" placeholder="Filtrar eventos..."></app-search-input>
+        <app-search-input [control]="eventSearchControl" placeholder="Filtrar por cámara..."></app-search-input>
         <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
           [class.active]="hasActiveSidebarFilters()" [class.open]="showSidebarFilters()"
           (click)="toggleSidebarFilters($event)" title="Mostrar/ocultar filtros" aria-label="Filtros avanzados">
@@ -79,14 +79,17 @@
           [style.transform]="isCanvasMode() ? ('translate(' + canvasPanX() + 'px, ' + canvasPanY() + 'px) scale(' + canvasZoom() + ')') : 'none'"
           [style.transformOrigin]="'0 0'" [style.width]="isCanvasMode() ? (getCanvasDimensions().width + 'px') : '100%'"
           [style.height]="isCanvasMode() ? (getCanvasDimensions().height + 'px') : '100%'"
-          [style.gridTemplateColumns]="isCanvasMode() ? (((draggingSlotId() !== null || isGridFullyOccupied()) && !isCanvasPinned()) ? 'repeat(' + cols() + ', ' + getCellDimensions().cellW + 'px) 48px' : 'repeat(' + cols() + ', ' + getCellDimensions().cellW + 'px)') : (draggingSlotId() !== null ? 'repeat(' + cols() + ', minmax(0, 1fr)) 48px' : 'repeat(' + cols() + ', minmax(0, 1fr))')"
-          [style.gridTemplateRows]="isCanvasMode() ? (((draggingSlotId() !== null || isGridFullyOccupied()) && !isCanvasPinned()) ? 'repeat(' + rows() + ', ' + getCellDimensions().cellH + 'px) 48px' : 'repeat(' + rows() + ', ' + getCellDimensions().cellH + 'px)') : (draggingSlotId() !== null ? 'repeat(' + rows() + ', minmax(0, 1fr)) 48px' : 'repeat(' + rows() + ', minmax(0, 1fr))')">
+          [style.gridTemplateColumns]="isCanvasMode() ? (((draggingSlotId() !== null || isGridFullyOccupied()) && !isCanvasPinned()) ? ('repeat(' + cols() + ', ' + getCellDimensions().cellW + 'px) ' + getExtenderDimensions().width + 'px') : ('repeat(' + cols() + ', ' + getCellDimensions().cellW + 'px)')) : (draggingSlotId() !== null ? ('repeat(' + cols() + ', minmax(0, 1fr)) ' + getExtenderDimensions().width + 'px') : 'repeat(' + cols() + ', minmax(0, 1fr))')"
+          [style.gridTemplateRows]="isCanvasMode() ? (((draggingSlotId() !== null || isGridFullyOccupied()) && !isCanvasPinned()) ? ('repeat(' + rows() + ', ' + getCellDimensions().cellH + 'px) ' + getExtenderDimensions().height + 'px') : ('repeat(' + rows() + ', ' + getCellDimensions().cellH + 'px)')) : (draggingSlotId() !== null ? ('repeat(' + rows() + ', minmax(0, 1fr)) ' + getExtenderDimensions().height + 'px') : 'repeat(' + rows() + ', minmax(0, 1fr))')">
 
           <!-- Renderizado de Slots del Grid (Activos y Vacíos Internos) -->
           @for (slot of visibleGridSlots(); track slot.id; let idx = $index) {
           <div #cardEl class="grid-slot-cell position-relative" [class.slot-empty]="slot.isEmpty"
             [class.slot-occupied]="!slot.isEmpty" [class.locked-slot]="slot.isLocked"
             [class.selected-slot]="selectedCanvasSlotIds().has(slot.id)"
+            [class.selected-slot-sync]="isSyncMode() && selectedCanvasSlotIds().has(slot.id)"
+            [class.selected-slot-async]="!isSyncMode() && selectedCanvasSlotIds().has(slot.id)"
+            [class.slot-dimmed]="isSlotDimmed(slot)"
             [class.highlighted-alert]="!slot.isEmpty && slot.camera && highlightedCellCameraName() === slot.camera.name"
             [class.dragging-placeholder]="draggingSlotId() === slot.id"
             [class.swap-pulse]="swapPulseSlotId() === slot.id" [style.--span-scale-val]="getClampedSpan(slot.spanX)"
@@ -101,19 +104,28 @@
             <div class="empty-slot-content d-flex flex-column align-items-center justify-content-center h-100 w-100"
               (click)="openSelectionModal(slot.col, slot.row)">
               <button class="btn-add-camera shadow-lg d-flex align-items-center justify-content-center mb-1">
-                <span class="icon-svg icon-plus"
-                  style="width: 18px; height: 18px; background-color: currentColor;"></span>
+                <span class="icon-svg icon-plus"></span>
               </button>
-              <span class="empty-slot-title text-uppercase fw-bold" style="font-size: 0.65rem;">Agregar</span>
+              <span class="empty-slot-title text-uppercase fw-bold">Agregar</span>
             </div>
             } @else {
             <!-- Celda Ocupada con Cámara -->
             <div class="occupied-slot-content h-100 w-100 position-relative overflow-hidden">
-              <!-- Header flotante del Slot sin recuadros ni cajas de fondo -->
-              <div class="slot-overlay-header d-flex align-items-center">
-                <span class="status-dot-pulse me-2" [class.online]="isCameraOnline(slot.camera)"></span>
-                <span class="slot-camera-name fw-bold text-truncate" [title]="slot.camera?.name">{{ slot.camera?.name
-                  }}</span>
+              <!-- Barra de Encabezado Superior Integrada (Flexbox Anti-Colisión) -->
+              <div class="slot-top-bar d-flex align-items-center justify-content-between">
+                <div class="slot-overlay-header d-flex align-items-center">
+                  <span class="status-dot-pulse me-2" [class]="'status-dot-pulse me-2 ' + getCameraStatusClass(slot.camera)" [title]="getCameraStatusLabel(slot.camera)"></span>
+                  <span class="slot-camera-name fw-bold text-truncate" [title]="slot.camera?.name">{{ slot.camera?.name }}</span>
+                </div>
+
+                @if (slot.camera && isSlotShowingEventPhoto(slot)) {
+                @let targetEvt = getDisplayedEventForSlot(slot);
+                @if (targetEvt && targetEvt.timestamp) {
+                <div class="canvas-slot-time-top-right">
+                  <span>{{ formatDatePart(targetEvt.timestamp) }} • {{ formatTimePart(targetEvt.timestamp) }}</span>
+                </div>
+                }
+                }
               </div>
 
               <!-- Feed / Imagen del último evento o Video en Tiempo Real -->
@@ -128,8 +140,7 @@
                 <div
                   class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-60"
                   style="z-index: 8; backdrop-filter: grayscale(1) blur(2px);">
-                  <span class="badge bg-warning text-dark font-monospace text-uppercase"
-                    style="font-size: 0.65rem; letter-spacing: 0.05em; padding: 5px 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">⏸️
+                  <span class="badge bg-warning text-dark font-monospace text-uppercase vms-badge-fluid-sm">⏸️
                     FEED PAUSADO</span>
                 </div>
                 }
@@ -143,12 +154,14 @@
                 }
 
                 <!-- Snapshot Histórico en Modo PLAYBACK (timestamp <= T) -->
-                @if (isSlotInPlaybackMode(slot) && slot.camera && getSnapshotForCameraAt(slot.camera.name); as
-                snapshotEvent) {
-                <img [src]="snapshotEvent.urlImg"
+                @if (isSlotInPlaybackMode(slot) && slot.camera) {
+                @let displayImgEvent = getDisplayedEventForSlot(slot);
+                @if (displayImgEvent) {
+                <img [src]="displayImgEvent.urlImg"
                   class="slot-event-img object-fit-contain w-100 h-100 position-absolute top-0 start-0"
                   style="z-index: 7;" [class.feed-paused-grayscale]="isFeedPaused(slot.camera.name)"
                   alt="Historical Frame" draggable="false" />
+                }
                 }
 
                 <!-- Fallback a Imagen de Evento o Placeholder de Carga -->
@@ -181,49 +194,45 @@
                 </div>
                 }
                 }
+                }
 
-                <!-- Overlays de Analítica y Fecha/Hora en la Cámara del Lienzo -->
-                @if (latestEventsMap()[slot.camera.name]; as lastEvent) {
-                <!-- Fecha y Hora Arriba a la Derecha (Flotante sin recuadro que tape el video) -->
-                <div class="canvas-slot-time-top-right">
-                  <span>{{ formatDatePart(lastEvent.timestamp) }} • {{ formatTimePart(lastEvent.timestamp) }}</span>
-                </div>
-
-                <!-- Chip de Analítica Abajo a la Izquierda -->
+                <!-- Chip de Analítica (Solo visible cuando se muestra la foto estática/histórica de un evento, no durante video en vivo) -->
+                @if (slot.camera && isSlotShowingEventPhoto(slot)) {
+                @let targetEvt = getDisplayedEventForSlot(slot);
+                @let analyticType = targetEvt?.analitica || getCameraAnalytics(slot.camera)[0] || 'Detección';
                 <div class="canvas-slot-badge-bottom-left">
-                  <span class="vms-analytic-chip" [style.--chip-color]="getAnalyticColor(lastEvent.analitica)">
+                  <span class="vms-analytic-chip" [style.--chip-color]="getAnalyticColor(analyticType)">
                     <span class="vms-analytic-chip__dot"></span>
-                    <span class="vms-analytic-chip__text">{{ lastEvent.analitica }}</span>
+                    <span class="vms-analytic-chip__text">{{ getAnalyticLabel(analyticType) }}</span>
                   </span>
                 </div>
-                }
                 }
 
                 <!-- BARRA DE CONTROLES VERTICAL EN HOVER (Premium Action Dock) -->
                 @if (slot.camera) {
-                <div class="feed-actions-vertical-dock d-flex flex-column align-items-center gap-2"
+                <div class="feed-actions-vertical-dock d-flex flex-column align-items-center"
                   (click)="$event.stopPropagation()">
                   <!-- Toggle IA Overlay -->
                   <button class="action-dock-btn" [class.active]="activeAiOverlays()[slot.camera.name]"
                     (click)="toggleAiOverlay(slot.camera.name)" title="Superposición IA (Cajas de detección)">
-                    <span class="icon-svg icon-target" style="width: 13px; height: 13px;"></span>
+                    <span class="icon-svg icon-target vms-icon-fluid-xs"></span>
                   </button>
 
                   <!-- Snapshot -->
                   <button class="action-dock-btn" (click)="takeSnapshot(slot)" title="Capturar Fotograma">
-                    <span class="icon-svg icon-camara" style="width: 13px; height: 13px;"></span>
+                    <span class="icon-svg icon-camara vms-icon-fluid-xs"></span>
                   </button>
 
                   <!-- Bloquear/Desbloquear Slot -->
                   <button class="action-dock-btn" [class.active-lock]="slot.isLocked" (click)="toggleLockSlot(slot)"
                     [title]="slot.isLocked ? 'Desbloquear cámara' : 'Bloquear cámara'">
-                    <span class="icon-svg icon-lock" style="width: 13px; height: 13px;"></span>
+                    <span class="icon-svg icon-lock vms-icon-fluid-xs"></span>
                   </button>
 
                   <!-- Quitar Cámara -->
                   <button class="action-dock-btn btn-danger-action"
                     (click)="removeCameraFromSlot(slot.col, slot.row, $event)" title="Quitar cámara">
-                    <span class="icon-svg icon-trash" style="width: 13px; height: 13px;"></span>
+                    <span class="icon-svg icon-trash vms-icon-fluid-xs"></span>
                   </button>
                 </div>
                 }
@@ -241,31 +250,30 @@
           <!-- expandedores de bordes (Drop Targets para agregar columnas/filas) -->
           <!-- Vertical: Lado derecho -->
           @if ((draggingSlotId() !== null || isGridFullyOccupied()) && !isCanvasPinned()) {
+          @let extDim = getExtenderDimensions();
           <div class="grid-cell-placeholder-vertical d-flex align-items-center justify-content-center"
             [class.hover-active]="activeHoveredExpander() === 'column'" [style.gridColumn]="(cols() + 1) + ' / span 1'"
             [style.gridRow]="'1 / span ' + rows()" data-type="vertical-expander"
             (click)="openSelectionModal(cols() + 1, 1)" title="Arrastre una cámara aquí para añadir una columna">
             <div class="expander-content d-flex flex-column align-items-center text-muted">
-              <span class="icon-svg icon-plus mb-1"
-                style="background-color: currentColor; width: 14px; height: 14px;"></span>
-              <span style="font-size: 0.6rem; writing-mode: vertical-lr; letter-spacing: 0.05em; font-weight: bold;">
-                COLUMNA</span>
+              <span class="icon-svg icon-plus mb-1" [style.width.px]="extDim.iconSize"
+                [style.height.px]="extDim.iconSize" style="background-color: currentColor;"></span>
+              <span class="vms-expander-label-vert" [style.fontSize.px]="extDim.fontSize">COLUMNA</span>
             </div>
           </div>
           }
 
           <!-- Horizontal: Lado inferior -->
           @if ((draggingSlotId() !== null || isGridFullyOccupied()) && !isCanvasPinned()) {
+          @let extDim = getExtenderDimensions();
           <div class="grid-cell-placeholder-wide d-flex align-items-center justify-content-center"
             [class.hover-active]="activeHoveredExpander() === 'row'" [style.gridColumn]="'1 / span ' + cols()"
             [style.gridRow]="(rows() + 1) + ' / span 1'" data-type="horizontal-expander"
             (click)="openSelectionModal(1, rows() + 1)" title="Arrastre una cámara aquí para añadir una fila">
-            <div class="expander-content d-flex align-items-center text-muted gap-2">
-              <span class="icon-svg icon-plus"
-                style="background-color: currentColor; width: 14px; height: 14px;"></span>
-              <span style="font-size: 0.6rem; letter-spacing: 0.05em; font-weight: bold;">
-                FILA
-              </span>
+            <div class="expander-content d-flex align-items-center text-muted gap-1">
+              <span class="icon-svg icon-plus" [style.width.px]="extDim.iconSize" [style.height.px]="extDim.iconSize"
+                style="background-color: currentColor;"></span>
+              <span class="vms-expander-label-horiz" [style.fontSize.px]="extDim.fontSize">FILA</span>
             </div>
           </div>
           }
@@ -311,7 +319,7 @@
             <!-- Botón SYNC / ASYNC -->
             <button class="btn-canvas-text-action btn-sync-pill" [class.active-sync]="isSyncMode()"
               [class.active-async]="!isSyncMode()" (click)="toggleSyncMode()"
-              [title]="isSyncMode() ? 'Modo Sincronizado (Cámaras unificadas, recuadro de arrastre bloqueado)' : 'Modo Asíncrono (Selección e interacción independiente de cámaras)'">
+              [title]="isSyncMode() ? 'Modo Sincronizado: Selección filtra panel/timeline, lienzo sincronizado' : 'Modo Asíncrono: Selección controla cámaras de forma independiente'">
               {{ isSyncMode() ? 'SYNC' : 'ASYNC' }}
             </button>
           </div>
@@ -322,18 +330,26 @@
         @if (isCanvasMode() && showMinimap()) {
         <div class="canvas-minimap-container" [class.fade-out-up]="!isCanvasActive()">
           <div class="minimap-viewport-area position-relative" (mousedown)="onMinimapMouseDown($event)">
-            <!-- Fondo / Miniatura de slots -->
-            @for (mslot of gridSlots(); track mslot.id) {
-            <div class="minimap-slot-mini position-absolute" [class.occupied]="mslot.camera !== null"
-              [style.left.%]="((mslot.col - 1) / cols()) * 100" [style.top.%]="((mslot.row - 1) / rows()) * 100"
-              [style.width.%]="(mslot.spanX / cols()) * 100" [style.height.%]="(mslot.spanY / rows()) * 100">
+            <!-- Borde guía del Layout completo -->
+            @let layoutR = getMinimapLayoutRect();
+            <div class="minimap-layout-outline position-absolute" [style.left]="layoutR.left + '%'"
+              [style.top]="layoutR.top + '%'" [style.width]="layoutR.width + '%'" [style.height]="layoutR.height + '%'">
+            </div>
+
+            <!-- Celdas de cámara del lienzo (Responsivas 1:1 sin deformación) -->
+            @for (mslot of visibleGridSlots(); track mslot.id) {
+            @let sRect = getMinimapSlotRect(mslot);
+            <div class="minimap-slot-mini position-absolute" [class.occupied]="!mslot.isEmpty || mslot.camera !== null"
+              [style.left]="sRect.left + '%'" [style.top]="sRect.top + '%'" [style.width]="sRect.width + '%'"
+              [style.height]="sRect.height + '%'"
+              [title]="mslot.camera ? ('Cámara: ' + mslot.camera.name) : ('Slot (' + mslot.col + ', ' + mslot.row + ')')">
             </div>
             }
 
             <!-- Visor del Viewport Actual -->
-            <div class="minimap-viewport-indicator position-absolute" [style.left.%]="getMinimapViewportRect().left"
-              [style.top.%]="getMinimapViewportRect().top" [style.width.%]="getMinimapViewportRect().width"
-              [style.height.%]="getMinimapViewportRect().height">
+            @let vpR = getMinimapViewportRect();
+            <div class="minimap-viewport-indicator position-absolute" [style.left]="vpR.left + '%'"
+              [style.top]="vpR.top + '%'" [style.width]="vpR.width + '%'" [style.height]="vpR.height + '%'">
             </div>
           </div>
         </div>
@@ -503,12 +519,14 @@
         <!-- Barra vertical: solo visible cuando el panel está COLAPSADO, sirve para expandir -->
         @if (isRightPanelCollapsed()) {
         <div class="right-panel-toggle-bar" (click)="toggleRightPanel()" title="Desplegar Historial">
-          <div class="toggle-arrow-container py-3">
-            <span class="icon-svg icon-chevron-down"
-              style="width: 14px; height: 14px; background-color: currentColor;"></span>
+          <div class="toggle-arrow-container py-1">
+            <span class="icon-svg icon-chevron-down vms-icon-fluid-xs"></span>
           </div>
           <div class="toggle-bar-text-wrapper">
             <span class="toggle-bar-text">HISTORIAL DE EVENTOS Y ANALITICAS</span>
+          </div>
+          <div class="toggle-arrow-container py-1">
+            <span class="icon-svg icon-chevron-down vms-icon-fluid-xs"></span>
           </div>
         </div>
         }
@@ -537,7 +555,8 @@
 
 
               <!-- Listado de tarjetas de eventos -->
-              <div class="d-flex flex-column gap-2 flex-grow-1 overflow-y-auto list-eventos-sidebar pe-1">
+              <div class="d-flex flex-column gap-2 flex-grow-1 overflow-y-auto list-eventos-sidebar pe-1"
+                (scroll)="onSidebarScroll($event)">
                 @if (isLoadingEvents()) {
                 <div class="text-center py-4">
                   <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
@@ -547,7 +566,7 @@
                   Sin eventos coincidentes.
                 </div>
                 } @else {
-                @for (event of filteredEvents(); track event.id) {
+                @for (event of visibleSidebarEvents(); track event.id) {
                 <div class="vms-evt-card"
                   [class.vms-evt-card--fresh]="currentTimePointer().getTime() - event.timestamp.getTime() < 3000"
                   (click)="openEventDetails(event)">
@@ -572,7 +591,7 @@
 
                     <!-- Info, Fecha y Atributos -->
                     <div class="vms-evt-card__content">
-                      <div class="vms-evt-card__desc" [title]="event.detalleEvento">{{ event.detalleEvento }}</div>
+                      <div class="vms-evt-card__desc" [title]="event.detalleEvento">{{ formatDetalleEvento(event.detalleEvento) }}</div>
 
                       @if (event.objeto || event.conteoAforo !== null || event.tiempoPermanencia !== null ||
                       event.objetosEnArea !== null || event.espaciosLibres !== null || event.direccion) {
@@ -587,7 +606,7 @@
                         }
                         @if (event.tiempoPermanencia !== null && event.tiempoPermanencia !== undefined) {
                         <span class="vms-metric-tag"><b class="vms-metric-tag__lbl">Perm:</b> {{ event.tiempoPermanencia
-                          }}s</span>
+                          | number:'1.0-2' }}s</span>
                         }
                         @if (event.objetosEnArea !== null && event.objetosEnArea !== undefined) {
                         <span class="vms-metric-tag"><b class="vms-metric-tag__lbl">En área:</b> {{ event.objetosEnArea
@@ -642,7 +661,7 @@
                 <!-- Cabecera Remodelada de la Cámara -->
                 <div class="camera-accordion-header d-flex align-items-center justify-content-between"
                   (click)="toggleCameraAccordion(cam.id)">
-                  
+
                   <!-- Lado Izquierdo: Avatar de Cámara + Nombre + Conteo Analíticas -->
                   <div class="d-flex align-items-center gap-2 min-w-0 pe-2">
                     <div class="camera-header-avatar flex-shrink-0 d-flex align-items-center justify-content-center">
@@ -661,17 +680,17 @@
                   </div>
 
                   <!-- Lado Derecho: Acciones (Botón Configuración + Flecha Desplegable) -->
-                  <div class="camera-header-actions d-flex align-items-center gap-1 flex-shrink-0" (click)="$event.stopPropagation()">
+                  <div class="camera-header-actions d-flex align-items-center gap-1 flex-shrink-0"
+                    (click)="$event.stopPropagation()">
                     <!-- Botón Configurar Cámara -->
-                    <button type="button" 
+                    <button type="button"
                       class="btn-camera-config-action d-flex align-items-center justify-content-center"
-                      (click)="openCameraConfig(cam, $event)"
-                      title="Configurar cámara">
+                      (click)="openCameraConfig(cam, $event)" title="Configurar cámara">
                       <span class="icon-svg icon-settings config-icon"></span>
                     </button>
 
                     <!-- Botón Desplegar / Colapsar -->
-                    <button type="button" 
+                    <button type="button"
                       class="btn-camera-toggle-action d-flex align-items-center justify-content-center"
                       (click)="toggleCameraAccordion(cam.id); $event.stopPropagation()"
                       [title]="isCameraAccordionExpanded(cam.id) ? 'Colapsar analíticas' : 'Expandir analíticas'">
@@ -847,8 +866,7 @@
               [class.active-slot-camera]="selectedCameraIds().has(cam.id)" (click)="toggleCameraSelectionLocal(cam)">
               <div class="d-flex align-items-center gap-3">
                 <div class="position-relative">
-                  <span class="status-dot-pulse" [class.online]="isCameraOnline(cam)"
-                    style="width: 10px; height: 10px;"></span>
+                  <span class="modal-camera-status-dot" [class]="'modal-camera-status-dot ' + getCameraStatusClass(cam)" [title]="getCameraStatusLabel(cam)"></span>
                 </div>
                 <div>
                   <span class="fw-bold d-block text-body" style="font-size: 0.85rem;">
@@ -900,8 +918,7 @@
           [class.active-slot-camera]="selectedCameraIds().has(cam.id)" (click)="toggleCameraSelectionLocal(cam)">
           <div class="d-flex align-items-center gap-3">
             <div class="position-relative">
-              <span class="status-dot-pulse" [class.online]="isCameraOnline(cam)"
-                style="width: 10px; height: 10px;"></span>
+              <span class="modal-camera-status-dot" [class]="'modal-camera-status-dot ' + getCameraStatusClass(cam)" [title]="getCameraStatusLabel(cam)"></span>
             </div>
             <div>
               <span class="fw-bold d-block text-body" style="font-size: 0.85rem;">
@@ -943,7 +960,7 @@
      MODAL DE DETALLE DEL EVENTO SELECCIONADO (Magnifier Lens Zoom)
      ========================================================================= -->
 <!-- Modal Reutilizable de Detalle del Evento (DRY) -->
-<app-event-detail-modal [event]="selectedEvent()" (close)="closeEventDetails()">
+<app-event-detail-modal [event]="selectedModalEvent()" (close)="closeEventDetails()">
 </app-event-detail-modal>
 
 
@@ -952,9 +969,9 @@
      ========================================================================= -->
 @if (fullscreenSlot(); as fslot) {
 <div class="camera-fullscreen-overlay d-flex flex-column align-items-center justify-content-center"
-  (click)="closeFullscreen()">
+  (dblclick)="closeFullscreen()">
   <div class="fullscreen-content-card position-relative d-flex flex-column"
-    [style.transformOrigin]="fullscreenTransformOrigin()" (click)="$event.stopPropagation(); closeFullscreen()">
+    [style.transformOrigin]="fullscreenTransformOrigin()" (dblclick)="$event.stopPropagation(); closeFullscreen()">
 
     <!-- Área de Contenido del Feed (Video WebRTC / Imagen Playback / Imagen Evento) -->
     <div
@@ -962,7 +979,7 @@
       <!-- Header flotante del Slot dentro de la imagen -->
       <div class="fullscreen-slot-header d-flex align-items-center w-100 position-absolute top-0 start-0"
         style="z-index: 10;">
-        <span class="status-dot-pulse fullscreen-status-dot me-3" [class.online]="isCameraOnline(fslot.camera)"></span>
+        <span class="status-dot-pulse fullscreen-status-dot me-3" [class]="'status-dot-pulse fullscreen-status-dot me-3 ' + getCameraStatusClass(fslot.camera)" [title]="getCameraStatusLabel(fslot.camera)"></span>
         <span class="fullscreen-camera-name text-truncate" [title]="fslot.camera?.name">{{ fslot.camera?.name }}</span>
       </div>
       @if (fslot.camera) {
@@ -994,15 +1011,13 @@
 
     <!-- Pie de Indicaciones -->
     <div class="fullscreen-card-footer text-center py-2 text-white-50 small font-monospace">
-      Haz clic en cualquier lugar o presiona ESC para salir de pantalla completa
+      Haz doble clic en cualquier lugar o presiona ESC para salir de pantalla completa
     </div>
   </div>
 </div>
 }
 
 <!-- Componente Compartido Reutilizable (DRY): Drawer Lateral de Configuración de Cámara -->
-<app-camera-detail-drawer
-  [show]="showCameraConfigDrawer()"
-  [camera]="selectedConfigCamera()"
+<app-camera-detail-drawer [show]="showCameraConfigDrawer()" [camera]="selectedConfigCamera()"
   (close)="showCameraConfigDrawer.set(false)">
 </app-camera-detail-drawer>

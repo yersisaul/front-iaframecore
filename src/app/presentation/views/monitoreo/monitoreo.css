@@ -2,11 +2,13 @@
    MONITOREO VIEW LAYOUT (Flexbox Fluididad Consistente)
    ========================================================================= */
 .monitoreo-view-container {
-  height: calc(100vh - 2rem);
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 0.5rem 0.5rem 0.5rem;
 }
 
 .header-page-title {
@@ -47,9 +49,10 @@
 
 .monitoring-right-panel.right-panel-collapsed,
 .main-monitoring-layout.right-panel-collapsed .monitoring-right-panel {
-  flex: 0 0 3.2rem !important;
-  width: 3.2rem !important;
-  min-width: 3.2rem !important;
+  flex: 0 0 clamp(2.4rem, 2.5vw, 2.75rem) !important;
+  width: clamp(2.4rem, 2.5vw, 2.75rem) !important;
+  min-width: clamp(2.4rem, 2.5vw, 2.75rem) !important;
+  max-width: clamp(2.4rem, 2.5vw, 2.75rem) !important;
   display: flex !important;
 }
 
@@ -101,8 +104,10 @@ body.is-box-selecting * {
   --color-rostros: #a855f7;
 }
 
-/* Celdas del Grid */
+/* Container Context para Escalado Vectorial Uniforme (inline + block = cqi + cqb) */
 .grid-slot-cell {
+  container-type: size;
+  container-name: slot-cell;
   background-color: var(--bg-surface);
   border-radius: 0.6rem;
   border: 1.5px solid var(--border-color);
@@ -151,18 +156,33 @@ body.is-box-selecting * {
 }
 
 .btn-add-camera {
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 50%;
-  border: none;
+  width: clamp(2.2rem, 12cqb, 3.2rem) !important;
+  height: clamp(2.2rem, 12cqb, 3.2rem) !important;
+  border-radius: 50% !important;
+  aspect-ratio: 1 / 1;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
-  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-add-camera .icon-svg,
+.btn-add-camera .icon-plus {
+  width: clamp(0.95rem, 5cqb, 1.35rem) !important;
+  height: clamp(0.95rem, 5cqb, 1.35rem) !important;
+  display: inline-block !important;
+  background-color: currentColor !important;
 }
 
 .empty-slot-content:hover .btn-add-camera {
-  transform: scale(1.1);
+  transform: scale(1.12);
   background-color: var(--primary);
   border-color: var(--primary);
   color: #ffffff;
@@ -170,44 +190,107 @@ body.is-box-selecting * {
 
 .empty-slot-title {
   color: var(--text-muted);
-  font-size: 0.65rem;
+  font-size: clamp(0.72rem, 3.5cqb, 0.85rem) !important;
   letter-spacing: 0.05em;
+  margin-top: clamp(0.25rem, 1.5cqb, 0.5rem);
 }
 
-/* Celda Ocupada */
-.slot-overlay-header {
+/* Punto de Estado Fijo Compacto para el Modal de Selección de Cámaras */
+.modal-camera-status-dot {
+  width: 0.5rem !important;
+  height: 0.5rem !important;
+  border-radius: 50%;
+  background-color: var(--color-offline);
+  display: inline-block;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.modal-camera-status-dot.online {
+  background-color: #10b981;
+  box-shadow: 0 0 0.35rem rgba(16, 185, 129, 0.6);
+}
+
+.modal-camera-status-dot.degraded {
+  background-color: #f97316;
+  box-shadow: 0 0 0.35rem rgba(249, 115, 22, 0.6);
+}
+
+.modal-camera-status-dot.recovering {
+  background-color: #eab308;
+  box-shadow: 0 0 0.35rem rgba(234, 179, 8, 0.6);
+}
+
+.modal-camera-status-dot.pending {
+  background-color: #00e5ff;
+  box-shadow: 0 0 0.35rem rgba(0, 229, 255, 0.6);
+}
+
+.modal-camera-status-dot.offline {
+  background-color: #ef4444;
+}
+
+/* =========================================================================
+   SISTEMA DE ESCALADO VECTORIAL PROPORCIONAL UNIFORME
+   Todos los elementos del slot usan cqb (% de la altura del slot)
+   para que la proporción sea idéntica en cualquier tamaño de span.
+   ========================================================================= */
+
+/* Barra de Encabezado Superior con degradado cinematográfico suave y padding mínimo controlado */
+.slot-top-bar {
   position: absolute;
-  top: 0.6rem;
-  left: 0.6rem;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  padding: clamp(0.45rem, 2.5cqb, 0.85rem) clamp(0.6rem, 3.5cqb, 1.1rem) clamp(0.75rem, 5cqb, 1.4rem) clamp(0.6rem, 3.5cqb, 1.1rem);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.3) 65%, transparent 100%);
+  pointer-events: none;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
+.slot-overlay-header {
+  position: relative;
   background: transparent !important;
   box-shadow: none !important;
   border: none !important;
   z-index: 6;
   color: #ffffff;
   cursor: default;
-  max-width: calc(100% - 11.5rem);
+  min-width: 0;
+  flex: 1 1 auto;
   pointer-events: auto;
   padding: 0 !important;
+  display: flex;
+  align-items: center;
+  overflow: visible;
 }
 
 .slot-overlay-header:active {
   cursor: default;
 }
 
+/* Nombre de la Cámara: adaptable fluido con clamp(), sin sombras cuadradas feas */
 .slot-camera-name {
-  font-size: 0.8rem;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  font-size: clamp(0.72rem, 4.2cqb, 1.15rem) !important;
+  font-weight: 700;
+  color: #ffffff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  flex: 1 1 auto;
+  line-height: 1.25;
 }
 
+/* Botón cerrar slot: 7cqb */
 .btn-slot-close {
   background-color: rgba(255, 255, 255, 0.1);
   border: none;
-  width: 20px;
-  height: 20px;
+  width: 7cqb !important;
+  height: 7cqb !important;
   border-radius: 50%;
   backdrop-filter: blur(4px);
   transition: background-color 0.2s ease, transform 0.2s ease;
@@ -216,6 +299,61 @@ body.is-box-selecting * {
 .btn-slot-close:hover {
   background-color: rgba(239, 68, 68, 0.85);
   transform: scale(1.1);
+}
+
+/* =========================================================================
+   TIRADOR DE REDIMENSIONAMIENTO - escala por altura (cqb)
+   ========================================================================= */
+.feed-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 9cqb !important;
+  height: 9cqb !important;
+  background: linear-gradient(135deg, rgba(12, 18, 33, 0.92) 0%, rgba(37, 99, 235, 0.95) 100%) !important;
+  border-top-left-radius: 100% !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  cursor: nwse-resize;
+  z-index: 25;
+  box-shadow: -2px -2px 10px rgba(0, 0, 0, 0.4) !important;
+  opacity: 0.85;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  clip-path: none !important;
+  transform-origin: 100% 100%;
+}
+
+.grid-slot-cell:hover .feed-resize-handle {
+  opacity: 1;
+}
+
+.feed-resize-handle::before {
+  content: '';
+  width: 2.5cqb;
+  height: 2.5cqb;
+  border-right: 0.5cqb solid #ffffff;
+  border-bottom: 0.5cqb solid #ffffff;
+  opacity: 0.95;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  margin-top: 1.5cqb;
+  margin-left: 1.5cqb;
+  display: block;
+}
+
+.feed-resize-handle:hover {
+  opacity: 1 !important;
+  transform: scale(1.12);
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.6) !important;
+}
+
+.feed-resize-handle:hover::before {
+  border-color: #ffffff;
+  transform: scale(1.08);
 }
 
 .slot-video-wrapper {
@@ -244,31 +382,43 @@ body.is-box-selecting * {
   user-select: none !important;
 }
 
-/* Overlays flotantes en la cámara del lienzo (Sin recuadros que tapen el video) */
+/* Fecha y Hora: limpia y elegante en la esquina superior derecha */
 .canvas-slot-time-top-right {
-  position: absolute;
-  top: 0.6rem;
-  right: 0.6rem;
+  position: relative;
   z-index: 6;
-  font-size: 0.75rem;
+  font-size: clamp(0.65rem, 3.6cqb, 0.95rem) !important;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-weight: 700;
-  color: #ffffff;
-  text-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.9),
-    0 0 10px rgba(0, 0, 0, 0.8),
-    0 0 2px rgba(0, 0, 0, 1);
-  pointer-events: none;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
+  pointer-events: auto;
   background: transparent;
   padding: 0;
   border: none;
+  flex-shrink: 0;
+  margin-left: 1.5cqb;
+  white-space: nowrap;
 }
 
+.vms-expander-label-vert {
+  font-size: 0.6rem;
+  writing-mode: vertical-lr;
+  letter-spacing: 0.05em;
+  font-weight: bold;
+}
+
+.vms-expander-label-horiz {
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  font-weight: bold;
+}
+
+/* Chip de Analítica: 2cqb posición, 3.5cqb texto */
 .canvas-slot-badge-bottom-left {
   position: absolute;
-  bottom: 0.6rem;
-  left: 0.6rem;
-  z-index: 6;
+  bottom: 2cqb;
+  left: 3cqb;
+  z-index: 12;
   pointer-events: none;
 }
 
@@ -277,26 +427,64 @@ body.is-box-selecting * {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.22) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.3) !important;
+  padding: 1.2cqb 2.5cqb;
+  border-radius: 5cqb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
 }
 
 .canvas-slot-badge-bottom-left .vms-analytic-chip__text {
+  font-size: 3.5cqb !important;
   color: #ffffff !important;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
-/* Pulsos e Indicadores */
+.canvas-slot-badge-bottom-left .vms-analytic-chip__dot {
+  width: 2cqb !important;
+  height: 2cqb !important;
+}
+
+/* Punto de Estado Online/Offline: alineación centrada con clamp() anti-colapso */
 .status-dot-pulse {
-  width: 8px;
-  height: 8px;
+  width: clamp(0.5rem, 3.2cqb, 0.75rem) !important;
+  height: clamp(0.5rem, 3.2cqb, 0.75rem) !important;
   border-radius: 50%;
   background-color: var(--color-offline);
   display: inline-block;
   position: relative;
+  flex-shrink: 0;
+  margin-right: clamp(0.35rem, 2.2cqb, 0.6rem) !important;
+  align-self: center;
+  z-index: 2;
+  overflow: visible;
+}
+
+/* Íonos de fluido dentro del slot: escalan con cqb */
+.vms-icon-fluid-xs {
+  width: 5cqb !important;
+  height: 5cqb !important;
+  background-color: currentColor;
+}
+
+.vms-icon-fluid-sm {
+  width: 6cqb !important;
+  height: 6cqb !important;
+  background-color: currentColor;
+}
+
+.vms-icon-fluid-md {
+  width: 7cqb !important;
+  height: 7cqb !important;
+  background-color: currentColor;
+}
+
+.vms-icon-fluid-lg {
+  width: 8cqb !important;
+  height: 8cqb !important;
+  background-color: currentColor;
 }
 
 .status-dot-pulse.online {
-  background-color: var(--color-online);
+  background-color: #10b981;
 }
 
 .status-dot-pulse.online::after {
@@ -307,59 +495,69 @@ body.is-box-selecting * {
   top: 0;
   left: 0;
   border-radius: 50%;
-  background-color: var(--color-online);
+  background-color: #10b981;
   animation: pulse-glow 1.5s infinite ease-in-out;
   opacity: 0.6;
+  z-index: 1;
+  pointer-events: none;
+  overflow: visible;
 }
 
-/* Animación de espera para cámaras sin eventos */
-.waiting-event-placeholder {
-  animation: pulse-placeholder 2s infinite ease-in-out;
+.status-dot-pulse.degraded {
+  background-color: #f97316;
 }
 
-.placeholder-wave-container {
-  display: flex;
-  gap: 4px;
+.status-dot-pulse.recovering {
+  background-color: #eab308;
 }
 
-.placeholder-wave-bar {
-  width: 3px;
-  height: 14px;
-  background-color: var(--primary);
-  border-radius: 2px;
-  animation: wave-bar 1.2s infinite ease-in-out;
+.status-dot-pulse.pending {
+  background-color: #00e5ff;
 }
 
-.placeholder-wave-bar:nth-child(2) {
-  animation-delay: 0.15s;
+.status-dot-pulse.pending::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background-color: #00e5ff;
+  animation: pulse-glow 1.5s infinite ease-in-out;
+  opacity: 0.6;
+  z-index: 1;
 }
 
-.placeholder-wave-bar:nth-child(3) {
-  animation-delay: 0.3s;
+.status-dot-pulse.offline {
+  background-color: #ef4444;
 }
 
-/* =========================================================================
-   BARRA DE CONTROLES VERTICAL EN CELDAS (HOVER DOCK)
-   ========================================================================= */
+/* BARRA DE CONTROLES VERTICAL EN HOVER
+   Escala por altura del slot (cqb) para que siempre mida ~50% de la cámara */
 .feed-actions-vertical-dock {
   position: absolute;
   top: 50%;
-  right: 0.5rem;
-  transform: translateY(-50%) translateX(0.35rem);
+  right: 2cqb;
+  /* translateX en px fijo para no triggerear recalculo de cqb al escalar hijos */
+  transform: translateY(-50%) translateX(6px);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  background-color: rgba(14, 14, 14, 0.82);
+  gap: 2cqb;
+  background-color: rgba(14, 14, 14, 0.85);
   backdrop-filter: blur(0.75rem);
   -webkit-backdrop-filter: blur(0.75rem);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 0.38rem;
-  border-radius: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 1cqb;
+  border-radius: 6cqb;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 15;
   box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.5);
+  /* Aislar el dock del contexto de cqb para que el scale de hijos no recalcule */
+  contain: layout style;
+  overflow: visible;
 }
 
 .grid-slot-cell:hover .feed-actions-vertical-dock {
@@ -368,29 +566,127 @@ body.is-box-selecting * {
   pointer-events: auto;
 }
 
+/* Botones: cada uno ocupa ~10cqb → 4 botones + 3 gaps + 2 paddings = 45cqb ≈ 45% altura */
 .action-dock-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-secondary);
-  width: 1.75rem;
-  height: 1.75rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary, rgba(255, 255, 255, 0.6));
+  width: 10cqb;
+  height: 10cqb;
   border-radius: 50%;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  /* Usar scale (propiedad independiente) en lugar de transform:scale para
+     evitar que interfiera con cqb del contenedor padre */
+  scale: 1;
+  transition: scale 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  transform-origin: center center;
+  flex-shrink: 0;
+  will-change: transform;
+  position: relative;
+}
+
+/* Icono SVG: ~45% del botón */
+.action-dock-btn .icon-svg,
+.action-dock-btn .vms-icon-fluid-xs {
+  width: 4.5cqb !important;
+  height: 4.5cqb !important;
+  display: block !important;
+  margin: auto !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  background-color: rgba(255, 255, 255, 0.55) !important;
+  transition: background-color 0.2s ease !important;
+}
+
+/* Placeholder Conectando Cámara: escala con cqb */
+.waiting-event-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(10, 14, 26, 0.9);
+  z-index: 5;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  padding: 0;
+  padding: 3cqb;
+}
+
+.placeholder-wave-container {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1.2cqb;
+  height: 6cqb;
+}
+
+.placeholder-wave-bar {
+  width: 1.2cqb;
+  height: 100%;
+  background-color: var(--primary, #3b82f6);
+  border-radius: 999px;
+  animation: vms-wave-bar-pulse 1.2s infinite ease-in-out;
+}
+
+.placeholder-wave-bar:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.placeholder-wave-bar:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.placeholder-wave-bar:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes vms-wave-bar-pulse {
+
+  0%,
+  100% {
+    height: 25%;
+    opacity: 0.4;
+    background-color: rgba(59, 130, 246, 0.4);
+  }
+
+  50% {
+    height: 100%;
+    opacity: 1;
+    background-color: var(--primary, #3b82f6);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+  }
+}
+
+.waiting-event-placeholder span {
+  font-size: 4cqb !important;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  margin-top: 1.5cqb;
+  letter-spacing: 0.08em;
 }
 
 .action-dock-btn:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
-  transform: scale(1.08);
+  background-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  scale: 1.13;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.2);
+}
+
+.action-dock-btn:hover .icon-svg,
+.action-dock-btn:hover .vms-icon-fluid-xs {
+  background-color: #ffffff !important;
 }
 
 .action-dock-btn:active {
-  transform: scale(0.92);
+  scale: 0.92;
 }
 
 .action-dock-btn.active {
@@ -416,12 +712,15 @@ body.is-box-selecting * {
 }
 
 .action-dock-btn.btn-danger-action:hover {
-  background-color: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.25);
+  background-color: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.35);
   color: #ef4444;
+  scale: 1.13;
+  box-shadow: 0 0 0 1.5px rgba(239, 68, 68, 0.35);
 }
 
-.action-dock-btn.btn-danger-action:hover .icon-svg {
+.action-dock-btn.btn-danger-action:hover .icon-svg,
+.action-dock-btn.btn-danger-action:hover .vms-icon-fluid-xs {
   background-color: #ef4444 !important;
 }
 
@@ -1093,6 +1392,22 @@ body.is-timeline-dragging *,
   transition: left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Desactivar transiciones CSS durante el arrastre para respuesta 1:1 fluida sin luchar contra la animación CSS */
+body.is-timeline-dragging *,
+body.is-timeline-dragging .timeline-playhead,
+body.is-timeline-dragging .timeline-ruler-hash,
+body.is-timeline-dragging .timeline-ruler-time,
+body.is-timeline-dragging .event-flag-pin {
+  transition: none !important;
+}
+
+/* Aislamiento de Maquetación CPU Universal */
+.vms-timeline-dock,
+.monitoring-canvas-container,
+.list-eventos-sidebar {
+  contain: layout style;
+}
+
 .playhead-line {
   width: 100%;
   height: 100%;
@@ -1611,7 +1926,6 @@ body.is-timeline-dragging *,
   align-items: stretch;
   gap: 16px;
   padding: 0rem 2.5rem;
-  padding-bottom: 1.5rem;
   background-color: var(--bg-surface);
   width: 100%;
 }
@@ -2233,16 +2547,31 @@ body.is-timeline-dragging *,
   position: absolute;
   z-index: 1000;
   pointer-events: none;
-  background-color: rgba(59, 130, 246, 0.16);
-  border: 1.5px dashed #3b82f6;
+  background-color: rgba(139, 92, 246, 0.16);
+  border: 1.5px dashed #8b5cf6;
   border-radius: 6px;
-  box-shadow: 0 0 16px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.3);
   transition: none;
 }
 
-.grid-slot-cell.selected-slot {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 2.5px rgba(59, 130, 246, 0.6), 0 8px 24px rgba(59, 130, 246, 0.3) !important;
+/* Selección unificada de cámaras (morado/púrpura idéntico para SYNC y ASYNC) */
+.grid-slot-cell.selected-slot,
+.grid-slot-cell.selected-slot-async,
+.grid-slot-cell.selected-slot-sync {
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 0 2.5px rgba(139, 92, 246, 0.7), 0 8px 24px rgba(139, 92, 246, 0.35) !important;
+}
+
+/* Atenuación de opacidad (Dimming) al filtrar cámaras mediante el buscador de texto */
+.grid-slot-cell.slot-dimmed {
+  opacity: 0.35 !important;
+  filter: contrast(0.88) brightness(0.82);
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.grid-slot-cell.slot-dimmed:hover {
+  opacity: 0.85 !important;
+  filter: contrast(1) brightness(1);
 }
 
 .monitoring-grid-canvas-wrapper {
@@ -2562,22 +2891,24 @@ body.is-timeline-dragging *,
   box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3) !important;
 }
 
-/* Minimapa de Navegación Premium (PIP Minimalista) */
+/* Minimapa de Navegación Premium (PIP Minimalista del Lienzo Infinito 100% Responsivo) */
 .canvas-minimap-container {
   position: absolute;
-  top: 15px;
-  right: 15px;
-  width: 185px;
-  height: 115px;
-  background-color: rgba(14, 14, 14, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 4px;
+  top: clamp(0.6rem, 1.5vh, 1.2rem);
+  right: clamp(0.6rem, 1.5vw, 1.2rem);
+  width: clamp(10rem, 16vw, 14.5rem);
+  height: clamp(7.5rem, 14vh, 11.5rem);
+  background-color: rgba(14, 14, 14, 0.85);
+  backdrop-filter: blur(1.25rem);
+  -webkit-backdrop-filter: blur(1.25rem);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  padding: 0.35rem;
   z-index: 1000;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), inset 0 0 1px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.65), inset 0 0 1px rgba(255, 255, 255, 0.15);
   display: flex;
+  align-items: center;
+  justify-content: center;
   pointer-events: auto;
   transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   animation: minimapFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2586,7 +2917,7 @@ body.is-timeline-dragging *,
 @keyframes minimapFadeIn {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(0.96);
+    transform: translateY(-0.4rem) scale(0.96);
   }
 
   to {
@@ -2596,33 +2927,50 @@ body.is-timeline-dragging *,
 }
 
 .minimap-viewport-area {
-  flex-grow: 1;
-  background-color: rgba(0, 0, 0, 0.28);
-  border-radius: 7px;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(6, 9, 16, 0.85);
+  border-radius: 0.5rem;
   overflow: hidden;
   position: relative;
   cursor: crosshair;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Borde del Layout Completo */
+.minimap-layout-outline {
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  background-color: rgba(255, 255, 255, 0.03);
+  pointer-events: none;
+  border-radius: 0.25rem;
+  z-index: 2;
+  transition: all 0.15s ease;
 }
 
 .minimap-slot-mini {
-  background-color: rgba(255, 255, 255, 0.03);
-  border: 0.5px solid rgba(255, 255, 255, 0.06);
-  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.15rem;
+  pointer-events: none;
+  z-index: 3;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .minimap-slot-mini.occupied {
-  background-color: rgba(255, 255, 255, 0.15) !important;
-  border: 0.5px solid rgba(255, 255, 255, 0.3) !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+  background-color: rgba(59, 130, 246, 0.45) !important;
+  border: 1px solid rgba(147, 197, 253, 0.85) !important;
+  box-shadow: 0 0 0.5rem rgba(59, 130, 246, 0.35) !important;
+  z-index: 5;
 }
 
 /* Indicador de Ventana de Visibilidad Premium (Cian Brillante) */
 .minimap-viewport-indicator {
-  border: 2px solid #2b7fff !important;
-  background-color: rgba(43, 127, 255, 0.08) !important;
-  border-radius: 4px !important;
-  box-shadow: 0 0 12px rgba(43, 127, 255, 0.55), inset 0 0 4px rgba(43, 127, 255, 0.3) !important;
+  border: 2px solid #38bdf8 !important;
+  background-color: rgba(56, 189, 248, 0.22) !important;
+  border-radius: 0.25rem !important;
+  box-shadow: 0 0 0.85rem rgba(56, 189, 248, 0.7), inset 0 0 0.3rem rgba(56, 189, 248, 0.4) !important;
   pointer-events: none;
+  z-index: 10;
 }
 
 /* Estilos premium para botones miniatura de asignación en lote */
@@ -3518,43 +3866,19 @@ body.is-timeline-dragging *,
 /* =========================================================================
    DYNAMIC SCALING FOR LARGER CAMERA SPANS USING FORMULAS
    ========================================================================= */
-.grid-slot-cell {
-  --span-scale: var(--span-scale-val, 1);
-}
-
-.grid-slot-cell .slot-camera-name {
-  font-size: calc(0.8rem + (var(--span-scale) - 1) * 0.22rem);
-}
-
-.grid-slot-cell .status-dot-pulse {
-  width: calc(0.5rem + (var(--span-scale) - 1) * 0.1375rem);
-  height: calc(0.5rem + (var(--span-scale) - 1) * 0.1375rem);
-}
-
-.grid-slot-cell .slot-time-text {
-  font-size: calc(0.72rem + (var(--span-scale) - 1) * 0.18rem);
-}
-
-.grid-slot-cell .slot-overlay-footer .badge {
-  font-size: calc(0.7rem + (var(--span-scale) - 1) * 0.15rem) !important;
-  padding: calc(0.25rem + (var(--span-scale) - 1) * 0.09375rem) calc(0.375rem + (var(--span-scale) - 1) * 0.15625rem) !important;
-}
-
+/* Todo el sistema de escalado ya usa cqb — los overrides span-scale ya no son necesarios */
+/* Se eliminan para evitar conflictos con el sistema cqb */
 .grid-slot-cell .feed-actions-vertical-dock {
-  gap: calc(0.5rem + (var(--span-scale) - 1) * 0.1875rem);
-  padding: calc(0.375rem + (var(--span-scale) - 1) * 0.1rem);
-  right: calc(0.5rem + (var(--span-scale) - 1) * 0.1875rem);
-  border-radius: calc(1.875rem + (var(--span-scale) - 1) * 0.5rem);
+  /* escala vía cqb */
 }
 
 .grid-slot-cell .action-dock-btn {
-  width: calc(1.75rem + (var(--span-scale) - 1) * 0.4375rem);
-  height: calc(1.75rem + (var(--span-scale) - 1) * 0.4375rem);
+  /* escala vía cqb */
 }
 
-.grid-slot-cell .action-dock-btn .icon-svg {
-  width: calc(0.8125rem + (var(--span-scale) - 1) * 0.21875rem) !important;
-  height: calc(0.8125rem + (var(--span-scale) - 1) * 0.21875rem) !important;
+.grid-slot-cell .action-dock-btn .icon-svg,
+.grid-slot-cell .action-dock-btn .vms-icon-fluid-xs {
+  /* escala vía cqb */
 }
 
 /* =========================================================================
@@ -3573,21 +3897,21 @@ body.is-timeline-dragging *,
   /* Al colapsar, el panel izquierdo ocupa todo el ancho menos el toggle bar */
   .main-monitoring-layout.right-panel-collapsed .monitoring-left-panel {
     flex: 1 1 auto !important;
-    max-width: calc(100% - var(--toggle-w)) !important;
-    width: calc(100% - var(--toggle-w)) !important;
+    max-width: calc(100% - clamp(2.4rem, 2.5vw, 2.75rem)) !important;
+    width: calc(100% - clamp(2.4rem, 2.5vw, 2.75rem)) !important;
   }
 
   /* El panel derecho se encoge al ancho del toggle bar */
   .main-monitoring-layout.right-panel-collapsed .monitoring-right-panel {
-    flex: 0 0 var(--toggle-w) !important;
-    max-width: var(--toggle-w) !important;
-    width: var(--toggle-w) !important;
+    flex: 0 0 clamp(2.4rem, 2.5vw, 2.75rem) !important;
+    max-width: clamp(2.4rem, 2.5vw, 2.75rem) !important;
+    width: clamp(2.4rem, 2.5vw, 2.75rem) !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
   }
 }
 
-/* Toggle bar vertical a la derecha cuando el panel está colapsado */
+/* Toggle bar vertical a la derecha cuando el panel está colapsado (Escalado fluido sin px fijos) */
 .right-panel-toggle-bar {
   width: 100%;
   height: 100%;
@@ -3595,13 +3919,13 @@ body.is-timeline-dragging *,
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 0;
+  padding: clamp(0.4rem, 1vh, 0.75rem) 0;
   cursor: pointer;
   user-select: none;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: 0.75rem;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 0.6rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
@@ -3611,9 +3935,19 @@ body.is-timeline-dragging *,
   box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.15);
 }
 
+.toggle-arrow-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0;
+  flex-shrink: 0;
+}
+
 .right-panel-toggle-bar .icon-chevron-down {
   transform: rotate(90deg) !important;
   color: var(--text-secondary) !important;
+  width: clamp(0.7rem, 1.1vw, 0.9rem) !important;
+  height: clamp(0.7rem, 1.1vw, 0.9rem) !important;
   transition: transform 0.25s ease, color 0.25s ease;
 }
 
@@ -3629,7 +3963,7 @@ body.is-timeline-dragging *,
   justify-content: center;
   overflow: hidden;
   pointer-events: none;
-  margin: 1rem 0;
+  margin: clamp(0.25rem, 0.8vh, 0.5rem) 0;
 }
 
 .toggle-bar-text {
@@ -3637,8 +3971,8 @@ body.is-timeline-dragging *,
   transform: rotate(180deg);
   white-space: nowrap;
   font-weight: 700;
-  font-size: 0.75rem;
-  letter-spacing: 0.15em;
+  font-size: clamp(0.65rem, 0.85vw, 0.75rem);
+  letter-spacing: clamp(0.08em, 0.12vw, 0.14em);
   color: var(--text-secondary);
   text-transform: uppercase;
   transition: color 0.2s ease;

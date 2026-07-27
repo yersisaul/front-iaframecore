@@ -31,15 +31,15 @@ export interface CameraDTO {
 }
 
 export class CameraMapper {
-  static toDomain(dto: CameraDTO): Camera {
+  static toDomain(dto: any): Camera {
     return {
-      id: dto.camera_id,
-      name: dto.camera_name,
-      hostFingerprint: dto.fingerprint_host,
-      streamType: dto.stream_type,
-      status: dto.status,
-      decoder: dto.decoder,
-      location: dto.location,
+      id: dto.camera_id || dto.id || '',
+      name: dto.camera_name || dto.name || '',
+      hostFingerprint: dto.fingerprint_host || dto.host_fingerprint || dto.fingerprint || dto.host_id || dto.hostId || '',
+      streamType: dto.stream_type || dto.streamType || '',
+      status: dto.status || 'online',
+      decoder: dto.decoder || '',
+      location: dto.location || { lat: 0, lon: 0 },
       createdAt: dto.created_at ? parseUtcDate(dto.created_at) : null
     };
   }

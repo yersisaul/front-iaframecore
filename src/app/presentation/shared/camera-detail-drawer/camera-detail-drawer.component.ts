@@ -6,12 +6,14 @@ import { RouterLink } from '@angular/router';
 import { CameraService } from '../../../core/services/camera.service';
 import { ScheduleService } from '../../../core/services/schedule.service';
 import { AnalyticService } from '../../../core/services/analytic.service';
+import { HostService } from '../../../core/services/host.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 
 import { Camera } from '../../../core/domain/entities/camera.models';
 import { Analytic } from '../../../core/domain/entities/analytic.models';
 import { Schedule } from '../../../core/domain/entities/schedule.models';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
+import { getCameraEffectiveStatus, getCameraStatusCssClass, getCameraStatusColor } from '../../../core/utils/camera-status.utils';
 import { ConfirmDeleteModalComponent } from '../confirm-delete-modal/confirm-delete-modal.component';
 
 @Component({
@@ -31,6 +33,7 @@ export class CameraDetailDrawerComponent {
   private cameraService = inject(CameraService);
   private scheduleService = inject(ScheduleService);
   private analyticService = inject(AnalyticService);
+  private hostService = inject(HostService);
   public permissionsService = inject(PermissionsService);
 
   @Input() show: boolean = false;
@@ -236,9 +239,22 @@ export class CameraDetailDrawerComponent {
   }
 
   isCameraOnline(cam: Camera | null | undefined): boolean {
-    if (!cam || !cam.status) return false;
-    const st = cam.status.toLowerCase();
-    return st === 'online' || st === 'active';
+    const status = getCameraEffectiveStatus(cam, this.hostService.allHosts());
+    return status === 'Online';
+  }
+
+  getCameraStatusClass(cam: Camera | null | undefined): string {
+    const status = getCameraEffectiveStatus(cam, this.hostService.allHosts());
+    return getCameraStatusCssClass(status);
+  }
+
+  getCameraStatusLabel(cam: Camera | null | undefined): string {
+    return getCameraEffectiveStatus(cam, this.hostService.allHosts());
+  }
+
+  getCameraStatusColorStyle(cam: Camera | null | undefined): string {
+    const status = getCameraEffectiveStatus(cam, this.hostService.allHosts());
+    return getCameraStatusColor(status);
   }
 
   getAnalyticsForCamera(cameraId: string): Analytic[] {

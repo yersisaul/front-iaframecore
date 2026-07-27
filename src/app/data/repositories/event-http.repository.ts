@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { Observable, of, EMPTY } from 'rxjs';
+import { map, catchError, expand, reduce } from 'rxjs/operators';
 import { AppEnvironment } from '../../core/config/app-environment';
 import { EventFilters, EventFilterOptions, defaultEventFilterOptions, EventRecord } from '../../core/domain/entities/event.models';
 import { IEventRepository, EventSearchResult } from '../../core/domain/repositories/event.repository';
@@ -15,6 +15,40 @@ export class EventHttpRepository implements IEventRepository {
   constructor(private http: HttpClient) {}
 
   search(
+    filters: EventFilters,
+    page: number,
+    pageSize: number
+  ): Observable<EventSearchResult> {
+    // Si pageSize >= 10000 o pageSize <= 0, realizar paginación automática consecutiva para obtener el 100% de eventos en el rango
+    if (pageSize >= 10000 || pageSize <= 0) {
+      return this.fetchAllEventsInRange(filters);
+    }
+    return this.searchPage(filters, page, pageSize);
+  }
+
+  private fetchAllEventsInRange(filters: EventFilters): Observable<EventSearchResult> {
+    const fetchChunkSize = 5000;
+
+    return this.searchPage(filters, 1, fetchChunkSize).pipe(
+      expand(prevResult => {
+        const currentCount = prevResult.records.length;
+        if (currentCount === 0 || currentCount >= prevResult.total) {
+          return EMPTY;
+        }
+        const nextPage = Math.floor(currentCount / fetchChunkSize) + 1;
+        return this.searchPage(filters, nextPage, fetchChunkSize).pipe(
+          map(nextResult => ({
+            records: [...prevResult.records, ...nextResult.records],
+            total: nextResult.total,
+            filterOptions: nextResult.filterOptions
+          }))
+        );
+      }),
+      reduce((acc, current) => current)
+    );
+  }
+
+  private searchPage(
     filters: EventFilters,
     page: number,
     pageSize: number

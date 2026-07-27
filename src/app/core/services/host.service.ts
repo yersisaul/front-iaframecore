@@ -173,11 +173,20 @@ export class HostService {
   }
 
   updateHostStatus(fingerprint: string, status: string): void {
-    const exists = this.allHosts().some(h => h.fingerprint === fingerprint);
+    const targetFp = (fingerprint || '').trim().toLowerCase();
+    const exists = this.allHosts().some(h =>
+      (h.fingerprint && h.fingerprint.trim().toLowerCase() === targetFp) ||
+      (h.id && h.id.trim().toLowerCase() === targetFp) ||
+      (h.hostname && h.hostname.trim().toLowerCase() === targetFp)
+    );
     if (exists) {
       this.allHosts.update(hosts =>
         hosts.map(h => {
-          if (h.fingerprint === fingerprint) {
+          const match =
+            (h.fingerprint && h.fingerprint.trim().toLowerCase() === targetFp) ||
+            (h.id && h.id.trim().toLowerCase() === targetFp) ||
+            (h.hostname && h.hostname.trim().toLowerCase() === targetFp);
+          if (match) {
             return { ...h, status };
           }
           return h;

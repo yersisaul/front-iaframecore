@@ -19,6 +19,7 @@ import { Analytic } from '../../../core/domain/entities/analytic.models';
 import { EventRecord } from '../../../core/domain/entities/event.models';
 import { parseUtcDate } from '../../../core/utils/date-utils';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
+import { getCameraEffectiveStatus, getCameraStatusCssClass } from '../../../core/utils/camera-status.utils';
 import { EventDetailModalComponent } from '../../shared/event-detail-modal/event-detail-modal.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
@@ -161,14 +162,14 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   toggleSyncMode(): void {
     this.isSyncMode.update(s => !s);
-    this.selectedCanvasSlotIds.set(new Set());
-    if (this.playbackMode() === 'playback') {
-      this.setLiveMode();
+    // No se limpia la selección al cambiar de modo: persiste en ambos
+    if (this.playbackMode() === 'playback' && !this.isSyncMode()) {
+      // Solo revertir a LIVE si pasamos a SYNC sin selección activa para playback individual
     }
     if (this.isSyncMode()) {
-      this.showToast('🔒 Modo SYNC activado: Todas las cámaras sincronizadas', 'primary');
+      this.showToast('🔒 Modo SYNC activado: Selección activa filtra el panel e info, lienzo sincronizado', 'primary');
     } else {
-      this.showToast('🔓 Modo ASYNC activado: Selección independiente de cámaras habilitada', 'warning');
+      this.showToast('🔓 Modo ASYNC activado: Selección e interacción independiente de cámaras', 'warning');
     }
   }
 
@@ -204,7 +205,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly playbackMode = signal<'live' | 'playback'>('live');
   readonly paused = signal<boolean>(false);
   readonly playbackSpeed = signal<number>(1);
-  readonly zoomRangeSeconds = signal<number>(3600); // 1 hora por defecto
+  readonly zoomRangeSeconds = signal<number>(86400); // 24 horas por defecto
   readonly currentTimePointer = signal<Date>(new Date());
   readonly playbackWindowEnd = signal<Date | null>(null);
 
@@ -245,6 +246,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly expandedNodes = signal<Set<string>>(new Set());
   readonly showModal = signal<boolean>(false);
   readonly selectedEvent = signal<EventRecord | null>(null);
+  readonly selectedModalEvent = signal<EventRecord | null>(null);
   readonly isZoomed = signal<boolean>(false);
 
   // Right log filters
@@ -253,6 +255,10 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly eventAnalyticFilter = signal<string>('all');
   readonly eventDesdeFilter = signal<Date | null>(null);
   readonly eventHastaFilter = signal<Date | null>(null);
+
+  // Sidebar infinite scroll 3-page sliding window (75 items max in DOM: 25 items x 3 pages)
+  readonly currentSidebarPage = signal<number>(1);
+  readonly sidebarPageSize = 25;
 
   // Sidebar filter panel visibility
   readonly showSidebarFilters = signal<boolean>(false);
@@ -325,6 +331,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       const selectedCount = this.selectedCanvasSlotIds().size;
       const mode = this.playbackMode();
 
+      // Solo en ASYNC: si se deseleccionan todas las cámaras y estaba en playback, volver a LIVE
       if (!sync && selectedCount === 0 && mode === 'playback') {
         this.setLiveMode();
       }
@@ -348,10 +355,29 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       return Array.from(new Set(ids)).join(',');
     });
 
-    // Cargar eventos históricos SOLO cuando cambia el conjunto de cámaras presentes en el lienzo
-    effect(() => {
+    // Rango de búsqueda para la consulta HTTP a OpenSearch (NO depende del reloj ticker de 1s)
+    const activeSearchRange = computed(() => {
       const key = activeCameraIdsKey();
-      if (!key) {
+      const manualDate = this.selectedManualDate();
+      if (!key) return null;
+
+      if (!manualDate) {
+        // Modo por defecto / En Vivo (Últimas 24 horas a partir del momento de la consulta)
+        const end = new Date();
+        const start = new Date(end.getTime() - 24 * 3600 * 1000);
+        return { start, end, key };
+      } else {
+        // Fecha pasada seleccionada manualmente
+        const start = new Date(manualDate.getFullYear(), manualDate.getMonth(), manualDate.getDate(), 0, 0, 0, 0);
+        const end = new Date(manualDate.getFullYear(), manualDate.getMonth(), manualDate.getDate(), 23, 59, 59, 999);
+        return { start, end, key };
+      }
+    });
+
+    // Cargar eventos históricos SOLO cuando cambian las cámaras del lienzo o se selecciona una fecha manual
+    effect(() => {
+      const range = activeSearchRange();
+      if (!range) {
         this.eventsList.set([]);
         this.latestEventsMap.set({});
         return;
@@ -369,11 +395,16 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
         camaras: cameraNames,
         analiticas: [],
         objetos: [],
-        timestampDesde: null,
-        timestampHasta: null
-      }, 1, 150).subscribe({
+        timestampDesde: range.start,
+        timestampHasta: range.end
+      }, 1, 10000).subscribe({
         next: (res) => {
-          this.eventsList.set(res.records);
+          const recordsWithMs = res.records.map(r => {
+            r.timestampMs = r.timestampMs || new Date(r.timestamp).getTime();
+            return r;
+          });
+          this.eventsList.set(recordsWithMs);
+          this.pruneEventsOlderThan24h();
           this.isLoadingEvents.set(false);
 
           // Rellenar mapa de últimos eventos
@@ -461,7 +492,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
               if (this.isLogsFeedPaused()) {
                 this.bufferedEvents.update(prev => [event, ...prev]);
               } else {
-                this.eventsList.update(list => [event, ...list].slice(0, 300));
+                this.eventsList.update(list => [event, ...list]);
                 this.latestEventsMap.update(map => ({
                   ...map,
                   [event.nombreCamara]: event
@@ -470,6 +501,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
                   this.currentTimePointer.set(new Date());
                 }
               }
+              this.pruneEventsOlderThan24h();
             }
           }
         });
@@ -483,11 +515,39 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       if (this.playbackMode() === 'live') {
         this.currentTimePointer.set(now);
       }
+      this.pruneEventsOlderThan24h();
       this.cdr.markForCheck();
     }, 1000);
 
     // Inicializar temporizador de inactividad
     this.resetCanvasActivityTimer();
+  }
+
+  pruneEventsOlderThan24h(): void {
+    const bounds = this.activeDayBounds();
+    const startMs = bounds.start.getTime();
+    const endMs = bounds.end.getTime();
+
+    this.eventsList.update(list => list.filter(e => {
+      const t = new Date(e.timestamp).getTime();
+      return t >= startMs && t <= endMs;
+    }));
+
+    this.bufferedEvents.update(buf => buf.filter(e => {
+      const t = new Date(e.timestamp).getTime();
+      return t >= startMs && t <= endMs;
+    }));
+
+    this.latestEventsMap.update(map => {
+      const nextMap: Record<string, EventRecord> = {};
+      Object.entries(map).forEach(([camName, evt]) => {
+        const t = new Date(evt.timestamp).getTime();
+        if (t >= startMs && t <= endMs) {
+          nextMap[camName] = evt;
+        }
+      });
+      return nextMap;
+    });
   }
 
   ngAfterViewInit(): void {
@@ -597,7 +657,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.isLogsFeedPaused.update(p => !p);
     if (!this.isLogsFeedPaused() && this.bufferedEvents().length > 0) {
       const buffer = this.bufferedEvents();
-      this.eventsList.update(list => [...buffer, ...list].slice(0, 300));
+      this.eventsList.update(list => [...buffer, ...list]);
 
       const newLatestMap = { ...this.latestEventsMap() };
       buffer.forEach(e => {
@@ -607,6 +667,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       });
       this.latestEventsMap.set(newLatestMap);
       this.bufferedEvents.set([]);
+      this.pruneEventsOlderThan24h();
     }
     this.showToast(this.isLogsFeedPaused() ? 'Feed de alertas pausado' : 'Feed de alertas reanudado', 'primary');
   }
@@ -658,14 +719,28 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     return { cellW, cellH };
   }
 
+  getExtenderDimensions(): { width: number; height: number; fontSize: number; iconSize: number } {
+    const zoom = Math.max(0.05, this.canvasZoom());
+    // Escala inversamente al Zoom para mantener dimensiones legibles en pantalla al alejarse
+    const width = Math.round(48 / zoom);
+    const height = Math.round(48 / zoom);
+    const fontSize = Math.max(10, Math.round(11 / zoom));
+    const iconSize = Math.max(13, Math.round(14 / zoom));
+    return { width, height, fontSize, iconSize };
+  }
+
   getCanvasDimensions(): { width: number; height: number } {
     const { cellW, cellH } = this.getCellDimensions();
     const colsVal = this.cols();
     const rowsVal = this.rows();
 
-    const draggingOffset = this.draggingSlotId() !== null ? 48 : 0;
-    const width = colsVal * cellW + (colsVal - 1) * 12 + 20 + draggingOffset;
-    const height = rowsVal * cellH + (rowsVal - 1) * 12 + 20 + draggingOffset;
+    const showExpanders = (this.draggingSlotId() !== null || this.isGridFullyOccupied()) && !this.isCanvasPinned();
+    const extDim = this.getExtenderDimensions();
+    const draggingOffsetW = showExpanders ? extDim.width : 0;
+    const draggingOffsetH = showExpanders ? extDim.height : 0;
+
+    const width = colsVal * cellW + (colsVal - 1) * 12 + 20 + draggingOffsetW;
+    const height = rowsVal * cellH + (rowsVal - 1) * 12 + 20 + draggingOffsetH;
 
     return { width, height };
   }
@@ -678,17 +753,15 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const viewportW = gridContainer.clientWidth;
     const viewportH = gridContainer.clientHeight;
 
-    // Permitir un margen de deslizamiento dinámico libre (buffer del 75% del viewport)
-    // de manera que el lienzo pueda salir casi en su totalidad de la pantalla, sintiéndose ilimitado,
-    // pero manteniendo un 25% (u overlap mínimo) visible para evitar que se pierda por completo.
-    const overlapX = Math.min(200, viewportW * 0.25);
-    const overlapY = Math.min(150, viewportH * 0.25);
+    // Límites de desplazamiento compactos y acotados (margen buffer del 12% del viewport)
+    const marginX = Math.max(40, viewportW * 0.12);
+    const marginY = Math.max(30, viewportH * 0.12);
 
-    const minX = overlapX - totalW * zoom;
-    const maxX = viewportW - overlapX;
+    const minX = viewportW - (totalW * zoom) - marginX;
+    const maxX = marginX;
 
-    const minY = overlapY - totalH * zoom;
-    const maxY = viewportH - overlapY;
+    const minY = viewportH - (totalH * zoom) - marginY;
+    const maxY = marginY;
 
     const clampRange = (val: number, bound1: number, bound2: number): number => {
       const min = Math.min(bound1, bound2);
@@ -702,11 +775,77 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     return { x, y };
   }
 
+  getMinimapWorldBounds(): { minX: number; maxX: number; minY: number; maxY: number; width: number; height: number } {
+    const gridContainer = document.querySelector('.monitoring-grid-container');
+    const viewportW = gridContainer ? gridContainer.clientWidth : 1200;
+    const viewportH = gridContainer ? gridContainer.clientHeight : 700;
+
+    const { width: layoutW, height: layoutH } = this.getCanvasDimensions();
+    const zoom = this.canvasZoom();
+    const panX = this.canvasPanX();
+    const panY = this.canvasPanY();
+
+    // Coordenadas del Viewport visible en el espacio del Lienzo (Canvas)
+    const vpMinX = -panX / zoom;
+    const vpMaxX = (viewportW - panX) / zoom;
+    const vpMinY = -panY / zoom;
+    const vpMaxY = (viewportH - panY) / zoom;
+
+    // Unión de los límites del Layout completo y el Viewport visible
+    const minXUnpadded = Math.min(0, vpMinX);
+    const maxXUnpadded = Math.max(layoutW, vpMaxX);
+    const minYUnpadded = Math.min(0, vpMinY);
+    const maxYUnpadded = Math.max(layoutH, vpMaxY);
+
+    // Margen buffer del 6% alrededor del canvas
+    const padX = Math.max(40, (maxXUnpadded - minXUnpadded) * 0.06);
+    const padY = Math.max(40, (maxYUnpadded - minYUnpadded) * 0.06);
+
+    const minX = minXUnpadded - padX;
+    const maxX = maxXUnpadded + padX;
+    const minY = minYUnpadded - padY;
+    const maxY = maxYUnpadded + padY;
+
+    const width = Math.max(1, maxX - minX);
+    const height = Math.max(1, maxY - minY);
+
+    return { minX, maxX, minY, maxY, width, height };
+  }
+
+  getMinimapLayoutRect(): { left: number; top: number; width: number; height: number } {
+    const world = this.getMinimapWorldBounds();
+    const { width: layoutW, height: layoutH } = this.getCanvasDimensions();
+
+    return {
+      left: ((0 - world.minX) / world.width) * 100,
+      top: ((0 - world.minY) / world.height) * 100,
+      width: (layoutW / world.width) * 100,
+      height: (layoutH / world.height) * 100
+    };
+  }
+
+  getMinimapSlotRect(slot: GridSlot): { left: number; top: number; width: number; height: number } {
+    const world = this.getMinimapWorldBounds();
+    const { cellW, cellH } = this.getCellDimensions();
+
+    const slotX = 10 + (slot.col - 1) * (cellW + 12);
+    const slotY = 10 + (slot.row - 1) * (cellH + 12);
+    const slotW = slot.spanX * cellW + (slot.spanX - 1) * 12;
+    const slotH = slot.spanY * cellH + (slot.spanY - 1) * 12;
+
+    return {
+      left: ((slotX - world.minX) / world.width) * 100,
+      top: ((slotY - world.minY) / world.height) * 100,
+      width: (slotW / world.width) * 100,
+      height: (slotH / world.height) * 100
+    };
+  }
+
   getMinimapViewportRect(): { left: number; top: number; width: number; height: number } {
     const gridContainer = document.querySelector('.monitoring-grid-container');
     if (!gridContainer) return { left: 0, top: 0, width: 100, height: 100 };
 
-    const { width: totalW, height: totalH } = this.getCanvasDimensions();
+    const world = this.getMinimapWorldBounds();
     const zoom = this.canvasZoom();
     const panX = this.canvasPanX();
     const panY = this.canvasPanY();
@@ -714,17 +853,19 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const viewportW = gridContainer.clientWidth;
     const viewportH = gridContainer.clientHeight;
 
-    const leftPct = viewportW >= totalW * zoom ? 0 : (-panX / (totalW * zoom)) * 100;
-    const widthPct = viewportW >= totalW * zoom ? 100 : (viewportW / (totalW * zoom)) * 100;
+    const vpMinX = -panX / zoom;
+    const vpMaxX = (viewportW - panX) / zoom;
+    const vpMinY = -panY / zoom;
+    const vpMaxY = (viewportH - panY) / zoom;
 
-    const topPct = viewportH >= totalH * zoom ? 0 : (-panY / (totalH * zoom)) * 100;
-    const heightPct = viewportH >= totalH * zoom ? 100 : (viewportH / (totalH * zoom)) * 100;
+    const vpW = vpMaxX - vpMinX;
+    const vpH = vpMaxY - vpMinY;
 
     return {
-      left: Math.max(0, Math.min(100, leftPct)),
-      top: Math.max(0, Math.min(100, topPct)),
-      width: Math.max(5, Math.min(100, widthPct)),
-      height: Math.max(5, Math.min(100, heightPct))
+      left: Math.max(0, Math.min(100, ((vpMinX - world.minX) / world.width) * 100)),
+      top: Math.max(0, Math.min(100, ((vpMinY - world.minY) / world.height) * 100)),
+      width: Math.max(2, Math.min(100, (vpW / world.width) * 100)),
+      height: Math.max(2, Math.min(100, (vpH / world.height) * 100))
     };
   }
 
@@ -822,9 +963,12 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     }, 400);
   }
 
-  // --- Sistema de Historial Undo/Redo para distribución y formato ---
+  // --- Sistema de Historial Undo/Redo para distribución, formato y eliminación de cámaras ---
   saveStateToHistory(): void {
-    const slots = this.gridSlots().map(s => ({ ...s }));
+    const slots = this.gridSlots().map(s => ({
+      ...s,
+      camera: s.camera ? { ...s.camera } : null
+    }));
     const cols = this.cols();
     const rows = this.rows();
     this.pushToUndoStack({ slots, cols, rows });
@@ -844,14 +988,21 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
     // Guardar el estado actual en la pila de Rehacer antes de revertir
     const currentSnapshot: CanvasStateSnapshot = {
-      slots: this.gridSlots().map(s => ({ ...s })),
+      slots: this.gridSlots().map(s => ({
+        ...s,
+        camera: s.camera ? { ...s.camera } : null
+      })),
       cols: this.cols(),
       rows: this.rows()
     };
     this.redoStack.update(prev => [...prev, currentSnapshot]);
 
     // Restaurar estado anterior
-    this.gridSlots.set(prevSnapshot.slots);
+    const restoredSlots = prevSnapshot.slots.map(s => ({
+      ...s,
+      camera: s.camera ? { ...s.camera } : null
+    }));
+    this.gridSlots.set(restoredSlots);
     this.cols.set(prevSnapshot.cols);
     this.rows.set(prevSnapshot.rows);
 
@@ -868,19 +1019,59 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
     // Guardar el estado actual en la pila de Deshacer antes de avanzar
     const currentSnapshot: CanvasStateSnapshot = {
-      slots: this.gridSlots().map(s => ({ ...s })),
+      slots: this.gridSlots().map(s => ({
+        ...s,
+        camera: s.camera ? { ...s.camera } : null
+      })),
       cols: this.cols(),
       rows: this.rows()
     };
     this.undoStack.update(prev => [...prev, currentSnapshot]);
 
     // Restaurar estado siguiente
-    this.gridSlots.set(nextSnapshot.slots);
+    const restoredSlots = nextSnapshot.slots.map(s => ({
+      ...s,
+      camera: s.camera ? { ...s.camera } : null
+    }));
+    this.gridSlots.set(restoredSlots);
     this.cols.set(nextSnapshot.cols);
     this.rows.set(nextSnapshot.rows);
 
     this.recalculateGridDimensions();
     this.showToast('Cambio rehecho', 'primary');
+  }
+
+  // --- Manejo Global de Teclado (Delete / Suprimir para eliminación masiva, Ctrl+Z / Ctrl+Y para Undo/Redo) ---
+  @HostListener('window:keydown', ['$event'])
+  onGlobalKeyDown(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable || target.closest('input, textarea, select, .modal'))) {
+      return;
+    }
+
+    // Tecla Delete / Suprimir -> Eliminar cámara(s) seleccionada(s)
+    if (event.key === 'Delete' || event.key === 'Del') {
+      if (this.selectedCanvasSlotIds().size > 0) {
+        event.preventDefault();
+        this.deleteSelectedCameras();
+      }
+    }
+
+    // Ctrl + Z -> Deshacer (Undo)
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) {
+      event.preventDefault();
+      if (this.canUndo()) {
+        this.undo();
+      }
+    }
+
+    // Ctrl + Y o Ctrl + Shift + Z -> Rehacer (Redo)
+    if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z'))) {
+      event.preventDefault();
+      if (this.canRedo()) {
+        this.redo();
+      }
+    }
   }
 
   toggleLockSlot(slot: GridSlot): void {
@@ -904,10 +1095,11 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onCanvasMouseDown(event: MouseEvent): void {
-    if (!this.isCanvasMode() || this.isCanvasPinned()) return;
+    if (!this.isCanvasMode()) return;
 
-    // ── Clic Derecho (button === 2) o Clic Central de Scroll (button === 1): Paneo del Lienzo con Agarre ───
+    // ── Clic Derecho (button === 2) o Clic Central de Scroll (button === 1): Paneo del Lienzo con Agarre (Bloqueado si está FIJADO) ───
     if (event.button === 2 || event.button === 1) {
+      if (this.isCanvasPinned()) return;
       event.preventDefault();
 
       const startX = event.clientX;
@@ -945,9 +1137,9 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
     // ── Clic Izquierdo (button === 0): Recuadro de Selección por Arrastre ───
     if (event.button === 0) {
-      // Si está en modo SYNC (Sincronizado), la función de recuadro por arrastre está bloqueada
-      if (this.isSyncMode()) {
-        return;
+      // Limpiar filtro por texto del buscador superior al hacer clic en el lienzo
+      if (this.eventSearchControl.value) {
+        this.eventSearchControl.setValue('');
       }
 
       const target = event.target as HTMLElement;
@@ -1090,16 +1282,19 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       const relX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
       const relY = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
 
+      const world = this.getMinimapWorldBounds();
+      const canvasTargetX = world.minX + relX * world.width;
+      const canvasTargetY = world.minY + relY * world.height;
+
       const gridContainer = document.querySelector('.monitoring-grid-container');
       if (!gridContainer) return;
 
-      const { width: totalW, height: totalH } = this.getCanvasDimensions();
       const zoom = this.canvasZoom();
       const viewportW = gridContainer.clientWidth;
       const viewportH = gridContainer.clientHeight;
 
-      const targetPanX = -(relX * totalW - (viewportW / zoom) / 2) * zoom;
-      const targetPanY = -(relY * totalH - (viewportH / zoom) / 2) * zoom;
+      const targetPanX = -(canvasTargetX - (viewportW / zoom) / 2) * zoom;
+      const targetPanY = -(canvasTargetY - (viewportH / zoom) / 2) * zoom;
 
       const constrained = this.constrainPan(targetPanX, targetPanY, zoom);
       this.canvasPanX.set(constrained.x);
@@ -1332,7 +1527,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   // --- Manejador Inteligente: Clic de Selección vs Arrastre de Reordenamiento ---
   onSlotMouseDown(slot: GridSlot, event: MouseEvent, index: number): void {
-    if (this.isCanvasPinned() || !slot.camera) return;
+    if (!slot.camera) return;
     if (event.button !== 0) return; // Solo clic izquierdo
 
     // Detener propagación para evitar que el mousedown del slot active el recuadro de selección del lienzo
@@ -1365,6 +1560,11 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
       // Si no hubo movimiento (clic simple): Seleccionar / alternar selección de esta cámara
       if (!isDragActivated) {
+        // Limpiar el buscador de texto superior al hacer clic sobre cualquier cámara
+        if (this.eventSearchControl.value) {
+          this.eventSearchControl.setValue('');
+        }
+
         const currentSelected = new Set(this.selectedCanvasSlotIds());
         if (event.ctrlKey || event.shiftKey) {
           if (currentSelected.has(slot.id)) {
@@ -2025,23 +2225,43 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     return boxes;
   });
 
+  readonly selectedManualDate = signal<Date | null>(null);
+
+  readonly activeDayBounds = computed(() => {
+    const manualDate = this.selectedManualDate();
+    const now = this.liveTickerClock();
+
+    if (!manualDate) {
+      // Modo por defecto / Navegación libre / En Vivo: ÚLTIMAS 24 HORAS desde "ahora" (now - 24h a ahora)
+      const end = now;
+      const start = new Date(end.getTime() - 24 * 3600 * 1000);
+      return { start, end, isManual: false };
+    } else {
+      // Fecha pasada ingresada manualmente en el apartado inferior: De 00:00:00 a 23:59:59 de esa fecha
+      const start = new Date(manualDate.getFullYear(), manualDate.getMonth(), manualDate.getDate(), 0, 0, 0, 0);
+      const end = new Date(manualDate.getFullYear(), manualDate.getMonth(), manualDate.getDate(), 23, 59, 59, 999);
+      return { start, end, isManual: true };
+    }
+  });
+
   readonly maxTimelineEnd = computed(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    return this.activeDayBounds().end;
   });
 
   // --- Línea de Tiempo y ventana estática en Playback ---
   readonly timelineRange = computed(() => {
-    const zoom = this.zoomRangeSeconds() * 1000;
-    const maxEndMs = this.maxTimelineEnd().getTime();
+    const bounds = this.activeDayBounds();
+    const zoom = Math.min(86400 * 1000, this.zoomRangeSeconds() * 1000);
 
-    // Si playbackWindowEnd está establecido (vía arrastre o zoom), se respeta; de lo contrario finaliza en la hora actual (now)
     const rawEndMs = this.playbackWindowEnd() !== null
       ? this.playbackWindowEnd()!.getTime()
-      : this.liveTickerClock().getTime();
+      : bounds.end.getTime();
 
-    const endMs = Math.min(maxEndMs, rawEndMs);
+    const minEndMs = bounds.start.getTime() + zoom;
+    const maxEndMs = bounds.end.getTime();
+    const endMs = Math.max(minEndMs, Math.min(maxEndMs, rawEndMs));
     const start = new Date(endMs - zoom);
+
     return { start, end: new Date(endMs) };
   });
 
@@ -2098,11 +2318,135 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     }
 
     const pointerMs = this.currentTimePointer().getTime();
-    const matches = this.eventsList()
-      .filter(e => (e.nombreCamara === cameraName || e.idCamara === cameraName) && new Date(e.timestamp).getTime() <= pointerMs)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const events = this.eventsList();
+    let bestMatch: EventRecord | null = null;
+    let maxMs = -1;
 
-    return matches.length > 0 ? matches[0] : null;
+    for (let i = 0; i < events.length; i++) {
+      const e = events[i];
+      const matchesName = e.nombreCamara && e.nombreCamara.toLowerCase() === cameraName.toLowerCase();
+      const matchesId = e.idCamara && e.idCamara === cameraName;
+      if (matchesName || matchesId) {
+        const t = e.timestampMs || (e.timestampMs = new Date(e.timestamp).getTime());
+        if (t <= pointerMs + 1000 && t > maxMs) {
+          maxMs = t;
+          bestMatch = e;
+        }
+      }
+    }
+
+    if (!bestMatch) {
+      bestMatch = this.latestEventsMap()[cameraName] || null;
+    }
+
+    return bestMatch;
+  }
+
+  getDisplayedEventForSlot(slot: GridSlot): EventRecord | null {
+    if (!slot || !slot.camera) return null;
+    const camera = slot.camera;
+    const cameraName = camera.name;
+    const cameraId = camera.id;
+
+    // 1. Si esta cámara coincide con el evento seleccionado explícitamente (sidebar, flag o Backward/Forward)
+    const sel = this.selectedEvent();
+    if (sel) {
+      const matchesName = sel.nombreCamara && sel.nombreCamara.toLowerCase() === cameraName.toLowerCase();
+      const matchesId = sel.idCamara && sel.idCamara === cameraId;
+      if (matchesName || matchesId) {
+        return sel;
+      }
+    }
+
+    // 2. Si la celda está en modo playback / línea de tiempo, obtener la instantánea en o antes del scrubber
+    if (this.isSlotInPlaybackMode(slot)) {
+      const snap = this.getSnapshotForCameraAt(cameraName);
+      if (snap) return snap;
+
+      const lastMap = this.latestEventsMap();
+      if (lastMap[cameraName]) return lastMap[cameraName];
+      if (lastMap[cameraId]) return lastMap[cameraId];
+
+      for (const key of Object.keys(lastMap)) {
+        if (key.toLowerCase() === cameraName.toLowerCase()) {
+          return lastMap[key];
+        }
+      }
+
+      const allEvents = this.eventsList();
+      for (let i = 0; i < allEvents.length; i++) {
+        const e = allEvents[i];
+        const matchesName = e.nombreCamara && e.nombreCamara.toLowerCase() === cameraName.toLowerCase();
+        const matchesId = e.idCamara && e.idCamara === cameraId;
+        if (matchesName || matchesId) {
+          return e;
+        }
+      }
+
+      const defaultAnalytic = this.getCameraAnalytics(camera)[0] || 'Detección';
+      const lastMapTyped = lastMap as Record<string, EventRecord>;
+      const fallbackImg = lastMapTyped[cameraName]?.urlImg || lastMapTyped[cameraId]?.urlImg || '';
+      return {
+        id: `synthetic-${cameraId}`,
+        idCamara: cameraId,
+        nombreCamara: cameraName,
+        timestamp: this.currentTimePointer() || new Date(),
+        analitica: defaultAnalytic,
+        detalleEvento: `Detección ${defaultAnalytic}`,
+        urlImg: fallbackImg
+      } as EventRecord;
+    }
+
+    // 3. Fallback en la lista/mapa de eventos para cámaras estáticas no conectadas a WebRTC
+    if (this.webRtcStates()[slot.id] !== 'connected') {
+      const lastMap = this.latestEventsMap();
+      if (lastMap[cameraName]) return lastMap[cameraName];
+      if (lastMap[cameraId]) return lastMap[cameraId];
+
+      for (const key of Object.keys(lastMap)) {
+        if (key.toLowerCase() === cameraName.toLowerCase()) {
+          return lastMap[key];
+        }
+      }
+
+      const allEvents = this.eventsList();
+      for (let i = 0; i < allEvents.length; i++) {
+        const e = allEvents[i];
+        const matchesName = e.nombreCamara && e.nombreCamara.toLowerCase() === cameraName.toLowerCase();
+        const matchesId = e.idCamara && e.idCamara === cameraId;
+        if (matchesName || matchesId) {
+          return e;
+        }
+      }
+
+      const defaultAnalytic = this.getCameraAnalytics(camera)[0] || 'Detección';
+      const lastMapTyped = lastMap as Record<string, EventRecord>;
+      const fallbackImg = lastMapTyped[cameraName]?.urlImg || lastMapTyped[cameraId]?.urlImg || '';
+      return {
+        id: `synthetic-${cameraId}`,
+        idCamara: cameraId,
+        nombreCamara: cameraName,
+        timestamp: this.currentTimePointer() || new Date(),
+        analitica: defaultAnalytic,
+        detalleEvento: `Detección ${defaultAnalytic}`,
+        urlImg: fallbackImg
+      } as EventRecord;
+    }
+
+    return null;
+  }
+
+  isSlotShowingEventPhoto(slot: GridSlot): boolean {
+    if (!slot || !slot.camera) return false;
+    // 1. Si la celda individual está en modo reproducción/playback (en SYNC: todas las celdas; en ASYNC: solo las celdas en playback)
+    if (this.isSlotInPlaybackMode(slot)) {
+      return true;
+    }
+    // 2. Si la cámara NO está transmitiendo video en vivo WebRTC (mostrando foto estática de fallback por desconexión)
+    if (this.webRtcStates()[slot.id] !== 'connected') {
+      return true;
+    }
+    return false;
   }
 
   readonly formattedZoomSpanLabel = computed(() => {
@@ -2114,9 +2458,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     if (sec < 21600) return '3 horas';
     if (sec < 43200) return '6 horas';
     if (sec < 86400) return '12 horas';
-    if (sec < 604800) return '24 horas';
-    if (sec < 2592000) return '7 días';
-    return '30 días';
+    return '24 horas';
   });
 
   togglePlayPause(): void {
@@ -2135,7 +2477,10 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   setLiveMode(): void {
     const now = new Date();
+    this.selectedManualDate.set(null);
     this.selectedFlagId.set(null);
+    this.selectedCanvasSlotIds.set(new Set());
+    this.highlightedCellCameraName.set(null);
     this.playbackMode.set('live');
     this.paused.set(false);
     this.playbackWindowEnd.set(null);
@@ -2147,25 +2492,25 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.minutesSegmentStr.set(pad(now.getMinutes()));
     this.secondsSegmentStr.set(pad(now.getSeconds()));
 
-    // Vaciar eventos acumulados en el búfer
+    // Vaciar eventos acumulados en el búfer ordenadamente a la lista principal
     if (this.bufferedEvents().length > 0) {
       const buffer = this.bufferedEvents();
-      this.eventsList.update(list => [...buffer, ...list].slice(0, 300));
+      this.eventsList.update(list => {
+        const combined = [...buffer, ...list];
+        return combined.sort((a, b) => {
+          const tA = a.timestampMs || new Date(a.timestamp).getTime();
+          const tB = b.timestampMs || new Date(b.timestamp).getTime();
+          return tB - tA;
+        });
+      });
       this.bufferedEvents.set([]);
+      this.pruneEventsOlderThan24h();
     }
     this.showToast('⚡ Visualización En Vivo restablecida', 'success');
   }
 
   onScrubberChange(value: number): void {
-    if (this.playbackMode() === 'live') {
-      const now = new Date();
-      this.playbackWindowEnd.set(now);
-      this.playbackMode.set('playback');
-      this.paused.set(true);
-    }
-
-    const range = this.timelineRange();
-    const targetMs = Math.min(new Date().getTime(), range.start.getTime() + value * 1000);
+    const targetMs = value;
     const targetDate = new Date(targetMs);
 
     this.isEditingTimeSegments = false;
@@ -2197,11 +2542,8 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
     const minDeltaSec = minDeltaMs / 1000;
 
-    // Umbral de clustering: 2.5% del ancho de la barra.
-    // Para des-agrupar el evento seleccionado sin hacer zoom excesivo:
-    // (minDeltaSec / zoomSeconds) > 0.025  => zoomSeconds < 40 * minDeltaSec
-    // Usamos un factor de 25x para desplegar el evento individual con holgura sin hacer más zoom del necesario:
-    const targetZoomSeconds = Math.max(60, Math.min(this.zoomRangeSeconds(), Math.ceil(minDeltaSec * 25)));
+    // Calcular el rango de zoom óptimo para des-agrupar completamente el evento seleccionado
+    const targetZoomSeconds = Math.max(60, Math.min(300, Math.ceil(minDeltaSec * 10)));
 
     this.zoomRangeSeconds.set(targetZoomSeconds);
 
@@ -2228,19 +2570,22 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    // Auto-zoom dinámico exacto para des-agrupar el evento seleccionado en un pin individual
-    this.ensureEventUnclustered(eventRecord);
-
-    // En modo ASYNC: Auto-seleccionar y centrar automáticamente la cámara correspondiente a este evento
-    if (!this.isSyncMode() && eventRecord.nombreCamara) {
+    // Destacar la cámara correspondiente a este evento con borde azul (sin mover la vista ni alterar la selección previa del usuario)
+    if (eventRecord.nombreCamara || eventRecord.idCamara) {
       const slotMatch = this.gridSlots().find(s => s.camera && (s.camera.name === eventRecord.nombreCamara || s.camera.id === eventRecord.idCamara));
       if (slotMatch) {
-        this.selectedCanvasSlotIds.set(new Set([slotMatch.id]));
-        this.centerOnSlot(slotMatch);
+        // PRESERVAR SELECCIÓN DE CÁMARAS: Solo auto-seleccionar si el usuario no tiene ninguna cámara seleccionada previamente
+        if (this.selectedCanvasSlotIds().size === 0) {
+          this.selectedCanvasSlotIds.set(new Set([slotMatch.id]));
+        }
+        this.highlightedCellCameraName.set(slotMatch.camera!.name);
+      } else if (eventRecord.nombreCamara) {
+        this.highlightedCellCameraName.set(eventRecord.nombreCamara);
       }
     }
 
-    // Seleccionar evento y sincronizar aguja / hora
+    // Seleccionar evento y guardar referencia
+    this.selectedEvent.set(eventRecord);
     this.selectedFlagId.set(eventRecord.id);
 
     const eventDate = new Date(eventRecord.timestamp);
@@ -2272,8 +2617,15 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   }
 
   backwardEvent(): void {
-    const events = this.eventsList();
+    let events = this.eventsList();
     if (events.length === 0) return;
+
+    // Si hay cámaras seleccionadas en el lienzo (en modo SYNC o ASYNC), filtrar eventos para navegar ÚNICAMENTE entre los de las cámaras seleccionadas
+    if (this.selectedCameraNames().size > 0) {
+      const selectedNames = this.selectedCameraNames();
+      events = events.filter(e => selectedNames.has(e.nombreCamara));
+      if (events.length === 0) return;
+    }
 
     const sorted = [...events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     const currentFlagId = this.selectedFlagId();
@@ -2305,10 +2657,20 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   forwardEvent(): void {
     if (this.playbackMode() === 'live') return;
 
-    const events = this.eventsList();
+    let events = this.eventsList();
     if (events.length === 0) {
       this.setLiveMode();
       return;
+    }
+
+    // Si hay cámaras seleccionadas en el lienzo (en modo SYNC o ASYNC), filtrar eventos para navegar ÚNICAMENTE entre los de las cámaras seleccionadas
+    if (this.selectedCameraNames().size > 0) {
+      const selectedNames = this.selectedCameraNames();
+      events = events.filter(e => selectedNames.has(e.nombreCamara));
+      if (events.length === 0) {
+        this.setLiveMode();
+        return;
+      }
     }
 
     const sorted = [...events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
@@ -2343,7 +2705,9 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const now = new Date();
     this.playbackMode.set('live');
     this.paused.set(false);
-    // Se mantiene el playbackWindowEnd y zoomRangeSeconds actuales sin alterarlos
+    this.selectedFlagId.set(null);
+    this.selectedCanvasSlotIds.set(new Set());
+    this.highlightedCellCameraName.set(null);
     this.currentTimePointer.set(now);
 
     const pad = (n: number) => n.toString().padStart(2, '0');
@@ -2495,24 +2859,45 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     } else if (event.button === 0) {
       // Clic Izquierdo -> Desplazar aguja roja de reproducción
       this.isSeekingNeedle.set(true);
+      document.body.classList.add('is-timeline-dragging');
       this.seekNeedleToEvent(event);
     }
   }
 
+  private isRafMovePending = false;
+  private pendingMouseMoveEvent: MouseEvent | null = null;
+
   @HostListener('window:mousemove', ['$event'])
   onWindowMouseMove(event: MouseEvent): void {
+    if (!this.isDraggingTimeline() && !this.isSeekingNeedle()) return;
+    event.preventDefault();
+
+    this.pendingMouseMoveEvent = event;
+    if (!this.isRafMovePending) {
+      this.isRafMovePending = true;
+      requestAnimationFrame(() => {
+        this.isRafMovePending = false;
+        if (this.pendingMouseMoveEvent) {
+          this.processTimelineMouseMove(this.pendingMouseMoveEvent);
+        }
+      });
+    }
+  }
+
+  private processTimelineMouseMove(event: MouseEvent): void {
     if (this.isDraggingTimeline()) {
-      event.preventDefault();
       const deltaX = event.clientX - this.dragStartX;
-      const durationMs = this.zoomRangeSeconds() * 1000;
+      const durationMs = Math.min(86400 * 1000, this.zoomRangeSeconds() * 1000);
       const width = this.dragTrackWidth > 0 ? this.dragTrackWidth : window.innerWidth;
       const deltaMs = - (deltaX / width) * durationMs;
-      const maxEndMs = this.maxTimelineEnd().getTime();
-      const newEndMs = Math.min(maxEndMs, this.dragStartEndMs + deltaMs);
+
+      const bounds = this.activeDayBounds();
+      const minEndMs = bounds.start.getTime() + durationMs;
+      const maxEndMs = bounds.end.getTime();
+      const newEndMs = Math.max(minEndMs, Math.min(maxEndMs, this.dragStartEndMs + deltaMs));
 
       this.playbackWindowEnd.set(new Date(newEndMs));
     } else if (this.isSeekingNeedle()) {
-      event.preventDefault();
       this.seekNeedleToEvent(event);
     }
   }
@@ -2525,6 +2910,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     }
     if (this.isSeekingNeedle()) {
       this.isSeekingNeedle.set(false);
+      document.body.classList.remove('is-timeline-dragging');
     }
   }
 
@@ -2533,7 +2919,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       this.selectedFlagId.set(null);
     }
 
-    const durationMs = this.zoomRangeSeconds() * 1000;
+    const durationMs = Math.min(86400 * 1000, this.zoomRangeSeconds() * 1000);
     const width = this.dragTrackWidth > 0 ? this.dragTrackWidth : window.innerWidth;
 
     const wrapper = document.querySelector('.timeline-slider-wrapper') as HTMLElement;
@@ -2545,12 +2931,20 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const pct = trackWidth > 0 ? mouseX / trackWidth : 0;
 
     const range = this.timelineRange();
-    const nowMs = new Date().getTime();
-    const targetMs = Math.min(nowMs, range.start.getTime() + durationMs * pct);
+    const bounds = this.activeDayBounds();
+    const now = new Date();
+    const nowMs = now.getTime();
+    const rawTargetMs = range.start.getTime() + durationMs * pct;
+    const targetMs = Math.min(nowMs, Math.max(bounds.start.getTime(), rawTargetMs));
+
+    if (targetMs >= nowMs - 1000) {
+      this.setLiveMode();
+      return;
+    }
+
     const targetDate = new Date(targetMs);
 
     if (this.playbackMode() === 'live') {
-      const now = new Date();
       this.playbackWindowEnd.set(now);
       this.playbackMode.set('playback');
       this.paused.set(true);
@@ -2569,21 +2963,24 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     event.preventDefault();
     event.stopPropagation();
 
+    const bounds = this.activeDayBounds();
+    const durationMs = Math.min(86400 * 1000, this.zoomRangeSeconds() * 1000);
+    const minEndMs = bounds.start.getTime() + durationMs;
+    const maxEndMs = bounds.end.getTime();
+
     // Desplazamiento horizontal cuando hay movimiento horizontal (deltaX)
     if (Math.abs(event.deltaX) > 0) {
-      const durationMs = this.zoomRangeSeconds() * 1000;
       const width = this.dragTrackWidth > 0 ? this.dragTrackWidth : window.innerWidth;
       const deltaMs = (event.deltaX / width) * durationMs * 0.5;
 
       const currentEndMs = this.timelineRange().end.getTime();
-      const maxEndMs = this.maxTimelineEnd().getTime();
-      const newEndMs = Math.min(maxEndMs, currentEndMs + deltaMs);
+      const newEndMs = Math.max(minEndMs, Math.min(maxEndMs, currentEndMs + deltaMs));
 
       this.playbackWindowEnd.set(new Date(newEndMs));
       return;
     }
 
-    // Zoom en regla de tiempo
+    // Zoom en regla de tiempo (máximo 24 horas = 86400s)
     const target = event.currentTarget as HTMLElement;
     if (!target) return;
 
@@ -2594,16 +2991,16 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const range = this.timelineRange();
     const startMs = range.start.getTime();
     const endMs = range.end.getTime();
-    const durationMs = endMs - startMs;
+    const currDurationMs = endMs - startMs;
 
-    const cursorTimeMs = startMs + durationMs * cursorPct;
+    const cursorTimeMs = startMs + currDurationMs * cursorPct;
 
     const factor = event.deltaY > 0 ? 1.25 : 0.8;
-    const newZoomSec = Math.max(60, Math.min(2592000, Math.round((durationMs / 1000) * factor)));
+    const newZoomSec = Math.max(60, Math.min(86400, Math.round((currDurationMs / 1000) * factor)));
     const newDurationMs = newZoomSec * 1000;
 
-    const maxEndMs = this.maxTimelineEnd().getTime();
-    const newEndMs = Math.min(maxEndMs, cursorTimeMs + newDurationMs * (1 - cursorPct));
+    const calcMinEndMs = bounds.start.getTime() + newDurationMs;
+    const newEndMs = Math.max(calcMinEndMs, Math.min(maxEndMs, cursorTimeMs + newDurationMs * (1 - cursorPct)));
 
     this.playbackWindowEnd.set(new Date(newEndMs));
     this.zoomRangeSeconds.set(newZoomSec);
@@ -2672,27 +3069,47 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   onHoursSegmentInput(val: string, nextInput?: HTMLInputElement): void {
     const digitsOnly = val.replace(/\D/g, '');
-    this.hoursSegmentStr.set(digitsOnly);
-    if (digitsOnly.length >= 2 && nextInput) {
-      nextInput.focus();
-      nextInput.select();
+    let num = parseInt(digitsOnly, 10);
+    if (!isNaN(num)) {
+      if (num > 23) num = 23;
+      const clampedStr = num.toString();
+      this.hoursSegmentStr.set(clampedStr);
+      if (clampedStr.length >= 2 && nextInput) {
+        nextInput.focus();
+        nextInput.select();
+      }
+    } else {
+      this.hoursSegmentStr.set(digitsOnly);
     }
     this.commitSegmentedTime();
   }
 
   onMinutesSegmentInput(val: string, nextInput?: HTMLInputElement): void {
     const digitsOnly = val.replace(/\D/g, '');
-    this.minutesSegmentStr.set(digitsOnly);
-    if (digitsOnly.length >= 2 && nextInput) {
-      nextInput.focus();
-      nextInput.select();
+    let num = parseInt(digitsOnly, 10);
+    if (!isNaN(num)) {
+      if (num > 59) num = 59;
+      const clampedStr = num.toString();
+      this.minutesSegmentStr.set(clampedStr);
+      if (clampedStr.length >= 2 && nextInput) {
+        nextInput.focus();
+        nextInput.select();
+      }
+    } else {
+      this.minutesSegmentStr.set(digitsOnly);
     }
     this.commitSegmentedTime();
   }
 
   onSecondsSegmentInput(val: string): void {
     const digitsOnly = val.replace(/\D/g, '');
-    this.secondsSegmentStr.set(digitsOnly);
+    let num = parseInt(digitsOnly, 10);
+    if (!isNaN(num)) {
+      if (num > 59) num = 59;
+      this.secondsSegmentStr.set(num.toString());
+    } else {
+      this.secondsSegmentStr.set(digitsOnly);
+    }
     this.commitSegmentedTime();
   }
 
@@ -2717,15 +3134,18 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const pad = (n: number) => n.toString().padStart(2, '0');
     if (segment === 'h') {
       let h = parseInt(this.hoursSegmentStr(), 10);
-      if (isNaN(h) || h < 0 || h > 23) h = 0;
+      if (isNaN(h) || h < 0) h = 0;
+      if (h > 23) h = 23;
       this.hoursSegmentStr.set(pad(h));
     } else if (segment === 'm') {
       let m = parseInt(this.minutesSegmentStr(), 10);
-      if (isNaN(m) || m < 0 || m > 59) m = 0;
+      if (isNaN(m) || m < 0) m = 0;
+      if (m > 59) m = 59;
       this.minutesSegmentStr.set(pad(m));
     } else if (segment === 's') {
       let s = parseInt(this.secondsSegmentStr(), 10);
-      if (isNaN(s) || s < 0 || s > 59) s = 0;
+      if (isNaN(s) || s < 0) s = 0;
+      if (s > 59) s = 59;
       this.secondsSegmentStr.set(pad(s));
     }
     this.commitSegmentedTime();
@@ -2744,10 +3164,18 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     m = Math.max(0, Math.min(59, m));
     s = Math.max(0, Math.min(59, s));
 
+    const now = new Date();
     const current = this.currentTimePointer();
     const updated = new Date(current.getFullYear(), current.getMonth(), current.getDate(), h, m, s);
     const maxEndMs = this.maxTimelineEnd().getTime();
-    const targetMs = Math.min(maxEndMs, updated.getTime());
+    
+    // NUNCA permitir que la hora sobrepase el instante actual `now`
+    const targetMs = Math.min(now.getTime(), Math.min(maxEndMs, updated.getTime()));
+
+    if (targetMs >= now.getTime()) {
+      this.setLiveMode();
+      return;
+    }
 
     if (this.playbackMode() === 'live') {
       this.playbackMode.set('playback');
@@ -2762,27 +3190,46 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   onDaySegmentInput(val: string, nextInput?: HTMLInputElement): void {
     const digitsOnly = val.replace(/\D/g, '');
-    this.dateDayStr.set(digitsOnly);
-    if (digitsOnly.length >= 2 && nextInput) {
-      nextInput.focus();
-      nextInput.select();
+    let num = parseInt(digitsOnly, 10);
+    if (!isNaN(num)) {
+      if (num > 31) num = 31;
+      this.dateDayStr.set(digitsOnly);
+      if (digitsOnly.length >= 2 && nextInput) {
+        nextInput.focus();
+        nextInput.select();
+      }
+    } else {
+      this.dateDayStr.set(digitsOnly);
     }
     this.commitSegmentedDate();
   }
 
   onMonthSegmentInput(val: string, nextInput?: HTMLInputElement): void {
     const digitsOnly = val.replace(/\D/g, '');
-    this.dateMonthStr.set(digitsOnly);
-    if (digitsOnly.length >= 2 && nextInput) {
-      nextInput.focus();
-      nextInput.select();
+    let num = parseInt(digitsOnly, 10);
+    if (!isNaN(num)) {
+      if (num > 12) num = 12;
+      this.dateMonthStr.set(digitsOnly);
+      if (digitsOnly.length >= 2 && nextInput) {
+        nextInput.focus();
+        nextInput.select();
+      }
+    } else {
+      this.dateMonthStr.set(digitsOnly);
     }
     this.commitSegmentedDate();
   }
 
   onYearSegmentInput(val: string): void {
     const digitsOnly = val.replace(/\D/g, '');
-    this.dateYearStr.set(digitsOnly);
+    let num = parseInt(digitsOnly, 10);
+    const currentYear = new Date().getFullYear();
+    if (!isNaN(num)) {
+      if (num > currentYear) num = currentYear;
+      this.dateYearStr.set(digitsOnly);
+    } else {
+      this.dateYearStr.set(digitsOnly);
+    }
     if (digitsOnly.length >= 4) {
       this.commitSegmentedDate();
     }
@@ -2808,18 +3255,36 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.isEditingDateSegments = false;
     const pad = (n: number) => n.toString().padStart(2, '0');
     const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
 
     let day = parseInt(this.dateDayStr(), 10);
     let month = parseInt(this.dateMonthStr(), 10);
     let year = parseInt(this.dateYearStr(), 10);
 
-    if (isNaN(day) || day < 1 || day > 31) day = now.getDate();
-    if (isNaN(month) || month < 1 || month > 12) month = now.getMonth() + 1;
-    if (isNaN(year) || year < 1970 || year > now.getFullYear()) year = now.getFullYear();
+    if (isNaN(day) || day < 1) day = currentDay;
+    if (day > 31) day = 31;
+
+    if (isNaN(month) || month < 1) month = currentMonth;
+    if (month > 12) month = 12;
+
+    if (isNaN(year) || year < 1) year = currentYear;
+    if (year > currentYear) year = currentYear;
+
+    // Bloquear fechas posteriores al día de hoy
+    if (year === currentYear) {
+      if (month > currentMonth) {
+        month = currentMonth;
+        day = currentDay;
+      } else if (month === currentMonth && day > currentDay) {
+        day = currentDay;
+      }
+    }
 
     this.dateDayStr.set(pad(day));
     this.dateMonthStr.set(pad(month));
-    this.dateYearStr.set(year.toString());
+    this.dateYearStr.set(year.toString().padStart(4, '0'));
 
     this.commitSegmentedDate();
   }
@@ -2830,27 +3295,72 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     let year = parseInt(this.dateYearStr(), 10);
 
     const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
+
     if (isNaN(day) || day < 1) day = 1;
     if (isNaN(month) || month < 1) month = 1;
-    if (isNaN(year)) year = now.getFullYear();
+    if (isNaN(year) || year < 1) year = currentYear;
 
     day = Math.min(31, Math.max(1, day));
     month = Math.min(12, Math.max(1, month));
 
-    const current = this.currentTimePointer();
-    const updated = new Date(year, month - 1, day, current.getHours(), current.getMinutes(), current.getSeconds());
-
-    const nowMs = now.getTime();
-    const targetMs = Math.min(nowMs, updated.getTime());
-    const targetDate = new Date(targetMs);
-
-    if (this.playbackMode() === 'live') {
-      this.playbackWindowEnd.set(now);
-      this.playbackMode.set('playback');
-      this.paused.set(true);
+    // Garantizar que NUNCA se seleccione una fecha posterior al día de hoy
+    if (year > currentYear) {
+      year = currentYear;
+      month = currentMonth;
+      day = currentDay;
+    } else if (year === currentYear) {
+      if (month > currentMonth) {
+        month = currentMonth;
+        day = currentDay;
+      } else if (month === currentMonth && day > currentDay) {
+        day = currentDay;
+      }
     }
 
-    this.currentTimePointer.set(targetDate);
+    if (!this.isEditingDateSegments) {
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      this.dateDayStr.set(pad(day));
+      this.dateMonthStr.set(pad(month));
+      this.dateYearStr.set(year.toString().padStart(4, '0'));
+    }
+
+    const isSelectedToday = year === currentYear && month === currentMonth && day === currentDay;
+
+    if (isSelectedToday) {
+      this.selectedManualDate.set(null);
+      this.zoomRangeSeconds.set(86400);
+      this.playbackWindowEnd.set(null);
+      if (this.currentTimePointer().getTime() > now.getTime()) {
+        this.currentTimePointer.set(now);
+      }
+      this.playbackMode.set('live');
+      this.paused.set(false);
+    } else {
+      const selected = new Date(year, month - 1, day, 12, 0, 0);
+      this.selectedManualDate.set(selected);
+
+      const current = this.currentTimePointer();
+      const updated = new Date(year, month - 1, day, current.getHours(), current.getMinutes(), current.getSeconds());
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+      const nowMs = now.getTime();
+      const targetMs = Math.min(nowMs, updated.getTime());
+      const endMs = Math.min(nowMs, endOfDay.getTime());
+
+      this.zoomRangeSeconds.set(86400);
+      this.playbackWindowEnd.set(new Date(endMs));
+
+      if (this.playbackMode() === 'live') {
+        this.playbackMode.set('playback');
+        this.paused.set(true);
+      }
+
+      this.currentTimePointer.set(new Date(targetMs));
+    }
+    this.pruneEventsOlderThan24h();
   }
 
   onTimeInput(timeStr: string): void {
@@ -2890,18 +3400,39 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const day = parseInt(parts[2], 10);
     if (!year || !month || !day) return;
 
-    const current = this.currentTimePointer();
-    const updated = new Date(year, month - 1, day, current.getHours(), current.getMinutes(), current.getSeconds());
+    const now = new Date();
+    const isSelectedToday = year === now.getFullYear() && (month - 1) === now.getMonth() && day === now.getDate();
 
-    const nowMs = new Date().getTime();
-    const targetMs = Math.min(nowMs, updated.getTime());
+    if (isSelectedToday) {
+      this.selectedManualDate.set(null);
+      this.zoomRangeSeconds.set(86400);
+      this.playbackWindowEnd.set(null);
+      this.currentTimePointer.set(now);
+      this.playbackMode.set('live');
+      this.paused.set(false);
+    } else {
+      const selected = new Date(year, month - 1, day, 12, 0, 0);
+      this.selectedManualDate.set(selected);
 
-    if (this.playbackMode() === 'live') {
-      this.playbackMode.set('playback');
-      this.paused.set(true);
+      const current = this.currentTimePointer();
+      const updated = new Date(year, month - 1, day, current.getHours(), current.getMinutes(), current.getSeconds());
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+      const nowMs = now.getTime();
+      const targetMs = Math.min(nowMs, updated.getTime());
+      const endMs = Math.min(nowMs, endOfDay.getTime());
+
+      this.zoomRangeSeconds.set(86400);
+      this.playbackWindowEnd.set(new Date(endMs));
+
+      if (this.playbackMode() === 'live') {
+        this.playbackMode.set('playback');
+        this.paused.set(true);
+      }
+
+      this.currentTimePointer.set(new Date(targetMs));
     }
-
-    this.currentTimePointer.set(new Date(targetMs));
+    this.pruneEventsOlderThan24h();
   }
 
   readonly currentScrubberValue = computed(() => {
@@ -2925,8 +3456,9 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly filteredEvents = computed(() => {
     let list = this.eventsList();
 
-    // En modo ASYNC con cámaras seleccionadas, filtrar solo eventos de las cámaras seleccionadas
-    if (!this.isSyncMode() && this.selectedCameraNames().size > 0) {
+    // Filtrar eventos por cámaras seleccionadas en ambos modos (SYNC y ASYNC)
+    // Sin selección → muestra todos. Con selección → solo las seleccionadas
+    if (this.selectedCameraNames().size > 0) {
       const selectedNames = this.selectedCameraNames();
       list = list.filter(e => selectedNames.has(e.nombreCamara));
     }
@@ -2936,17 +3468,23 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const desde = this.eventDesdeFilter();
     const hasta = this.eventHastaFilter();
 
-    // En modo PLAYBACK, filtrar los eventos mostrando solo los ocurridos hasta currentTimePointer
+    // En modo PLAYBACK al buscar en la línea de tiempo, sincronizar los eventos hasta la posición de la aguja
     if (this.playbackMode() === 'playback') {
       const pointerMs = this.currentTimePointer().getTime();
-      list = list.filter(e => new Date(e.timestamp).getTime() <= pointerMs);
+      list = list.filter(e => (e.timestampMs || (e.timestampMs = new Date(e.timestamp).getTime())) <= pointerMs);
     }
 
+    // Filtrar por búsqueda de texto de cámara en la barra superior
     if (search) {
+      const matchingCanvasCameraNames = new Set<string>();
+      for (const slot of this.gridSlots()) {
+        if (slot.camera && slot.camera.name.toLowerCase().includes(search)) {
+          matchingCanvasCameraNames.add(slot.camera.name);
+        }
+      }
       list = list.filter(e =>
-        e.detalleEvento.toLowerCase().includes(search) ||
-        e.nombreCamara.toLowerCase().includes(search) ||
-        e.objeto.toLowerCase().includes(search)
+        matchingCanvasCameraNames.has(e.nombreCamara) ||
+        e.nombreCamara.toLowerCase().includes(search)
       );
     }
 
@@ -2955,15 +3493,62 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     }
 
     if (desde) {
-      list = list.filter(e => new Date(e.timestamp).getTime() >= desde.getTime());
+      const desdeMs = desde.getTime();
+      list = list.filter(e => (e.timestampMs || (e.timestampMs = new Date(e.timestamp).getTime())) >= desdeMs);
     }
 
     if (hasta) {
-      list = list.filter(e => new Date(e.timestamp).getTime() <= hasta.getTime());
+      const hastaMs = hasta.getTime();
+      list = list.filter(e => (e.timestampMs || (e.timestampMs = new Date(e.timestamp).getTime())) <= hastaMs);
     }
 
+    // Retorna la totalidad de eventos coincidentes en el rango de 24h (sin recortes fijos)
     return list;
   });
+
+  readonly totalSidebarPages = computed(() => {
+    const total = this.filteredEvents().length;
+    return Math.max(1, Math.ceil(total / this.sidebarPageSize));
+  });
+
+  // Ventana deslizante de 3 páginas: [Página K-1, Página K, Página K+1] (Máximo 750 elementos en el DOM)
+  readonly visibleSidebarEvents = computed(() => {
+    const all = this.filteredEvents();
+    const totalPages = this.totalSidebarPages();
+    const currentPage = Math.min(totalPages, Math.max(1, this.currentSidebarPage()));
+
+    const startPage = Math.max(1, currentPage - 1);
+    const endPage = Math.min(totalPages, currentPage + 1);
+
+    const startIndex = (startPage - 1) * this.sidebarPageSize;
+    const endIndex = endPage * this.sidebarPageSize;
+
+    return all.slice(startIndex, endIndex);
+  });
+
+  onSidebarScroll(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (!target) return;
+
+    const scrollTop = target.scrollTop;
+    const scrollHeight = target.scrollHeight;
+    const clientHeight = target.clientHeight;
+
+    if (scrollHeight <= clientHeight) return;
+
+    const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+    const currentPage = this.currentSidebarPage();
+    const totalPages = this.totalSidebarPages();
+
+    // Scroll descendente (~75% del contenedor): avanzar a la página siguiente precargando la subsecuente
+    if (scrollPercentage > 0.75 && currentPage < totalPages) {
+      this.currentSidebarPage.update(p => Math.min(totalPages, p + 1));
+    }
+    // Scroll ascendente (~25% superior): retroceder a la página anterior
+    else if (scrollTop < clientHeight * 0.25 && currentPage > 1) {
+      this.currentSidebarPage.update(p => Math.max(1, p - 1));
+    }
+  }
 
   readonly activeAnalyticOptions = computed(() => {
     const set = new Set<string>();
@@ -2989,12 +3574,13 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly camerasInCanvas = computed(() => {
     const seen = new Set<string>();
     const list: Camera[] = [];
-    const isAsync = !this.isSyncMode();
     const selectedNames = this.selectedCameraNames();
 
     for (const slot of this.gridSlots()) {
       if (slot.camera && !seen.has(slot.camera.id)) {
-        if (isAsync && selectedNames.size > 0 && !selectedNames.has(slot.camera.name)) {
+        // Filtrar por selección en ambos modos (SYNC y ASYNC)
+        // Sin selección → todas las cámaras del lienzo
+        if (selectedNames.size > 0 && !selectedNames.has(slot.camera.name)) {
           continue;
         }
         seen.add(slot.camera.id);
@@ -3262,10 +3848,55 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.showToast('Canales de monitoreo actualizados', 'success');
   }
 
+  deleteSelectedCameras(): void {
+    const selectedIds = this.selectedCanvasSlotIds();
+    if (selectedIds.size === 0) return;
+
+    const occupiedSelectedSlots = this.gridSlots().filter(s => selectedIds.has(s.id) && s.camera !== null);
+    if (occupiedSelectedSlots.length === 0) return;
+
+    // Guardar estado actual en el historial de Deshacer antes de la eliminación masiva
+    this.saveStateToHistory();
+
+    const slots = this.gridSlots().map(s => ({
+      ...s,
+      camera: s.camera ? { ...s.camera } : null
+    }));
+
+    occupiedSelectedSlots.forEach(targetSlot => {
+      const idx = slots.findIndex(s => s.id === targetSlot.id);
+      if (idx !== -1) {
+        slots[idx].camera = null;
+      }
+    });
+
+    this.gridSlots.set(slots);
+    this.selectedCanvasSlotIds.set(new Set());
+    this.recalculateGridDimensions();
+
+    if (occupiedSelectedSlots.length === 1) {
+      const camName = occupiedSelectedSlots[0].camera?.name;
+      this.showToast(`Cámara ${camName || ''} removida del slot`, 'warning');
+    } else {
+      this.showToast(`${occupiedSelectedSlots.length} cámaras removidas del lienzo`, 'warning');
+    }
+  }
+
   removeCameraFromSlot(col: number, row: number, event: Event): void {
     event.stopPropagation();
+
+    // Si la cámara objetivo está seleccionada y hay múltiples cámaras seleccionadas, realizar eliminación masiva
+    const targetSlot = this.gridSlots().find(s => s.col === col && s.row === row);
+    if (targetSlot && this.selectedCanvasSlotIds().has(targetSlot.id) && this.selectedCanvasSlotIds().size > 1) {
+      this.deleteSelectedCameras();
+      return;
+    }
+
     this.saveStateToHistory();
-    const slots = [...this.gridSlots()];
+    const slots = this.gridSlots().map(s => ({
+      ...s,
+      camera: s.camera ? { ...s.camera } : null
+    }));
     const idx = slots.findIndex(s => s.col === col && s.row === row);
 
     if (idx !== -1) {
@@ -3274,6 +3905,12 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       if (camName) {
         this.showToast(`Cámara ${camName} removida del slot`, 'warning');
       }
+    }
+
+    if (targetSlot) {
+      const nextSelected = new Set(this.selectedCanvasSlotIds());
+      nextSelected.delete(targetSlot.id);
+      this.selectedCanvasSlotIds.set(nextSelected);
     }
 
     this.gridSlots.set(slots);
@@ -3335,19 +3972,35 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const endMs = range.end.getTime();
     let events = this.eventsList();
 
-    // En modo ASYNC con cámaras seleccionadas, se filtran las banderas de tiempo exclusivamente para esas cámaras
-    if (!this.isSyncMode() && this.selectedCameraNames().size > 0) {
+    // Filtrar banderas de la línea de tiempo por cámaras seleccionadas en ambos modos (SYNC y ASYNC)
+    // Sin selección → muestra banderas de todas las cámaras del lienzo
+    if (this.selectedCameraNames().size > 0) {
       const selectedNames = this.selectedCameraNames();
       events = events.filter(e => selectedNames.has(e.nombreCamara));
     }
 
+    // Filtrar banderas por búsqueda de texto de cámara en la barra superior
+    const search = this.eventSearchQuery().trim().toLowerCase();
+    if (search) {
+      const matchingCanvasCameraNames = new Set<string>();
+      for (const slot of this.gridSlots()) {
+        if (slot.camera && slot.camera.name.toLowerCase().includes(search)) {
+          matchingCanvasCameraNames.add(slot.camera.name);
+        }
+      }
+      events = events.filter(e =>
+        matchingCanvasCameraNames.has(e.nombreCamara) ||
+        e.nombreCamara.toLowerCase().includes(search)
+      );
+    }
+
     const rawFlags = events
       .filter(e => {
-        const t = new Date(e.timestamp).getTime();
+        const t = e.timestampMs || (e.timestampMs = new Date(e.timestamp).getTime());
         return t >= startMs && t <= endMs;
       })
       .map(e => {
-        const t = new Date(e.timestamp).getTime();
+        const t = e.timestampMs || (e.timestampMs = new Date(e.timestamp).getTime());
         const pct = ((t - startMs) / (endMs - startMs)) * 100;
         return {
           event: e,
@@ -3359,8 +4012,19 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
     if (rawFlags.length === 0) return [];
 
-    // Umbral de agrupación inteligente (2.5% del ancho de la barra de tiempo)
-    const clusterThresholdPct = 2.5;
+    // Umbral de agrupación adaptativo según el nivel de zoom actual:
+    // A zoom máximo (zoomRangeSeconds <= 300s / 5 minutos o menos), el umbral baja a 0.05% para des-agrupar totalmente todas las banderas individuales.
+    const zoomSec = this.zoomRangeSeconds();
+    let clusterThresholdPct = 3.5;
+    if (zoomSec <= 300) {
+      clusterThresholdPct = 0.05; // Des-agrupación total a nivel de segundos individuales al hacer zoom profundo
+    } else if (zoomSec <= 1800) {
+      clusterThresholdPct = 0.5;
+    } else if (zoomSec <= 7200) {
+      clusterThresholdPct = 1.2;
+    } else if (zoomSec <= 21600) {
+      clusterThresholdPct = 2.2;
+    }
     const clusters: Array<{
       event: EventRecord;
       leftPct: number;
@@ -3417,31 +4081,54 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   }
 
   openEventDetails(event: EventRecord): void {
+    if (!event || !event.timestamp) return;
+
     this.selectedEvent.set(event);
+    this.selectedModalEvent.set(event);
+    this.selectedFlagId.set(event.id);
     this.isZoomed.set(false);
 
-    // En modo ASYNC: Auto-seleccionar y centrar automáticamente la cámara correspondiente a este evento
-    if (!this.isSyncMode() && event.nombreCamara) {
+    // Auto-seleccionar y destacar la cámara correspondiente en el lienzo
+    if (event.nombreCamara || event.idCamara) {
       const slotMatch = this.gridSlots().find(s => s.camera && (s.camera.name === event.nombreCamara || s.camera.id === event.idCamara));
-      if (slotMatch) {
+      if (slotMatch && slotMatch.camera) {
         this.selectedCanvasSlotIds.set(new Set([slotMatch.id]));
-        this.centerOnSlot(slotMatch);
+        this.highlightedCellCameraName.set(slotMatch.camera.name);
+      } else if (event.nombreCamara) {
+        this.highlightedCellCameraName.set(event.nombreCamara);
       }
     }
 
-    const eventTime = new Date(event.timestamp);
+    // Mover la aguja de la línea de tiempo y cambiar a modo PLAYBACK
+    const eventDate = new Date(event.timestamp);
+    const nowMs = new Date().getTime();
+    const targetMs = Math.min(nowMs, eventDate.getTime());
+    const targetDate = new Date(targetMs);
+
     if (this.playbackMode() === 'live') {
-      this.playbackWindowEnd.set(new Date());
+      if (this.playbackWindowEnd() === null) {
+        this.playbackWindowEnd.set(new Date());
+      }
       this.playbackMode.set('playback');
       this.paused.set(true);
     }
-    this.currentTimePointer.set(eventTime);
 
-    this.highlightCameraSlot(event.nombreCamara);
+    this.isEditingTimeSegments = false;
+    this.isEditingDateSegments = false;
+
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    this.hoursSegmentStr.set(pad(targetDate.getHours()));
+    this.minutesSegmentStr.set(pad(targetDate.getMinutes()));
+    this.secondsSegmentStr.set(pad(targetDate.getSeconds()));
+    this.dateDayStr.set(pad(targetDate.getDate()));
+    this.dateMonthStr.set(pad(targetDate.getMonth() + 1));
+    this.dateYearStr.set(targetDate.getFullYear().toString());
+
+    this.currentTimePointer.set(targetDate);
   }
 
   closeEventDetails(): void {
-    this.selectedEvent.set(null);
+    this.selectedModalEvent.set(null);
     this.isZoomed.set(false);
   }
 
@@ -3487,6 +4174,19 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const mins = d.getMinutes().toString().padStart(2, '0');
     const secs = d.getSeconds().toString().padStart(2, '0');
     return `${hours}:${mins}:${secs}`;
+  }
+
+  /**
+   * Formatea los números flotantes de muchos decimales dentro de un texto de descripción.
+   * Ej: "1796.7047259807587 segundos" → "1,796.70 segundos"
+   * Solo actúa sobre números con 3+ decimales para no afectar valores cortos válidos.
+   */
+  formatDetalleEvento(text: string): string {
+    if (!text) return '';
+    return text.replace(/(\d+\.\d{3,})/g, (match) => {
+      const n = parseFloat(match);
+      return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    });
   }
 
   getAnalyticColor(analitica: string): string {
@@ -3890,13 +4590,32 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   }
 
   isCameraOnline(camera: Camera | null | undefined): boolean {
-    if (!camera || !camera.status) return false;
-    const st = camera.status.toLowerCase();
-    return st === 'online' || st === 'active';
+    const status = getCameraEffectiveStatus(camera, this.hostService.allHosts());
+    return status === 'Online';
+  }
+
+  getCameraStatusClass(camera: Camera | null | undefined): string {
+    const status = getCameraEffectiveStatus(camera, this.hostService.allHosts());
+    return getCameraStatusCssClass(status);
+  }
+
+  getCameraStatusLabel(camera: Camera | null | undefined): string {
+    return getCameraEffectiveStatus(camera, this.hostService.allHosts());
   }
 
   getClampedSpan(span: number): number {
     return span;
+  }
+
+  /**
+   * Determina si un slot debe atenuarse (menor opacidad) durante una búsqueda por texto de cámara.
+   * Solo atenúa cuando hay texto activo en el buscador superior y la cámara no coincide.
+   */
+  isSlotDimmed(slot: GridSlot): boolean {
+    if (!slot.camera) return false;
+    const search = this.eventSearchQuery().trim().toLowerCase();
+    if (!search) return false;
+    return !slot.camera.name.toLowerCase().includes(search);
   }
 
   // --- Filtered computed properties for modal ---

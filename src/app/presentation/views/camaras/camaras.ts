@@ -10,6 +10,7 @@ import { SidebarService } from '../../../core/services/sidebar.service';
 import { HostService } from '../../../core/services/host.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
+import { getCameraEffectiveStatus, getCameraStatusCssClass } from '../../../core/utils/camera-status.utils';
 import { Schedule } from '../../../core/domain/entities/schedule.models';
 import { Analytic } from '../../../core/domain/entities/analytic.models';
 import { Camera } from '../../../core/domain/entities/camera.models';
@@ -22,6 +23,7 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
 import { ViewModeToggleComponent } from '../../shared/view-mode-toggle/view-mode-toggle.component';
 import { CameraDetailDrawerComponent } from '../../shared/camera-detail-drawer/camera-detail-drawer.component';
+import { exportToCsv, exportToXlsx, ExportColumn } from '../../../core/utils/export-utils';
 
 @Component({
   selector: 'app-camaras',
@@ -118,10 +120,17 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     this.licenseScrolledToBottom.set(atBottom);
   }
 
+  readonly isFingerprintCopied = signal<boolean>(false);
+
   copyFingerprint(): void {
     const fingerprint = this.hostId();
     if (fingerprint) {
-      copyToClipboard(fingerprint).catch(err => console.error('Error copying to clipboard', err));
+      copyToClipboard(fingerprint)
+        .then(() => {
+          this.isFingerprintCopied.set(true);
+          setTimeout(() => this.isFingerprintCopied.set(false), 2000);
+        })
+        .catch(err => console.error('Error copying to clipboard', err));
     }
   }
 
@@ -198,6 +207,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   readonly showFilterPanel = signal<boolean>(false);
   readonly activeDropdown = signal<string | null>(null);
+  readonly showExportDropdown = signal<boolean>(false);
 
   // Opciones de filtro dinámicas (construidas a partir de las cámaras y analíticas cargadas)
   readonly filterOptions = computed(() => {
@@ -632,9 +642,15 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     this.activeDropdown.set(null);
   }
 
+  toggleExportDropdown(event: Event): void {
+    event.stopPropagation();
+    this.showExportDropdown.update(v => !v);
+  }
+
   @HostListener('document:click')
   closeAllDropdowns(): void {
     this.activeDropdown.set(null);
+    this.showExportDropdown.set(false);
     this.activeAddScheduleDropdown.set(null);
   }
 
@@ -940,9 +956,17 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   }
 
   isCameraOnline(camera: Camera | null | undefined): boolean {
-    if (!camera || !camera.status) return false;
-    const st = camera.status.toLowerCase();
-    return st === 'online' || st === 'active';
+    const status = getCameraEffectiveStatus(camera, this.hostService.allHosts());
+    return status === 'Online';
+  }
+
+  getCameraStatusClass(camera: Camera | null | undefined): string {
+    const status = getCameraEffectiveStatus(camera, this.hostService.allHosts());
+    return getCameraStatusCssClass(status);
+  }
+
+  getCameraStatusLabel(camera: Camera | null | undefined): string {
+    return getCameraEffectiveStatus(camera, this.hostService.allHosts());
   }
 
   // ── Analíticas ──────────────────────────────────────────────────────────────
@@ -1277,5 +1301,78 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     }).catch(err => {
       console.error('Error al copiar al portapapeles', err);
     });
+  }
+
+  // ── Exportación a Excel (XLSX) y CSV ──────────────────────────────────────────
+  exportCamarasXlsx(): void {
+    const columns: ExportColumn[] = [
+      { header: 'Estado', key: 'status' },
+      { header: 'Nombre de Cámara', key: 'name' },
+      { header: 'ID Cámara', key: 'id' },
+      { header: 'Nodo Asociado', key: 'hostName' },
+      { header: 'Fingerprint Nodo', key: 'hostFingerprint' },
+      { header: 'Tipo Stream', key: 'streamType' },
+      { header: 'Decodificador', key: 'decoder' },
+      { header: 'Latitud', key: 'lat' },
+      { header: 'Longitud', key: 'lon' },
+      { header: 'Analíticas Activas', key: 'analytics' }
+    ];
+
+    const data = this.filteredCameras().map(c => {
+      const isOnline = this.isCameraOnline(c);
+      const analytics = this.getAnalyticsForCamera(c.id).map(a => this.getAnalyticLabel(a.type)).join(', ');
+      return {
+        status: isOnline ? 'Online' : 'Offline',
+        name: c.name,
+        id: c.id,
+        hostName: this.getHostName(c.hostFingerprint),
+        hostFingerprint: c.hostFingerprint,
+        streamType: c.streamType.toUpperCase(),
+        decoder: c.decoder.toUpperCase(),
+        lat: c.location.lat,
+        lon: c.location.lon,
+        analytics: analytics || 'Ninguna'
+      };
+    });
+
+    const hostName = this.currentHost()?.hostname || 'nodo';
+    const filename = this.hostId() ? `reporte_camaras_${hostName}.xlsx` : 'reporte_todas_las_camaras.xlsx';
+    exportToXlsx(filename, 'Cámaras', columns, data);
+  }
+
+  exportCamarasCsv(): void {
+    const columns: ExportColumn[] = [
+      { header: 'Estado', key: 'status' },
+      { header: 'Nombre de Cámara', key: 'name' },
+      { header: 'ID Cámara', key: 'id' },
+      { header: 'Nodo Asociado', key: 'hostName' },
+      { header: 'Fingerprint Nodo', key: 'hostFingerprint' },
+      { header: 'Tipo Stream', key: 'streamType' },
+      { header: 'Decodificador', key: 'decoder' },
+      { header: 'Latitud', key: 'lat' },
+      { header: 'Longitud', key: 'lon' },
+      { header: 'Analíticas Activas', key: 'analytics' }
+    ];
+
+    const data = this.filteredCameras().map(c => {
+      const isOnline = this.isCameraOnline(c);
+      const analytics = this.getAnalyticsForCamera(c.id).map(a => this.getAnalyticLabel(a.type)).join(', ');
+      return {
+        status: isOnline ? 'Online' : 'Offline',
+        name: c.name,
+        id: c.id,
+        hostName: this.getHostName(c.hostFingerprint),
+        hostFingerprint: c.hostFingerprint,
+        streamType: c.streamType.toUpperCase(),
+        decoder: c.decoder.toUpperCase(),
+        lat: c.location.lat,
+        lon: c.location.lon,
+        analytics: analytics || 'Ninguna'
+      };
+    });
+
+    const hostName = this.currentHost()?.hostname || 'nodo';
+    const filename = this.hostId() ? `reporte_camaras_${hostName}.csv` : 'reporte_todas_las_camaras.csv';
+    exportToCsv(filename, columns, data);
   }
 }

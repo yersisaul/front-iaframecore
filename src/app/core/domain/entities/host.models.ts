@@ -84,14 +84,16 @@ export interface PaginatedHostsResponse {
 }
 
 export function formatMemoryGB(mem: string | number | null | undefined): string | null {
-  if (mem === null || mem === undefined) return null;
+  if (mem === null || mem === undefined || mem === '') return null;
   let val = 0;
   if (typeof mem === 'number') {
+    if (mem <= 0) return null;
     val = mem / (1024 * 1024 * 1024);
   } else {
     const match = mem.match(/(\d+(?:\.\d+)?)\s*(GB|MB|KB|B)?/i);
-    if (!match) return mem;
+    if (!match) return null;
     const rawVal = parseFloat(match[1]);
+    if (isNaN(rawVal) || rawVal <= 0) return null;
     const unit = (match[2] || 'GB').toUpperCase();
     if (unit === 'GB') val = rawVal;
     else if (unit === 'MB') val = rawVal / 1024;
@@ -99,18 +101,21 @@ export function formatMemoryGB(mem: string | number | null | undefined): string 
     else if (unit === 'B') val = rawVal / (1024 * 1024 * 1024);
     else val = rawVal;
   }
-  return `${Math.round(val)} GB`;
+  const rounded = Math.round(val);
+  return rounded > 0 ? `${rounded} GB` : null;
 }
 
 export class HostMapper {
-  static toDomain(dto: HostDTO): Host {
+  static toDomain(dto: any): Host {
+    const fp = dto.fingerprint || dto.host_id || dto.id || '';
+    const idVal = dto.host_id || dto.id || dto.fingerprint || '';
     return {
-      id: dto.host_id,
-      fingerprint: dto.fingerprint || '',
-      hostname: dto.hostname,
-      ipAddress: dto.ip_address,
-      version: dto.version,
-      status: dto.status || 'online',
+      id: idVal,
+      fingerprint: fp,
+      hostname: dto.hostname || dto.name || fp,
+      ipAddress: dto.ip_address || dto.ipAddress || '',
+      version: dto.version || '1.0.0',
+      status: dto.status || 'offline',
       hwInfo: dto.hw_info ? {
         machineId: dto.hw_info.machine_id,
         mac: dto.hw_info.mac,

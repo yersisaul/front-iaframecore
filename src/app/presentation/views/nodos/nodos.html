@@ -8,10 +8,24 @@
     title="Gestión de Nodos"
     [subtitle]="'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + filteredHosts().length + '</span> nodos de cómputo registrados.'">
 
-    <!-- Ranura para Fila 1 Derecha (Tabs y Migrar) -->
+    <!-- Ranura para Fila 1 Derecha (Tabs, Exportar y Migrar) -->
     <ng-container header-actions>
       <!-- Tabs de Vista (Tarjetas / Lista) REFACTORIZADO DRY -->
       <app-view-mode-toggle [viewMode]="viewMode()" (viewModeChange)="setViewMode($event)"></app-view-mode-toggle>
+
+      <!-- Botón de Exportar Verde Oscuro (Siempre Visible) -->
+      <div class="dropdown d-inline-block position-relative">
+        <button class="btn btn-export-dark-green d-flex align-items-center gap-2" type="button" (click)="toggleExportDropdown($event)" title="Exportar reporte de nodos">
+          <span class="icon-svg icon-download" style="width: 15px; height: 15px; background-color: currentColor;"></span>
+          <span>Exportar</span>
+        </button>
+        @if (showExportDropdown()) {
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm show position-absolute end-0 mt-1" style="z-index: 1050; min-width: 200px;">
+          <li><button class="dropdown-item d-flex align-items-center gap-2 py-2 cursor-pointer" type="button" (click)="exportNodosXlsx(); showExportDropdown.set(false)"><span class="fw-bold text-success" style="font-size: 0.78rem;">XLSX</span> <span>Exportar a Excel (.xlsx)</span></button></li>
+          <li><button class="dropdown-item d-flex align-items-center gap-2 py-2 cursor-pointer" type="button" (click)="exportNodosCsv(); showExportDropdown.set(false)"><span class="fw-bold text-info" style="font-size: 0.78rem;">CSV</span> <span>Exportar a CSV (.csv)</span></button></li>
+        </ul>
+        }
+      </div>
 
       <!-- Botón de Migrar Configuración -->
       @if (permissionsService.hasPermission('Hosts', 'editar')) {
@@ -277,12 +291,6 @@
                 [class.status-badge-offline]="host.status !== 'active' && host.status !== 'online'">
                 {{ (host.status === 'active' || host.status === 'online') ? 'Online' : 'Offline' }}
               </span>
-              <!-- Cantidad de Cámaras -->
-              <span class="camera-count-badge" [class.has-cameras]="getCameraCount(host.fingerprint) > 0"
-                [title]="getCameraCount(host.fingerprint) + ' cámara(s) asignada(s)'">
-                <span class="icon-svg icon-camara camera-badge-icon"></span>
-                <span class="camera-count-num">{{ getCameraCount(host.fingerprint) }}</span>
-              </span>
               <!-- Versión visualmente renovada -->
               <span class="version-tag">v{{ host.version }}</span>
             </div>
@@ -384,14 +392,19 @@
                 <div class="resource-stat-item text-end">
                   <span class="resource-stat-lbl">RAM</span>
                   <span class="resource-stat-val">
-                    @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
-                    {{ ((host.metrics.memory / 100) * parseMemoryGB(host.hwInfo?.totalMemory ?? host.hwInfo?.totalRam))
-                    | number:'1.1-1' }}
-                    <span class="resource-stat-unit"> / {{ parseMemoryGB(host.hwInfo?.totalMemory ??
-                      host.hwInfo?.totalRam) | number:'1.0-0' }} GB</span>
+                    @if (parseMemoryGB(host.hwInfo?.totalRam || host.hwInfo?.totalMemory); as totalRam) {
+                      @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
+                      {{ ((host.metrics.memory / 100) * totalRam) | number:'1.1-1' }}
+                      <span class="resource-stat-unit"> / {{ totalRam | number:'1.0-0' }} GB</span>
+                      } @else {
+                      - <span class="resource-stat-unit"> / {{ totalRam | number:'1.0-0' }} GB</span>
+                      }
                     } @else {
-                    - <span class="resource-stat-unit"> / {{ parseMemoryGB(host.hwInfo?.totalMemory ??
-                      host.hwInfo?.totalRam) || '-' }} GB</span>
+                      @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
+                      {{ host.metrics.memory | number:'1.0-1' }}<span class="resource-stat-unit">%</span>
+                      } @else {
+                      -
+                      }
                     }
                   </span>
                 </div>
@@ -434,11 +447,19 @@
                 <div class="resource-stat-item text-end">
                   <span class="resource-stat-lbl">VRAM</span>
                   <span class="resource-stat-val">
-                    @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
-                    {{ ((host.metrics.vram / 100) * parseMemoryGB(gpu?.totalMemory)) | number:'1.1-1' }}
-                    <span class="resource-stat-unit"> / {{ parseMemoryGB(gpu?.totalMemory) | number:'1.0-0' }} GB</span>
+                    @if (parseMemoryGB(gpu?.totalMemory); as totalVram) {
+                      @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
+                      {{ ((host.metrics.vram / 100) * totalVram) | number:'1.1-1' }}
+                      <span class="resource-stat-unit"> / {{ totalVram | number:'1.0-0' }} GB</span>
+                      } @else {
+                      - <span class="resource-stat-unit"> / {{ totalVram | number:'1.0-0' }} GB</span>
+                      }
                     } @else {
-                    - <span class="resource-stat-unit"> / {{ parseMemoryGB(gpu?.totalMemory) || '-' }} GB</span>
+                      @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
+                      {{ host.metrics.vram | number:'1.0-1' }}<span class="resource-stat-unit">%</span>
+                      } @else {
+                      -
+                      }
                     }
                   </span>
                 </div>
@@ -559,12 +580,18 @@
                 <!-- Fila Inferior: Consumo RAM -->
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="text-muted font-monospace" style="font-size: 0.76rem; letter-spacing: 0.02em;">
-                    RAM: @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
-                    {{ ((host.metrics.memory / 100) * parseMemoryGB(host.hwInfo?.totalMemory ?? host.hwInfo?.totalRam))
-                    | number:'1.1-1' }} / {{ parseMemoryGB(host.hwInfo?.totalMemory ?? host.hwInfo?.totalRam) |
-                    number:'1.0-0' }} GB
+                    RAM: @if (parseMemoryGB(host.hwInfo?.totalRam || host.hwInfo?.totalMemory); as totalRam) {
+                      @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
+                      {{ ((host.metrics.memory / 100) * totalRam) | number:'1.1-1' }} / {{ totalRam | number:'1.0-0' }} GB
+                      } @else {
+                      - / {{ totalRam | number:'1.0-0' }} GB
+                      }
                     } @else {
-                    - / {{ parseMemoryGB(host.hwInfo?.totalMemory ?? host.hwInfo?.totalRam) || '-' }} GB
+                      @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
+                      {{ host.metrics.memory | number:'1.0-1' }}%
+                      } @else {
+                      -
+                      }
                     }
                   </span>
                 </div>
@@ -594,11 +621,18 @@
                 <!-- Fila Inferior: Consumo VRAM -->
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="text-muted font-monospace" style="font-size: 0.76rem; letter-spacing: 0.02em;">
-                    VRAM: @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
-                    {{ ((host.metrics.vram / 100) * parseMemoryGB(gpu.totalMemory)) | number:'1.1-1' }} / {{
-                    parseMemoryGB(gpu.totalMemory) | number:'1.0-0' }} GB
+                    VRAM: @if (parseMemoryGB(gpu?.totalMemory); as totalVram) {
+                      @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
+                      {{ ((host.metrics.vram / 100) * totalVram) | number:'1.1-1' }} / {{ totalVram | number:'1.0-0' }} GB
+                      } @else {
+                      - / {{ totalVram | number:'1.0-0' }} GB
+                      }
                     } @else {
-                    - / {{ parseMemoryGB(gpu.totalMemory) || '-' }} GB
+                      @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
+                      {{ host.metrics.vram | number:'1.0-1' }}%
+                      } @else {
+                      -
+                      }
                     }
                   </span>
                 </div>

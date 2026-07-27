@@ -19,6 +19,7 @@ import { PaginationControlsComponent } from '../../shared/pagination-controls/pa
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
 import { ViewModeToggleComponent } from '../../shared/view-mode-toggle/view-mode-toggle.component';
+import { exportToCsv, exportToXlsx, ExportColumn } from '../../../core/utils/export-utils';
 
 @Component({
   selector: 'app-nodos',
@@ -69,6 +70,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
 
   readonly showFilterPanel = signal<boolean>(false);
   readonly activeDropdown  = signal<string | null>(null);
+  readonly showExportDropdown = signal<boolean>(false);
 
   readonly isLoading = signal<boolean>(false);
   readonly viewMode = signal<'cards' | 'list'>('cards');
@@ -446,16 +448,18 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
 
 
 
-  // Parse total memory string or number (bytes), fallback to 16 GB if null/invalid
-  parseMemoryGB(mem: string | number | null | undefined): number {
-    if (mem === null || mem === undefined) return 16;
+  // Parse total memory string or number (bytes), returns number in GB or null if invalid/absent
+  parseMemoryGB(mem: string | number | null | undefined): number | null {
+    if (mem === null || mem === undefined || mem === '') return null;
     let val = 0;
     if (typeof mem === 'number') {
+      if (mem <= 0) return null;
       val = mem / (1024 * 1024 * 1024);
     } else {
       const match = mem.match(/(\d+(?:\.\d+)?)\s*(GB|MB|KB|B)?/i);
-      if (!match) return 16;
+      if (!match) return null;
       const rawVal = parseFloat(match[1]);
+      if (isNaN(rawVal) || rawVal <= 0) return null;
       const unit = (match[2] || 'GB').toUpperCase();
       if (unit === 'GB') val = rawVal;
       else if (unit === 'MB') val = rawVal / 1024;
@@ -463,7 +467,8 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
       else if (unit === 'B') val = rawVal / (1024 * 1024 * 1024);
       else val = rawVal;
     }
-    return Math.round(val);
+    const rounded = Math.round(val);
+    return rounded > 0 ? rounded : null;
   }
 
   // ── Navigation ────────────────────────────────────────────────────────────────
@@ -552,9 +557,15 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.activeDropdown.set(null);
   }
 
+  toggleExportDropdown(event: Event): void {
+    event.stopPropagation();
+    this.showExportDropdown.update(v => !v);
+  }
+
   @HostListener('document:click')
   closeAllDropdowns(): void {
     this.activeDropdown.set(null);
+    this.showExportDropdown.set(false);
     this.isOldDropdownOpen.set(false);
     this.isNewDropdownOpen.set(false);
   }
@@ -690,5 +701,100 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     const minutes = pad(d.getMinutes());
     const seconds = pad(d.getSeconds());
     return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+  }
+
+  // ── Exportación a Excel (XLSX) y CSV ──────────────────────────────────────────
+  exportNodosXlsx(): void {
+    const columns: ExportColumn[] = [
+      { header: 'Estado', key: 'status' },
+      { header: 'Hostname', key: 'hostname' },
+      { header: 'Cámaras', key: 'cameraCount' },
+      { header: 'Versión', key: 'version' },
+      { header: 'Dirección IP', key: 'ipAddress' },
+      { header: 'Sistema Operativo', key: 'os' },
+      { header: 'Release SO', key: 'release' },
+      { header: 'Arquitectura CPU', key: 'arch' },
+      { header: 'Uso CPU (%)', key: 'cpu' },
+      { header: 'Uso RAM (%)', key: 'ram' },
+      { header: 'Total RAM (GB)', key: 'totalRam' },
+      { header: 'Modelo GPU', key: 'gpuModel' },
+      { header: 'Uso GPU (%)', key: 'gpu' },
+      { header: 'Uso VRAM (%)', key: 'vram' },
+      { header: 'Total VRAM (GB)', key: 'totalVram' },
+      { header: 'Última Vez', key: 'lastSeen' }
+    ];
+
+    const data = this.filteredHosts().map(h => {
+      const isOnline = h.status === 'active' || h.status === 'online';
+      const totalRam = this.parseMemoryGB(h.hwInfo?.totalRam || h.hwInfo?.totalMemory);
+      const totalVram = this.parseMemoryGB(h.gpuInfo?.totalMemory);
+      return {
+        status: isOnline ? 'Online' : 'Offline',
+        hostname: h.hostname,
+        cameraCount: this.getCameraCount(h.fingerprint),
+        version: `v${h.version}`,
+        ipAddress: h.ipAddress,
+        os: h.hwInfo?.system || '-',
+        release: h.hwInfo?.release || '-',
+        arch: h.hwInfo?.arch || '-',
+        cpu: h.metrics?.cpu ?? 0,
+        ram: h.metrics?.memory ?? 0,
+        totalRam: totalRam ? `${totalRam} GB` : '-',
+        gpuModel: h.gpuInfo?.model || '-',
+        gpu: h.metrics?.gpu ?? 0,
+        vram: h.metrics?.vram ?? 0,
+        totalVram: totalVram ? `${totalVram} GB` : '-',
+        lastSeen: this.formatLastSeen(h.metrics?.lastSeen)
+      };
+    });
+
+    exportToXlsx('reporte_nodos_computo.xlsx', 'Nodos de Cómputo', columns, data);
+  }
+
+  exportNodosCsv(): void {
+    const columns: ExportColumn[] = [
+      { header: 'Estado', key: 'status' },
+      { header: 'Hostname', key: 'hostname' },
+      { header: 'Cámaras', key: 'cameraCount' },
+      { header: 'Versión', key: 'version' },
+      { header: 'Dirección IP', key: 'ipAddress' },
+      { header: 'Sistema Operativo', key: 'os' },
+      { header: 'Release SO', key: 'release' },
+      { header: 'Arquitectura CPU', key: 'arch' },
+      { header: 'Uso CPU (%)', key: 'cpu' },
+      { header: 'Uso RAM (%)', key: 'ram' },
+      { header: 'Total RAM (GB)', key: 'totalRam' },
+      { header: 'Modelo GPU', key: 'gpuModel' },
+      { header: 'Uso GPU (%)', key: 'gpu' },
+      { header: 'Uso VRAM (%)', key: 'vram' },
+      { header: 'Total VRAM (GB)', key: 'totalVram' },
+      { header: 'Última Vez', key: 'lastSeen' }
+    ];
+
+    const data = this.filteredHosts().map(h => {
+      const isOnline = h.status === 'active' || h.status === 'online';
+      const totalRam = this.parseMemoryGB(h.hwInfo?.totalRam || h.hwInfo?.totalMemory);
+      const totalVram = this.parseMemoryGB(h.gpuInfo?.totalMemory);
+      return {
+        status: isOnline ? 'Online' : 'Offline',
+        hostname: h.hostname,
+        cameraCount: this.getCameraCount(h.fingerprint),
+        version: `v${h.version}`,
+        ipAddress: h.ipAddress,
+        os: h.hwInfo?.system || '-',
+        release: h.hwInfo?.release || '-',
+        arch: h.hwInfo?.arch || '-',
+        cpu: h.metrics?.cpu ?? 0,
+        ram: h.metrics?.memory ?? 0,
+        totalRam: totalRam ? `${totalRam} GB` : '-',
+        gpuModel: h.gpuInfo?.model || '-',
+        gpu: h.metrics?.gpu ?? 0,
+        vram: h.metrics?.vram ?? 0,
+        totalVram: totalVram ? `${totalVram} GB` : '-',
+        lastSeen: this.formatLastSeen(h.metrics?.lastSeen)
+      };
+    });
+
+    exportToCsv('reporte_nodos_computo.csv', columns, data);
   }
 }

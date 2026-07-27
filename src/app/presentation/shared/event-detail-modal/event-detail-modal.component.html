@@ -147,7 +147,7 @@
               }
               @if (selectedEvent.tiempoPermanencia !== null) {
               <span class="attribute-pill gender-pill text-capitalize">
-                Permanencia: {{ selectedEvent.tiempoPermanencia | number:'1.1-1' }}s
+                Permanencia: {{ selectedEvent.tiempoPermanencia | number:'1.0-2' }}s
               </span>
               }
               @if (selectedEvent.objetosEnArea !== null) {
@@ -190,7 +190,7 @@
             <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
               style="font-size: 0.65rem; letter-spacing: 0.05em;">Descripción</div>
             <p class="text-secondary small mb-0" style="line-height: 1.5; word-break: break-word;">
-              {{ selectedEvent.detalleEvento }}
+              {{ formatDetalleEvento(selectedEvent.detalleEvento) }}
             </p>
           </div>
         </div>

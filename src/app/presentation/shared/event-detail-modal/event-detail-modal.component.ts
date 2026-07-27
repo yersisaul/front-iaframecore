@@ -96,4 +96,16 @@ export class EventDetailModalComponent {
     if (!record?.location) return '#';
     return `https://maps.google.com?q=${record.location.lat},${record.location.lon}`;
   }
+
+  /**
+   * Formatea los números flotantes de muchos decimales dentro de un texto
+   * de descripción (ej: "1796.7047259807587 segundos" → "1,796.70 segundos").
+   */
+  formatDetalleEvento(text: string): string {
+    if (!text) return '';
+    return text.replace(/(\d+\.\d{3,})/g, (match) => {
+      const n = parseFloat(match);
+      return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    });
+  }
 }
