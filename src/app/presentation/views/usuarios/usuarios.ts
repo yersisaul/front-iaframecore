@@ -12,11 +12,12 @@ import { SidebarService } from '../../../core/services/sidebar.service';
 import { User } from '../../../core/domain/entities/user.entity';
 import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 
 @Component({
   selector: 'app-usuarios',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent, EmptyStateComponent],
   templateUrl: './usuarios.html',
   styleUrl: './usuarios.css',
 })
@@ -190,6 +191,28 @@ export class Usuarios implements OnInit, OnDestroy {
     } else {
       this.activeDropdown.set(dropdownName);
     }
+  }
+
+  private backdropMouseDownTarget: EventTarget | null = null;
+
+  onBackdropMouseDown(event: MouseEvent): void {
+    if (event.button === 0) {
+      this.backdropMouseDownTarget = event.target;
+    }
+  }
+
+  onBackdropMouseUp(event: MouseEvent, modalType: 'edit' | 'password' | 'register' | 'role'): void {
+    if (
+      event.button === 0 &&
+      this.backdropMouseDownTarget === event.currentTarget &&
+      event.target === event.currentTarget
+    ) {
+      if (modalType === 'edit') this.closeEditModal();
+      else if (modalType === 'password') this.closePasswordModal();
+      else if (modalType === 'register') this.closeRegisterModal();
+      else if (modalType === 'role') this.closeCreateRoleModal();
+    }
+    this.backdropMouseDownTarget = null;
   }
 
   @HostListener('document:click')
@@ -867,6 +890,11 @@ export class Usuarios implements OnInit, OnDestroy {
   onSearchChange(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.searchQuery.set(input.value);
+  }
+
+  resetSearchAndFilter(): void {
+    this.searchQuery.set('');
+    this.setRoleFilter('TODOS');
   }
 
   private showToast(msg: string, type: 'success' | 'error'): void {

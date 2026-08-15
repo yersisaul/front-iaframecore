@@ -1,7 +1,10 @@
 /* TOKENS */
 :host {
-  display: block;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
   background-color: var(--bg-primary);
   transition: background-color .3s;
   --bg-card: var(--bg-surface);
@@ -9,6 +12,46 @@
 
 .users-view-container {
   animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.roles-container-layout {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  align-items: stretch !important;
+  margin-bottom: 0 !important;
+  overflow: hidden !important;
+}
+
+.premium-roles-matrix-card {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.scrollable-roles-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+}
+
+.scrollable-permissions-table-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
 }
 
 @keyframes fadeIn {
@@ -1150,7 +1193,6 @@ input:checked+.switch-slider:before {
 
 /* Scrollable lists in Roles and Permisos tab */
 .premium-roles-matrix-card {
-  height: calc(100vh - 180px);
   display: flex;
   flex-direction: column;
 }
@@ -1241,34 +1283,41 @@ input:checked+.switch-slider:before {
   transform: scale(1);
 }
 
-/* Badge de cantidad de permisos del rol en la lista */
+/* Badge de cantidad de permisos del rol en la lista (Idéntico a .permission-code-badge) */
 .role-permissions-count-badge {
-  background-color: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
+  font-family: var(--font-monospace, monospace);
+  font-size: 0.72rem;
+  background-color: var(--bg-header-light, #f8fafc);
+  color: var(--text-secondary, #475569);
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e2e8f0);
   font-weight: 500;
   transition: all 0.2s ease;
 }
 
-/* Modo oscuro contrastado */
+/* Modo oscuro adaptativo */
 .dark .role-permissions-count-badge,
-[data-bs-theme="dark"] .role-permissions-count-badge {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-  color: #cbd5e1 !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+[data-bs-theme="dark"] .role-permissions-count-badge,
+[data-theme="dark"] .role-permissions-count-badge {
+  background-color: var(--bg-header-light, #262626) !important;
+  color: var(--text-secondary, #a1a1a1) !important;
+  border-color: var(--border-color, rgba(255, 255, 255, 0.1)) !important;
 }
 
-/* Estado activo */
+/* Estado activo (Rol seleccionado) */
 .role-card-item.active-role-card .role-permissions-count-badge {
-  background-color: rgba(13, 110, 253, 0.12) !important;
+  background-color: rgba(var(--primary-rgb), 0.1) !important;
   color: var(--primary) !important;
-  border-color: rgba(13, 110, 253, 0.2) !important;
+  border-color: rgba(var(--primary-rgb), 0.25) !important;
 }
 
-[data-bs-theme="dark"] .role-card-item.active-role-card .role-permissions-count-badge {
-  background-color: rgba(13, 110, 253, 0.2) !important;
-  color: #93c5fd !important;
-  border-color: rgba(13, 110, 253, 0.3) !important;
+.dark .role-card-item.active-role-card .role-permissions-count-badge,
+[data-bs-theme="dark"] .role-card-item.active-role-card .role-permissions-count-badge,
+[data-theme="dark"] .role-card-item.active-role-card .role-permissions-count-badge {
+  background-color: rgba(var(--primary-rgb), 0.18) !important;
+  color: #60a5fa !important;
+  border-color: rgba(var(--primary-rgb), 0.35) !important;
 }
 
 /* === Animaciones: Crear, Actualizar y Eliminar en Vivo (WebSocket) === */
@@ -1391,9 +1440,17 @@ input:checked+.switch-slider:before {
   font-size: 0.72rem;
   background-color: var(--bg-header-light, #f8fafc);
   color: var(--text-secondary, #475569);
-  padding: 4px 10px;
+  padding: 3px 9px;
   border-radius: 6px;
   border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.dark .permission-code-badge,
+[data-bs-theme="dark"] .permission-code-badge,
+[data-theme="dark"] .permission-code-badge {
+  background-color: var(--bg-header-light, #262626) !important;
+  color: var(--text-secondary, #a1a1a1) !important;
+  border-color: var(--border-color, rgba(255, 255, 255, 0.1)) !important;
 }
 
 @keyframes slideDownChildren {

@@ -1,11 +1,10 @@
 <div class="horarios-container container-fluid py-4 position-relative">
   <!-- CABECERA REFACTORIZADA DRY -->
-  <app-page-header
-    title="Programación de Horarios"
+  <app-page-header title="Programación de Horarios"
     [subtitle]="'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + filteredSchedules().length + '</span> horarios globales registrados.'">
     <ng-container header-actions>
       @if (permissionsService.hasPermission('Horarios', 'crear')) {
-      <button class="btn-migrate-config d-flex align-items-center gap-2" (click)="openCreateScheduleModal()"
+      <button class="btn-header-primary d-flex align-items-center gap-2" (click)="openCreateScheduleModal()"
         id="btn-crear-horario">
         <span class="icon-svg icon-plus" style="width: 16px; height: 16px;"></span>
         <span>Crear Horario</span>
@@ -154,7 +153,7 @@
         <div class="flex-grow-1 overflow-y-auto px-2 py-1" style="min-height: 0;">
 
           <!-- Configuración Operativa Unificada (Bento Grid) -->
-          <div class="d-flex flex-column gap-3 mb-4">
+          <div class="d-flex flex-column gap-3 mb-2">
 
             <!-- Header de Detalles Simplificado y Minimalista (Sin contenedor de tarjeta) -->
             <div class="d-flex align-items-center justify-content-between mb-2 px-1">
@@ -406,22 +405,17 @@
 </div>
 
 <!-- Modal de Confirmación: Eliminar Horario (REUTILIZABLE DRY) -->
-<app-confirm-delete-modal
-  [show]="showDeleteScheduleModal()"
-  title="Eliminar horario"
-  [itemName]="scheduleToDelete()?.name || ''"
-  messagePrefix="¿Estás seguro de que deseas eliminar el horario "
+<app-confirm-delete-modal [show]="showDeleteScheduleModal()" title="Eliminar horario"
+  [itemName]="scheduleToDelete()?.name || ''" messagePrefix="¿Estás seguro de que deseas eliminar el horario "
   messageSuffix="? Esta acción removerá el horario de todas las analíticas asociadas y no se puede deshacer."
-  [isDeleting]="isDeletingSchedule()"
-  (confirm)="confirmDeleteSchedule()"
-  (cancel)="closeDeleteScheduleModal()">
+  [isDeleting]="isDeletingSchedule()" (confirm)="confirmDeleteSchedule()" (cancel)="closeDeleteScheduleModal()">
 </app-confirm-delete-modal>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
   Modal de Registro: Crear Horario
 ══════════════════════════════════════════════════════════════════════════ -->
 @if (showCreateScheduleModal()) {
-<div class="schedule-modal-overlay" (click)="closeCreateScheduleModal()" aria-modal="true" role="dialog">
+<div class="schedule-modal-overlay" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event, 'create')" aria-modal="true" role="dialog">
   <div class="schedule-modal-card" (click)="$event.stopPropagation()">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2">
@@ -616,7 +610,7 @@
   Modal de Edición: Editar Horario
 ══════════════════════════════════════════════════════════════════════════ -->
 @if (showEditScheduleModal()) {
-<div class="schedule-modal-overlay" (click)="closeEditScheduleModal()" aria-modal="true" role="dialog">
+<div class="schedule-modal-overlay" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event, 'edit')" aria-modal="true" role="dialog">
   <div class="schedule-modal-card" (click)="$event.stopPropagation()">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2">

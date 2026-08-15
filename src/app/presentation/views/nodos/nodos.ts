@@ -19,11 +19,13 @@ import { PaginationControlsComponent } from '../../shared/pagination-controls/pa
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
 import { ViewModeToggleComponent } from '../../shared/view-mode-toggle/view-mode-toggle.component';
+import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
+import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { exportToCsv, exportToXlsx, ExportColumn } from '../../../core/utils/export-utils';
 
 @Component({
   selector: 'app-nodos',
-  imports: [CommonModule, ReactiveFormsModule, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent],
+  imports: [CommonModule, ReactiveFormsModule, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, FilterActionsComponent, EmptyStateComponent],
   templateUrl: './nodos.html',
   styleUrl: './nodos.css',
 })
@@ -53,23 +55,23 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly searchTerm = signal<string>('');
 
-  readonly filterStatus  = signal<string>('all');
-  readonly filterOS      = signal<string>('all');
-  readonly filterArch    = signal<string>('all');
-  readonly filterGPU     = signal<string>('all');
-  readonly filterVram    = signal<string>('all');
+  readonly filterStatus = signal<string>('all');
+  readonly filterOS = signal<string>('all');
+  readonly filterArch = signal<string>('all');
+  readonly filterGPU = signal<string>('all');
+  readonly filterVram = signal<string>('all');
   readonly filterVersion = signal<string>('all');
 
   // Temp copies shown in the drawer (committed on "Aplicar")
-  readonly tempFilterStatus  = signal<string>('all');
-  readonly tempFilterOS      = signal<string>('all');
-  readonly tempFilterArch    = signal<string>('all');
-  readonly tempFilterGPU     = signal<string>('all');
-  readonly tempFilterVram    = signal<string>('all');
+  readonly tempFilterStatus = signal<string>('all');
+  readonly tempFilterOS = signal<string>('all');
+  readonly tempFilterArch = signal<string>('all');
+  readonly tempFilterGPU = signal<string>('all');
+  readonly tempFilterVram = signal<string>('all');
   readonly tempFilterVersion = signal<string>('all');
 
   readonly showFilterPanel = signal<boolean>(false);
-  readonly activeDropdown  = signal<string | null>(null);
+  readonly activeDropdown = signal<string | null>(null);
   readonly showExportDropdown = signal<boolean>(false);
 
   readonly isLoading = signal<boolean>(false);
@@ -116,7 +118,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   readonly compatibleTargetHosts = computed(() => {
     const oldFp = this.selectedOldFingerprint();
     const term = this.targetSearchText().trim().toLowerCase();
-    
+
     // Si no hay origen seleccionado, mostramos todos los hosts; de lo contrario, excluimos el origen
     const candidates = oldFp
       ? this.hostService.allHosts().filter(h => h.fingerprint !== oldFp)
@@ -152,21 +154,21 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
 
   // ── Client-side filtered list ────────────────────────────────────────────────
   readonly filteredHosts = computed<Host[]>(() => {
-    const all  = this.hostService.allHosts();
+    const all = this.hostService.allHosts();
     const term = this.searchTerm().trim().toLowerCase();
-    const st   = this.filterStatus();
-    const os   = this.filterOS();
+    const st = this.filterStatus();
+    const os = this.filterOS();
     const arch = this.filterArch();
-    const gpu  = this.filterGPU();
+    const gpu = this.filterGPU();
     const vram = this.filterVram();
-    const ver  = this.filterVersion();
+    const ver = this.filterVersion();
 
     const filtered = all.filter(h => {
       // Search by hostname, IP or fingerprint (substring matching)
       if (term) {
         const matchesHostname = h.hostname.toLowerCase().includes(term);
-        const matchesIp       = h.ipAddress.toLowerCase().includes(term);
-        const matchesFp       = h.fingerprint.toLowerCase().includes(term);
+        const matchesIp = h.ipAddress.toLowerCase().includes(term);
+        const matchesFp = h.fingerprint.toLowerCase().includes(term);
         if (!matchesHostname && !matchesIp && !matchesFp) return false;
       }
       // Status filter — backend uses 'online'/'offline' but also 'active'/'inactive'
@@ -176,11 +178,11 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
         if (st === 'inactive' && isOnline) return false;
       }
       // Hardware filters
-      if (os   !== 'all' && h.hwInfo?.system !== os)          return false;
-      if (arch !== 'all' && h.hwInfo?.arch   !== arch)        return false;
-      if (gpu  !== 'all' && h.gpuInfo?.model !== gpu)         return false;
-      if (vram !== 'all' && h.gpuInfo?.totalMemory !== vram)  return false;
-      if (ver  !== 'all' && h.version !== ver)                return false;
+      if (os !== 'all' && h.hwInfo?.system !== os) return false;
+      if (arch !== 'all' && h.hwInfo?.arch !== arch) return false;
+      if (gpu !== 'all' && h.gpuInfo?.model !== gpu) return false;
+      if (vram !== 'all' && h.gpuInfo?.totalMemory !== vram) return false;
+      if (ver !== 'all' && h.version !== ver) return false;
       return true;
     });
 
@@ -188,25 +190,25 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     return filtered.sort((a, b) => {
       const aOnline = a.status === 'online' || a.status === 'active' ? 1 : 0;
       const bOnline = b.status === 'online' || b.status === 'active' ? 1 : 0;
-      
+
       if (bOnline !== aOnline) {
         return bOnline - aOnline;
       }
-      
+
       return a.hostname.toLowerCase().localeCompare(b.hostname.toLowerCase());
     });
   });
 
   // ── Client-side pagination over filtered results ─────────────────────────────
   readonly pagedHosts = computed<Host[]>(() => {
-    const list  = this.filteredHosts();
+    const list = this.filteredHosts();
     const start = (this.currentPage() - 1) * this.limit();
     return list.slice(start, start + this.limit());
   });
 
   readonly totalPages = computed<number>(() => {
     const total = this.filteredHosts().length;
-    const lim   = this.limit();
+    const lim = this.limit();
     return total > 0 ? Math.ceil(total / lim) : 1;
   });
 
@@ -239,9 +241,9 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   });
 
   // ── Resize observer ──────────────────────────────────────────────────────────
-  private resizeSubject      = new Subject<number>();
+  private resizeSubject = new Subject<number>();
   private resizeSubscription?: Subscription;
-  private resizeObserver?:    ResizeObserver;
+  private resizeObserver?: ResizeObserver;
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   private estimateContainerWidth(): number {
@@ -269,17 +271,6 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    const qp = this.route.snapshot.queryParams;
-    if (qp['search'])  { this.searchControl.setValue(qp['search']); this.searchTerm.set(qp['search']); }
-    if (qp['status'])  this.filterStatus.set(qp['status']);
-    if (qp['os'])      this.filterOS.set(qp['os']);
-    if (qp['arch'])    this.filterArch.set(qp['arch']);
-    if (qp['gpu'])     this.filterGPU.set(qp['gpu']);
-    if (qp['vram'])    this.filterVram.set(qp['vram']);
-    if (qp['version']) this.filterVersion.set(qp['version']);
-    if (qp['page'])    this.currentPage.set(Math.max(1, parseInt(qp['page'], 10) || 1));
-    if (qp['limit'])   this.limit.set(parseInt(qp['limit'], 10) || this.limit());
-
     // Wire searchControl → searchTerm signal with debounce
     this.searchControl.valueChanges.pipe(
       debounceTime(250),
@@ -289,7 +280,6 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
       this.searchTerm.set(val);
       // Reset to page 1 when search changes
       if (this.currentPage() !== 1) this.currentPage.set(1);
-      this.syncUrl();
     });
   }
 
@@ -363,27 +353,6 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     if (this.copiedTimeout) clearTimeout(this.copiedTimeout);
   }
 
-  // ── URL sync ──────────────────────────────────────────────────────────────────
-  private syncUrl(): void {
-    const defaultLimit = this.columns() * 10;
-    const qp: Record<string, any> = {
-      page:    this.currentPage() > 1       ? this.currentPage()  : null,
-      limit:   this.limit() !== defaultLimit ? this.limit()        : null,
-      search:  this.searchTerm() || null,
-      status:  this.filterStatus()  !== 'all' ? this.filterStatus()  : null,
-      os:      this.filterOS()      !== 'all' ? this.filterOS()      : null,
-      arch:    this.filterArch()    !== 'all' ? this.filterArch()    : null,
-      gpu:     this.filterGPU()     !== 'all' ? this.filterGPU()     : null,
-      vram:    this.filterVram()    !== 'all' ? this.filterVram()    : null,
-      version: this.filterVersion() !== 'all' ? this.filterVersion() : null,
-    };
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: qp,
-      queryParamsHandling: 'merge'
-    });
-  }
-
   // ── Resize handling ───────────────────────────────────────────────────────────
   private adjustColumnsAndLimit(containerWidth: number): void {
     if (containerWidth <= 0) return;
@@ -398,7 +367,6 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
       this.columns.set(newCols);
       this.limit.set(newCols * multiplier);
       this.currentPage.set(1);
-      this.syncUrl();
     }
   }
 
@@ -406,21 +374,18 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   setPage(page: number): void {
     if (page >= 1 && page <= this.totalPages()) {
       this.currentPage.set(page);
-      this.syncUrl();
     }
   }
 
   nextPage(): void {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update(p => p + 1);
-      this.syncUrl();
     }
   }
 
   prevPage(): void {
     if (this.currentPage() > 1) {
       this.currentPage.update(p => p - 1);
-      this.syncUrl();
     }
   }
 
@@ -443,10 +408,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     const newLimit = parseInt((event.target as HTMLSelectElement).value, 10);
     this.limit.set(newLimit);
     this.currentPage.set(1);
-    this.syncUrl();
   }
-
-
 
   // Parse total memory string or number (bytes), returns number in GB or null if invalid/absent
   parseMemoryGB(mem: string | number | null | undefined): number | null {
@@ -483,12 +445,12 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   // ── Filter panel ──────────────────────────────────────────────────────────────
   hasActiveFilters(): boolean {
     return this.searchTerm().trim() !== '' ||
-           this.filterStatus()  !== 'all' ||
-           this.filterOS()      !== 'all' ||
-           this.filterArch()    !== 'all' ||
-           this.filterGPU()     !== 'all' ||
-           this.filterVram()    !== 'all' ||
-           this.filterVersion() !== 'all';
+      this.filterStatus() !== 'all' ||
+      this.filterOS() !== 'all' ||
+      this.filterArch() !== 'all' ||
+      this.filterGPU() !== 'all' ||
+      this.filterVram() !== 'all' ||
+      this.filterVersion() !== 'all';
   }
 
   toggleFilterPanel(): void {
@@ -512,30 +474,28 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.filterVram.set(this.tempFilterVram());
     this.filterVersion.set(this.tempFilterVersion());
     this.currentPage.set(1);
-    this.syncUrl();
   }
 
   resetFilters(): void {
     this.searchControl.setValue('');
     this.searchTerm.set('');
-    this.filterStatus.set('all');  this.tempFilterStatus.set('all');
-    this.filterOS.set('all');      this.tempFilterOS.set('all');
-    this.filterArch.set('all');    this.tempFilterArch.set('all');
-    this.filterGPU.set('all');     this.tempFilterGPU.set('all');
-    this.filterVram.set('all');    this.tempFilterVram.set('all');
+    this.filterStatus.set('all'); this.tempFilterStatus.set('all');
+    this.filterOS.set('all'); this.tempFilterOS.set('all');
+    this.filterArch.set('all'); this.tempFilterArch.set('all');
+    this.filterGPU.set('all'); this.tempFilterGPU.set('all');
+    this.filterVram.set('all'); this.tempFilterVram.set('all');
     this.filterVersion.set('all'); this.tempFilterVersion.set('all');
     this.currentPage.set(1);
     this.activeDropdown.set(null);
-    this.syncUrl();
   }
 
   readonly hasPendingFilterChanges = computed<boolean>(() => {
-    return this.tempFilterStatus()  !== this.filterStatus()  ||
-           this.tempFilterOS()      !== this.filterOS()      ||
-           this.tempFilterArch()    !== this.filterArch()    ||
-           this.tempFilterGPU()     !== this.filterGPU()     ||
-           this.tempFilterVram()    !== this.filterVram()    ||
-           this.tempFilterVersion() !== this.filterVersion();
+    return this.tempFilterStatus() !== this.filterStatus() ||
+      this.tempFilterOS() !== this.filterOS() ||
+      this.tempFilterArch() !== this.filterArch() ||
+      this.tempFilterGPU() !== this.filterGPU() ||
+      this.tempFilterVram() !== this.filterVram() ||
+      this.tempFilterVersion() !== this.filterVersion();
   });
 
   // Dropdown helpers
@@ -547,11 +507,11 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   selectFilterValue(filterName: string, value: string, event?: Event): void {
     if (event) event.stopPropagation();
     switch (filterName) {
-      case 'status':  this.tempFilterStatus.set(value);  break;
-      case 'os':      this.tempFilterOS.set(value);      break;
-      case 'arch':    this.tempFilterArch.set(value);    break;
-      case 'gpu':     this.tempFilterGPU.set(value);     break;
-      case 'vram':    this.tempFilterVram.set(value);    break;
+      case 'status': this.tempFilterStatus.set(value); break;
+      case 'os': this.tempFilterOS.set(value); break;
+      case 'arch': this.tempFilterArch.set(value); break;
+      case 'gpu': this.tempFilterGPU.set(value); break;
+      case 'vram': this.tempFilterVram.set(value); break;
       case 'version': this.tempFilterVersion.set(value); break;
     }
     this.activeDropdown.set(null);
@@ -611,6 +571,25 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     }
     this.selectedNewFingerprint.set(fingerprint);
     this.isNewDropdownOpen.set(false);
+  }
+
+  private backdropMouseDownTarget: EventTarget | null = null;
+
+  onBackdropMouseDown(event: MouseEvent): void {
+    if (event.button === 0) {
+      this.backdropMouseDownTarget = event.target;
+    }
+  }
+
+  onBackdropMouseUp(event: MouseEvent): void {
+    if (
+      event.button === 0 &&
+      this.backdropMouseDownTarget === event.currentTarget &&
+      event.target === event.currentTarget
+    ) {
+      this.closeMigrateModal();
+    }
+    this.backdropMouseDownTarget = null;
   }
 
   clearOldSelection(event: any): void {
@@ -673,7 +652,6 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.viewMode.set(mode);
     localStorage.setItem('nodos_view_mode', mode);
     this.currentPage.set(1);
-    this.syncUrl();
   }
 
   copyRowContent(value: string, uniqueKey: string): void {

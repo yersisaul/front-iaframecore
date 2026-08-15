@@ -1,9 +1,8 @@
-<div class="users-view-container container-fluid py-4 position-relative">
+<div class="users-view-container container-fluid py-4 position-relative d-flex flex-column h-100 min-h-0">
   <!-- Header Section REFACTORIZADO DRY -->
-  <app-page-header
-    title="Gestión de Accesos"
+  <app-page-header title="Gestión de Accesos"
     [subtitle]="activeTab() === 'usuarios' ? 'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + filteredUsers().length + '</span> cuentas de acceso en el sistema.' : 'Configura y define permisos específicos en tiempo real para cada rol del sistema.'">
-    
+
     <ng-container header-actions>
       <!-- Tabs "Cuentas de Usuarios" y "Roles y Permisos" -->
       @if (permissionsService.hasPermission('Usuarios', 'ver') && permissionsService.hasPermission('Roles', 'ver')) {
@@ -23,15 +22,16 @@
 
       <!-- Botón de acción principal correspondiente -->
       @if (activeTab() === 'usuarios') {
-      @if (permissionsService.hasPermission('Usuarios', 'crear') || permissionsService.hasPermission('Usuarios', 'agregar')) {
-      <button class="btn-migrate-config" (click)="openRegisterModal()">
+      @if (permissionsService.hasPermission('Usuarios', 'crear') || permissionsService.hasPermission('Usuarios',
+      'agregar')) {
+      <button class="btn-header-primary" (click)="openRegisterModal()">
         <span class="icon-svg icon-user-plus" style="width: 16px; height: 16px;"></span>
         <span class="d-none d-md-inline">Nuevo Usuario</span>
       </button>
       }
       } @else {
       @if (permissionsService.hasPermission('Roles', 'crear') || permissionsService.hasPermission('Roles', 'agregar')) {
-      <button class="btn-migrate-config" (click)="openCreateRoleModal()">
+      <button class="btn-header-primary" (click)="openCreateRoleModal()">
         <span class="icon-svg icon-plus" style="width: 16px; height: 16px;"></span>
         <span>Nuevo rol</span>
       </button>
@@ -42,12 +42,12 @@
 
   <!-- Fila 2: Búsqueda y Filtros (Solo para la pestaña de Usuarios) -->
   @if (activeTab() === 'usuarios') {
-  <div class="header-row-bottom d-flex align-items-center gap-3 mt-3 mb-4">
+  <div class="header-row-bottom d-flex align-items-center gap-3 mb-4 flex-shrink-0">
     <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1 bg-surface">
       <div class="search-input-wrapper position-relative d-flex align-items-center pl-1 flex-grow-1">
         <span class="icon-svg icon-search search-icon-prefix text-muted"
           style="width: 18px; height: 18px; opacity: 0.5;"></span>
-        <input type="text" [value]="searchQuery()" (input)="onSearchChange($event)" placeholder="Buscar usuario..."
+        <input #searchInput type="text" (input)="onSearchChange($event)" placeholder="Buscar usuario..."
           class="search-input-control border-0 ms-2"
           style="font-size: 0.82rem; outline: none; width: 100%; background: transparent; color: var(--text-primary);" />
       </div>
@@ -95,112 +95,120 @@
 
   <!-- TAB: USUARIOS -->
   @if (activeTab() === 'usuarios' && permissionsService.hasPermission('Usuarios', 'ver')) {
-  <!-- Main Bento Grid Layout of Users -->
-  <div class="users-grid mb-4">
-    @if (isLoading()) {
-    <div class="col-12 text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Cargando usuarios...</span>
+  <div class="users-tab-wrapper flex-grow-1 min-h-0 overflow-y-auto custom-scrollbar">
+    <!-- Main Bento Grid Layout of Users -->
+    <div class="users-grid mb-4 pe-1">
+      @if (isLoading()) {
+      <div class="col-12 text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando usuarios...</span>
+        </div>
       </div>
-    </div>
-    } @else if (errorMessage()) {
-    <div class="col-12 text-center py-5 text-danger fw-semibold">
-      <span class="icon-svg icon-info-circle me-2" style="width: 24px; height: 24px;"></span>
-      {{ errorMessage() }}
-    </div>
-    } @else if (filteredUsers().length === 0) {
-    <div class="col-12 text-center py-5 text-muted border rounded bg-card">
-      No se encontraron usuarios que coincidan con la búsqueda.
-    </div>
-    } @else {
-    @for (user of filteredUsers(); track user.id) {
-    <div class="card user-card h-100" [ngStyle]="getRoleStyle(user.role)"
-      [class.user-card--new]="userService.newRecordIds().has(user.id)"
-      [class.user-card--updated]="userService.updatedRecordIds().has(user.id)"
-      [class.user-card--deleting]="userService.deletingRecordIds().has(user.id)">
-      <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
-        <div>
-          <!-- Header: Avatar Initials + Role Badge -->
-          <div class="user-header-block d-flex align-items-center justify-content-between pb-3 mb-3">
-            <div class="d-flex align-items-center gap-3">
-              <div class="avatar-initials-wrap d-flex align-items-center justify-content-center fw-bold fs-5">
-                {{ (user.firstName?.[0] || user.name?.[0] || 'U') | uppercase }}{{ (user.lastName?.[0] || '') |
-                uppercase }}
+      } @else if (errorMessage()) {
+      <div class="col-12 text-center py-5 text-danger fw-semibold">
+        <span class="icon-svg icon-info-circle me-2" style="width: 24px; height: 24px;"></span>
+        {{ errorMessage() }}
+      </div>
+      } @else if (filteredUsers().length === 0) {
+      <div class="col-12">
+        <app-empty-state title="No se encontraron usuarios"
+          description="No se encontraron cuentas de acceso que coincidan con la búsqueda o filtro activo."
+          iconClass="icon-usuarios" actionText="Restablecer Filtros"
+          [showAction]="selectedRoleFilter() !== 'TODOS' || searchQuery() !== ''"
+          (action)="resetSearchAndFilter()">
+        </app-empty-state>
+      </div>
+      } @else {
+      @for (user of filteredUsers(); track user.id) {
+      <div class="card user-card h-100" [ngStyle]="getRoleStyle(user.role)"
+        [class.user-card--new]="userService.newRecordIds().has(user.id)"
+        [class.user-card--updated]="userService.updatedRecordIds().has(user.id)"
+        [class.user-card--deleting]="userService.deletingRecordIds().has(user.id)">
+        <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
+          <div>
+            <!-- Header: Avatar Initials + Role Badge -->
+            <div class="user-header-block d-flex align-items-center justify-content-between pb-3 mb-3">
+              <div class="d-flex align-items-center gap-3">
+                <div class="avatar-initials-wrap d-flex align-items-center justify-content-center fw-bold fs-5">
+                  {{ (user.firstName?.[0] || user.name?.[0] || 'U') | uppercase }}{{ (user.lastName?.[0] || '') |
+                  uppercase }}
+                </div>
+                <div>
+                  <h5 class="user-name fw-bold mb-0 text-truncate" style="max-width: 160px;" [title]="user.name">
+                    {{ user.name || 'Sin nombre' }}
+                  </h5>
+                  <span class="user-email text-muted small text-truncate d-block" style="max-width: 160px;"
+                    [title]="user.email">
+                    {{ user.email }}
+                  </span>
+                </div>
               </div>
-              <div>
-                <h5 class="user-name fw-bold mb-0 text-truncate" style="max-width: 160px;" [title]="user.name">
-                  {{ user.name || 'Sin nombre' }}
-                </h5>
-                <span class="user-email text-muted small text-truncate d-block" style="max-width: 160px;"
-                  [title]="user.email">
-                  {{ user.email }}
+
+              <span class="role-badge">
+                {{ user.role | uppercase }}
+              </span>
+            </div>
+
+            <!-- Identity Stats Grid -->
+            <div class="user-info-block d-flex flex-column gap-2 mb-3">
+              <div class="info-row d-flex justify-content-between">
+                <span class="info-label">UUID</span>
+                <span class="info-value font-monospace text-truncate text-end" style="max-width: 170px;"
+                  [title]="user.id">
+                  {{ user.id }}
+                </span>
+              </div>
+              <div class="info-row d-flex justify-content-between">
+                <span class="info-label">Fecha Creación</span>
+                <span class="info-value font-monospace text-truncate text-end" style="max-width: 170px;">
+                  {{ user.createdAt | date:'dd/MM/yyyy HH:mm:ss' }} UTC
                 </span>
               </div>
             </div>
-
-            <span class="role-badge">
-              {{ user.role | uppercase }}
-            </span>
           </div>
 
-          <!-- Identity Stats Grid -->
-          <div class="user-info-block d-flex flex-column gap-2 mb-3">
-            <div class="info-row d-flex justify-content-between">
-              <span class="info-label">UUID</span>
-              <span class="info-value font-monospace text-truncate text-end" style="max-width: 170px;"
-                [title]="user.id">
-                {{ user.id }}
-              </span>
-            </div>
-            <div class="info-row d-flex justify-content-between">
-              <span class="info-label">Fecha Creación</span>
-              <span class="info-value font-monospace text-truncate text-end" style="max-width: 170px;">
-                {{ user.createdAt | date:'dd/MM/yyyy HH:mm:ss' }} UTC
-              </span>
-            </div>
+          <!-- Action Controls Group -->
+          <div class="actions-group d-flex justify-content-end gap-2 mt-2">
+            @if (permissionsService.hasPermission('Usuarios', 'editar')) {
+            <!-- Editar datos -->
+            <button class="btn-action-icon btn-action-edit" (click)="openEditModal(user)" title="Editar Usuario"
+              aria-label="Editar Usuario">
+              <span class="icon-svg icon-edit" style="width: 14px; height: 14px;"></span>
+            </button>
+            <!-- Cambiar clave -->
+            <button class="btn-action-icon btn-action-password" (click)="openPasswordModal(user)"
+              title="Cambiar Contraseña" aria-label="Cambiar Contraseña">
+              <span class="icon-svg icon-lock" style="width: 14px; height: 14px;"></span>
+            </button>
+            }
+            @if (permissionsService.hasPermission('Usuarios', 'eliminar')) {
+            <!-- Eliminar -->
+            <button class="btn-action-icon btn-action-delete" (click)="openDeleteModal(user)" title="Eliminar Usuario"
+              aria-label="Eliminar Usuario">
+              <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+            </button>
+            }
           </div>
-        </div>
-
-        <!-- Action Controls Group -->
-        <div class="actions-group d-flex justify-content-end gap-2 mt-2">
-          @if (permissionsService.hasPermission('Usuarios', 'editar')) {
-          <!-- Editar datos -->
-          <button class="btn-action-icon btn-action-edit" (click)="openEditModal(user)" title="Editar Usuario"
-            aria-label="Editar Usuario">
-            <span class="icon-svg icon-edit" style="width: 14px; height: 14px;"></span>
-          </button>
-          <!-- Cambiar clave -->
-          <button class="btn-action-icon btn-action-password" (click)="openPasswordModal(user)"
-            title="Cambiar Contraseña" aria-label="Cambiar Contraseña">
-            <span class="icon-svg icon-lock" style="width: 14px; height: 14px;"></span>
-          </button>
-          }
-          @if (permissionsService.hasPermission('Usuarios', 'eliminar')) {
-          <!-- Eliminar -->
-          <button class="btn-action-icon btn-action-delete" (click)="openDeleteModal(user)" title="Eliminar Usuario"
-            aria-label="Eliminar Usuario">
-            <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-          </button>
-          }
         </div>
       </div>
+      }
+      }
     </div>
-    }
-    }
   </div>
   }
 
   <!-- TAB: ROLES Y PERMISOS -->
   @if (activeTab() === 'roles' && permissionsService.hasPermission('Roles', 'ver')) {
-  <div class="row g-4">
+  <div class="row g-4 roles-container-layout flex-grow-1 min-h-0">
     <!-- Panel izquierdo: Lista de Roles -->
-    <div class="col-md-4">
-      <div class="card premium-roles-matrix-card border shadow-sm rounded-4 overflow-hidden bg-card p-4">
-        <div class="mb-3">
+    <div class="col-md-4 d-flex flex-column min-h-0">
+      <div
+        class="card premium-roles-matrix-card border shadow-sm rounded-4 bg-card p-4 flex-grow-1 d-flex flex-column min-h-0 overflow-hidden">
+        <div class="mb-3 flex-shrink-0">
           <h5 class="fw-bold mb-0 text-body">Roles del Sistema</h5>
           <p class="text-muted mb-0 small mt-1">Selecciona un rol para gestionar sus permisos.</p>
         </div>
-        <div class="scrollable-roles-list">
+        <div class="scrollable-roles-list custom-scrollbar pe-1 flex-grow-1 min-h-0 overflow-y-auto">
           @if (availableRoles().length === 0) {
           <div class="text-center text-muted py-4">
             <div class="spinner-border spinner-border-sm" role="status"></div>
@@ -221,7 +229,8 @@
               <p class="text-muted mb-0 small mt-1">{{ rol.descripcion }}</p>
             </div>
             <div class="d-flex align-items-center gap-2">
-              <span class="badge role-permissions-count-badge small">{{ getActivePermissionsCount(rol) }}
+              <span class="permission-code-badge role-permissions-count-badge text-truncate">{{
+                getActivePermissionsCount(rol) }}
                 permisos</span>
 
               @if (!isSystemRole(rol.nombre) && permissionsService.hasPermission('Roles', 'eliminar')) {
@@ -238,28 +247,19 @@
     </div>
 
     <!-- Panel derecho: Permisos del rol seleccionado -->
-    <div class="col-md-8">
+    <div class="col-md-8 d-flex flex-column min-h-0">
       @if (!selectedRoleForEdit()) {
       <div
-        class="card premium-roles-matrix-card border shadow-sm rounded-4 bg-card d-flex align-items-center justify-content-center p-5 position-relative overflow-hidden">
-        <div class="text-center position-relative px-4" style="max-width: 440px;">
-          <!-- Contenedor del icono con fondo suave -->
-          <div class="mx-auto mb-4 d-flex align-items-center justify-content-center"
-            style="width: 72px; height: 72px; border-radius: 20px; background: rgba(13, 110, 253, 0.08); border: 1px solid rgba(13, 110, 253, 0.15); box-shadow: 0 8px 20px rgba(13, 110, 253, 0.03);">
-            <span class="icon-svg icon-lock"
-              style="width: 32px; height: 32px; background-color: var(--primary);"></span>
-          </div>
-
-          <h6 class="fw-bold text-body fs-6 mb-2" style="letter-spacing: -0.01em;">Gestión de Permisos</h6>
-          <p class="text-muted small mb-0 lh-lg" style="font-size: 0.82rem;">
-            Selecciona un rol de la columna izquierda para auditar, administrar y actualizar su matriz de permisos y
-            facultades operativas de forma segura.
-          </p>
-        </div>
+        class="card premium-roles-matrix-card border shadow-sm rounded-4 bg-card d-flex align-items-center justify-content-center p-4 flex-grow-1 min-h-0 overflow-hidden">
+        <app-empty-state title="Gestión de Permisos de Roles"
+          description="Selecciona un rol de la columna izquierda para auditar, administrar y actualizar su matriz de permisos y facultades operativas."
+          iconClass="icon-lock" [showAction]="false">
+        </app-empty-state>
       </div>
       } @else {
-      <div class="card premium-roles-matrix-card border shadow-sm rounded-4 overflow-hidden bg-card">
-        <div class="card-header p-4 border-bottom bg-transparent">
+      <div
+        class="card premium-roles-matrix-card border shadow-sm rounded-4 bg-card overflow-hidden flex-grow-1 d-flex flex-column min-h-0">
+        <div class="card-header p-4 border-bottom bg-transparent flex-shrink-0">
           <h5 class="fw-bold mb-0 text-body">Permisos: {{ selectedRoleForEdit()!.nombre }}</h5>
           @if (isSystemRole(selectedRoleForEdit()!.nombre)) {
           <p class="text-warning mb-0 small mt-1 d-flex align-items-center">
@@ -272,7 +272,8 @@
             tiempo real con el backend.</p>
           }
         </div>
-        <div class="card-body p-0 scrollable-permissions-table-container custom-scrollbar"
+        <div
+          class="card-body p-0 scrollable-permissions-table-container custom-scrollbar flex-grow-1 min-h-0 overflow-y-auto"
           style="background-color: var(--bg-card, #ffffff);">
           <div class="permissions-groups-container" style="display: flex; flex-direction: column;">
             @if (permissionsService.availablePermissions().length === 0) {
@@ -402,7 +403,8 @@
 
   <!-- MODAL: EDITAR DATOS DE USUARIO -->
   @if (showEditModal()) {
-  <div class="modal-premium-overlay" (click)="closeEditModal()">
+  <div class="modal-premium-overlay" (mousedown)="onBackdropMouseDown($event)"
+    (mouseup)="onBackdropMouseUp($event, 'edit')">
     <div class="modal-premium-card" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
       <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4">
@@ -498,7 +500,8 @@
 
   <!-- MODAL: CAMBIAR CONTRASEÑA -->
   @if (showPasswordModal()) {
-  <div class="modal-premium-overlay" (click)="closePasswordModal()">
+  <div class="modal-premium-overlay" (mousedown)="onBackdropMouseDown($event)"
+    (mouseup)="onBackdropMouseUp($event, 'password')">
     <div class="modal-premium-card" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
       <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4">
@@ -574,20 +577,17 @@
   }
 
   <!-- MODAL: CONFIRMACIÓN DE ELIMINACIÓN DE USUARIO (REUTILIZABLE DRY) -->
-  <app-confirm-delete-modal
-    [show]="showDeleteModal()"
-    title="Eliminar usuario"
+  <app-confirm-delete-modal [show]="showDeleteModal()" title="Eliminar usuario"
     [itemName]="selectedUser()?.name ? selectedUser()!.name + ' (' + selectedUser()!.email + ')' : ''"
     messagePrefix="¿Estás seguro de que deseas eliminar permanentemente la cuenta de "
-    messageSuffix="? Esta acción no se puede deshacer."
-    [isDeleting]="isSaving()"
-    (confirm)="deleteUser()"
+    messageSuffix="? Esta acción no se puede deshacer." [isDeleting]="isSaving()" (confirm)="deleteUser()"
     (cancel)="closeDeleteModal()">
   </app-confirm-delete-modal>
 
   <!-- MODAL: REGISTRAR NUEVO USUARIO -->
   @if (showRegisterModal()) {
-  <div class="modal-premium-overlay" (click)="closeRegisterModal()">
+  <div class="modal-premium-overlay" (mousedown)="onBackdropMouseDown($event)"
+    (mouseup)="onBackdropMouseUp($event, 'register')">
     <div class="modal-premium-card" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
       <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4">
@@ -697,7 +697,8 @@
 
   <!-- MODAL: CREAR NUEVO ROL -->
   @if (showCreateRoleModal()) {
-  <div class="modal-premium-overlay" (click)="closeCreateRoleModal()">
+  <div class="modal-premium-overlay" (mousedown)="onBackdropMouseDown($event)"
+    (mouseup)="onBackdropMouseUp($event, 'role')">
     <div class="modal-premium-card" style="max-width: 600px;" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
       <div class="modal-premium-header d-flex align-items-center justify-content-between mb-4">
@@ -766,14 +767,10 @@
   </div>
   }
   <!-- MODAL: CONFIRMACIÓN DE ELIMINACIÓN DE ROL (REUTILIZABLE DRY) -->
-  <app-confirm-delete-modal
-    [show]="showDeleteRoleModal()"
-    title="Eliminar rol"
+  <app-confirm-delete-modal [show]="showDeleteRoleModal()" title="Eliminar rol"
     [itemName]="roleToDelete()?.nombre || ''"
     messagePrefix="¿Estás seguro de que deseas eliminar permanentemente el rol de sistema "
     messageSuffix="? Esta acción removerá el rol y dejará sin permisos asociados a los usuarios que lo posean. Esta acción no se puede deshacer."
-    [isDeleting]="isDeletingRole()"
-    (confirm)="deleteRoleSubmit()"
-    (cancel)="closeDeleteRoleModal()">
+    [isDeleting]="isDeletingRole()" (confirm)="deleteRoleSubmit()" (cancel)="closeDeleteRoleModal()">
   </app-confirm-delete-modal>
 </div>

@@ -1,14 +1,26 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, inject, signal, computed, HostListener, ViewChild, ElementRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
+import { Subject, Subscription, forkJoin } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { ListService } from '../../../core/services/list.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { List, ListDetail } from '../../../core/domain/entities/list.models';
 import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
+import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
+import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
+
+export interface FaceUploadResult {
+  file: File;
+  name: string;
+  previewUrl: string;
+  errorMessage?: string;
+  detailId?: string;
+}
 
 export interface SubjectDetectionPostura {
   postura: string;
@@ -50,11 +62,11 @@ export interface SubjectImportDraft {
 @Component({
   selector: 'app-listas',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent, FilterActionsComponent, EmptyStateComponent, PaginationControlsComponent],
   templateUrl: './listas.html',
   styleUrl: './listas.css'
 })
-export class Listas implements OnInit, OnDestroy {
+export class Listas implements OnInit, AfterViewInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private listService = inject(ListService);
   private sidebarService = inject(SidebarService);
@@ -68,7 +80,7 @@ export class Listas implements OnInit, OnDestroy {
   });
 
   readonly selectedListId = signal<string | null>(null);
-  
+
   readonly listNewIds = this.listService.newRecordIds;
   readonly listUpdatedIds = this.listService.updatedRecordIds;
   readonly listDeletingIds = this.listService.deletingRecordIds;
@@ -87,12 +99,39 @@ export class Listas implements OnInit, OnDestroy {
   readonly subjectToDeleteId = signal<string | null>(null);
   readonly subjectToDeleteName = signal<string | null>(null);
   readonly isDeletingSubject = signal<boolean>(false);
+  readonly selectedSubjectDetailIds = signal<Set<string>>(new Set());
+
+  readonly isAllSubjectsSelected = computed<boolean>(() => {
+    const total = this.filteredListDetails().length;
+    if (total === 0) return false;
+    return this.selectedSubjectDetailIds().size === total;
+  });
+
+  readonly hasSelectedSubjects = computed<boolean>(() => {
+    return this.selectedSubjectDetailIds().size > 0;
+  });
 
   // Señales para los modales independientes de creación
   readonly showAddFaceSubjectModal = signal<boolean>(false);
   readonly faceImportDrafts = signal<SubjectImportDraft[]>([]);
   readonly isDraggingOver = signal<boolean>(false);
   readonly showFloatingAddButton = signal<boolean>(false);
+
+  // Controlador de Carga e Importación Masiva de Rostros
+  readonly faceImportStep = signal<'prepare' | 'uploading' | 'summary'>('prepare');
+  readonly isUploadingFaceSubjects = signal<boolean>(false);
+  readonly uploadCurrentIndex = signal<number>(0);
+  readonly uploadTotalCount = signal<number>(0);
+  readonly uploadCurrentFileName = signal<string>('');
+
+  readonly successfulUploads = signal<FaceUploadResult[]>([]);
+  readonly failedUploads = signal<FaceUploadResult[]>([]);
+
+  readonly uploadPercentage = computed<number>(() => {
+    const total = this.uploadTotalCount();
+    if (total === 0) return 0;
+    return Math.min(100, Math.round((this.uploadCurrentIndex() / total) * 100));
+  });
 
   readonly showAddPlateSubjectModal = signal<boolean>(false);
   readonly subjectName = signal<string>('');
@@ -121,6 +160,8 @@ export class Listas implements OnInit, OnDestroy {
   });
   readonly drawerScrolledToBottom = signal<boolean>(false);
   readonly hoveredHit = signal<SubjectDetectionHit | null>(null);
+  readonly selectedHit = signal<SubjectDetectionHit | null>(null);
+  readonly activePreviewHit = computed<SubjectDetectionHit | null>(() => this.selectedHit() || this.hoveredHit());
   readonly fullscreenImgUrl = signal<string | null>(null);
   isSavingSubject = signal<boolean>(false);
   readonly isListsLoading = this.listService.isLoading;
@@ -180,6 +221,113 @@ export class Listas implements OnInit, OnDestroy {
     return details;
   });
 
+  @ViewChild('subjectsGridContainer', { static: false }) subjectsGridContainer?: ElementRef<HTMLDivElement>;
+
+  private resizeSubject = new Subject<number>();
+  private resizeSubscription?: Subscription;
+  private resizeObserver?: ResizeObserver;
+
+  /** Recalcula columnas cada vez que se redimensiona la ventana del navegador */
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    // Si el grid está en el DOM usamos su ancho real; si no, estimamos.
+    if (this.subjectsGridContainer?.nativeElement) {
+      this.resizeSubject.next(this.subjectsGridContainer.nativeElement.getBoundingClientRect().width);
+    } else {
+      this.resizeSubject.next(this.estimateContainerWidth());
+    }
+  }
+
+  // ── Grid Responsive Columns & Pagination (Consciente de la Cuadrícula) ──────────────
+  readonly columns = signal<number>(this.getInitialColumns());
+  readonly limit = signal<number>(this.columns() * 10);
+  readonly currentPage = signal<number>(1);
+
+  readonly limitOptions = computed<number[]>(() => {
+    const cols = this.columns();
+    return [cols * 10, cols * 20, cols * 30];
+  });
+
+  private estimateContainerWidth(): number {
+    if (typeof window === 'undefined') return 800;
+    const sidebarWidth = this.sidebarService.isCollapsed() ? 78 : 260;
+    const mainWidth = window.innerWidth - sidebarWidth - 48;
+    return Math.max(300, Math.floor(mainWidth * 0.66));
+  }
+
+  private getInitialColumns(): number {
+    const w = this.estimateContainerWidth();
+    return Math.max(1, Math.floor((w + 24) / (215 + 24)));
+  }
+
+  private adjustColumnsAndLimit(containerWidth: number): void {
+    if (containerWidth <= 0) return;
+    const newCols = Math.max(1, Math.floor((containerWidth + 24) / (215 + 24)));
+    const oldCols = this.columns();
+    if (newCols !== oldCols) {
+      const currentLimit = this.limit();
+      let multiplier = Math.round(currentLimit / oldCols);
+      if (multiplier !== 10 && multiplier !== 20 && multiplier !== 30) {
+        multiplier = 10;
+      }
+      this.columns.set(newCols);
+      this.limit.set(newCols * multiplier);
+      this.currentPage.set(1);
+    }
+  }
+
+  readonly paginatedListDetails = computed<ListDetail[]>(() => {
+    const list = this.filteredListDetails();
+    const start = (this.currentPage() - 1) * this.limit();
+    const end = start + this.limit();
+    return list.slice(start, end);
+  });
+
+  readonly totalPages = computed<number>(() => {
+    const total = this.filteredListDetails().length;
+    const lim = this.limit();
+    return total > 0 ? Math.ceil(total / lim) : 1;
+  });
+
+  readonly visiblePages = computed<number[]>(() => {
+    const current = this.currentPage();
+    const total = this.totalPages();
+    const pagesToShow = 5;
+
+    let start = Math.max(1, current - 2);
+    let end = Math.min(total, current + 2);
+
+    if (current <= 3) {
+      end = Math.min(total, pagesToShow);
+    }
+    if (current >= total - 2) {
+      start = Math.max(1, total - pagesToShow + 1);
+    }
+
+    const pageArr: number[] = [];
+    for (let i = start; i <= end; i++) {
+      if (i >= 1 && i <= total) {
+        pageArr.push(i);
+      }
+    }
+    return pageArr;
+  });
+
+  setPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages()) {
+      this.currentPage.set(page);
+    }
+  }
+
+  onLimitChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const newLimit = parseInt(select.value, 10);
+    if (!isNaN(newLimit)) {
+      this.limit.set(newLimit);
+      this.currentPage.set(1);
+    }
+  }
+
   readonly hasActiveFilters = computed(() => {
     const search = this.searchQuery().trim().length || 0;
     const withDetections = this.appliedAvistamientosFilter();
@@ -189,7 +337,7 @@ export class Listas implements OnInit, OnDestroy {
 
   readonly hasPendingFilterChanges = computed(() => {
     return this.tempSimilarityThreshold() !== this.appliedSimilarityThreshold() ||
-           this.tempAvistamientosFilter() !== this.appliedAvistamientosFilter();
+      this.tempAvistamientosFilter() !== this.appliedAvistamientosFilter();
   });
 
   constructor() {
@@ -198,6 +346,7 @@ export class Listas implements OnInit, OnDestroy {
       const type = params.get('listType') || 'rostros';
       this.listTypeParam.set(type);
       this.selectedListId.set(null);
+      this.currentPage.set(1);
       this.listService.listDetails.set([]);
       this.subjectDetections.set({});
       this.showListModal.set(false);
@@ -215,6 +364,7 @@ export class Listas implements OnInit, OnDestroy {
       debounceTime(300)
     ).subscribe(val => {
       this.searchQuery.set(val || '');
+      this.currentPage.set(1);
     });
   }
 
@@ -222,6 +372,13 @@ export class Listas implements OnInit, OnDestroy {
     const target = event.target as HTMLElement;
     if (target) {
       target.style.display = 'none';
+      const wrapper = target.parentElement;
+      if (wrapper) {
+        const placeholder = wrapper.querySelector('.subject-card-placeholder') as HTMLElement;
+        if (placeholder) {
+          placeholder.style.display = 'flex';
+        }
+      }
     }
   }
 
@@ -230,13 +387,30 @@ export class Listas implements OnInit, OnDestroy {
     this.listService.loadLists().subscribe();
   }
 
+  ngAfterViewInit(): void {
+    this.resizeSubscription = this.resizeSubject.pipe(
+      debounceTime(150)
+    ).subscribe(width => this.adjustColumnsAndLimit(width));
+
+    if (typeof ResizeObserver !== 'undefined' && this.subjectsGridContainer) {
+      this.resizeObserver = new ResizeObserver(entries => {
+        for (const e of entries) this.resizeSubject.next(e.contentRect.width);
+      });
+      this.resizeObserver.observe(this.subjectsGridContainer.nativeElement);
+    }
+  }
+
   ngOnDestroy(): void {
     this.listService.isViewActive.set(false);
+    this.resizeObserver?.disconnect();
+    this.resizeSubscription?.unsubscribe();
   }
 
   onListSelected(listId: string): void {
     this.selectedListId.set(listId || null);
     this.selectedSubjectDetailId.set(null);
+    this.selectedSubjectDetailIds.set(new Set());
+    this.currentPage.set(1);
     this.searchControl.setValue('', { emitEvent: false });
     this.searchQuery.set('');
     this.tempSimilarityThreshold.set(0.85);
@@ -249,7 +423,7 @@ export class Listas implements OnInit, OnDestroy {
         const detectionsMap: Record<string, { count: number; hits: SubjectDetectionHit[]; loading: boolean; expanded: boolean }> = {};
         details.forEach(d => {
           detectionsMap[d.detail_id] = { count: 0, hits: [], loading: true, expanded: false };
-          
+
           if (this.listType() === 'face_recognition') {
             this.listService.queryDetections(d.nombre_asociado, d.metadata?.['document_id']).subscribe({
               next: (hits) => {
@@ -317,8 +491,10 @@ export class Listas implements OnInit, OnDestroy {
 
   selectSubjectDetail(detailId: string | null): void {
     this.selectedSubjectDetailId.set(detailId);
-    // Reset scroll hint every time a new detail is opened
+    // Reset scroll hint and hit selections every time a detail is changed or closed
     this.drawerScrolledToBottom.set(false);
+    this.hoveredHit.set(null);
+    this.selectedHit.set(null);
   }
 
   onDrawerScroll(event: Event): void {
@@ -328,7 +504,22 @@ export class Listas implements OnInit, OnDestroy {
   }
 
   setHoveredHit(hit: SubjectDetectionHit | null): void {
-    this.hoveredHit.set(hit);
+    if (!this.selectedHit()) {
+      this.hoveredHit.set(hit);
+    }
+  }
+
+  toggleSelectHit(hit: SubjectDetectionHit, event?: Event): void {
+    event?.stopPropagation();
+    if (this.selectedHit()?.id === hit.id) {
+      // Deselect: return to hover mode
+      this.selectedHit.set(null);
+      this.hoveredHit.set(hit);
+    } else {
+      // Select new hit: pin it fixed
+      this.selectedHit.set(hit);
+      this.hoveredHit.set(null);
+    }
   }
 
   extractNameFromFilename(filename: string): string {
@@ -353,14 +544,21 @@ export class Listas implements OnInit, OnDestroy {
   }
 
   closeAddFaceSubjectModal(): void {
+    if (this.isUploadingFaceSubjects()) return;
+
     this.faceImportDrafts().forEach(d => {
-      if (d.previewUrl.startsWith('blob:')) {
+      if (d.previewUrl && d.previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(d.previewUrl);
       }
     });
     this.showAddFaceSubjectModal.set(false);
     this.faceImportDrafts.set([]);
     this.showFloatingAddButton.set(false);
+    this.faceImportStep.set('prepare');
+    this.successfulUploads.set([]);
+    this.failedUploads.set([]);
+    this.uploadCurrentIndex.set(0);
+    this.uploadTotalCount.set(0);
   }
 
   closeAddPlateSubjectModal(): void {
@@ -388,8 +586,8 @@ export class Listas implements OnInit, OnDestroy {
     filesArray.forEach(file => {
       // Evitar duplicados por nombre de archivo y tamaño exacto
       const isDuplicate = currentDrafts.some(d => d.file.name === file.name && d.file.size === file.size) ||
-                          newDrafts.some(d => d.file.name === file.name && d.file.size === file.size);
-      
+        newDrafts.some(d => d.file.name === file.name && d.file.size === file.size);
+
       if (!isDuplicate) {
         newDrafts.push({
           file,
@@ -521,7 +719,7 @@ export class Listas implements OnInit, OnDestroy {
     event.preventDefault();
     event.stopPropagation();
     this.isDraggingOver.set(false);
-    
+
     if (event.dataTransfer && event.dataTransfer.files.length > 0) {
       this.addFilesToDraft(event.dataTransfer.files);
     }
@@ -577,7 +775,7 @@ export class Listas implements OnInit, OnDestroy {
 
     this.isUpdatingSubject.set(true);
     const listId = this.selectedListId()!;
-    
+
     const nameChanged = this.editFaceSubjectName().trim() !== (detail.nombre_asociado || '');
     const file = this.selectedEditFaceFile();
 
@@ -632,29 +830,139 @@ export class Listas implements OnInit, OnDestroy {
     });
   }
 
-  saveFaceSubjects(): void {
+  private formatFaceUploadErrorMessage(err: any): string {
+    const rawMsg = (
+      typeof err === 'string' ? err :
+      (err?.error?.detail || err?.error?.message || err?.message || '')
+    ).toString().toLowerCase();
+
+    if (rawMsg.includes('no face detected') || rawMsg.includes('no face') || rawMsg.includes('sin rostro')) {
+      return 'No se detectó un rostro válido en la fotografía.';
+    }
+    if (rawMsg.includes('embedding generation issue') || rawMsg.includes('embedding')) {
+      return 'No se pudo generar la huella facial de la fotografía.';
+    }
+    if (rawMsg.includes('format') || rawMsg.includes('extension') || rawMsg.includes('invalid image')) {
+      return 'El formato o la resolución de la imagen no es compatible.';
+    }
+    if (rawMsg.includes('multiple faces') || rawMsg.includes('more than one face')) {
+      return 'Se detectó más de un rostro. Utilice una foto con un único rostro.';
+    }
+    if (rawMsg.includes('422') || rawMsg.includes('unprocessable')) {
+      return 'La imagen no cumple con los requisitos del registro facial.';
+    }
+    if (rawMsg.includes('500') || rawMsg.includes('server error')) {
+      return 'Ocurrió un error en el servidor al analizar el rostro.';
+    }
+
+    return 'No se pudo validar el rostro en la fotografía.';
+  }
+
+  async saveFaceSubjects(): Promise<void> {
     const listId = this.selectedListId();
-    if (!listId || this.faceImportDrafts().length === 0) return;
+    const drafts = this.faceImportDrafts();
+    if (!listId || drafts.length === 0) return;
 
+    this.faceImportStep.set('uploading');
+    this.isUploadingFaceSubjects.set(true);
     this.isSavingSubject.set(true);
+    this.uploadTotalCount.set(drafts.length);
+    this.uploadCurrentIndex.set(0);
+    this.successfulUploads.set([]);
+    this.failedUploads.set([]);
 
-    const observables = this.faceImportDrafts().map(draft => {
-      return this.listService.uploadAndAddSubject(listId, '', draft.name, draft.file);
-    });
+    const successes: FaceUploadResult[] = [];
+    const failures: FaceUploadResult[] = [];
 
-    import('rxjs').then(({ forkJoin }) => {
-      forkJoin(observables).subscribe({
-        next: () => {
-          this.isSavingSubject.set(false);
-          this.closeAddFaceSubjectModal();
-        },
-        error: (err) => {
-          console.error('Error importing face subjects:', err);
-          this.isSavingSubject.set(false);
-          alert('Error al importar algunos de los sujetos. Por favor intente de nuevo.');
+    const { firstValueFrom } = await import('rxjs');
+
+    for (let i = 0; i < drafts.length; i++) {
+      const draft = drafts[i];
+      this.uploadCurrentIndex.set(i + 1);
+      this.uploadCurrentFileName.set(draft.name);
+
+      try {
+        const result = await firstValueFrom(
+          this.listService.uploadAndAddSubject(listId, '', draft.name, draft.file)
+        );
+        successes.push({
+          file: draft.file,
+          name: draft.name,
+          previewUrl: draft.previewUrl,
+          detailId: result.detail_id
+        });
+        this.successfulUploads.set([...successes]);
+        if (result.detail_id) {
+          this.listService.markAsNew(result.detail_id);
         }
-      });
-    });
+      } catch (err: any) {
+        console.error(`Error uploading face subject ${draft.name}:`, err);
+        failures.push({
+          file: draft.file,
+          name: draft.name,
+          previewUrl: draft.previewUrl,
+          errorMessage: this.formatFaceUploadErrorMessage(err)
+        });
+        this.failedUploads.set([...failures]);
+      }
+    }
+
+    this.isUploadingFaceSubjects.set(false);
+    this.isSavingSubject.set(false);
+    this.faceImportStep.set('summary');
+  }
+
+  async retryFailedFaceUploads(): Promise<void> {
+    const listId = this.selectedListId();
+    const toRetry = [...this.failedUploads()];
+    if (!listId || toRetry.length === 0) return;
+
+    this.faceImportStep.set('uploading');
+    this.isUploadingFaceSubjects.set(true);
+    this.isSavingSubject.set(true);
+    this.uploadTotalCount.set(toRetry.length);
+    this.uploadCurrentIndex.set(0);
+
+    const newFailures: FaceUploadResult[] = [];
+    const successes = [...this.successfulUploads()];
+    this.failedUploads.set([]);
+
+    const { firstValueFrom } = await import('rxjs');
+
+    for (let i = 0; i < toRetry.length; i++) {
+      const draft = toRetry[i];
+      this.uploadCurrentIndex.set(i + 1);
+      this.uploadCurrentFileName.set(draft.name);
+
+      try {
+        const result = await firstValueFrom(
+          this.listService.uploadAndAddSubject(listId, '', draft.name, draft.file)
+        );
+        successes.push({
+          file: draft.file,
+          name: draft.name,
+          previewUrl: draft.previewUrl,
+          detailId: result.detail_id
+        });
+        this.successfulUploads.set([...successes]);
+        if (result.detail_id) {
+          this.listService.markAsNew(result.detail_id);
+        }
+      } catch (err: any) {
+        console.error(`Retry error uploading face subject ${draft.name}:`, err);
+        newFailures.push({
+          file: draft.file,
+          name: draft.name,
+          previewUrl: draft.previewUrl,
+          errorMessage: this.formatFaceUploadErrorMessage(err)
+        });
+        this.failedUploads.set([...newFailures]);
+      }
+    }
+
+    this.isUploadingFaceSubjects.set(false);
+    this.isSavingSubject.set(false);
+    this.faceImportStep.set('summary');
   }
 
   savePlateSubject(): void {
@@ -872,6 +1180,75 @@ export class Listas implements OnInit, OnDestroy {
     });
   }
 
+  toggleSelectSubjectDetail(detailId: string, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.selectedSubjectDetailIds.update(set => {
+      const next = new Set(set);
+      if (next.has(detailId)) {
+        next.delete(detailId);
+      } else {
+        next.add(detailId);
+      }
+      return next;
+    });
+  }
+
+  isSubjectSelected(detailId: string): boolean {
+    return this.selectedSubjectDetailIds().has(detailId);
+  }
+
+  selectAllSubjects(): void {
+    const allIds = this.filteredListDetails().map(d => d.detail_id);
+    this.selectedSubjectDetailIds.set(new Set(allIds));
+  }
+
+  clearSubjectSelection(): void {
+    this.selectedSubjectDetailIds.set(new Set());
+  }
+
+  openDeleteSelectedSubjectsModal(): void {
+    if (this.selectedSubjectDetailIds().size > 0) {
+      this.showDeleteSubjectModal.set(true);
+    }
+  }
+
+  closeDeleteSubjectModal(): void {
+    this.showDeleteSubjectModal.set(false);
+  }
+
+  confirmDeleteSelectedSubjects(): void {
+    const idsToDelete = Array.from(this.selectedSubjectDetailIds());
+    if (idsToDelete.length === 0) return;
+
+    this.isDeletingSubject.set(true);
+
+    const deleteRequests$ = idsToDelete.map(id => this.listService.deleteSubject(id));
+
+    forkJoin(deleteRequests$).subscribe({
+      next: () => {
+        this.subjectDetections.update(current => {
+          const updated = { ...current };
+          idsToDelete.forEach(id => delete updated[id]);
+          return updated;
+        });
+        this.isDeletingSubject.set(false);
+        this.selectedSubjectDetailIds.set(new Set());
+        this.closeDeleteSubjectModal();
+        if (this.selectedSubjectDetailId() && idsToDelete.includes(this.selectedSubjectDetailId()!)) {
+          this.selectSubjectDetail(null);
+        }
+      },
+      error: (err) => {
+        console.error('Error deleting selected subjects:', err);
+        this.isDeletingSubject.set(false);
+        this.selectedSubjectDetailIds.set(new Set());
+        this.closeDeleteSubjectModal();
+      }
+    });
+  }
+
   deleteSubject(detailId: string): void {
     const detail = this.listDetails().find(d => d.detail_id === detailId);
     if (detail) {
@@ -879,12 +1256,6 @@ export class Listas implements OnInit, OnDestroy {
       this.subjectToDeleteName.set(detail.nombre_asociado || detail.metadata?.text_placa || 'Sujeto sin nombre');
       this.showDeleteSubjectModal.set(true);
     }
-  }
-
-  closeDeleteSubjectModal(): void {
-    this.showDeleteSubjectModal.set(false);
-    this.subjectToDeleteId.set(null);
-    this.subjectToDeleteName.set(null);
   }
 
   confirmDeleteSubject(): void {
@@ -976,12 +1347,14 @@ export class Listas implements OnInit, OnDestroy {
     this.appliedSimilarityThreshold.set(0.85);
     this.appliedAvistamientosFilter.set('all');
     this.listService.similarityThreshold.set(0.85);
+    this.currentPage.set(1);
   }
 
   onApplyFilters(): void {
     this.appliedSimilarityThreshold.set(this.tempSimilarityThreshold());
     this.appliedAvistamientosFilter.set(this.tempAvistamientosFilter());
     this.listService.similarityThreshold.set(this.tempSimilarityThreshold());
+    this.currentPage.set(1);
   }
 
   getTipoObjeto(record: SubjectDetectionHit): string {

@@ -2,6 +2,7 @@ export interface OsHit<T> {
   _id: string;
   _score: number;
   _source: T;
+  sort?: any[];
 }
 
 export interface OsResponseTotal {

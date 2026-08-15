@@ -450,6 +450,35 @@ describe('Camaras', () => {
     component.filterAnalyticType.set('all');
   });
 
+  it('should dynamically list available camera statuses and filter cameras by Degraded, Recovering, Pending, Online and Offline', () => {
+    component.hostId.set('HOST-ABC123XYZ');
+    const mockCameras: Camera[] = [
+      { id: 'cam-1', name: 'Cam 1', hostFingerprint: 'HOST-ABC123XYZ', streamType: 'rtsp', status: 'online', decoder: 'opencv', location: { lat: 10, lon: 20 }, createdAt: new Date() },
+      { id: 'cam-2', name: 'Cam 2', hostFingerprint: 'HOST-ABC123XYZ', streamType: 'rtsp', status: 'degraded', decoder: 'opencv', location: { lat: 10, lon: 20 }, createdAt: new Date() },
+      { id: 'cam-3', name: 'Cam 3', hostFingerprint: 'HOST-ABC123XYZ', streamType: 'rtsp', status: 'recovering', decoder: 'opencv', location: { lat: 10, lon: 20 }, createdAt: new Date() },
+      { id: 'cam-4', name: 'Cam 4', hostFingerprint: 'HOST-ABC123XYZ', streamType: 'rtsp', status: 'offline', decoder: 'opencv', location: { lat: 10, lon: 20 }, createdAt: new Date() }
+    ];
+    cameraService.cameras.set(mockCameras);
+
+    const statuses = component.filterOptions().status;
+    expect(statuses).toContain('Online');
+    expect(statuses).toContain('Degraded');
+    expect(statuses).toContain('Recovering');
+    expect(statuses).toContain('Offline');
+
+    component.filterStatus.set('Degraded');
+    expect(component.filteredCameras().length).toBe(1);
+    expect(component.filteredCameras()[0].id).toBe('cam-2');
+
+    component.filterStatus.set('Recovering');
+    expect(component.filteredCameras().length).toBe(1);
+    expect(component.filteredCameras()[0].id).toBe('cam-3');
+
+    component.filterStatus.set('Offline');
+    expect(component.filteredCameras().length).toBe(1);
+    expect(component.filteredCameras()[0].id).toBe('cam-4');
+  });
+
   it('should validate form fields correctly', () => {
     // Valid state
     component.editCameraName = 'Valid Camera';
@@ -509,10 +538,6 @@ describe('Camaras', () => {
 
     const spyUpdateStatus = vi.spyOn(analyticService, 'updateAnalyticStatus').mockReturnValue(of(void 0));
     
-    // checkScheduleTransitions should not deactivate
-    component['checkScheduleTransitions']();
-    expect(spyUpdateStatus).not.toHaveBeenCalled();
-
     // toggleAnalyticStatus should succeed
     component.toggleAnalyticStatus(mockAnalytic);
     expect(spyUpdateStatus).toHaveBeenCalledWith('analytic-test', 'inactive');

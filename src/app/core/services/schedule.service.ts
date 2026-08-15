@@ -53,7 +53,11 @@ export class ScheduleService {
     }, 1200);
   }
 
-  constructor(private scheduleRepository: IScheduleRepository) { }
+  constructor(private scheduleRepository: IScheduleRepository) {
+    this.getAllSchedules().subscribe({
+      error: (err) => console.error('[ScheduleService] Error autoloader getAllSchedules:', err)
+    });
+  }
 
   /**
    * Fetches ALL schedules from the backend and optionally filters by hostFingerprint

@@ -25,21 +25,28 @@
 
       <!-- Botón de Exportar Verde Oscuro (Siempre Visible) -->
       <div class="dropdown d-inline-block position-relative">
-        <button class="btn btn-export-dark-green d-flex align-items-center gap-2" type="button" (click)="toggleExportDropdown($event)" title="Exportar reporte de cámaras">
-          <span class="icon-svg icon-download" style="width: 15px; height: 15px; background-color: currentColor;"></span>
+        <button class="btn btn-export-dark-green d-flex align-items-center gap-2" type="button"
+          (click)="toggleExportDropdown($event)" title="Exportar reporte de cámaras">
+          <span class="icon-svg icon-download"
+            style="width: 15px; height: 15px; background-color: currentColor;"></span>
           <span>Exportar</span>
         </button>
         @if (showExportDropdown()) {
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm show position-absolute end-0 mt-1" style="z-index: 1050; min-width: 200px;">
-          <li><button class="dropdown-item d-flex align-items-center gap-2 py-2 cursor-pointer" type="button" (click)="exportCamarasXlsx(); showExportDropdown.set(false)"><span class="fw-bold text-success" style="font-size: 0.78rem;">XLSX</span> <span>Exportar a Excel (.xlsx)</span></button></li>
-          <li><button class="dropdown-item d-flex align-items-center gap-2 py-2 cursor-pointer" type="button" (click)="exportCamarasCsv(); showExportDropdown.set(false)"><span class="fw-bold text-info" style="font-size: 0.78rem;">CSV</span> <span>Exportar a CSV (.csv)</span></button></li>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm show position-absolute end-0 mt-1"
+          style="z-index: 1050; min-width: 200px;">
+          <li><button class="dropdown-item d-flex align-items-center gap-2 py-2 cursor-pointer" type="button"
+              (click)="exportCamarasXlsx(); showExportDropdown.set(false)"><span class="fw-bold text-success"
+                style="font-size: 0.78rem;">XLSX</span> <span>Exportar a Excel (.xlsx)</span></button></li>
+          <li><button class="dropdown-item d-flex align-items-center gap-2 py-2 cursor-pointer" type="button"
+              (click)="exportCamarasCsv(); showExportDropdown.set(false)"><span class="fw-bold text-info"
+                style="font-size: 0.78rem;">CSV</span> <span>Exportar a CSV (.csv)</span></button></li>
         </ul>
         }
       </div>
 
       @if (hostId()) {
       @if (license()) {
-      <button class="btn-migrate-config" (click)="openLicenseModal()">
+      <button class="btn-header-primary" (click)="openLicenseModal()">
         <span class="icon-svg icon-shield" style="width: 15px; height: 15px;"></span>
         <span>Licencia y Cuotas</span>
       </button>
@@ -55,7 +62,7 @@
     </ng-container>
 
     <!-- Ranura para Fila 2 (Búsqueda + Filtros + Paginación) tanto para Nodo como para Todas las Cámaras -->
-    <div header-bottom class="header-row-bottom d-flex align-items-center gap-3 mt-3">
+    <div header-bottom class="header-row-bottom d-flex align-items-center gap-3 mt-4">
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
         <app-search-input [control]="searchControl" placeholder="Buscar cámara..."></app-search-input>
         <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
@@ -94,8 +101,7 @@
           [class.active]="tempFilterStatus() !== 'all'" (click)="toggleDropdown('status', $event)">
           <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
           <span>
-            Estado: {{ tempFilterStatus() === 'all' ? 'Todos' : (tempFilterStatus() === 'active' || tempFilterStatus()
-            === 'online' ? 'Online' : 'Offline') }}
+            Estado: {{ tempFilterStatus() === 'all' ? 'Todos' : getStatusFilterLabel(tempFilterStatus()) }}
           </span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'status'" style="width: 10px; height: 10px;"></span>
@@ -106,16 +112,14 @@
             (click)="selectFilterValue('status', 'all', $event)">
             Todos los Estados
           </button>
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
-            [class.active]="tempFilterStatus() === 'active' || tempFilterStatus() === 'online'"
-            (click)="selectFilterValue('status', 'active', $event)">
-            Online
+          @for (st of filterOptions().status; track st) {
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center gap-2"
+            [class.active]="isStatusSelected(tempFilterStatus(), st)"
+            (click)="selectFilterValue('status', st, $event)">
+            <span class="status-dot" [class]="getStatusCssClass(st)"></span>
+            <span>{{ getStatusFilterLabel(st) }}</span>
           </button>
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
-            [class.active]="tempFilterStatus() === 'inactive' || tempFilterStatus() === 'offline'"
-            (click)="selectFilterValue('status', 'inactive', $event)">
-            Offline
-          </button>
+          }
         </div>
         }
       </div>
@@ -228,24 +232,10 @@
         }
       </div>
 
-      <!-- BOTONES DE APLICAR Y LIMPIAR FILTROS -->
-      <div class="filter-actions-group d-flex align-items-center gap-2 ms-auto">
-        @if (hasActiveFilters()) {
-        <button type="button" (click)="resetFilters()"
-          class="btn btn-outline-secondary btn-premium-action d-flex align-items-center gap-2">
-          <span class="icon-svg icon-close" style="width: 14px; height: 14px;"></span>
-          Limpiar Filtros
-        </button>
-        }
-
-        @if (hasPendingFilterChanges()) {
-        <button type="button" (click)="applyFilters()"
-          class="btn btn-primary btn-premium-action d-flex align-items-center gap-2">
-          <span class="icon-svg icon-save" style="width: 14px; height: 14px; background-color: currentColor;"></span>
-          Aplicar Filtros
-        </button>
-        }
-      </div>
+      <!-- BOTONES DE APLICAR Y LIMPIAR FILTROS (COMPONENTE COMPARTIDO DRY) -->
+      <app-filter-actions [hasActiveFilters]="hasActiveFilters()" [hasPendingChanges]="hasPendingFilterChanges()"
+        (reset)="resetFilters()" (apply)="applyFilters()">
+      </app-filter-actions>
 
     </div>
   </div>
@@ -283,35 +273,58 @@
       <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
         <div>
           <!-- Cabecera: Icono + Nombre + Decoder + Estado -->
-          <div class="host-header-block d-flex align-items-center justify-content-between pb-3" style="gap: 12px;">
-            <div class="d-flex align-items-center gap-2">
-              <span class="icon-svg os-avatar-icon icon-camara" style="width: 24px; height: 24px;"></span>
-              <div class="host-title-container">
-                <h5 class="host-title fw-bold mb-0" [title]="camera.name">
+          <div class="host-header-block d-flex align-items-center justify-content-between" style="gap: 12px;">
+            <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0" style="overflow: hidden;">
+              <span class="icon-svg os-avatar-icon icon-camara flex-shrink-0" style="width: 24px; height: 24px;"></span>
+              <div class="host-title-container min-w-0 flex-grow-1">
+                <h5 class="host-title fw-bold mb-0 text-truncate" [title]="camera.name">
                   {{ camera.name }}
                 </h5>
               </div>
             </div>
 
-            <div class="d-flex align-items-center gap-2">
+            <div class="host-header-right d-inline-flex align-items-center gap-1.5 flex-shrink-0 ms-auto">
               <!-- Estado de Actividad -->
-              <span [class]="'status-badge status-badge-' + getCameraStatusClass(camera)">
+              <span class="status-badge flex-shrink-0"
+                [class]="'status-badge status-badge-' + getCameraStatusClass(camera)">
                 {{ getCameraStatusLabel(camera) }}
               </span>
               <!-- Decoder -->
-              <span class="version-tag">{{ camera.decoder | uppercase }}</span>
+              @if (camera.decoder) {
+              <span class="version-tag flex-shrink-0">{{ camera.decoder | uppercase }}</span>
+              }
             </div>
           </div>
 
           <!-- Lista de especificaciones -->
-          <div class="specs-list d-flex flex-column gap-1">
+          <div class="specs-list d-flex flex-column gap-1 mt-3">
+            <div class="spec-row d-flex justify-content-between"
+              [class.copied-flash]="copiedRowId() === camera.id + '-id'"
+              (click)="copyRowContent(camera.id, camera.id + '-id'); $event.stopPropagation()">
+              <span class="spec-lbl d-inline-flex align-items-center">
+                <span class="icon-svg icon-fingerprint me-2"
+                  style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                Camera ID
+              </span>
+              @if (copiedRowId() === camera.id + '-id') {
+              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-truncate text-end">
+                {{ camera.id }}
+              </span>
+              }
+            </div>
+
             <div class="spec-row d-flex justify-content-between"
               [class.copied-flash]="copiedRowId() === camera.id + '-host'"
               (click)="copyRowContent(camera.hostFingerprint, camera.id + '-host'); $event.stopPropagation()">
-              <span class="spec-lbl">Host</span>
+              <span class="spec-lbl d-inline-flex align-items-center">
+                <span class="icon-svg icon-server me-2"
+                  style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                Host
+              </span>
               @if (copiedRowId() === camera.id + '-host') {
-              <span class="copied-badge text-success fw-bold ms-auto"
-                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
               } @else {
               <span class="spec-val font-monospace text-truncate text-end">
                 {{ getHostName(camera.hostFingerprint) }}
@@ -322,35 +335,29 @@
             <div class="spec-row d-flex justify-content-between"
               [class.copied-flash]="copiedRowId() === camera.id + '-streamType'"
               (click)="copyRowContent(camera.streamType, camera.id + '-streamType'); $event.stopPropagation()">
-              <span class="spec-lbl">Tipo Stream</span>
+              <span class="spec-lbl d-inline-flex align-items-center">
+                <span class="icon-svg icon-wifi me-2"
+                  style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                STREAM
+              </span>
               @if (copiedRowId() === camera.id + '-streamType') {
-              <span class="copied-badge text-success fw-bold ms-auto"
-                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
               } @else {
               <span class="spec-val font-monospace text-uppercase">{{ camera.streamType }}</span>
               }
             </div>
 
-            <div class="spec-row d-flex justify-content-between"
-              [class.copied-flash]="copiedRowId() === camera.id + '-id'"
-              (click)="copyRowContent(camera.id, camera.id + '-id'); $event.stopPropagation()">
-              <span class="spec-lbl">Camera ID</span>
-              @if (copiedRowId() === camera.id + '-id') {
-              <span class="copied-badge text-success fw-bold ms-auto"
-                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
-              } @else {
-              <span class="spec-val font-monospace text-truncate text-end">
-                {{ camera.id }}
-              </span>
-              }
-            </div>
-
             <div class="spec-row d-flex justify-content-between align-items-center">
-              <span class="spec-lbl">Coordenadas</span>
+              <span class="spec-lbl d-inline-flex align-items-center">
+                <span class="icon-svg icon-location-pin me-2"
+                  style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                Coordenadas
+              </span>
               <a [href]="'https://www.google.com/maps/search/?api=1&query=' + camera.location.lat + ',' + camera.location.lon"
                 target="_blank" rel="noopener noreferrer" class="coords-map-btn" (click)="$event.stopPropagation()"
                 title="Ver ubicación en Google Maps">
-                <span class="icon-svg icon-location-pin coords-pin-svg" style="width: 18px; height: 18px;"></span>
+                <span class="icon-svg icon-location-pin coords-pin-svg"
+                  style="width: 14px; height: 14px; margin-right: 4px;"></span>
                 <span class="font-monospace">{{ camera.location.lat | number:'1.1-4' }}, {{ camera.location.lon |
                   number:'1.1-4' }}</span>
               </a>
@@ -363,7 +370,7 @@
   </div>
   } @else {
   <!-- Tabla Premium de Cámaras -->
-  <div class="border shadow-sm rounded-4 mb-4 bg-card overflow-hidden">
+  <div class="border shadow-sm rounded-4 bg-card overflow-hidden">
     <div class="nm-table-container">
       <table class="table nm-table align-middle mb-0">
         <thead>
@@ -390,7 +397,8 @@
             <td class="ps-3">
               <span class="d-inline-flex align-items-center gap-2">
                 <span [class]="'status-dot ' + getCameraStatusClass(camera)"></span>
-                <span class="fw-semibold" style="font-size: 0.88rem;" [class]="'fw-semibold status-text-' + getCameraStatusClass(camera)">
+                <span class="fw-semibold" style="font-size: 0.88rem;"
+                  [class]="'fw-semibold status-text-' + getCameraStatusClass(camera)">
                   {{ getCameraStatusLabel(camera) }}
                 </span>
               </span>
@@ -518,7 +526,7 @@
           <div class="license-bento-card bento-card-node p-3 rounded-4 d-flex flex-column gap-2.5">
             <!-- Cabecera del Nodo con Estado (Con padding y espaciado corregido, sin línea divisoria) -->
             <div class="d-flex align-items-center justify-content-between">
-              <div class="d-flex align-items-center gap-2 overflow-hidden pb-2">
+              <div class="d-flex align-items-center gap-2 min-w-0">
                 <div class="bento-card-icon-wrap icon-wrap-node flex-shrink-0">
                   <span class="icon-svg icon-server"
                     style="width: 20px; height: 20px; background-color: #0ea5e9;"></span>
@@ -531,149 +539,170 @@
                   </h6>
                 </div>
               </div>
-              <span
-                class="badge rounded-pill px-2.5 py-1 small fw-semibold flex-shrink-0 d-inline-flex align-items-center gap-1.5 ms-2"
-                [class.bg-success-subtle]="currentHost()?.status === 'online' || currentHost()?.status === 'active'"
-                [class.text-success]="currentHost()?.status === 'online' || currentHost()?.status === 'active'"
-                [class.bg-danger-subtle]="currentHost()?.status !== 'online' && currentHost()?.status !== 'active'"
-                [class.text-danger]="currentHost()?.status !== 'online' && currentHost()?.status !== 'active'">
-                <span class="quota-status-dot"
-                  [class.quota-dot-success]="currentHost()?.status === 'online' || currentHost()?.status === 'active'"
-                  [class.quota-dot-danger]="currentHost()?.status !== 'online' && currentHost()?.status !== 'active'">
-                </span>
+              <span class="lic-type-chip flex-shrink-0 ms-2"
+                [class.lic-chip-online]="currentHost()?.status === 'online' || currentHost()?.status === 'active'"
+                [class.lic-chip-offline]="currentHost()?.status !== 'online' && currentHost()?.status !== 'active'">
+                <span class="lic-chip-dot"></span>
                 {{ (currentHost()?.status === 'online' || currentHost()?.status === 'active') ? 'Online' : 'Offline' }}
               </span>
             </div>
 
             <!-- Detalles de Hardware, Red y SO del Nodo (Iconos reales SVG del sistema) -->
-            <div class="d-flex flex-column gap-2 mt-2 px-2">
-              <div class="d-flex justify-content-between align-items-center small">
-                <span class="text-muted d-flex align-items-center gap-2">
-                  <span class="icon-svg icon-wifi flex-shrink-0"
-                    style="width: 14px; height: 14px; background-color: var(--text-muted);"></span>
-                  Dirección IP
-                </span>
-                <span class="font-monospace fw-semibold">{{ currentHost()?.ipAddress || 'Sin IP' }}</span>
-              </div>
-
+            <div class="specs-list d-flex flex-column gap-1 mt-3">
               @if (hostId()) {
-              <div class="d-flex justify-content-between align-items-center small">
-                <span class="text-muted d-flex align-items-center gap-2">
-                  <span class="icon-svg icon-fingerprint flex-shrink-0"
-                    style="width: 14px; height: 14px; background-color: var(--text-muted);"></span>
+              <div class="spec-row" [class.copied-flash]="copiedRowId() === hostId() + '-lic-fp'"
+                (click)="copyRowContent(hostId()!, hostId() + '-lic-fp'); $event.stopPropagation()">
+                <span class="spec-lbl d-inline-flex align-items-center">
+                  <span class="icon-svg icon-fingerprint me-2"
+                    style="width: 14px; height: 14px; background-color: currentColor;"></span>
                   Fingerprint
                 </span>
-                @if (isFingerprintCopied()) {
-                <span class="badge bg-success-subtle text-success fw-bold px-2 py-0.5 rounded"
-                  style="font-size: 0.74rem;">
-                  ¡Copiado!
-                </span>
+                @if (copiedRowId() === hostId() + '-lic-fp') {
+                <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
                 } @else {
-                <button class="btn btn-copy-fingerprint-compact py-0.5 px-2 d-flex align-items-center gap-1.5"
-                  (click)="copyFingerprint()" [title]="'Copiar Fingerprint: ' + hostId()">
-                  <span class="icon-svg icon-copy" style="width: 12px; height: 12px;"></span>
-                  <span class="fw-semibold" style="font-size: 0.76rem;">Copiar</span>
-                </button>
+                <span class="spec-val font-monospace text-truncate text-end">
+                  {{ hostId() }}
+                </span>
                 }
               </div>
               }
 
+              <div class="spec-row"
+                [class.copied-flash]="copiedRowId() === (currentHost()?.ipAddress || '') + '-lic-ip'"
+                (click)="copyRowContent(currentHost()?.ipAddress || 'Sin IP', (currentHost()?.ipAddress || '') + '-lic-ip'); $event.stopPropagation()">
+                <span class="spec-lbl d-inline-flex align-items-center">
+                  <span class="icon-svg icon-wifi me-2"
+                    style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                  Dirección IP
+                </span>
+                @if (copiedRowId() === (currentHost()?.ipAddress || '') + '-lic-ip') {
+                <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
+                } @else {
+                <span class="spec-val font-monospace text-truncate text-end">
+                  {{ currentHost()?.ipAddress || 'Sin IP' }}
+                </span>
+                }
+              </div>
+
               @if (currentHost()?.hwInfo; as hw) {
-              <div class="d-flex justify-content-between align-items-center small">
-                <span class="text-muted d-flex align-items-center gap-2">
-                  <span class="icon-svg icon-cpu flex-shrink-0"
-                    style="width: 14px; height: 14px; background-color: var(--text-muted);"></span>
+              <div class="spec-row" [class.copied-flash]="copiedRowId() === (hw.system + hw.release) + '-lic-sys'"
+                (click)="copyRowContent(hw.system + ' ' + hw.release + (hw.totalRam ? ' (' + hw.totalRam + ')' : ''), (hw.system + hw.release) + '-lic-sys'); $event.stopPropagation()">
+                <span class="spec-lbl d-inline-flex align-items-center">
+                  <span class="icon-svg icon-cpu me-2"
+                    style="width: 14px; height: 14px; background-color: currentColor;"></span>
                   Sistema / RAM
                 </span>
-                <span class="fw-semibold text-truncate ms-2" style="max-width: 13rem;"
-                  [title]="hw.system + ' ' + hw.release">
+                @if (copiedRowId() === (hw.system + hw.release) + '-lic-sys') {
+                <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
+                } @else {
+                <span class="spec-val font-monospace text-truncate text-end">
                   {{ hw.system }} {{ hw.release }} {{ hw.totalRam ? '(' + hw.totalRam + ')' : '' }}
                 </span>
+                }
               </div>
               }
 
               @if (currentHost()?.gpuInfo; as gpu) {
-              <div class="d-flex justify-content-between align-items-center small">
-                <span class="text-muted d-flex align-items-center gap-2">
-                  <span class="icon-svg icon-gpu flex-shrink-0"
-                    style="width: 14px; height: 14px; background-color: var(--text-muted);"></span>
+              <div class="spec-row" [class.copied-flash]="copiedRowId() === (gpu.model || gpu.gpu) + '-lic-gpu'"
+                (click)="copyRowContent((gpu.model || gpu.gpu) + (gpu.totalMemory ? ' (' + gpu.totalMemory + ')' : ''), (gpu.model || gpu.gpu) + '-lic-gpu'); $event.stopPropagation()">
+                <span class="spec-lbl d-inline-flex align-items-center">
+                  <span class="icon-svg icon-gpu me-2"
+                    style="width: 14px; height: 14px; background-color: currentColor;"></span>
                   Aceleración GPU
                 </span>
-                <span class="fw-semibold text-truncate ms-2" style="max-width: 13rem;" [title]="gpu.model || gpu.gpu">
+                @if (copiedRowId() === (gpu.model || gpu.gpu) + '-lic-gpu') {
+                <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
+                } @else {
+                <span class="spec-val font-monospace text-truncate text-end">
                   {{ gpu.model || gpu.gpu }} {{ gpu.totalMemory ? '(' + gpu.totalMemory + ')' : '' }}
                 </span>
+                }
               </div>
               }
 
-              @if (currentHost()?.version) {
-              <div class="d-flex justify-content-between align-items-center small">
-                <span class="text-muted d-flex align-items-center gap-2">
-                  <span class="icon-svg icon-info-circle flex-shrink-0"
-                    style="width: 14px; height: 14px; background-color: var(--text-muted);"></span>
+              @if (currentHost()?.version; as ver) {
+              <div class="spec-row" [class.copied-flash]="copiedRowId() === ver + '-lic-ver'"
+                (click)="copyRowContent('v' + ver, ver + '-lic-ver'); $event.stopPropagation()">
+                <span class="spec-lbl d-inline-flex align-items-center">
+                  <span class="icon-svg icon-info-circle me-2"
+                    style="width: 14px; height: 14px; background-color: currentColor;"></span>
                   Versión Core
                 </span>
-                <span class="badge bg-secondary-subtle text-body-secondary font-monospace px-2 py-0.5 small rounded">
-                  v{{ currentHost()?.version }}
+                @if (copiedRowId() === ver + '-lic-ver') {
+                <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
+                } @else {
+                <span class="spec-val font-monospace text-truncate text-end">
+                  v{{ ver }}
                 </span>
+                }
               </div>
               }
             </div>
           </div>
 
-          <!-- ── 3 TARJETAS INFERIORES: Licencia, Emisión y Expiración ── -->
-
-          <!-- Tarjeta 1: Tipo de Licencia -->
-          <div class="license-bento-card bento-card-type p-3 rounded-4 d-flex align-items-center gap-3">
-            <div class="bento-card-icon-wrap icon-wrap-type">
-              <span class="icon-svg icon-shield"
-                style="width: 20px; height: 20px; background-color: var(--primary);"></span>
-            </div>
-            <div class="flex-grow-1">
-              <span class="license-bento-label d-block mb-1">Tipo de Licencia</span>
-              <div class="d-flex align-items-center gap-2">
-                <span class="badge-license-bento text-capitalize" [class.bento-temp]="lic.tipo === 'temporal'"
-                  [class.bento-perm]="lic.tipo === 'permanente'">
-                  <span class="badge-license-indicator"></span>
-                  Licencia {{ lic.tipo }}
-                </span>
+          <!-- ── COMPONENTE INFERIOR: Detalles de Licencia (Unificado y Simétrico) ── -->
+          <div class="license-bento-card bento-card-license p-3 rounded-4 d-flex flex-column gap-2.5">
+            <!-- Cabecera de Licencia -->
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2 min-w-0">
+                <div class="bento-card-icon-wrap flex-shrink-0" [class.lic-icon-perm]="lic.tipo === 'permanente'"
+                  [class.lic-icon-temp]="lic.tipo === 'temporal'">
+                  <span class="icon-svg icon-shield"
+                    style="width: 20px; height: 20px; background-color: currentColor;"></span>
+                </div>
+                <div class="overflow-hidden ps-1">
+                  <span class="license-bento-label d-block text-truncate mb-0.5">Detalles de Licencia</span>
+                  <h6 class="fw-bold mb-0 fs-6 text-truncate text-capitalize">
+                    Licencia {{ lic.tipo }}
+                  </h6>
+                </div>
               </div>
+              <span class="lic-type-chip text-capitalize flex-shrink-0 ms-2"
+                [class.lic-chip-perm]="lic.tipo === 'permanente'" [class.lic-chip-temp]="lic.tipo === 'temporal'">
+                <span class="lic-chip-dot"></span>
+                {{ lic.tipo }}
+              </span>
             </div>
-          </div>
 
-          <!-- Tarjeta 2: Fecha de Emisión -->
-          <div class="license-bento-card bento-card-emission p-3 rounded-4 d-flex align-items-center gap-3">
-            <div class="bento-card-icon-wrap icon-wrap-emission">
-              <span class="icon-svg icon-calendar" style="width: 20px; height: 20px; background-color: #8b5cf6;"></span>
-            </div>
-            <div>
-              <span class="license-bento-label d-block mb-1">Fecha de Emisión</span>
-              <div class="bento-card-value font-monospace">
-                {{ lic.emision | date:'dd/MM/yyyy HH:mm' }}
+            <!-- Cuerpo: Timeline de fechas -->
+            <div class="lic-details-body pt-4 px-3">
+              <!-- Fecha de Emisión -->
+              <div class="lic-timeline-item">
+                <div class="lic-timeline-marker lic-marker-emission">
+                  <span class="icon-svg icon-calendar"
+                    style="width: 13px; height: 13px; background-color: currentColor;"></span>
+                </div>
+                <div class="lic-timeline-content">
+                  <span class="lic-timeline-label">Fecha de emisión</span>
+                  <span class="lic-timeline-value font-monospace">
+                    {{ lic.emision | date:'dd MMM yyyy · HH:mm' }}
+                  </span>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <!-- Tarjeta 3: Fecha de Expiración -->
-          <div class="license-bento-card bento-card-expiration p-3 rounded-4 d-flex align-items-center gap-3"
-            [class.expiration-temp]="lic.tipo === 'temporal'">
-            <div class="bento-card-icon-wrap icon-wrap-expiration">
-              <span class="icon-svg icon-clock" style="width: 20px; height: 20px;"
-                [style.background-color]="lic.tipo === 'temporal' ? '#ef4444' : '#10b981'"></span>
-            </div>
-            <div>
-              <span class="license-bento-label d-block mb-1">Fecha de Expiración</span>
-              <div class="bento-card-value">
-                @if (lic.tipo === 'temporal' && lic.expiracion) {
-                <span class="text-danger font-monospace fw-semibold">
-                  {{ lic.expiracion | date:'dd/MM/yyyy HH:mm' }}
-                </span>
-                } @else {
-                <span class="text-success d-flex align-items-center gap-1.5 fw-semibold">
-                  <span class="icon-svg icon-check"
-                    style="width: 14px; height: 14px; background-color: #10b981;"></span>
-                  Sin expiración
-                </span>
-                }
+              <div class="lic-timeline-connector"></div>
+
+              <!-- Fecha de Expiración -->
+              <div class="lic-timeline-item">
+                <div class="lic-timeline-marker" [class.lic-marker-ok]="lic.tipo !== 'temporal'"
+                  [class.lic-marker-warn]="lic.tipo === 'temporal'">
+                  <span class="icon-svg icon-clock"
+                    style="width: 13px; height: 13px; background-color: currentColor;"></span>
+                </div>
+                <div class="lic-timeline-content">
+                  <span class="lic-timeline-label">Fecha de expiración</span>
+                  @if (lic.tipo === 'temporal' && lic.expiracion) {
+                  <span class="lic-timeline-value lic-val-danger font-monospace">
+                    {{ lic.expiracion | date:'dd MMM yyyy · HH:mm' }}
+                  </span>
+                  } @else {
+                  <span class="lic-timeline-value lic-val-success d-inline-flex align-items-center gap-1">
+                    <span class="icon-svg icon-check"
+                      style="width: 12px; height: 12px; background-color: currentColor;"></span>
+                    Sin expiración
+                  </span>
+                  }
+                </div>
               </div>
             </div>
           </div>
@@ -692,7 +721,7 @@
                 Cuotas y Consumo de Analíticas
               </h5>
               <span class="badge bg-primary-subtle text-primary fw-semibold rounded-pill px-2.5 py-1 small">
-                {{ sortedLicenseFeatures().length }} analíticas
+                {{ sortedLicenseFeatures().length }} tipos de analíticas
               </span>
             </div>
 

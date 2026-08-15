@@ -42,6 +42,9 @@ export class WebRtcService {
     pc.ontrack = (event) => {
       if (event.streams && event.streams[0]) {
         videoElement.srcObject = event.streams[0];
+        videoElement.play().catch(err => {
+          console.warn('[WebRtcService] Autoplay warning on videoElement:', err);
+        });
       }
     };
 

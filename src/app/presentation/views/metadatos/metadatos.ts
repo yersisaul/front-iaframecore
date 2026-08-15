@@ -19,11 +19,12 @@ import { EmptyStateComponent } from '../../shared/empty-state/empty-state.compon
 import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
+import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 
 @Component({
   selector: 'app-metadatos',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, FilterActionsComponent],
   templateUrl: './metadatos.html',
   styleUrl: './metadatos.css'
 })
@@ -146,6 +147,15 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     return [cols * 10, cols * 20, cols * 30];
   });
 
+  // Búsqueda interna del dropdown de cámaras
+  readonly cameraSearch = signal<string>('');
+
+  readonly filteredCamarasOptions = computed(() => {
+    const q = this.cameraSearch().trim().toLowerCase();
+    const all = this.camarasOptions();
+    return q ? all.filter(c => c.toLowerCase().includes(q)) : all;
+  });
+
   // Filter drawer/panel visibility
   readonly showFilterPanel = signal<boolean>(false);
 
@@ -165,6 +175,12 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   readonly activeHoverCardId = signal<string | null>(null);
   readonly mouseX = signal<number>(0);
   readonly mouseY = signal<number>(0);
+
+  readonly activeHoverRecord = computed<MetaRecord | null>(() => {
+    const id = this.activeHoverCardId();
+    if (!id) return null;
+    return this.records().find(r => String(r.id) === String(id)) || null;
+  });
 
   // ── Custom Calendar & Time Picker State ──────────────────────────────────────
   readonly activeCalendarField = signal<'desde' | 'hasta' | null>(null);
@@ -378,7 +394,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   }
 
   // Computed check to see if any filter is active in the service
-  readonly hasActiveFilters = computed(() => {
+  readonly hasActiveFilters = computed<boolean>(() => {
     const f = this.filters();
     return f.camaras.length > 0 ||
            f.tipoObjeto.length > 0 ||
@@ -391,13 +407,13 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
            f.confiabilidadMax < 1 ||
            f.timestampDesde !== null ||
            f.timestampHasta !== null ||
-           (f.search && f.search.trim().length > 0) ||
+           Boolean(f.search && f.search.trim().length > 0) ||
            (f.imageEmbedding !== null && f.imageEmbedding !== undefined) ||
            (f.imageSearchUrl !== null && f.imageSearchUrl !== undefined) ||
            f.coincidenciaFiltro !== 'all';
   });
 
-  readonly hasActiveTempFilters = computed(() => {
+  readonly hasActiveTempFilters = computed<boolean>(() => {
     const f = this.tempFilters();
     return f.camaras.length > 0 ||
            f.tipoObjeto.length > 0 ||
@@ -410,7 +426,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
            f.confiabilidadMax < 1 ||
            f.timestampDesde !== null ||
            f.timestampHasta !== null ||
-           (f.search && f.search.trim().length > 0) ||
+           Boolean(f.search && f.search.trim().length > 0) ||
            (f.imageEmbedding !== null && f.imageEmbedding !== undefined) ||
            (f.imageSearchUrl !== null && f.imageSearchUrl !== undefined) ||
            f.coincidenciaFiltro !== 'all';
@@ -494,7 +510,10 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
         imageFile: f.imageFile || null,
         coincidenciaFiltro: f.coincidenciaFiltro || 'all'
       });
-      this.searchControl.setValue(f.search || '', { emitEvent: false });
+      const targetSearch = f.search || '';
+      if (this.searchControl.value !== targetSearch) {
+        this.searchControl.setValue(targetSearch, { emitEvent: false });
+      }
       this.syncDateTimePickerStrings(f.timestampDesde, f.timestampHasta);
     });
 
@@ -507,46 +526,6 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       this.tempFilters.update(f => ({ ...f, search: text }));
       this.metadataService.updateFilters({ search: text });
       this.metadataService.setPage(1);
-    });
-
-    // Synchronize page, pageSize, indexName, and filters to query parameters in the URL
-    combineLatest({
-      indexName: toObservable(this.activeIndex),
-      page: toObservable(this.currentPage),
-      pageSize: toObservable(this.pageSize),
-      filters: toObservable(this.filters)
-    }).pipe(
-      debounceTime(100),
-      takeUntilDestroyed()
-    ).subscribe(({ indexName, page, pageSize, filters }) => {
-      if (!indexName) return;
-
-      const queryParams: any = {};
-      queryParams['page'] = page > 1 ? page : null;
-
-      const defaultPageSize = this.columns() * 10;
-      queryParams['limit'] = pageSize !== defaultPageSize ? pageSize : null;
-
-      // Sync active filters
-      queryParams['camaras'] = filters.camaras && filters.camaras.length > 0 ? filters.camaras.join(',') : null;
-      queryParams['tipoObjeto'] = filters.tipoObjeto && filters.tipoObjeto.length > 0 ? filters.tipoObjeto.join(',') : null;
-      queryParams['edad'] = filters.edad || null;
-      queryParams['genero'] = filters.genero || null;
-      queryParams['reconocimiento'] = filters.reconocimiento || null;
-      queryParams['colores'] = filters.colores && filters.colores.length > 0 ? filters.colores.join(',') : null;
-      queryParams['posturas'] = filters.posturas && filters.posturas.length > 0 ? filters.posturas.join(',') : null;
-      queryParams['confiabilidadMin'] = filters.confiabilidadMin !== 0 ? filters.confiabilidadMin : null;
-      queryParams['confiabilidadMax'] = filters.confiabilidadMax !== 1 ? filters.confiabilidadMax : null;
-      queryParams['desde'] = filters.timestampDesde ? filters.timestampDesde.toISOString() : null;
-      queryParams['hasta'] = filters.timestampHasta ? filters.timestampHasta.toISOString() : null;
-      queryParams['search'] = filters.search || null;
-      queryParams['coincidenciaFiltro'] = filters.coincidenciaFiltro !== 'all' ? filters.coincidenciaFiltro : null;
-
-      this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams,
-        queryParamsHandling: 'merge'
-      });
     });
   }
 
@@ -563,29 +542,16 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     this.listService.loadLists().subscribe();
 
     // Precargar todas las cámaras del sistema para poblar el desplegable de filtro
-    // aunque OpenSearch no tenga documentos indexados para esas cámaras aún.
     this.cameraService.getAllCameras().subscribe();
 
-    // Coordinate path parameters and query parameters to avoid duplicate network calls
-    combineLatest({
-      params: this.route.paramMap,
-      queryParams: this.route.queryParams
-    }).pipe(
+    // Observe route path parameter (indexName)
+    this.route.paramMap.pipe(
       debounceTime(50),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(({ params, queryParams }) => {
+    ).subscribe(params => {
       const idx = params.get('indexName') as MetaIndexName;
       if (idx) {
-        const pageVal = queryParams['page'] ? parseInt(queryParams['page'], 10) : 1;
-        const page = !isNaN(pageVal) && pageVal > 0 ? pageVal : 1;
-
-        const defaultPageSize = this.columns() * 10;
-        const limitVal = queryParams['limit'] ? parseInt(queryParams['limit'], 10) : null;
-        const pageSize = limitVal && !isNaN(limitVal) && limitVal > 0 ? limitVal : defaultPageSize;
-
-        const parsedFilters = this.parseFiltersFromParams(queryParams);
-
-        this.metadataService.initializeIndexAndState(idx, page, pageSize, parsedFilters);
+        this.metadataService.initializeIndexAndState(idx, 1, this.pageSize(), this.filters());
       }
     });
   }
@@ -606,11 +572,19 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       this.resizeObserver.observe(this.metadataContainer.nativeElement);
     }
 
-    // Trigger initial adjustment
+    // Trigger initial adjustment — always sync pageSize to actual columns*10
+    // even if column count hasn't changed from the estimate, to fix the 24-record default.
     setTimeout(() => {
       if (this.metadataContainer) {
         const width = this.metadataContainer.nativeElement.getBoundingClientRect().width;
-        this.adjustColumnsAndLimit(width);
+        if (width > 0) {
+          const realCols = Math.max(1, Math.floor((width + 24) / (335 + 24)));
+          const correctSize = realCols * 10;
+          this.columns.set(realCols);
+          if (this.metadataService.pageSize() !== correctSize) {
+            this.metadataService.setPageSize(correctSize);
+          }
+        }
       }
     }, 50);
   }
@@ -988,20 +962,13 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
 
   onCardMouseMove(event: MouseEvent, recordId: string): void {
     this.activeHoverCardId.set(recordId);
-    const cardElement = event.currentTarget as HTMLElement;
-    const rect = cardElement.getBoundingClientRect();
-    
-    // Position of the mouse relative to the card
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
     
     // Viewport collision detection: popover has a width of 360px in CSS
     const popoverWidth = 360;
     const margin = 20;
-    const verticalMargin = 85; // Safety margin to account for main layout padding and bottom navigation offsets
+    const verticalMargin = 85;
     
-    // Dynamically estimate popover height with generous padding to prevent vertical viewport overflow
-    let popoverHeight = 160; // baseline height (padding, header, margins)
+    let popoverHeight = 160;
     const record = this.records().find(r => String(r.id) === String(recordId));
     if (record) {
       const hasIdent = this.getTipoObjeto(record) || this.getEdad(record) || this.getGenero(record) || this.getReconocimiento(record);
@@ -1025,18 +992,18 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     
     if (event.clientX + popoverWidth + 15 > window.innerWidth - margin) {
       // Flip popover to the left of the cursor
-      this.mouseX.set(x - popoverWidth - 15);
+      this.mouseX.set(event.clientX - popoverWidth - 15);
     } else {
       // Default position to the right of the cursor
-      this.mouseX.set(x + 15);
+      this.mouseX.set(event.clientX + 15);
     }
     
     if (event.clientY + popoverHeight + 15 > window.innerHeight - verticalMargin) {
       // Flip popover to the top of the cursor to prevent spawning vertical scrollbar
-      this.mouseY.set(y - popoverHeight - 15);
+      this.mouseY.set(event.clientY - popoverHeight - 15);
     } else {
       // Default position below the cursor
-      this.mouseY.set(y + 15);
+      this.mouseY.set(event.clientY + 15);
     }
   }
 

@@ -1155,6 +1155,26 @@ export class Horarios implements OnInit, OnDestroy {
     this.showEditScheduleModal.set(false);
   }
 
+  private backdropMouseDownTarget: EventTarget | null = null;
+
+  onBackdropMouseDown(event: MouseEvent): void {
+    if (event.button === 0) {
+      this.backdropMouseDownTarget = event.target;
+    }
+  }
+
+  onBackdropMouseUp(event: MouseEvent, modalType: 'create' | 'edit'): void {
+    if (
+      event.button === 0 &&
+      this.backdropMouseDownTarget === event.currentTarget &&
+      event.target === event.currentTarget
+    ) {
+      if (modalType === 'create') this.closeCreateScheduleModal();
+      else if (modalType === 'edit') this.closeEditScheduleModal();
+    }
+    this.backdropMouseDownTarget = null;
+  }
+
   openCreateScheduleModal(): void {
     this.cancelCreate();
     this.cancelEdit();

@@ -19,7 +19,7 @@ export class MetadataService {
   readonly filterOptions = signal<MetaFilterOptions>(defaultFilterOptions());
   readonly isLoading = signal<boolean>(false);
   readonly currentPage = signal<number>(1);
-  readonly pageSize = signal<number>(24);
+  readonly pageSize = signal<number>(60);
   readonly newRecordIds = signal<Set<string>>(new Set());
   readonly bufferedEvents = signal<MetaRecord[]>([]);
 

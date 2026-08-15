@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, forkJoin } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
+import { Observable, of, forkJoin, EMPTY } from 'rxjs';
+import { map, catchError, switchMap, expand, reduce } from 'rxjs/operators';
 import { MetaFilterState, MetaFilterOptions, defaultFilterOptions } from '../../core/domain/entities/metadata.filters.models';
 import { MetaIndexName, MetaRecord, MetaIndexInfo, MetaRostro } from '../../core/domain/entities/metadata.models';
 import { IMetadataRepository, MetadataSearchResult } from '../../core/domain/repositories/metadata.repository';
@@ -9,6 +9,10 @@ import { MetadataMapper } from '../mappers/metadata.mapper';
 import { OsResponse, CatIndexResponse } from './dtos/opensearch-response.dto';
 import { AppEnvironment } from '../../core/config/app-environment';
 import { parseUtcDate } from '../../core/utils/date-utils';
+
+interface InternalMetadataSearchResult extends MetadataSearchResult {
+  lastSort?: any[];
+}
 
 @Injectable({
   providedIn: 'root'
@@ -24,14 +28,12 @@ export class OpenSearchRepository implements IMetadataRepository {
           .map(i => i.index as MetaIndexName)
           .filter(name => validNames.includes(name));
 
-        // If any of the valid names are missing, add them so we always display all 4
         validNames.forEach(name => {
           if (!activeNames.includes(name)) {
             activeNames.push(name);
           }
         });
 
-        // For each active index, call its _count endpoint to get the real count of parent documents
         const countObservables = activeNames.map(name =>
           this.http.get<{ count: number }>(`${AppEnvironment.openSearchBaseUrl}/${name}/_count`).pipe(
             map(res => ({ name, count: res.count })),
@@ -42,7 +44,6 @@ export class OpenSearchRepository implements IMetadataRepository {
         return forkJoin(countObservables);
       }),
       map(mapped => {
-        // Sort descending by count
         return mapped.sort((a, b) => b.count - a.count);
       }),
       catchError(() => {
@@ -63,25 +64,194 @@ export class OpenSearchRepository implements IMetadataRepository {
     page: number,
     pageSize: number
   ): Observable<MetadataSearchResult> {
-    const mustFilters: any[] = [];
-    const isRostros = index === 'rostros';
+    if (pageSize >= 10000 || pageSize <= 0) {
+      return this.fetchAllMetadataInRange(index, filters);
+    }
+    return this.searchPage(index, filters, page, pageSize);
+  }
 
-    // 1. tipo_objeto (Multi-select OR)
+  private fetchAllMetadataInRange(
+    index: MetaIndexName,
+    filters: MetaFilterState
+  ): Observable<MetadataSearchResult> {
+    const fetchChunkSize = 5000;
+
+    return this.searchPageWithSearchAfter(index, filters, fetchChunkSize, null).pipe(
+      expand(prevResult => {
+        const currentCount = prevResult.records.length;
+        if (currentCount === 0 || currentCount >= prevResult.total || !prevResult.lastSort) {
+          return EMPTY;
+        }
+        return this.searchPageWithSearchAfter(index, filters, fetchChunkSize, prevResult.lastSort).pipe(
+          map(nextResult => ({
+            records: [...prevResult.records, ...nextResult.records],
+            total: nextResult.total,
+            filterOptions: nextResult.filterOptions,
+            lastSort: nextResult.lastSort
+          }))
+        );
+      }),
+      reduce((acc, current) => current)
+    );
+  }
+
+  private searchPageWithSearchAfter(
+    index: MetaIndexName,
+    filters: MetaFilterState,
+    pageSize: number,
+    searchAfter: any[] | null
+  ): Observable<InternalMetadataSearchResult> {
+    const mustFilters = this.buildMustFilters(index, filters);
+    const aggs = this.buildAggs(index);
+
+    const queryBody: any = {
+      track_total_hits: true,
+      size: pageSize,
+      sort: [
+        { timestamp: { order: 'desc' } },
+        { _id: { order: 'desc' } }
+      ],
+      query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} },
+      aggs: aggs
+    };
+
+    if (searchAfter) {
+      queryBody.search_after = searchAfter;
+    }
+
+    return this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/${index}/_search`, queryBody).pipe(
+      map(res => {
+        const hits = res.hits?.hits || [];
+        const records = hits.map((h: any) => MetadataMapper.toDomain(index, h));
+        let total = 0;
+        if (res.hits?.total) {
+          total = typeof res.hits.total === 'number' ? res.hits.total : res.hits.total.value;
+        }
+        const lastHit = hits[hits.length - 1];
+        const lastSort = lastHit ? lastHit.sort : undefined;
+
+        return {
+          records,
+          total,
+          filterOptions: this.parseFilterOptions(res.aggregations),
+          lastSort
+        };
+      }),
+      catchError(err => {
+        console.error(`Error fetching metadata chunk from index "${index}":`, err);
+        return of({
+          records: [],
+          total: 0,
+          filterOptions: defaultFilterOptions()
+        });
+      })
+    );
+  }
+
+  private ensureMaxResultWindow(): Observable<any> {
+    return this.http.put(`${AppEnvironment.openSearchBaseUrl}/_all/_settings`, {
+      'index.max_result_window': 2147483647
+    }).pipe(
+      catchError(err => {
+        console.warn('[OpenSearch] No se pudo actualizar max_result_window:', err);
+        return of(null);
+      })
+    );
+  }
+
+  private searchPage(
+    index: MetaIndexName,
+    filters: MetaFilterState,
+    page: number,
+    pageSize: number
+  ): Observable<MetadataSearchResult> {
+    const mustFilters = this.buildMustFilters(index, filters);
+    const aggs = this.buildAggs(index);
+
+    let queryBody: any;
+    if (filters.imageEmbedding && filters.imageEmbedding.length > 0) {
+      queryBody = {
+        track_total_hits: true,
+        from: (page - 1) * pageSize,
+        size: pageSize,
+        query: {
+          knn: {
+            embedding: {
+              vector: filters.imageEmbedding,
+              k: Math.max(100, (page * pageSize) + pageSize),
+              ...(mustFilters.length > 0 ? { filter: { bool: { filter: mustFilters } } } : {})
+            }
+          }
+        },
+        aggs: aggs
+      };
+    } else {
+      queryBody = {
+        track_total_hits: true,
+        from: (page - 1) * pageSize,
+        size: pageSize,
+        sort: [
+          { timestamp: { order: 'desc' } },
+          { _id: { order: 'desc' } }
+        ],
+        query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} },
+        aggs: aggs
+      };
+    }
+
+    const fallbackQuery = {
+      track_total_hits: true,
+      from: (page - 1) * pageSize,
+      size: pageSize,
+      sort: [
+        { timestamp: { order: 'desc' } },
+        { _id: { order: 'desc' } }
+      ],
+      query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} }
+    };
+
+    const parseResult = (res: OsResponse<any>): MetadataSearchResult => {
+      const hits = res.hits?.hits || [];
+      const records = hits.map((h: any) => MetadataMapper.toDomain(index, h));
+      let total = 0;
+      if (res.hits?.total) {
+        total = typeof res.hits.total === 'number' ? res.hits.total : res.hits.total.value;
+      }
+      return { records, total, filterOptions: this.parseFilterOptions(res.aggregations) };
+    };
+
+    return this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/${index}/_search`, queryBody).pipe(
+      map(res => parseResult(res)),
+      catchError(err => {
+        console.warn(`[OpenSearch] Query falló en índice "${index}" (${err?.status || err?.message}). Ampliando max_result_window y reintentando...`);
+        return this.ensureMaxResultWindow().pipe(
+          switchMap(() => this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/${index}/_search`, fallbackQuery)),
+          map(res => ({ ...parseResult(res), filterOptions: defaultFilterOptions() })),
+          catchError(err2 => {
+            console.error(`[OpenSearch] Reintento en índice "${index}" falló:`, err2?.error || err2);
+            return of<MetadataSearchResult>({ records: [], total: 0, filterOptions: defaultFilterOptions() });
+          })
+        );
+      })
+    );
+  }
+
+
+  private buildMustFilters(index: MetaIndexName, filters: MetaFilterState): any[] {
+    const mustFilters: any[] = [];
+
     if (filters.tipoObjeto && filters.tipoObjeto.length > 0) {
       mustFilters.push(this.buildTermsFilter('tipo_objeto', filters.tipoObjeto));
     }
 
-    // 2. edad (Single-select)
     if (filters.edad) {
       mustFilters.push(this.buildTermFilter('edad', filters.edad));
     }
 
-    // 3. genero (Single-select)
     if (filters.genero) {
       mustFilters.push(this.buildTermFilter('genero', filters.genero));
     }
 
-    // 4. reconocimiento (Single-select / Placa / Sujeto - Búsqueda flexible con/sin guion)
     if (filters.reconocimiento && filters.reconocimiento.trim()) {
       const val = filters.reconocimiento.trim();
       const valClean = val.replace(/[^A-Za-z0-9]/g, '');
@@ -112,7 +282,6 @@ export class OpenSearchRepository implements IMetadataRepository {
       });
     }
 
-    // 5. colores (Multi-select OR - Nested for all indices)
     if (filters.colores && filters.colores.length > 0) {
       mustFilters.push({
         nested: {
@@ -122,7 +291,6 @@ export class OpenSearchRepository implements IMetadataRepository {
       });
     }
 
-    // 6. posturas (Multi-select OR - Nested - Only for 'personas' if present)
     if (filters.posturas && filters.posturas.length > 0 && index === 'personas') {
       mustFilters.push({
         nested: {
@@ -132,12 +300,10 @@ export class OpenSearchRepository implements IMetadataRepository {
       });
     }
 
-    // 7. camaras (Multi-select OR)
     if (filters.camaras && filters.camaras.length > 0) {
       mustFilters.push(this.buildTermsFilter('camara', filters.camaras));
     }
 
-    // 8. confiabilidad (Range) — solo se aplica si el usuario ajustó el rango (no es 0-100%)
     const confiabilidadIsFiltered = filters.confiabilidadMin > 0 || filters.confiabilidadMax < 1;
     if (confiabilidadIsFiltered) {
       mustFilters.push({
@@ -150,7 +316,6 @@ export class OpenSearchRepository implements IMetadataRepository {
       });
     }
 
-    // 9. timestamp (Range)
     const timestampRange: any = {};
     if (filters.timestampDesde) {
       timestampRange.gte = filters.timestampDesde.toISOString();
@@ -162,27 +327,60 @@ export class OpenSearchRepository implements IMetadataRepository {
       mustFilters.push({ range: { timestamp: timestampRange } });
     }
 
-    // 10. search (Text query search across multiple fields)
     if (filters.search && filters.search.trim()) {
+      const q = filters.search.trim();
+      const escapedQ = q.replace(/[-[\]{}()*+?View^$|#\\]/g, '\\$&');
+
       mustFilters.push({
-        multi_match: {
-          query: filters.search.trim(),
-          fields: [
-            'id^2',
-            'camara',
-            'camara.keyword',
-            'reconocimiento',
-            'reconocimiento.keyword^3',
-            'tipo_objeto',
-            'tipo_objeto.keyword'
+        bool: {
+          should: [
+            // 1.ª prioridad — nombre de cámara
+            { wildcard: { 'camara': { value: `*${q}*`, case_insensitive: true } } },
+            { wildcard: { 'camara.keyword': { value: `*${q}*`, case_insensitive: true } } },
+            // 2.ª prioridad — reconocimiento (nombre de persona o placa)
+            { wildcard: { 'reconocimiento': { value: `*${q}*`, case_insensitive: true } } },
+            { wildcard: { 'reconocimiento.keyword': { value: `*${q}*`, case_insensitive: true } } },
+            // 3.ª prioridad — tipo de objeto
+            { wildcard: { 'tipo_objeto': { value: `*${q}*`, case_insensitive: true } } },
+            { wildcard: { 'tipo_objeto.keyword': { value: `*${q}*`, case_insensitive: true } } },
+
+            {
+              multi_match: {
+                query: q,
+                fields: [
+                  'camara^3',
+                  'camara.keyword^3',
+                  'reconocimiento^2',
+                  'reconocimiento.keyword^2',
+                  'tipo_objeto',
+                  'tipo_objeto.keyword'
+                ],
+                type: 'best_fields',
+                fuzziness: 'AUTO'
+              }
+            },
+
+            {
+              query_string: {
+                query: `*${escapedQ}*`,
+                fields: [
+                  'camara^3',
+                  'camara.keyword^3',
+                  'reconocimiento^2',
+                  'reconocimiento.keyword^2',
+                  'tipo_objeto',
+                  'tipo_objeto.keyword'
+                ],
+                default_operator: 'OR',
+                analyze_wildcard: true
+              }
+            }
           ],
-          type: 'best_fields',
-          fuzziness: 'AUTO'
+          minimum_should_match: 1
         }
       });
     }
 
-    // 11. coincidenciaFiltro (Only for 'rostros' index)
     if (index === 'rostros' && filters.coincidenciaFiltro) {
       if (filters.coincidenciaFiltro === 'coincidencia') {
         mustFilters.push({
@@ -210,10 +408,13 @@ export class OpenSearchRepository implements IMetadataRepository {
       }
     }
 
-    // Build aggregations based on active index
+    return mustFilters;
+  }
+
+  private buildAggs(index: MetaIndexName): any {
+    const isRostros = index === 'rostros';
     const aggs: any = {};
 
-    // Base aggs for all indexes (try both raw and keyword)
     aggs.camara_vals = { terms: { field: 'camara.keyword', size: 100 } };
     aggs.confiabilidad_stats = { stats: { field: 'confiabilidad' } };
 
@@ -248,70 +449,7 @@ export class OpenSearchRepository implements IMetadataRepository {
       aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto.keyword', size: 100 } };
     }
 
-    let queryBody: any;
-    if (filters.imageEmbedding && filters.imageEmbedding.length > 0) {
-      queryBody = {
-        track_total_hits: true,
-        from: (page - 1) * pageSize,
-        size: pageSize,
-        query: {
-          knn: {
-            embedding: {
-              vector: filters.imageEmbedding,
-              k: Math.max(100, (page * pageSize) + pageSize),
-              ...(mustFilters.length > 0 ? { filter: { bool: { filter: mustFilters } } } : {})
-            }
-          }
-        },
-        aggs: aggs
-      };
-    } else {
-      queryBody = {
-        track_total_hits: true,
-        from: (page - 1) * pageSize,
-        size: pageSize,
-        sort: [
-          { timestamp: { order: 'desc' } }
-        ],
-        query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} },
-        aggs: aggs
-      };
-    }
-
-    // Fallback query sin aggregations (usada si la query principal falla, ej. campos no-nested)
-    const fallbackQuery = {
-      track_total_hits: true,
-      from: (page - 1) * pageSize,
-      size: pageSize,
-      sort: [{ timestamp: { order: 'desc' } }],
-      query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} }
-    };
-
-    const parseResult = (res: OsResponse<any>): MetadataSearchResult => {
-      const hits = res.hits?.hits || [];
-      const records = hits.map((h: any) => MetadataMapper.toDomain(index, h));
-      let total = 0;
-      if (res.hits?.total) {
-        total = typeof res.hits.total === 'number' ? res.hits.total : res.hits.total.value;
-      }
-      return { records, total, filterOptions: this.parseFilterOptions(res.aggregations) };
-    };
-
-    return this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/${index}/_search`, queryBody).pipe(
-      map(res => parseResult(res)),
-      catchError(err => {
-        // La query principal falló (probablemente por mappings nested incompatibles).
-        // Reintentamos con una query mínima sin aggregations.
-        console.warn(`[OpenSearch] Query completa falló en índice "${index}" (${err?.status || err?.message}). Reintentando sin aggregations...`);
-        return this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/${index}/_search`, fallbackQuery).pipe(
-          map(res => ({ ...parseResult(res), filterOptions: defaultFilterOptions() })),
-          catchError(err2 => {
-            console.error(`[OpenSearch] Query mínima también falló en índice "${index}":`, err2?.error || err2);
-            return of<MetadataSearchResult>({ records: [], total: 0, filterOptions: defaultFilterOptions() });
-          })
-        );
-      })
-    );
+    return aggs;
   }
 
   private parseFilterOptions(aggs: any): MetaFilterOptions {

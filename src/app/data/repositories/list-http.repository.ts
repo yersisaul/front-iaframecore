@@ -254,7 +254,7 @@ export class ListHttpRepository implements IListRepository {
     }
 
     const query = {
-      size: 50,
+      size: 500,
       query: queryBody,
       sort: [
         { "timestamp": { "order": "desc" } }

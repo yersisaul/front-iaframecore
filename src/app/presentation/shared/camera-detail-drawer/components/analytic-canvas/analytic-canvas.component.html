@@ -1,0 +1,363 @@
+<div class="analytic-canvas-container">
+  <div class="canvas-wrapper position-relative rounded-3 overflow-hidden select-none" #canvasContainer
+    [style.aspect-ratio]="imageAspectRatio() ? imageAspectRatio() : '1.7778'"
+    [style.--aspect-ratio]="imageAspectRatio() ? imageAspectRatio() : '1.7778'"
+    [class.drawing-active]="activeOpenShape() !== null"
+    [class.canvas-highlight-error]="highlightError"
+    (mousedown)="onCanvasMouseDown($event)"
+    (dblclick)="onCanvasDblClick($event)"
+    (contextmenu)="onCanvasContextMenu($event)">
+
+  <!-- Superposición de Alerta de Lienzo: Elementos Flotantes de Alta Definición directamente sobre la imagen (Sin Recuadro) -->
+  @if (highlightError) {
+  <div class="canvas-caution-overlay d-flex flex-column align-items-center justify-content-center p-4">
+    <div class="caution-floating-content d-flex flex-column align-items-center justify-content-center text-center">
+      <span class="icon-svg icon-warning caution-heartbeat-icon mb-3"></span>
+      <h6 class="caution-floating-title font-bold mb-1.5">Geometría Requerida</h6>
+      <p class="caution-floating-text font-semibold mb-0">
+        @if (geometryType === 'line') {
+          Dibuja la línea de cruce en el lienzo antes de guardar
+        } @else {
+          Dibuja el polígono o zona de análisis en el lienzo antes de guardar
+        }
+      </p>
+    </div>
+  </div>
+  }
+
+  <!-- Imagen del Último Evento o Placeholder Sleek -->
+  @if (effectiveImageUrl() && !imageFailed()) {
+  <img [src]="effectiveImageUrl()" alt="" class="camera-snapshot-img select-none"
+    (load)="onImageLoad($event)" (error)="onImageError($event)" draggable="false" />
+  } @else {
+  <div
+    class="camera-snapshot-placeholder d-flex flex-column align-items-center justify-content-center w-100 h-100 select-none">
+    <div class="placeholder-icon-ring mb-3 d-flex align-items-center justify-content-center">
+      <span class="icon-svg icon-camara text-white opacity-40 placeholder-icon"></span>
+    </div>
+    <span class="placeholder-title text-uppercase font-monospace fw-bold text-white-50 mb-1">Captura no disponible</span>
+    <span class="placeholder-subtitle text-white-50 small opacity-50">No se pudo cargar la imagen o la cámara no contiene captura activa</span>
+  </div>
+  }
+
+  <!-- Capa Vectorial SVG (Pixel-perfect 1:1, 0 deformación de aspecto) -->
+  <svg class="canvas-svg-layer" [attr.viewBox]="'0 0 ' + containerWidth() + ' ' + containerHeight()">
+
+    <defs>
+      <marker id="arrow-head-single" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 L 2.5 5 Z" fill="#f59e0b" />
+      </marker>
+      <marker id="arrow-head-double-start" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M 9 1 L 0 5 L 9 9 L 6.5 5 Z" fill="#f59e0b" />
+      </marker>
+      <marker id="arrow-head-double-end" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M 0 1 L 9 5 L 0 9 L 2.5 5 Z" fill="#f59e0b" />
+      </marker>
+    </defs>
+
+    @for (shape of shapes(); track shape.id; let sIdx = $index) {
+    @if (shape.points.length > 0) {
+    @if (geometryType === 'polygon' || geometryType === 'speed_quad') {
+    @if (shape.isClosed) {
+    <!-- Perímetro de outer_area (Polígono expandido punteado - Solo se muestra cuando hay 1 única área seleccionada) -->
+    @if (selectedShapeIndexes().size === 1 && selectedShapeIndexes().has(sIdx)) {
+    <polygon [attr.points]="formatSvgPoints(calculateOuterArea(shape.points, scaleFactor))"
+      class="svg-outer-area-polygon" [attr.stroke]="getShapeColor(sIdx)" stroke-dasharray="5,4" stroke-width="1.5" [attr.fill]="getShapeFill(sIdx)"
+      style="pointer-events: none;"></polygon>
+    }
+
+    <!-- Relleno del polígono (solo cuando está cerrado) - Arrastrable y Click Derecho Contextual -->
+    <polygon [attr.points]="formatSvgPoints(shape.points)" class="svg-polygon-fill draggable"
+      [attr.fill]="getShapeFill(sIdx)"
+      [class.selected]="selectedShapeIndexes().has(sIdx)"
+      [class.recently-closed]="recentlyClosedShapeIndex() === sIdx"
+      [style.pointer-events]="activeOpenShape() ? 'none' : 'auto'"
+      (mousedown)="startDragShape(sIdx, $event)"
+      (contextmenu)="onShapeContextMenu(sIdx, $event)"
+      (mouseenter)="hoveredShapeIndex.set(sIdx)"
+      (mouseleave)="hoveredShapeIndex.set(null)">
+    </polygon>
+    }
+    <!-- Líneas de arista -->
+    @for (point of shape.points; track $index) {
+    @if ($index < shape.points.length - 1) {
+    <line [attr.x1]="toSvgX(point.x)" [attr.y1]="toSvgY(point.y)"
+      [attr.x2]="toSvgX(shape.points[$index + 1].x)" [attr.y2]="toSvgY(shape.points[$index + 1].y)"
+      class="svg-edge-line" [attr.stroke]="getShapeColor(sIdx)"
+      [class.recently-closed]="recentlyClosedShapeIndex() === sIdx">
+    </line>
+    }
+    }
+    <!-- Línea de cierre (solo cuando cerrado) -->
+    @if (shape.isClosed && shape.points.length > 2) {
+    <line [attr.x1]="toSvgX(shape.points[shape.points.length - 1].x)" [attr.y1]="toSvgY(shape.points[shape.points.length - 1].y)"
+      [attr.x2]="toSvgX(shape.points[0].x)" [attr.y2]="toSvgY(shape.points[0].y)"
+      class="svg-edge-line" [attr.stroke]="getShapeColor(sIdx)"
+      [class.recently-closed]="recentlyClosedShapeIndex() === sIdx"></line>
+    }
+    } @else if (geometryType === 'line') {
+    <!-- 1. Franja de sensibilidad analysis_zone (Fondo) -->
+    @if (shape.points.length >= 2) {
+    <polygon [attr.points]="formatSvgPoints(calculateAnalysisZone(shape.points[0], shape.points[1], (zoneWidth || 40) / 2))"
+      class="svg-analysis-zone-polygon draggable" [attr.stroke]="getShapeColor(sIdx)" stroke-dasharray="3,3" stroke-width="1.2" [attr.fill]="getShapeFill(sIdx)"
+      [class.selected]="selectedShapeIndexes().has(sIdx)"
+      [class.recently-closed]="recentlyClosedShapeIndex() === sIdx"
+      [style.pointer-events]="activeOpenShape() ? 'none' : 'auto'"
+      (mousedown)="startDragShape(sIdx, $event)"
+      (contextmenu)="onShapeContextMenu(sIdx, $event)"
+      (mouseenter)="hoveredShapeIndex.set(sIdx)"
+      (mouseleave)="hoveredShapeIndex.set(null)">
+    </polygon>
+    }
+
+    <!-- 2. Línea principal de detección (Capa intermedia) -->
+    <line [attr.x1]="toSvgX(shape.points[0].x)" [attr.y1]="toSvgY(shape.points[0].y)"
+      [attr.x2]="toSvgX(shape.points[1]?.x || shape.points[0].x)" [attr.y2]="toSvgY(shape.points[1]?.y || shape.points[0].y)"
+      class="svg-line-stroke draggable" [attr.stroke]="getShapeColor(sIdx)"
+      [class.selected]="selectedShapeIndexes().has(sIdx)"
+      [class.recently-closed]="recentlyClosedShapeIndex() === sIdx"
+      [style.pointer-events]="activeOpenShape() ? 'none' : 'auto'"
+      (mousedown)="startDragShape(sIdx, $event)"
+      (contextmenu)="onShapeContextMenu(sIdx, $event)"
+      (mouseenter)="hoveredShapeIndex.set(sIdx)"
+      (mouseleave)="hoveredShapeIndex.set(null)">
+    </line>
+
+    <!-- 3. Flecha e Insignias A y B de Dirección (POR ENCIMA DE LA LÍNEA PRINCIPAL - Capa Superior) -->
+    @if (shape.points.length >= 2) {
+    @if (getDirectionArrowLine(shape.points[0], shape.points[1], 42, 22); as arrowLine) {
+      <!-- Resplandor Neón Amber de Fondo -->
+      <line [attr.x1]="arrowLine.x1" [attr.y1]="arrowLine.y1"
+            [attr.x2]="arrowLine.x2" [attr.y2]="arrowLine.y2"
+            stroke="#f59e0b" stroke-width="5" stroke-opacity="0.25"
+            style="pointer-events: none;"></line>
+
+      <!-- Vector Punteado Amber Stealth -->
+      @if (strDirection === 'De A a B') {
+      <line [attr.x1]="arrowLine.x1" [attr.y1]="arrowLine.y1"
+            [attr.x2]="arrowLine.x2" [attr.y2]="arrowLine.y2"
+            stroke="#f59e0b" stroke-width="2.8" stroke-dasharray="6,3" marker-end="url(#arrow-head-single)"
+            style="pointer-events: none;"></line>
+      } @else if (strDirection === 'De B a A') {
+      <line [attr.x1]="arrowLine.x2" [attr.y1]="arrowLine.y2"
+            [attr.x2]="arrowLine.x1" [attr.y2]="arrowLine.y1"
+            stroke="#f59e0b" stroke-width="2.8" stroke-dasharray="6,3" marker-end="url(#arrow-head-single)"
+            style="pointer-events: none;"></line>
+      } @else {
+      <line [attr.x1]="arrowLine.x1" [attr.y1]="arrowLine.y1"
+            [attr.x2]="arrowLine.x2" [attr.y2]="arrowLine.y2"
+            stroke="#f59e0b" stroke-width="2.8" stroke-dasharray="6,3" marker-start="url(#arrow-head-double-start)" marker-end="url(#arrow-head-double-end)"
+            style="pointer-events: none;"></line>
+      }
+    }
+
+    @let dirPts = calculateDirectionPoints(shape.points[0], shape.points[1], 42);
+    @if (dirPts.length === 2) {
+      <!-- Insignia A en Electric Amber (#f59e0b - Lado A) -->
+      <g class="svg-direction-badge select-none">
+        <circle [attr.cx]="toSvgX(dirPts[0].x)" [attr.cy]="toSvgY(dirPts[0].y)" r="16" class="svg-direction-badge-halo" stroke="#f59e0b"></circle>
+        <circle [attr.cx]="toSvgX(dirPts[0].x)" [attr.cy]="toSvgY(dirPts[0].y)" r="12" fill="#f59e0b"></circle>
+        <text [attr.x]="toSvgX(dirPts[0].x)" [attr.y]="toSvgY(dirPts[0].y)" class="svg-direction-badge-text" text-anchor="middle" dominant-baseline="central">A</text>
+      </g>
+      <!-- Insignia B en Electric Amber (#f59e0b - Lado B) -->
+      <g class="svg-direction-badge select-none">
+        <circle [attr.cx]="toSvgX(dirPts[1].x)" [attr.cy]="toSvgY(dirPts[1].y)" r="16" class="svg-direction-badge-halo" stroke="#f59e0b"></circle>
+        <circle [attr.cx]="toSvgX(dirPts[1].x)" [attr.cy]="toSvgY(dirPts[1].y)" r="12" fill="#f59e0b"></circle>
+        <text [attr.x]="toSvgX(dirPts[1].x)" [attr.y]="toSvgY(dirPts[1].y)" class="svg-direction-badge-text" text-anchor="middle" dominant-baseline="central">B</text>
+      </g>
+    }
+    }
+    }
+
+    <!-- Puntos de Control Interactivos (Resaltados con A-B-C-D solo en Cuadrilátero de Velocidad) -->
+    @for (point of shape.points; track $index) {
+    <g class="svg-control-point"
+       [class.speed-quad-point]="isSpeedQuad()"
+       [class.active-drawing-point]="activeOpenShape() !== null && sIdx === (shapes().length - 1)"
+       [style.pointer-events]="(activeOpenShape() !== null && sIdx !== (shapes().length - 1)) ? 'none' : 'auto'"
+       (mousedown)="startDrag(sIdx, $index, $event)"
+       (dblclick)="deletePoint(sIdx, $index, $event)"
+       (click)="$event.stopPropagation()">
+      <!-- Halo exterior -->
+      <circle [attr.cx]="toSvgX(point.x)" [attr.cy]="toSvgY(point.y)" [attr.r]="isSpeedQuad() ? 18 : haloRadius"
+        class="svg-point-halo"></circle>
+      <!-- Círculo principal nodo -->
+      <circle [attr.cx]="toSvgX(point.x)" [attr.cy]="toSvgY(point.y)" [attr.r]="isSpeedQuad() ? 14 : coreRadius"
+        class="svg-point-core"
+        [class.active]="activeDragInfo()?.shapeIndex === sIdx && activeDragInfo()?.pointIndex === $index"
+        [class.first-point]="$index === 0 && !shape.isClosed && geometryType === 'polygon' && shape.points.length >= 3">
+      </circle>
+      <!-- Texto de Etiqueta (SOLO para Cuadrilátero A-B-C-D) -->
+      @if (isSpeedQuad()) {
+        @if (getLabelForPoint(sIdx, $index); as labelTxt) {
+        <text [attr.x]="toSvgX(point.x)" [attr.y]="toSvgY(point.y)"
+          class="svg-point-text" text-anchor="middle" dominant-baseline="central">
+          {{ labelTxt }}
+        </text>
+        }
+      }
+    </g>
+    }
+    }
+    }
+
+    <!-- Anillo indicador visual de Atracción Magnética Activa -->
+    @if (isMagnetSnapped() && activeOpenShape(); as openShape) {
+    @if (openShape.points.length > 0) {
+    <circle [attr.cx]="toSvgX(openShape.points[0].x)" [attr.cy]="toSvgY(openShape.points[0].y)"
+      r="16" class="svg-magnet-ring"></circle>
+    }
+    }
+
+    <!-- 1. Línea de Preview (Ghost Line) sólo cuando hay clic presionado en modo dragable -->
+    @if (activeOpenShape() && activeDragInfo() && currentMousePos(); as mouse) {
+    @let activePts = activeOpenShape()!.points;
+    @let drag = activeDragInfo()!;
+    @if (activePts.length > 1 && drag.pointIndex > 0) {
+    @let prevPt = activePts[drag.pointIndex - 1];
+    <line [attr.x1]="toSvgX(prevPt.x)" [attr.y1]="toSvgY(prevPt.y)" [attr.x2]="toSvgX(mouse.x)" [attr.y2]="toSvgY(mouse.y)"
+      class="svg-ghost-line" [attr.stroke]="getShapeColor(drag.shapeIndex)">
+    </line>
+    }
+    }
+
+    <!-- 3. Punto Fantasma de División de Arista (Edge Splitting con SVG +) -->
+    @if (hoverEdgeInfo(); as splitInfo) {
+    <g class="svg-edge-split-point"
+       [attr.transform]="'translate(' + toSvgX(splitInfo.splitPoint.x) + ',' + toSvgY(splitInfo.splitPoint.y) + ')'"
+       (click)="splitEdge($event)"
+       (mousedown)="splitEdge($event)">
+      <!-- Halo Pulsante -->
+      <circle r="14" class="split-point-halo" [attr.fill]="getShapeColor(splitInfo.shapeIndex)"></circle>
+      <!-- Círculo Núcleo -->
+      <circle r="9" class="split-point-core" [attr.fill]="getShapeColor(splitInfo.shapeIndex)"></circle>
+      <!-- Icono SVG '+' -->
+      <path d="M -4 0 H 4 M 0 -4 V 4" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"></path>
+    </g>
+    }
+
+  </svg>
+
+
+  <!-- Tooltip Flotante de Coordenadas al Arrastrar (Smart Outward Nearest-Point Anchor & Glassmorphism) -->
+  @if (getSmartDragTooltipInfo(); as coord) {
+  <div class="canvas-drag-coord-tooltip select-none"
+       [style.left.px]="coord.x"
+       [style.top.px]="coord.y"
+       [style.transform]="'translate(' + coord.transX + '%, ' + coord.transY + '%)'">
+    <span class="coord-axis">X:</span>
+    <span class="coord-val me-1">{{ coord.ptX }}px</span>
+    <span class="coord-divider">·</span>
+    <span class="coord-axis ms-1">Y:</span>
+    <span class="coord-val">{{ coord.ptY }}px</span>
+  </div>
+  }
+
+  <!-- Popup Flotante de Menú Contextual al hacer Click Derecho -->
+  @if (contextMenuState(); as menu) {
+  <div class="canvas-context-menu"
+       [style.left.px]="menu.x"
+       [style.top.px]="menu.y"
+       (click)="$event.stopPropagation()"
+       (mousedown)="$event.stopPropagation()">
+    @if (selectedShapeIndexes().size > 1) {
+    <button class="btn-context-item text-danger" (click)="deleteSelectedShapes()" (mousedown)="$event.stopPropagation()">
+      <span class="icon-svg icon-trash context-item-icon"></span>
+      <span class="context-item-text">
+        {{ isLine() ? 'Borrar líneas seleccionadas' : 'Borrar áreas seleccionadas' }} ({{ selectedShapeIndexes().size }})
+      </span>
+    </button>
+    } @else {
+    <button class="btn-context-item text-danger" (click)="deleteShape(menu.shapeIndex)" (mousedown)="$event.stopPropagation()">
+      <span class="icon-svg icon-trash context-item-icon"></span>
+      <span class="context-item-text">
+        {{ isLine() ? 'Borrar esta línea' : 'Borrar esta área' }}
+      </span>
+    </button>
+    }
+  </div>
+  }
+
+  <!-- Badges Informativos de Distancia en Metros para Cuadrilátero A-B-C-D (distancia_a_b y distancia_b_c) -->
+  @if (isSpeedQuad()) {
+    @for (shape of shapes(); track shape.id; let sIdx = $index) {
+      @if (shape.isClosed && shape.points.length === 4) {
+        @for (eIdx of [0, 1, 2, 3]; track eIdx) {
+          @if (getSmartEdgeInfo(sIdx, eIdx); as edge) {
+            <div class="canvas-edge-badge"
+                 [class.badge-ab]="eIdx === 0"
+                 [class.badge-bc]="eIdx === 1"
+                 [class.badge-cd]="eIdx === 2"
+                 [class.badge-da]="eIdx === 3"
+                 [style.left.px]="edge.x"
+                 [style.top.px]="edge.y">
+              <span class="badge-px">{{ edge.distanceMeters }} m</span>
+            </div>
+          }
+        }
+      }
+    }
+  }
+
+  <!-- Floating Toolbar Premium (Arriba Derecha) -->
+  <div class="canvas-floating-toolbar" (click)="$event.stopPropagation()" (mousedown)="$event.stopPropagation()">
+    <!-- Grupo: Preset Cuadrilátero A-B-C-D -->
+    @if (isSpeedQuad()) {
+    <div class="toolbar-group">
+      <button class="btn-canvas-tool btn-preset-tool" (click)="generateDefaultSpeedQuad()" (mousedown)="$event.stopPropagation()"
+        title="Generar Cuadrilátero A-B-C-D Centrado por Defecto">
+        <span class="icon-svg icon-grid toolbar-icon"></span>
+        <span class="preset-tool-text">Preset A-B-C-D</span>
+      </button>
+    </div>
+    }
+
+    <!-- Grupo: Undo / Redo -->
+    <div class="toolbar-group">
+      <button class="btn-canvas-tool" [disabled]="!canUndo()" (click)="undo()" (mousedown)="$event.stopPropagation()" title="Deshacer (Ctrl+Z)">
+        <span class="icon-svg icon-undo toolbar-icon"></span>
+      </button>
+      <button class="btn-canvas-tool" [disabled]="!canRedo()" (click)="redo()" (mousedown)="$event.stopPropagation()" title="Rehacer (Ctrl+Shift+Z)">
+        <span class="icon-svg icon-redo toolbar-icon"></span>
+      </button>
+    </div>
+
+    <!-- Grupo: Limpiar Canvas -->
+    <div class="toolbar-group">
+      <button class="btn-canvas-tool btn-danger-tool" [disabled]="totalPointsCount() === 0" (click)="clearCanvas()" (mousedown)="$event.stopPropagation()"
+        title="Limpiar todas las áreas trazadas">
+        <span class="icon-svg icon-trash toolbar-icon"></span>
+      </button>
+    </div>
+
+    <!-- Badge de Estado -->
+    <div class="toolbar-status-badge">
+      <span class="status-dot" [class.closed]="totalShapesCount() > 0" [class.empty]="totalShapesCount() === 0"></span>
+      <span class="status-text">{{ geometryStatusLabel() }}</span>
+    </div>
+  </div>
+
+  <!-- Minibar Contextual Flotante de Atajos y Leyendas de Ayuda (Quick Help Bar) -->
+  <div class="canvas-quick-help-bar d-inline-flex align-items-center select-none"
+       (click)="$event.stopPropagation()" (mousedown)="$event.stopPropagation()">
+    @if (activeOpenShape(); as active) {
+      <span class="help-drawing-pill">Trazando ({{ active.points.length }} pts)</span>
+      <span class="help-item">Clic para añadir punto · Clic en el primer punto para cerrar</span>
+    } @else if (selectedShapeIndexes().size > 0) {
+      <span class="help-item-highlight me-1"><kbd class="kbd-key">Supr</kbd> / <kbd class="kbd-key">Del</kbd> Eliminar {{ selectedShapeIndexes().size > 1 ? selectedShapeIndexes().size + ' áreas' : 'área' }}</span>
+      <span class="help-sep">·</span>
+      <span class="help-item me-1"><kbd class="kbd-key">Shift + Clic</kbd> Selección múltiple</span>
+      <span class="help-sep">·</span>
+      <span class="help-item"><kbd class="kbd-key">Doble clic en punto</kbd> Eliminar punto</span>
+    } @else {
+      <span class="help-item me-1"><kbd class="kbd-key">Clic en lienzo</kbd> {{ isLine() ? 'Crear línea' : 'Crear área' }}</span>
+      @if (totalShapesCount() > 0) {
+        <span class="help-sep">·</span>
+        <span class="help-item me-1"><kbd class="kbd-key">Doble clic en punto</kbd> Eliminar punto</span>
+        <span class="help-sep">·</span>
+        <span class="help-item"><kbd class="kbd-key">Clic derecho en área</kbd> Menú de opciones</span>
+      }
+    }
+  </div>
+</div>
+</div>

@@ -23,8 +23,10 @@ export class MetadataMapper {
   static sanitizeImageUrl(url?: string): string {
     if (!url) return '';
     
-    // Si la URL es pública (Unsplash, Picsum, RandomUser, etc.), no la saneamos
+    // Si la URL es una vista previa local (blob: / data:) o dominio público externo
     if (
+      url.startsWith('blob:') ||
+      url.startsWith('data:') ||
       url.includes('unsplash.com') ||
       url.includes('picsum.photos') ||
       url.includes('randomuser.me')
@@ -32,23 +34,23 @@ export class MetadataMapper {
       return url;
     }
 
-    // Reemplaza cualquier esquema y host/puerto (ej. http://backend-api:8000) por /api
-    let sanitized = url.replace(/^https?:\/\/[^\/]+/, '/api');
-    
-    // Si es una ruta relativa de almacenamiento, le antepone /api
-    if (!sanitized.startsWith('/api') && !sanitized.startsWith('http')) {
-      if (
-        sanitized.startsWith('storage') || sanitized.startsWith('/storage') ||
-        sanitized.startsWith('static') || sanitized.startsWith('/static') ||
-        sanitized.startsWith('media') || sanitized.startsWith('/media')
-      ) {
-        if (sanitized.startsWith('/')) {
-          sanitized = '/api' + sanitized;
-        } else {
-          sanitized = '/api/' + sanitized;
-        }
-      }
+    // Si ya viene formateada con la ruta del servicio de imágenes /minio/
+    if (url.startsWith('/minio/')) {
+      return url;
     }
+
+    // Reemplaza cualquier esquema y host/puerto (ej. http://backend-api:8000 o http://minio:9000) por /minio
+    let sanitized = url.replace(/^https?:\/\/[^\/]+/, '/minio');
+
+    // Si venía prefijada con /api/, la convertimos a /minio/
+    if (sanitized.startsWith('/api/')) {
+      sanitized = sanitized.replace('/api/', '/minio/');
+    } else if (!sanitized.startsWith('/minio/')) {
+      // Para rutas relativas de imágenes (ej. /storage/..., /media/..., static/...)
+      const cleanPath = sanitized.startsWith('/') ? sanitized : '/' + sanitized;
+      sanitized = '/minio' + cleanPath;
+    }
+
     return sanitized;
   }
 

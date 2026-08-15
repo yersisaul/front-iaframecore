@@ -13,6 +13,7 @@ export interface EventRecord {
   objeto: string;
   detalleEvento: string;
   urlImg: string;
+  urlVideo?: string | null;
   conteoAforo: number | null;
   tiempoPermanencia: number | null;
   objetosEnArea: number | null;

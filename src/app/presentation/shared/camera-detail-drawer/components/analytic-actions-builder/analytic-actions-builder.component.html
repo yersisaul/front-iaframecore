@@ -1,0 +1,158 @@
+<div class="analytic-actions-builder-wrapper card p-3 border shadow-sm">
+  <!-- Fila Superior: Título a la izquierda, Botón + Añadir Acción a la derecha -->
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <div class="d-flex align-items-center gap-2">
+      <span class="section-badge-dot bg-primary"></span>
+      <label class="form-section-title text-uppercase fw-bold text-muted small mb-0">
+        5. Acciones Programadas
+      </label>
+    </div>
+
+    <!-- Dropdown Angular Signal para Añadir Acción (100% Funcional) -->
+    <div class="position-relative">
+      <button type="button" class="btn-header-primary btn-action-add-trigger py-1 px-3"
+        (click)="toggleDropdown($event)">
+        <span class="icon-svg icon-plus icon-micro"
+          style="width: 0.8125rem; height: 0.8125rem; background-color: currentColor;"></span>
+        <span>Añadir</span>
+      </button>
+
+      @if (isDropdownOpen()) {
+      <ul
+        class="dropdown-menu actions-dropdown-menu dropdown-menu-end show shadow-lg rounded-3 p-1 border position-absolute end-0 mt-1 z-3"
+        (click)="$event.stopPropagation()">
+        @for (item of actionTypes; track item.type) {
+        <li>
+          <a class="dropdown-menu-item cursor-pointer px-3 py-2 text-paragraph-sm d-block text-body text-decoration-none rounded-2"
+            (click)="selectActionType(item.type)">
+            {{ item.label }}
+          </a>
+        </li>
+        }
+      </ul>
+      }
+    </div>
+  </div>
+
+  <!-- Texto Explicativo en su propia línea debajo del encabezado -->
+  @if (actionsList().length === 0) {
+  <span class="text-muted text-nano d-block mb-1 mt-2">
+    Sin respuestas automatizadas vinculadas. Presiona + Añadir Acción para agregar triggers.
+  </span>
+  }
+
+  @if (actionsList().length > 0) {
+  <div class="d-flex flex-column gap-3 mt-2">
+    @for (actionItem of actionsList(); track actionItem.idIndex; let idx = $index) {
+    <div class="action-rule-card d-flex align-items-center p-3 rounded-3 border bg-surface transition-all"
+      [attr.data-action-index]="idx" [class.is-draggable]="actionsList().length > 1"
+      [class.is-dragging]="draggedIndex() === idx" [class.no-anim]="isTransitionDisabled()"
+      [style.transform]="getCardTransform(idx)" (pointerdown)="startPointerDrag(idx, $event)">
+
+      <!-- Agarrador Draggable (Solo SVG sin cuadro envolvente en área izquierda) -->
+      @if (actionsList().length > 1) {
+      <div
+        class="drag-grip-standalone d-flex align-items-center justify-content-center me-2 flex-shrink-0 align-self-stretch"
+        title="Mantener presionado para reordenar">
+        <span class="icon-svg icon-drag-reorder" style="width: 1.5rem; height: 1.5rem;"></span>
+      </div>
+      }
+
+      <!-- Contenido y Textos del Card -->
+      <div class="action-card-content flex-grow-1 min-w-0">
+        <!-- Encabezado de la Tarjeta (Tipo de Acción + Eliminar) -->
+        <div class="action-card-header d-flex align-items-center justify-content-between mb-2 ps-2">
+          <span class="font-bold text-paragraph-sm text-body text-truncate select-none">{{ actionItem.tipo }}</span>
+
+          <button type="button"
+            class="btn-ghost remove-action-btn d-flex align-items-center justify-content-center flex-shrink-0"
+            (click)="removeAction(idx)" title="Eliminar Acción">
+            <span class="icon-svg icon-trash text-danger icon-micro"></span>
+          </button>
+        </div>
+
+        <!-- Formularios Específicos por Tipo de Acción -->
+        @if (actionItem.tipo.startsWith('Voz de sistema')) {
+        <div class="mt-2">
+          <label class="form-label text-muted small font-semibold mb-2 ps-2">Mensaje TTS (Audio de Voz de
+            Sistema)</label>
+
+          <!-- Toggle Pill homologado con event-detail-modal.component.html -->
+          <div
+            class="media-toggle-pill-wrapper p-1 rounded-pill d-flex align-items-center gap-1.5 border shadow-xs mb-2">
+            <button type="button"
+              class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center gap-2 py-1.5 px-3 rounded-pill transition-all"
+              [class.active]="getVoiceMode(actionItem) === 'default'" (click)="setVoiceMode(actionItem, 'default')">
+              <span class="fw-bold">Predeterminado</span>
+            </button>
+            <button type="button"
+              class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center gap-2 py-1.5 px-3 rounded-pill transition-all"
+              [class.active]="getVoiceMode(actionItem) === 'custom'" (click)="setVoiceMode(actionItem, 'custom')">
+              <span class="fw-bold">Personalizado</span>
+            </button>
+          </div>
+
+          @if (getVoiceMode(actionItem) === 'custom') {
+          <textarea class="form-control text-paragraph-sm rounded-3 mt-2" rows="2"
+            [(ngModel)]="actionItem.accion.contenido" (ngModelChange)="emitActions()"
+            placeholder="Ingrese el texto personalizado a sintetizar por voz..."></textarea>
+          } @else {
+          <div>
+          </div>
+          }
+        </div>
+        }
+
+        @if (actionItem.tipo.startsWith('Tiempo de espera')) {
+        <div class="mt-2">
+          <label class="form-label text-muted small font-semibold mb-1 ps-2">Tiempo de Espera (segundos)</label>
+          <input type="number" class="form-control text-paragraph-sm rounded-3" min="1" max="3600"
+            [(ngModel)]="actionItem.accion.tiempo" (ngModelChange)="emitActions()" />
+        </div>
+        }
+
+        @if (actionItem.tipo.startsWith('Enviar a API')) {
+        <div class="row g-2.5 mt-1 align-inputs-bottom">
+          <div class="col-md-8">
+            <label class="form-label text-muted small font-semibold mb-1 ps-2">Endpoint Webhook URL</label>
+            <input type="url" class="form-control text-paragraph-sm font-monospace rounded-3"
+              [(ngModel)]="actionItem.accion.endpoint" (ngModelChange)="emitActions()" placeholder="https://..." />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label text-muted small font-semibold mb-1 ps-2">ID Tipo Reporte</label>
+            <input type="text" class="form-control text-paragraph-sm font-monospace rounded-3"
+              [(ngModel)]="actionItem.accion.id_report_type" (ngModelChange)="emitActions()" />
+          </div>
+        </div>
+        }
+
+        @if (actionItem.tipo.startsWith('Evento a VMS NX')) {
+        <div class="row g-2.5 mt-1 align-inputs-bottom">
+          <div class="col-md-6">
+            <label class="form-label text-muted small font-semibold mb-1 ps-2">IP Servidor NX Witness</label>
+            <input type="text" class="form-control text-paragraph-sm font-monospace rounded-3"
+              [(ngModel)]="actionItem.accion.ip_server_nx" (ngModelChange)="emitActions()" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label text-muted small font-semibold mb-1 ps-2">Caption / Etiqueta Evento</label>
+            <input type="text" class="form-control text-paragraph-sm rounded-3" [(ngModel)]="actionItem.accion.caption"
+              (ngModelChange)="emitActions()" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label text-muted small font-semibold mb-1 ps-2">Usuario NX</label>
+            <input type="text" class="form-control text-paragraph-sm rounded-3" [(ngModel)]="actionItem.accion.usuario"
+              (ngModelChange)="emitActions()" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label text-muted small font-semibold mb-1 ps-2">Contraseña NX</label>
+            <input type="password" class="form-control text-paragraph-sm rounded-3"
+              [(ngModel)]="actionItem.accion.password" (ngModelChange)="emitActions()" />
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
+  </div>
+  }
+</div>

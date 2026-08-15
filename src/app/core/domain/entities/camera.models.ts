@@ -14,6 +14,9 @@ export interface Camera {
   decoder: string;
   location: CameraLocation;
   createdAt: Date | null;
+  rtspUrl?: string;
+  streamUrl?: string;
+  url?: string;
 }
 
 export interface CameraDTO {

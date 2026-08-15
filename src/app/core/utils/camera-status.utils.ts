@@ -93,3 +93,33 @@ export function getCameraStatusColor(status: CameraStatusType): string {
       return '#ef4444'; // Rojo
   }
 }
+
+/**
+ * Retorna la etiqueta formateada para mostrar en los filtros de estado de cámaras.
+ */
+export function getCameraStatusFilterLabel(status: string): string {
+  if (!status) return 'Desconocido';
+  const stLower = status.trim().toLowerCase();
+  switch (stLower) {
+    case 'online':
+    case 'active':
+    case 'activo':
+      return 'Online';
+    case 'offline':
+    case 'inactive':
+    case 'inactivo':
+      return 'Offline';
+    case 'degraded':
+    case 'degradado':
+      return 'Degraded';
+    case 'recovering':
+    case 'recuperando':
+      return 'Recovering';
+    case 'pending':
+    case 'pendiente':
+      return 'Pending';
+    default:
+      return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+}
+

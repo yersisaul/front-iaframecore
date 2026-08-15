@@ -1,4 +1,4 @@
-<div class="monitoreo-view-container container-fluid py-4 position-relative">
+<div class="monitoreo-view-container container-fluid py-4 position-relative h-100 min-h-0 d-flex flex-column">
   <!-- HEADER REFACTORIZADO DRY -->
   <app-page-header title="Monitoreo de camaras" subtitle="Monitoreo de camaras y eventos en tiempo real">
     <ng-container header-actions>
@@ -25,7 +25,7 @@
 
   <!-- Barra de Filtros Horizontal (Colapsable) -->
   @if (showSidebarFilters()) {
-  <div class="horizontal-filters-bar mb-3" (click)="$event.stopPropagation()">
+  <div class="horizontal-filters-bar px-4 pb-4" (click)="$event.stopPropagation()">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
       <!-- Chips de Filtros (Analíticas + Rango de Fecha) -->
       <div class="filters-row-detection d-flex flex-wrap gap-2 align-items-center">
@@ -114,8 +114,11 @@
               <!-- Barra de Encabezado Superior Integrada (Flexbox Anti-Colisión) -->
               <div class="slot-top-bar d-flex align-items-center justify-content-between">
                 <div class="slot-overlay-header d-flex align-items-center">
-                  <span class="status-dot-pulse me-2" [class]="'status-dot-pulse me-2 ' + getCameraStatusClass(slot.camera)" [title]="getCameraStatusLabel(slot.camera)"></span>
-                  <span class="slot-camera-name fw-bold text-truncate" [title]="slot.camera?.name">{{ slot.camera?.name }}</span>
+                  <span class="status-dot-pulse me-2"
+                    [class]="'status-dot-pulse me-2 ' + getCameraStatusClass(slot.camera)"
+                    [title]="getCameraStatusLabel(slot.camera)"></span>
+                  <span class="slot-camera-name fw-bold text-truncate" [title]="slot.camera?.name">{{ slot.camera?.name
+                    }}</span>
                 </div>
 
                 @if (slot.camera && isSlotShowingEventPhoto(slot)) {
@@ -147,7 +150,7 @@
 
                 <!-- Elemento de Video WebRTC en Vivo -->
                 @if (slot.camera) {
-                <video [id]="'video-feed-' + slot.id" class="slot-video-element w-100 h-100 object-fit-contain"
+                <video [id]="'video-feed-' + slot.id" [attr.data-camera-id]="slot.camera.id" [attr.data-camera-name]="slot.camera.name" class="slot-video-element w-100 h-100 object-fit-contain"
                   [class.d-none]="webRtcStates()[slot.id] !== 'connected' || isSlotInPlaybackMode(slot)"
                   [class.feed-paused-grayscale]="isFeedPaused(slot.camera.name)" autoplay playsinline muted>
                 </video>
@@ -157,18 +160,18 @@
                 @if (isSlotInPlaybackMode(slot) && slot.camera) {
                 @let displayImgEvent = getDisplayedEventForSlot(slot);
                 @if (displayImgEvent) {
-                <img [src]="displayImgEvent.urlImg"
+                <img [src]="displayImgEvent.urlImg" (error)="onImageError($event)"
                   class="slot-event-img object-fit-contain w-100 h-100 position-absolute top-0 start-0"
                   style="z-index: 7;" [class.feed-paused-grayscale]="isFeedPaused(slot.camera.name)"
-                  alt="Historical Frame" draggable="false" />
+                  alt="" draggable="false" />
                 }
                 }
 
                 <!-- Fallback a Imagen de Evento o Placeholder de Carga -->
                 @if (webRtcStates()[slot.id] !== 'connected' && !isSlotInPlaybackMode(slot)) {
                 @if (slot.camera && latestEventsMap()[slot.camera.name]; as lastEvent) {
-                <img [src]="lastEvent.urlImg" class="slot-event-img object-fit-contain w-100 h-100"
-                  [class.feed-paused-grayscale]="isFeedPaused(slot.camera.name)" alt="Camera Feed" draggable="false" />
+                <img [src]="lastEvent.urlImg" (error)="onImageError($event)" class="slot-event-img object-fit-contain w-100 h-100"
+                  [class.feed-paused-grayscale]="isFeedPaused(slot.camera.name)" alt="" draggable="false" />
                 } @else {
                 <!-- Placeholder Esperando Evento -->
                 <div class="waiting-event-placeholder d-flex flex-column align-items-center justify-content-center">
@@ -212,10 +215,9 @@
                 @if (slot.camera) {
                 <div class="feed-actions-vertical-dock d-flex flex-column align-items-center"
                   (click)="$event.stopPropagation()">
-                  <!-- Toggle IA Overlay -->
-                  <button class="action-dock-btn" [class.active]="activeAiOverlays()[slot.camera.name]"
-                    (click)="toggleAiOverlay(slot.camera.name)" title="Superposición IA (Cajas de detección)">
-                    <span class="icon-svg icon-target vms-icon-fluid-xs"></span>
+                  <!-- Refrescar Flujo de Cámara (WebSocket: camera_stream_refresh) -->
+                  <button class="action-dock-btn" (click)="refreshCameraStream(slot, $event)" title="Refrescar flujo de video">
+                    <span class="icon-svg icon-refresh vms-icon-fluid-xs"></span>
                   </button>
 
                   <!-- Snapshot -->
@@ -326,17 +328,12 @@
         </div>
         }
 
-        <!-- MAPA DE NAVEGACIÓN EN TIEMPO REAL (MINIMAP) -->
+        <!-- MAPA DE NAVEGACIÓN EN TIEMPO REAL (MINIMAP PIP ESTABLE) -->
         @if (isCanvasMode() && showMinimap()) {
         <div class="canvas-minimap-container" [class.fade-out-up]="!isCanvasActive()">
           <div class="minimap-viewport-area position-relative" (mousedown)="onMinimapMouseDown($event)">
-            <!-- Borde guía del Layout completo -->
-            @let layoutR = getMinimapLayoutRect();
-            <div class="minimap-layout-outline position-absolute" [style.left]="layoutR.left + '%'"
-              [style.top]="layoutR.top + '%'" [style.width]="layoutR.width + '%'" [style.height]="layoutR.height + '%'">
-            </div>
 
-            <!-- Celdas de cámara del lienzo (Responsivas 1:1 sin deformación) -->
+            <!-- Celdas de cámara del lienzo (Responsivas 1:1) -->
             @for (mslot of visibleGridSlots(); track mslot.id) {
             @let sRect = getMinimapSlotRect(mslot);
             <div class="minimap-slot-mini position-absolute" [class.occupied]="!mslot.isEmpty || mslot.camera !== null"
@@ -360,14 +357,15 @@
       <!-- =========================================================================
            LÍNEA DE TIEMPO / TIMELINE CONTROLS
            ========================================================================= -->
-      <div class="timeline-player-card card border-0 position-relative" (contextmenu)="$event.preventDefault()">
-        <div class="d-flex flex-column gap-3">
+      <div class="timeline-player-card card border-0 position-relative px-2 pb-3 pt-4"
+        (contextmenu)="$event.preventDefault()">
+        <div class="d-flex flex-column gap-1">
 
           <!-- Fila 1: Pista de Tiempo & Regla Scrolleable y Arrastrable con Ratón -->
           <div class="timeline-slider-wrapper position-relative p-2 mt-1" [class.is-dragging]="isDraggingTimeline()"
-            (mousedown)="onTimelineMouseDown($event)" (wheel)="onTimelineWheel($event)"
-            (mousemove)="onTimelineMouseMove($event)" (mouseleave)="onTimelineMouseLeave()"
-            (contextmenu)="$event.preventDefault()">
+            [class.is-seeking]="isSeekingNeedle()" (mousedown)="onTimelineMouseDown($event)"
+            (wheel)="onTimelineWheel($event)" (mousemove)="onTimelineMouseMove($event)"
+            (mouseleave)="onTimelineMouseLeave()" (contextmenu)="$event.preventDefault()">
 
             <div class="timeline-ruler-track w-100 position-relative">
               <!-- Línea horizontal de tiempo de fondo -->
@@ -389,7 +387,7 @@
               <div class="timeline-flags-container">
                 @for (flag of visibleTimelineFlags(); track flag.event.id) {
                 <div class="vms-flag-item" [style.left.%]="flag.leftPct" [style.--flag-color]="flag.color"
-                  [style.background-color]="flag.color" [class.is-selected]="selectedFlagId() === flag.event.id"
+                  [style.background-color]="flag.color" [class.is-selected]="isFlagSelected(flag)"
                   [class.has-count]="flag.count > 1" (mousedown)="$event.stopPropagation()"
                   (click)="toggleTimelineFlag(flag.event, flag.count, $event)"
                   [title]="flag.count > 1 ? flag.count + ' eventos en este punto (Clic para ampliar y activar)' : flag.event.nombreCamara + ' - ' + (flag.event.analitica || 'Evento')">
@@ -591,7 +589,8 @@
 
                     <!-- Info, Fecha y Atributos -->
                     <div class="vms-evt-card__content">
-                      <div class="vms-evt-card__desc" [title]="event.detalleEvento">{{ formatDetalleEvento(event.detalleEvento) }}</div>
+                      <div class="vms-evt-card__desc" [title]="event.detalleEvento">{{
+                        formatDetalleEvento(event.detalleEvento) }}</div>
 
                       @if (event.objeto || event.conteoAforo !== null || event.tiempoPermanencia !== null ||
                       event.objetosEnArea !== null || event.espaciosLibres !== null || event.direccion) {
@@ -652,17 +651,18 @@
               @if (camerasInCanvas().length === 0) {
               <div class="text-center py-5 text-muted small d-flex flex-column align-items-center gap-2">
                 <span class="icon-svg icon-camara text-muted opacity-50" style="width: 32px; height: 32px;"></span>
-                <span>No hay cámaras agregadas al lienzo actualmente.</span>
+                <span>{{ eventSearchQuery().trim() || selectedCameraNames().size > 0 ? 'Sin cámaras coincidentes.' : 'No
+                  hay cámaras agregadas al lienzo actualmente.' }}</span>
               </div>
               } @else {
               @for (cam of camerasInCanvas(); track cam.id) {
-              <div class="camera-analytic-accordion-card mb-2" [class.is-expanded]="isCameraAccordionExpanded(cam.id)">
+              <div class="camera-analytic-accordion-card mb-2">
 
-                <!-- Cabecera Remodelada de la Cámara -->
+                <!-- Cabecera de la Cámara (Botón Completo) -->
                 <div class="camera-accordion-header d-flex align-items-center justify-content-between"
-                  (click)="toggleCameraAccordion(cam.id)">
+                  (click)="openCameraConfig(cam, $event)" [title]="'Configurar cámara ' + cam.name">
 
-                  <!-- Lado Izquierdo: Avatar de Cámara + Nombre + Conteo Analíticas -->
+                  <!-- Lado Izquierdo: Avatar de Cámara + Nombre -->
                   <div class="d-flex align-items-center gap-2 min-w-0 pe-2">
                     <div class="camera-header-avatar flex-shrink-0 d-flex align-items-center justify-content-center">
                       <span class="icon-svg icon-camara camera-avatar-icon"></span>
@@ -671,76 +671,17 @@
                       <span class="camera-accordion-title text-truncate" [title]="cam.name">
                         {{ cam.name }}
                       </span>
-                      <div class="d-flex align-items-center gap-1 mt-0.5">
-                        <span class="camera-accordion-badge font-monospace">
-                          {{ getAnalyticsForCamera(cam.id).length }} analítica(s)
-                        </span>
-                      </div>
                     </div>
                   </div>
 
-                  <!-- Lado Derecho: Acciones (Botón Configuración + Flecha Desplegable) -->
-                  <div class="camera-header-actions d-flex align-items-center gap-1 flex-shrink-0"
-                    (click)="$event.stopPropagation()">
-                    <!-- Botón Configurar Cámara -->
-                    <button type="button"
-                      class="btn-camera-config-action d-flex align-items-center justify-content-center"
-                      (click)="openCameraConfig(cam, $event)" title="Configurar cámara">
+                  <!-- Lado Derecho: Ícono Indicador de Configuración -->
+                  <div class="camera-header-actions d-flex align-items-center gap-1 flex-shrink-0">
+                    <div class="btn-camera-config-action d-flex align-items-center justify-content-center">
                       <span class="icon-svg icon-settings config-icon"></span>
-                    </button>
-
-                    <!-- Botón Desplegar / Colapsar -->
-                    <button type="button"
-                      class="btn-camera-toggle-action d-flex align-items-center justify-content-center"
-                      (click)="toggleCameraAccordion(cam.id); $event.stopPropagation()"
-                      [title]="isCameraAccordionExpanded(cam.id) ? 'Colapsar analíticas' : 'Expandir analíticas'">
-                      <span class="icon-svg icon-chevron-down toggle-chevron-icon"
-                        [class.is-expanded]="isCameraAccordionExpanded(cam.id)"></span>
-                    </button>
+                    </div>
                   </div>
 
                 </div>
-
-                <!-- Cuerpo Desplegable con Tarjetas Premium de Analíticas -->
-                @if (isCameraAccordionExpanded(cam.id)) {
-                <div class="camera-accordion-body">
-                  @if (getAnalyticsForCamera(cam.id).length === 0) {
-                  <div class="text-muted small fst-italic py-2 text-center">
-                    Sin analíticas configuradas para esta cámara.
-                  </div>
-                  } @else {
-                  @for (ana of getAnalyticsForCamera(cam.id); track ana.id) {
-                  <div class="camera-analytic-item-card" [style.--chip-color]="getAnalyticColor(ana.type)">
-
-                    <!-- Fila Superior: Badge Premium de Analítica + Estado -->
-                    <div class="d-flex align-items-center justify-content-between">
-                      <span class="vms-analytic-chip" [style.--chip-color]="getAnalyticColor(ana.type)">
-                        <span class="vms-analytic-chip__dot"></span>
-                        <span class="vms-analytic-chip__text">{{ getAnalyticLabel(ana.type) }}</span>
-                      </span>
-
-                      <span class="status-badge"
-                        [class.status-badge-online]="ana.status === 'active' || ana.status === 'online'"
-                        [class.status-badge-offline]="ana.status !== 'active' && ana.status !== 'online'"
-                        style="font-size: 0.65rem; padding: 2px 8px;">
-                        {{ ana.status === 'active' || ana.status === 'online' ? 'Activo' : 'Inactivo' }}
-                      </span>
-                    </div>
-
-                    <!-- Fila Inferior: Clases de Objetos -->
-                    @if (ana.detectionClasses && ana.detectionClasses.length > 0) {
-                    <div class="camera-analytic-objects-wrapper">
-                      <span class="text-muted fw-semibold" style="font-size: 0.72rem;">Objetos:</span>
-                      @for (cls of ana.detectionClasses; track cls) {
-                      <span class="camera-analytic-object-tag font-monospace text-capitalize">{{ cls }}</span>
-                      }
-                    </div>
-                    }
-                  </div>
-                  }
-                  }
-                </div>
-                }
               </div>
               }
               }
@@ -768,7 +709,8 @@
      MODAL DE SELECCIÓN DE CÁMARAS (BLURRED DIALOG)
      ========================================================================= -->
 @if (showModal()) {
-<div class="modal-backdrop-blur d-flex align-items-center justify-content-center" (click)="showModal.set(false)">
+<div class="modal-backdrop-blur d-flex align-items-center justify-content-center"
+  (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)">
   <div class="premium-detail-modal select-camera-modal d-flex flex-column shadow-2xl"
     (click)="$event.stopPropagation()">
     <!-- Modal Header -->
@@ -784,7 +726,7 @@
     </div>
 
     <!-- Modal Controls Area: Centered, containing Tabs and Search/Filters -->
-    <div class="modal-controls-container">
+    <div class="modal-controls-container gap-3 px-5 pb-3">
       <!-- Modal Tabs -->
       <div class="modal-tabs-pill">
         <button class="btn-premium-tab" [class.active]="activeModalTab() === 'nodos'"
@@ -801,22 +743,43 @@
       <div class="modal-search-row">
         <div class="modal-search-wrapper d-flex align-items-center flex-grow-1">
           <span class="icon-svg icon-search me-2 text-muted" style="width: 14px; height: 14px; opacity: 0.5;"></span>
-          <input type="text" placeholder="Buscar por cámara, nodo o tipo..." class="modal-search-input"
-            [value]="modalSearchQuery()" (input)="modalSearchQuery.set($any($event.target).value)" />
+          <input #modalSearchInput type="text" placeholder="Buscar por cámara, nodo o tipo..." class="modal-search-input"
+            (input)="modalSearchQuery.set(modalSearchInput.value)" />
         </div>
-        <div class="modal-filter-pills d-flex align-items-center gap-2 flex-shrink-0">
-          <button class="modal-filter-pill" [class.active]="modalStatusFilter() === 'all'"
-            (click)="modalStatusFilter.set('all')">Todas</button>
-          <button class="modal-filter-pill" [class.active]="modalStatusFilter() === 'online'"
-            (click)="modalStatusFilter.set('online')">Online</button>
-          <button class="modal-filter-pill" [class.active]="modalStatusFilter() === 'offline'"
-            (click)="modalStatusFilter.set('offline')">Offline</button>
+        <!-- Dropdown con Chevrón en formato Pill Redonda de Estado de Cámara -->
+        <div class="filter-dropdown-wrapper position-relative flex-shrink-0">
+          <button type="button" class="modal-filter-pill d-flex align-items-center gap-2"
+            [class.active]="modalStatusFilter() !== 'all'" (click)="toggleModalStatusDropdown($event)">
+            <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
+            <span>
+              Estado: {{ modalStatusFilter() === 'all' ? 'Todos' : getStatusFilterLabel(modalStatusFilter()) }}
+            </span>
+            <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+              [class.rotated]="showModalStatusDropdown()" style="width: 10px; height: 10px;"></span>
+          </button>
+          @if (showModalStatusDropdown()) {
+          <div class="modal-filter-dropdown-menu p-2 show position-absolute end-0 mt-1 shadow-sm"
+            style="z-index: 1060; min-width: 190px;" (click)="$event.stopPropagation()">
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="modalStatusFilter() === 'all'"
+              (click)="selectModalStatus('all', $event)">
+              Todos los Estados
+            </button>
+            @for (st of modalStatusOptions(); track st) {
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center gap-2"
+              [class.active]="modalStatusFilter().toLowerCase() === st.toLowerCase()"
+              (click)="selectModalStatus(st, $event)">
+              <span class="status-dot" [class]="getStatusCssClass(st)"></span>
+              <span>{{ getStatusFilterLabel(st) }}</span>
+            </button>
+            }
+          </div>
+          }
         </div>
       </div>
     </div>
 
     <!-- Modal Body -->
-    <div class="modal-body-content p-3 flex-grow-1 overflow-y-auto">
+    <div class="modal-body-content py-2 px-4 flex-grow-1 overflow-y-auto">
 
       <!-- TAB 1: POR NODO (Collapsible Lists) -->
       @if (activeModalTab() === 'nodos') {
@@ -866,7 +829,8 @@
               [class.active-slot-camera]="selectedCameraIds().has(cam.id)" (click)="toggleCameraSelectionLocal(cam)">
               <div class="d-flex align-items-center gap-3">
                 <div class="position-relative">
-                  <span class="modal-camera-status-dot" [class]="'modal-camera-status-dot ' + getCameraStatusClass(cam)" [title]="getCameraStatusLabel(cam)"></span>
+                  <span class="modal-camera-status-dot" [class]="'modal-camera-status-dot ' + getCameraStatusClass(cam)"
+                    [title]="getCameraStatusLabel(cam)"></span>
                 </div>
                 <div>
                   <span class="fw-bold d-block text-body" style="font-size: 0.85rem;">
@@ -918,7 +882,8 @@
           [class.active-slot-camera]="selectedCameraIds().has(cam.id)" (click)="toggleCameraSelectionLocal(cam)">
           <div class="d-flex align-items-center gap-3">
             <div class="position-relative">
-              <span class="modal-camera-status-dot" [class]="'modal-camera-status-dot ' + getCameraStatusClass(cam)" [title]="getCameraStatusLabel(cam)"></span>
+              <span class="modal-camera-status-dot" [class]="'modal-camera-status-dot ' + getCameraStatusClass(cam)"
+                [title]="getCameraStatusLabel(cam)"></span>
             </div>
             <div>
               <span class="fw-bold d-block text-body" style="font-size: 0.85rem;">
@@ -979,11 +944,13 @@
       <!-- Header flotante del Slot dentro de la imagen -->
       <div class="fullscreen-slot-header d-flex align-items-center w-100 position-absolute top-0 start-0"
         style="z-index: 10;">
-        <span class="status-dot-pulse fullscreen-status-dot me-3" [class]="'status-dot-pulse fullscreen-status-dot me-3 ' + getCameraStatusClass(fslot.camera)" [title]="getCameraStatusLabel(fslot.camera)"></span>
+        <span class="status-dot-pulse fullscreen-status-dot me-3"
+          [class]="'status-dot-pulse fullscreen-status-dot me-3 ' + getCameraStatusClass(fslot.camera)"
+          [title]="getCameraStatusLabel(fslot.camera)"></span>
         <span class="fullscreen-camera-name text-truncate" [title]="fslot.camera?.name">{{ fslot.camera?.name }}</span>
       </div>
       @if (fslot.camera) {
-      <video [id]="'video-feed-fullscreen-' + fslot.id" class="fullscreen-video-element w-100 h-100 object-fit-contain"
+      <video [id]="'video-feed-fullscreen-' + fslot.id" [attr.data-camera-id]="fslot.camera.id" [attr.data-camera-name]="fslot.camera.name" class="fullscreen-video-element w-100 h-100 object-fit-contain"
         [class.d-none]="webRtcStates()[fslot.id] !== 'connected' || isSlotInPlaybackMode(fslot)"
         [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)" autoplay playsinline muted>
       </video>
@@ -992,15 +959,15 @@
       <!-- Snapshot Histórico en Modo PLAYBACK -->
       @if (isSlotInPlaybackMode(fslot) && fslot.camera && getSnapshotForCameraAt(fslot.camera.name); as snapshotEvent)
       {
-      <img [src]="snapshotEvent.urlImg" class="w-100 h-100 object-fit-contain"
-        [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)" alt="Historical Frame" draggable="false" />
+      <img [src]="snapshotEvent.urlImg" (error)="onImageError($event)" class="w-100 h-100 object-fit-contain"
+        [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)" alt="" draggable="false" />
       }
 
       <!-- Fallback a Imagen de Evento o Placeholder -->
       @if (webRtcStates()[fslot.id] !== 'connected' && !isSlotInPlaybackMode(fslot)) {
       @if (fslot.camera && latestEventsMap()[fslot.camera.name]; as lastEvent) {
-      <img [src]="lastEvent.urlImg" class="w-100 h-100 object-fit-contain"
-        [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)" alt="Camera Feed" draggable="false" />
+      <img [src]="lastEvent.urlImg" (error)="onImageError($event)" class="w-100 h-100 object-fit-contain"
+        [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)" alt="" draggable="false" />
       } @else {
       <div class="waiting-event-placeholder d-flex flex-column align-items-center justify-content-center text-white-50">
         <span class="text-uppercase fw-semibold tracking-wider small mb-2">Conectando transmisión en vivo...</span>

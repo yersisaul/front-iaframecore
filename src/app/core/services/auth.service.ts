@@ -89,6 +89,12 @@ export class AuthService {
           createdAt: new Date(parsed.createdAt)
         };
         this.currentUser.set(user);
+
+        if (parsed.roleId) {
+          return this.permissionsService.loadUserPermissions(parsed.roleId).pipe(
+            map(() => this.currentUser())
+          );
+        }
         return of(user);
       }
     } catch (e) {

@@ -13,7 +13,9 @@ export class EmptyStateComponent {
   @Input() description: string = 'Intenta ajustar los términos de búsqueda o restablecer los filtros para ver más resultados.';
   @Input() iconClass: string = 'icon-search';
   @Input() actionText: string = 'Restablecer Filtros';
+  @Input() actionIconClass: string = 'icon-close';
   @Input() showAction: boolean = true;
+  @Input() minHeight: string = 'clamp(18rem, 38vh, 26rem)';
 
   @Output() action = new EventEmitter<void>();
 

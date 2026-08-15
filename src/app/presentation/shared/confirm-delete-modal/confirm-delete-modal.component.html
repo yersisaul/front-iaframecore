@@ -1,6 +1,6 @@
 @if (show) {
-<div class="delete-camera-modal-overlay" (click)="onCancel()" aria-modal="true" role="dialog">
-  <div class="delete-camera-modal-card" (click)="$event.stopPropagation()">
+<div class="delete-camera-modal-overlay" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)" aria-modal="true" role="dialog">
+  <div class="delete-camera-modal-card">
 
     <!-- Icono de advertencia -->
     <div class="delete-modal-icon-wrap">

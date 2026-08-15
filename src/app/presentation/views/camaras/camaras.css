@@ -1,7 +1,8 @@
 /* HOST TOKENS */
 :host {
   display: block;
-  min-height: 100vh;
+  overflow-y: auto;
+  min-height: 0;
   background-color: var(--bg-primary);
   transition: background-color .3s;
   --bg-card: var(--bg-surface);
@@ -52,7 +53,23 @@
   background-color: var(--color-online, #10b981);
 }
 
-.host-header-block {}
+.host-header-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.host-header-right {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+  white-space: nowrap;
+}
 
 .os-avatar-icon {
   width: 24px;
@@ -107,6 +124,10 @@
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
 }
 
 .version-tag {
@@ -146,11 +167,25 @@
   border: 1px solid var(--color-offline-border);
 }
 
-.status-text-online { color: #10b981 !important; }
-.status-text-offline { color: #ef4444 !important; }
-.status-text-degraded { color: #f97316 !important; }
-.status-text-recovering { color: #eab308 !important; }
-.status-text-pending { color: #00e5ff !important; }
+.status-text-online {
+  color: #10b981 !important;
+}
+
+.status-text-offline {
+  color: #ef4444 !important;
+}
+
+.status-text-degraded {
+  color: #f97316 !important;
+}
+
+.status-text-recovering {
+  color: #eab308 !important;
+}
+
+.status-text-pending {
+  color: #00e5ff !important;
+}
 
 /* SPEC ROWS */
 .filter-lbl,
@@ -176,23 +211,25 @@
   font-size: 0.82rem;
   font-weight: 500;
   color: var(--text-secondary);
-}
-
-.specs-list {
-  padding-top: 0.25rem;
-  margin-top: 0.15rem;
+  height: 22px;
+  line-height: 22px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .spec-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 6px;
+  padding: 3px 6px;
   border-radius: 6px;
   transition: background 0.15s ease, border-color 0.15s ease;
   gap: 10px;
   min-width: 0;
   cursor: pointer;
+  height: 28px;
+  min-height: 28px;
+  box-sizing: border-box;
 }
 
 .spec-row:hover {
@@ -205,7 +242,12 @@
 
 .copied-badge {
   animation: spec-pop-in 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  line-height: 22px;
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
 }
 
 @keyframes spec-flash-green {
@@ -594,9 +636,13 @@ code.code-badge {
 }
 
 ::ng-deep .dark .schedule-bento-card,
-::ng-deep [data-bs-theme="dark"] .schedule-bento-card {
-  background-color: rgba(255, 255, 255, 0.02) !important;
-  border-color: rgba(255, 255, 255, 0.06) !important;
+::ng-deep [data-theme="dark"] .schedule-bento-card,
+::ng-deep [data-bs-theme="dark"] .schedule-bento-card,
+[data-bs-theme="dark"] .schedule-bento-card,
+[data-theme="dark"] .schedule-bento-card,
+.dark .schedule-bento-card {
+  background-color: #1e293b !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* Frequency left-border coloring */
@@ -614,7 +660,17 @@ code.code-badge {
 
 /* Active parent card adaptivity */
 .ai-control-card-wrapper.ai-active .schedule-bento-card {
-  background-color: var(--bg-schedule-bento-active, rgba(255, 255, 255, 0.5)) !important;
+  background-color: rgba(255, 255, 255, 0.75) !important;
+}
+
+[data-bs-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card,
+[data-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card,
+.dark .ai-control-card-wrapper.ai-active .schedule-bento-card,
+::ng-deep [data-bs-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card,
+::ng-deep [data-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card,
+::ng-deep .dark .ai-control-card-wrapper.ai-active .schedule-bento-card {
+  background-color: rgba(6, 78, 59, 0.45) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
 }
 
 /* Typography elements */
@@ -687,15 +743,31 @@ code.code-badge {
 }
 
 .schedule-bento-card:hover {
-  background-color: rgba(239, 68, 68, 0.06) !important;
-  border-color: rgba(239, 68, 68, 0.2) !important;
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
   border-left-color: #ef4444 !important;
 }
 
-.ai-control-card-wrapper.ai-active .schedule-bento-card:hover {
-  background-color: rgba(239, 68, 68, 0.15) !important;
-  border-color: rgba(239, 68, 68, 0.4) !important;
+.ai-control-card-wrapper.ai-active .schedule-bento-card:hover,
+[data-bs-theme="dark"] .schedule-bento-card:hover,
+[data-bs-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card:hover,
+[data-theme="dark"] .schedule-bento-card:hover,
+[data-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card:hover,
+.dark .schedule-bento-card:hover,
+.dark .ai-control-card-wrapper.ai-active .schedule-bento-card:hover,
+::ng-deep [data-bs-theme="dark"] .schedule-bento-card:hover,
+::ng-deep [data-bs-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card:hover,
+::ng-deep [data-theme="dark"] .schedule-bento-card:hover,
+::ng-deep [data-theme="dark"] .ai-control-card-wrapper.ai-active .schedule-bento-card:hover,
+::ng-deep .dark .schedule-bento-card:hover,
+::ng-deep .dark .ai-control-card-wrapper.ai-active .schedule-bento-card:hover {
+  background-color: rgba(239, 68, 68, 0.25) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
   border-left-color: #ef4444 !important;
+}
+
+.schedule-bento-card:hover .schedule-name {
+  color: #f87171 !important;
 }
 
 .schedule-bento-card:hover .card-right-section {
@@ -1243,10 +1315,14 @@ code.code-badge {
   z-index: 1000;
   background-color: var(--bg-surface) !important;
   border: 1px solid var(--border-color) !important;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
   animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  min-width: 190px;
+  min-width: 210px;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  padding: 10px !important;
 }
 
 @keyframes dropdownFadeIn {
@@ -1263,26 +1339,32 @@ code.code-badge {
 
 .filter-dropdown-menu .dropdown-item {
   color: var(--text-secondary);
-  font-size: 0.85rem;
-  padding: 8px 14px;
-  border-radius: 8px;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  padding: 8px 16px !important;
+  border-radius: 99px !important;
   width: 100%;
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.filter-dropdown-menu .dropdown-item:hover {
-  background-color: var(--bg-filter-dropdown-item-hover);
-  color: var(--text-primary);
+.filter-dropdown-menu .dropdown-item:hover:not(.active) {
+  background-color: var(--primary-light) !important;
+  color: var(--primary) !important;
+  border-color: rgba(var(--primary-rgb), 0.15) !important;
 }
 
 .filter-dropdown-menu .dropdown-item.active {
-  background-color: var(--primary-light) !important;
-  color: var(--primary) !important;
-  font-weight: 600;
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.25) !important;
 }
 
 .btn-premium-action {
@@ -2296,7 +2378,10 @@ code.code-badge {
   color: var(--primary);
   border: 1px solid rgba(var(--primary-rgb), 0.2);
   border-radius: 0.5rem;
-  padding: 0.2rem 0.65rem;
+  padding: 0.25rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -2363,7 +2448,6 @@ code.code-badge {
   box-shadow: var(--card-shadow);
   position: relative;
   z-index: 1;
-  overflow: hidden;
 }
 
 .license-bento-card:hover {
@@ -2391,35 +2475,13 @@ code.code-badge {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
   transition: transform 0.25s ease, background-color 0.25s ease;
 }
 
 .license-bento-card:hover .bento-card-icon-wrap {
   transform: scale(1.06);
-}
-
-.icon-wrap-type {
-  background-color: rgba(var(--primary-rgb), 0.12);
-  border: 1px solid rgba(var(--primary-rgb), 0.2);
-  color: var(--primary);
-}
-
-.icon-wrap-emission {
-  background-color: rgba(139, 92, 246, 0.12);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  color: #8b5cf6;
-}
-
-.icon-wrap-expiration {
-  background-color: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  color: #10b981;
-}
-
-.expiration-temp .icon-wrap-expiration {
-  background-color: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #ef4444;
 }
 
 .icon-wrap-node {
@@ -2428,32 +2490,162 @@ code.code-badge {
   color: #0ea5e9;
 }
 
-.bento-card-value {
-  font-size: clamp(0.85rem, 1.1vw, 0.98rem);
-  color: var(--text-primary);
-  font-weight: 600;
+.lic-icon-perm {
+  background-color: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #10b981;
 }
 
-.badge-license-bento {
-  padding: 0.3rem 0.85rem;
-  border-radius: 1.25rem;
-  font-weight: 600;
-  font-size: 0.8rem;
+.lic-icon-temp {
+  background-color: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+/* License Type & Status Chips */
+.lic-type-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  transition: all 0.2s ease;
 }
 
-.badge-license-bento.bento-perm {
-  background-color: rgba(16, 185, 129, 0.12);
+.lic-chip-perm,
+.lic-chip-online {
+  background-color: rgba(16, 185, 129, 0.1);
   color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
-.badge-license-bento.bento-temp {
-  background-color: rgba(245, 158, 11, 0.12);
+.lic-chip-temp {
+  background-color: rgba(245, 158, 11, 0.1);
   color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.lic-chip-offline {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.lic-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  flex-shrink: 0;
+  animation: lic-dot-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes lic-dot-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Body: Timeline */
+.lic-details-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.lic-timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.lic-timeline-marker {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lic-timeline-item:hover .lic-timeline-marker {
+  transform: scale(1.12);
+}
+
+.lic-marker-emission {
+  background-color: rgba(139, 92, 246, 0.12);
+  border: 1.5px solid rgba(139, 92, 246, 0.25);
+  color: #8b5cf6;
+}
+
+.lic-marker-ok {
+  background-color: rgba(16, 185, 129, 0.12);
+  border: 1.5px solid rgba(16, 185, 129, 0.25);
+  color: #10b981;
+}
+
+.lic-marker-warn {
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1.5px solid rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+}
+
+.lic-timeline-connector {
+  width: 2px;
+  height: 12px;
+  margin-left: calc(1.75rem / 2 - 1px);
+  background: linear-gradient(to bottom,
+      rgba(var(--primary-rgb), 0.25),
+      rgba(var(--primary-rgb), 0.08));
+  border-radius: 2px;
+}
+
+[data-bs-theme="dark"] .lic-timeline-connector {
+  background: linear-gradient(to bottom,
+      rgba(255, 255, 255, 0.15),
+      rgba(255, 255, 255, 0.04));
+}
+
+.lic-timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding-top: 0.05rem;
+}
+
+.lic-timeline-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.lic-timeline-value {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+.lic-val-danger {
+  color: #ef4444;
+}
+
+.lic-val-success {
+  color: #10b981;
 }
 
 .license-right-column-card {

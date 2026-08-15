@@ -186,4 +186,21 @@ export class WebsocketConnectionService {
 
     this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay);
   }
+
+  send(payload: any): boolean {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      try {
+        const jsonStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+        this.socket.send(jsonStr);
+        console.log('[WebSocket Connection] Mensaje enviado al servidor:', payload);
+        return true;
+      } catch (err) {
+        console.error('[WebSocket Connection] Error enviando mensaje por WebSocket:', err);
+        return false;
+      }
+    } else {
+      console.warn('[WebSocket Connection] No se pudo enviar el mensaje: El socket no está conectado.');
+      return false;
+    }
+  }
 }

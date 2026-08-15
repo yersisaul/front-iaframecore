@@ -28,8 +28,11 @@ try {
   const currentApiTarget = getEnvValue(envContent, 'API_HOST');
   const realApiTarget = getEnvValue(envContent, 'API_HOST_REAL');
   const realOpenSearchTarget = getEnvValue(envContent, 'OPENSEARCH_HOST_REAL');
+  const realMinioTarget = getEnvValue(envContent, 'MINIO_PUBLIC_URL_REAL') || realApiTarget;
+
   const mockApiTarget = getEnvValue(envContent, 'API_HOST_MOCK');
   const mockOpenSearchTarget = getEnvValue(envContent, 'OPENSEARCH_HOST_MOCK');
+  const mockMinioTarget = getEnvValue(envContent, 'MINIO_PUBLIC_URL_MOCK') || mockApiTarget;
 
   if (!realApiTarget || !realOpenSearchTarget || !mockApiTarget || !mockOpenSearchTarget) {
     console.error('❌ Error: Faltan variables obligatorias en el archivo .env.');
@@ -39,16 +42,19 @@ try {
 
   let newApiTarget;
   let newOpenSearchTarget;
+  let newMinioTarget;
   let isMockMode = false;
 
   // Si el actual es el real, cambiamos al mock. De lo contrario, al real.
   if (currentApiTarget && currentApiTarget === realApiTarget) {
     newApiTarget = mockApiTarget;
     newOpenSearchTarget = mockOpenSearchTarget;
+    newMinioTarget = mockMinioTarget;
     isMockMode = true;
   } else {
     newApiTarget = realApiTarget;
     newOpenSearchTarget = realOpenSearchTarget;
+    newMinioTarget = realMinioTarget;
   }
 
   // Update envContent
@@ -73,6 +79,7 @@ try {
 
   envContent = setEnvValue(envContent, 'API_HOST', newApiTarget);
   envContent = setEnvValue(envContent, 'OPENSEARCH_HOST', newOpenSearchTarget);
+  envContent = setEnvValue(envContent, 'MINIO_PUBLIC_URL', newMinioTarget);
 
   fs.writeFileSync(envPath, envContent, 'utf8');
 

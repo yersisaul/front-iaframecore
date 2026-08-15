@@ -1,6 +1,7 @@
 :host {
   display: block;
-  min-height: 100vh;
+  overflow-y: auto;
+  min-height: 0;
   background-color: var(--bg-primary);
   transition: background-color .3s;
   --bg-card: var(--bg-surface);
@@ -46,11 +47,27 @@
   box-shadow: var(--shadow-os-windows) !important;
 }
 
+.host-header-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.host-header-right {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .host-card .card-body {
   padding: 1.35rem !important;
 }
-
-.host-header-block {}
 
 .os-avatar-icon {
   width: 24px;
@@ -201,6 +218,35 @@
   letter-spacing: 0.07em;
   white-space: nowrap;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spec-lbl .icon-svg {
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.btn-copy-fingerprint-compact {
+  background-color: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.2);
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.btn-copy-fingerprint-compact:hover {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 0.25rem 0.75rem rgba(var(--primary-rgb), 0.2);
 }
 
 .gpu-lbl {
@@ -220,23 +266,25 @@
   font-size: 0.82rem;
   font-weight: 500;
   color: var(--text-secondary);
-}
-
-.specs-list {
-  padding-top: 0.25rem;
-  margin-top: 0.15rem;
+  height: 22px;
+  line-height: 22px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .spec-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 6px;
+  padding: 3px 6px;
   border-radius: 6px;
   transition: background 0.15s ease, border-color 0.15s ease;
   gap: 10px;
   min-width: 0;
   cursor: pointer;
+  height: 28px;
+  min-height: 28px;
+  box-sizing: border-box;
 }
 
 .spec-row:hover {
@@ -249,7 +297,12 @@
 
 .copied-badge {
   animation: spec-pop-in 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  line-height: 22px;
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
 }
 
 @keyframes spec-flash-green {
@@ -947,8 +1000,8 @@ option {
 }
 
 .modal-card-custom {
-  background-color: var(--bg-modal);
-  border: 1px solid var(--border-modal) !important;
+  background-color: var(--bg-card, var(--bg-surface, #ffffff));
+  border: 1px solid var(--border-modal, var(--border-color)) !important;
   color: var(--text-primary);
   max-width: 480px;
   width: 100%;
@@ -962,6 +1015,17 @@ option {
   transform: scale(0.96) translateY(8px);
   opacity: 0;
   animation: scaleUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1) 0.03s forwards;
+}
+
+:host-context([data-bs-theme="dark"]) .modal-card-custom,
+:host-context([data-theme="dark"]) .modal-card-custom,
+:host-context(.dark) .modal-card-custom,
+[data-bs-theme="dark"] .modal-card-custom,
+[data-theme="dark"] .modal-card-custom,
+.dark .modal-card-custom {
+  background-color: var(--bg-card, #171717) !important;
+  border-color: var(--border-color, rgba(255, 255, 255, 0.1)) !important;
+  color: var(--text-primary) !important;
 }
 
 @keyframes fadeInModal {
@@ -1261,6 +1325,12 @@ option {
   color: var(--text-primary) !important;
 }
 
+.btn-flat-cancel:disabled,
+.btn-flat-cancel[disabled] {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+}
+
 .btn-flat-confirm {
   height: 44px;
   /* Taller footer buttons */
@@ -1280,32 +1350,49 @@ option {
   border-color: var(--primary-hover) !important;
 }
 
+.btn-flat-confirm:disabled,
+.btn-flat-confirm[disabled] {
+  background-color: rgba(var(--primary-rgb, 43, 127, 255), 0.25) !important;
+  border-color: rgba(var(--primary-rgb, 43, 127, 255), 0.15) !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+  opacity: 0.7 !important;
+}
+
 .btn-flat-confirm:active:not(:disabled) {
   transform: scale(0.98);
 }
 
-/* ── Premium Migrate Config Button ── */
+/* ── Premium Primary Header Button ── */
+.btn-header-primary,
 .btn-migrate-config {
   background-color: rgba(var(--primary-rgb), 0.06) !important;
   border: 1px solid rgba(var(--primary-rgb), 0.15) !important;
   color: var(--primary) !important;
   border-radius: 99px !important;
-  padding: 8px 18px !important;
+  padding: 0 18px !important;
+  height: 42px !important;
   font-size: 0.8rem !important;
   font-weight: 600 !important;
   display: inline-flex !important;
   align-items: center !important;
+  justify-content: center !important;
   gap: 8px !important;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
   cursor: pointer;
   outline: none;
+  box-sizing: border-box;
 }
 
+.btn-header-primary svg,
 .btn-migrate-config svg {
   stroke: var(--primary) !important;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
+.btn-header-primary:hover,
 .btn-migrate-config:hover {
   background-color: var(--primary) !important;
   border-color: var(--primary) !important;
@@ -1314,11 +1401,13 @@ option {
   transform: translateY(-1.5px) !important;
 }
 
+.btn-header-primary:hover svg,
 .btn-migrate-config:hover svg {
   stroke: var(--text-on-primary-btn, #ffffff) !important;
   transform: translateX(1.5px) rotate(12deg) scale(1.05);
 }
 
+.btn-header-primary:active,
 .btn-migrate-config:active {
   transform: translateY(-0.5px) !important;
 }
@@ -1367,7 +1456,7 @@ option {
   align-items: center;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  background-color: var(--bg-primary);
+  background-color: var(--bg-card);
   padding: 0 12px;
   height: 40px;
   transition: all 0.2s ease;
@@ -2070,9 +2159,10 @@ option {
 }
 
 /* ── Botón Migrar Configuración — misma altura que el searchbar ── */
+.btn-header-primary,
 .btn-migrate-config {
-  padding: 12px 18px !important;
-  /* sube el padding para igualar ~42px */
+  padding: 0 18px !important;
+  height: 42px !important;
   box-sizing: border-box;
 }
 

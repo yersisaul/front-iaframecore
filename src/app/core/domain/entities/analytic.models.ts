@@ -28,6 +28,9 @@ export interface Analytic {
   targetCameraIds: string[];
   targetCameraNames: string[];
   detectionClasses: string[];
+  parameters?: Record<string, any>;
+  geometricObjects?: Record<string, any>;
+  acciones?: Record<string, any>;
 }
 
 export class AnalyticMapper {
@@ -40,6 +43,9 @@ export class AnalyticMapper {
       targetCameraIds: (dto.target_cameras || []).map(c => c.camera_id),
       targetCameraNames: (dto.target_cameras || []).map(c => c.camera_name),
       detectionClasses: (dto.detection_classes || []).map(d => d.class_name),
+      parameters: dto.parameters || {},
+      geometricObjects: dto.geometric_objects || {},
+      acciones: dto.acciones || {},
     };
   }
 }

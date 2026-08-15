@@ -1,0 +1,259 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.analytic-actions-builder-wrapper {
+  background-color: var(--bg-surface);
+  border: 0.0625rem solid var(--border-color) !important;
+  border-radius: 0.85rem;
+  box-shadow: 0 0.125rem 0.6rem rgba(0, 0, 0, 0.03);
+}
+
+.form-section-title {
+  letter-spacing: 0.04em;
+  font-size: 0.74rem;
+}
+
+.section-badge-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.btn-action-add-trigger {
+  padding: 0.35rem 0.75rem !important;
+  font-size: 0.76rem !important;
+  height: auto !important;
+  border-radius: 99px !important;
+}
+
+.text-subtitle-xs {
+  font-size: 0.73rem;
+}
+
+.text-nano {
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.actions-empty-banner {
+  background-color: var(--color-primary-light-bg, rgba(var(--primary-rgb, 59, 130, 246), 0.03));
+  border-color: var(--border-color) !important;
+  transition: all 0.2s ease;
+}
+
+.action-rule-card {
+  background-color: var(--bg-surface);
+  border: 0.0625rem solid var(--border-color) !important;
+  border-radius: 0.5rem !important;
+  transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.15s ease, border-color 0.15s ease;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.action-rule-card.no-anim {
+  transition: none !important;
+}
+
+.action-rule-card.is-draggable {
+  cursor: grab;
+}
+
+.action-rule-card.is-draggable input,
+.action-rule-card.is-draggable select,
+.action-rule-card.is-draggable textarea {
+  cursor: text;
+}
+
+.action-rule-card.is-draggable select {
+  cursor: pointer;
+}
+
+.action-rule-card:hover {
+  background-color: var(--color-primary-light-bg, rgba(var(--primary-rgb, 59, 130, 246), 0.04));
+  border-color: rgba(var(--primary-rgb, 59, 130, 246), 0.3) !important;
+}
+
+/* AGARRADOR TÁCTIL (SOLO ÍCONO SVG LIMPIO SIN CUADRO ENVOLVENTE) */
+.drag-grip-standalone {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--text-muted, #94a3b8);
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+  padding: 0.15rem;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.action-rule-card:hover .drag-grip-standalone,
+.drag-grip-standalone:hover {
+  background: transparent !important;
+  color: var(--primary, #3b82f6);
+  transform: scale(1.12);
+}
+
+.drag-grip-standalone:active {
+  cursor: grabbing;
+  transform: scale(1.2);
+}
+
+[data-bs-theme="dark"] .drag-grip-standalone,
+:host-context([data-bs-theme="dark"]) .drag-grip-standalone {
+  background: transparent !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+[data-bs-theme="dark"] .action-rule-card:hover .drag-grip-standalone,
+:host-context([data-bs-theme="dark"]) .drag-grip-standalone:hover {
+  background: transparent !important;
+  color: #60a5fa;
+}
+
+.action-card-header {
+  border: none !important;
+  outline: none !important;
+  background: transparent;
+}
+
+.action-card-header.is-header-draggable {
+  cursor: grab;
+}
+
+.action-card-header.is-header-draggable:active {
+  cursor: grabbing;
+}
+
+/* PROXY DE ARRASTRE GLOBAL FLOTANTE SOBRE TODA LA PÁGINA */
+.global-drag-proxy-card {
+  box-shadow: 0 1.25rem 3.5rem rgba(0, 0, 0, 0.35), 0 0 0 0.125rem var(--primary) !important;
+  background-color: var(--card, #ffffff) !important;
+  opacity: 0.98 !important;
+  transition: none !important;
+  pointer-events: none !important;
+}
+
+/* ELIMINACIÓN TOTAL DEL FANTASMA VISUAL EN LA POSICIÓN ANTERIOR */
+.action-rule-card.is-dragging {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.action-rule-card label,
+.action-rule-card .form-label,
+.action-rule-card span,
+.action-card-header {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+.action-rule-card .form-label {
+  font-size: 0.72rem;
+  margin-bottom: 0.25rem !important;
+}
+
+.action-rule-card .form-control {
+  font-size: 0.78rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 20px;
+}
+
+.action-rule-card .form-select {
+  font-size: 0.78rem;
+  padding: 0.35rem 2.25rem 0.35rem 0.65rem !important;
+  border-radius: 20px !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.remove-action-btn {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.0625rem solid transparent;
+  transition: all 0.2s ease;
+}
+
+.remove-action-btn:hover {
+  background-color: var(--bg-danger-light, rgba(220, 38, 38, 0.1));
+  border-color: rgba(220, 38, 38, 0.2);
+}
+
+.dropdown-menu-item:hover {
+  background-color: var(--color-primary-light-bg, rgba(var(--primary-rgb, 59, 130, 246), 0.08));
+  color: var(--primary) !important;
+}
+
+/* CONFIGURACIÓN REACTIVA Y FLUIDA DE ANCHO Y ALTO DEL MENÚ DESPLEGABLE (EN REM/VH) */
+.actions-dropdown-menu {
+  min-width: 13.75rem;
+  max-width: min(17.5rem, 90vw);
+  max-height: min(16.25rem, 50vh);
+  overflow-y: auto;
+}
+
+.icon-micro {
+  width: 1rem;
+  height: 1rem;
+  background-color: currentColor;
+}
+
+.text-paragraph-sm {
+  font-size: 0.8rem;
+}
+
+/* ALINEACIÓN PERFECTA DE CONTROLES AL PIE MANTENIENDO ETIQUETAS PEGRADAS */
+.row.align-inputs-bottom {
+  align-items: flex-end !important;
+}
+
+.row.align-inputs-bottom>[class*="col-"] {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* Selector de Modo de Voz (Predeterminado / Personalizado) - Homologado con EventDetailModal */
+.media-toggle-pill-wrapper {
+  background-color: var(--bg-card, var(--bg-surface));
+  border-color: var(--border-color) !important;
+  border-radius: 99px !important;
+  padding: 4px !important;
+}
+
+.btn-media-toggle {
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 99px !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-media-toggle:hover:not(.active) {
+  color: var(--text-primary);
+  background-color: var(--border-color, rgba(0, 0, 0, 0.05));
+}
+
+.btn-media-toggle.active {
+  background-color: var(--primary);
+  color: var(--text-on-primary-btn, #ffffff) !important;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(var(--primary-rgb, 59, 130, 246), 0.28);
+}

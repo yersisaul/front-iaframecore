@@ -28,6 +28,7 @@ export class EventMapper {
       objeto: src.objeto || '',
       detalleEvento: src.detalle_evento || '',
       urlImg: MetadataMapper.sanitizeImageUrl(src.url_img),
+      urlVideo: src.url_video ? MetadataMapper.sanitizeImageUrl(src.url_video) : null,
       conteoAforo: typeof src.conteo_aforo === 'number' ? src.conteo_aforo : null,
       tiempoPermanencia: typeof src.tiempo_permanencia === 'number' ? src.tiempo_permanencia : null,
       objetosEnArea: typeof src.objetos_en_area === 'number' ? src.objetos_en_area : null,

@@ -12,7 +12,7 @@
   --fs-xs: 0.8rem;
   --fs-sm: 0.9rem;
   --fs-md: 1rem;
-  --fs-lg: 1.125rem;
+  --fs-lg: 1rem;
   --fs-xl: 1.25rem;
 
   /* Variables from globals.css */
@@ -276,15 +276,15 @@
   /* Search & Filters Components */
   --bg-search-group: #ffffff;
   --border-search-group: var(--border-color);
-  
+
   --bg-filter-dropdown-btn: var(--bg-primary);
   --border-filter-dropdown-btn: var(--border-color);
   --text-filter-dropdown-btn: var(--text-secondary);
-  
+
   --bg-filter-dropdown-btn-hover: var(--border-color);
   --border-filter-dropdown-btn-hover: var(--text-muted);
   --text-filter-dropdown-btn-hover: var(--text-primary);
-  
+
   --bg-filter-dropdown-menu: var(--bg-surface);
   --border-filter-dropdown-menu: var(--border-color);
   --text-filter-dropdown-item: var(--text-secondary);
@@ -308,7 +308,7 @@
   --bg-calendar-trigger: var(--bg-primary);
   --border-calendar-trigger: var(--border-color);
   --text-calendar-trigger: var(--text-primary);
-  
+
   --bg-calendar-popover: var(--bg-card);
   --border-calendar-popover: var(--border-color);
   --text-calendar-day: var(--text-primary);
@@ -711,10 +711,12 @@
   /* Sync Bootstrap border utility class with our design token */
   --bs-border-color: var(--border);
   --bg-card: var(--card);
+  --bg-modal: var(--card);
+  --border-modal: var(--border);
   --bg-header-light: #262626;
-  --bg-schedule-bento-active: rgba(0, 0, 0, 0.25);
-  --color-schedule-bento-active-text: #ffffff;
-  --color-schedule-bento-active-subtext: rgba(255, 255, 255, 0.7);
+  --bg-schedule-bento-active: rgba(6, 78, 59, 0.45);
+  --color-schedule-bento-active-text: #34d399;
+  --color-schedule-bento-active-subtext: #10b981;
 
   /* Brand */
   --primary: var(--azor-button-blue);
@@ -1099,9 +1101,15 @@ select {
   mask-image: url('/assets/icons/views/app/nodos.svg');
 }
 
-.icon-camara {
+.icon-camara,
+.icon-camera-video {
   -webkit-mask-image: url('/assets/icons/views/app/camara.svg');
   mask-image: url('/assets/icons/views/app/camara.svg');
+}
+
+.icon-camera-photo {
+  -webkit-mask-image: url('/assets/icons/global/camera-photo.svg');
+  mask-image: url('/assets/icons/global/camera-photo.svg');
 }
 
 .icon-horarios {
@@ -1158,6 +1166,11 @@ select {
   mask-image: url('/assets/icons/global/redo.svg');
 }
 
+.icon-refresh {
+  -webkit-mask-image: url('/assets/icons/global/refresh.svg');
+  mask-image: url('/assets/icons/global/refresh.svg');
+}
+
 .icon-zoom-in {
   -webkit-mask-image: url('/assets/icons/global/zoom-in.svg');
   mask-image: url('/assets/icons/global/zoom-in.svg');
@@ -1166,6 +1179,11 @@ select {
 .icon-zoom-out {
   -webkit-mask-image: url('/assets/icons/global/zoom-out.svg');
   mask-image: url('/assets/icons/global/zoom-out.svg');
+}
+
+.icon-drag-reorder {
+  -webkit-mask-image: url('/assets/icons/global/drag-reorder.svg');
+  mask-image: url('/assets/icons/global/drag-reorder.svg');
 }
 
 .icon-chevron-left {
@@ -1556,12 +1574,12 @@ button,
     gap: 1.25rem !important;
   }
 
-  .nodos-view-header > div:first-child {
+  .nodos-view-header>div:first-child {
     flex: 0 0 auto !important;
     margin-right: auto !important;
   }
 
-  .nodos-view-header > div:last-child {
+  .nodos-view-header>div:last-child {
     width: 100% !important;
     justify-content: space-between !important;
     flex-wrap: nowrap !important;
@@ -1578,12 +1596,12 @@ button,
     gap: 1.25rem !important;
   }
 
-  .camaras-view-header > div:first-child {
+  .camaras-view-header>div:first-child {
     flex: 0 0 auto !important;
     margin-right: auto !important;
   }
 
-  .camaras-view-header > div:last-child {
+  .camaras-view-header>div:last-child {
     width: 100% !important;
     justify-content: space-between !important;
     flex-wrap: nowrap !important;
@@ -1600,12 +1618,12 @@ button,
     gap: 1.25rem !important;
   }
 
-  .header-section > div:first-child {
+  .header-section>div:first-child {
     flex: 0 0 auto !important;
     margin-right: auto !important;
   }
 
-  .header-section > div:last-child {
+  .header-section>div:last-child {
     width: 100% !important;
     justify-content: space-between !important;
     flex-wrap: nowrap !important;
@@ -1617,8 +1635,8 @@ button,
 /* Ensure the search bar input shrinks responsively on small mobile screens to prevent overflow */
 .search-input-control {
   width: 100% !important;
-  max-width: 180px !important;
-  min-width: 90px !important;
+  max-width: 100hw !important;
+  min-width: 90hw !important;
 }
 
 /* --- Global Layout Constraints & Scrollbar Hiding --- */
@@ -1640,8 +1658,10 @@ main,
 .overflow-y-auto,
 .scroll-container,
 .scrollable-menu {
-  scrollbar-width: none !important; /* Firefox */
-  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important;
+  /* Firefox */
+  -ms-overflow-style: none !important;
+  /* IE and Edge */
 }
 
 /* Hide scrollbars for Chrome, Safari and Opera */
@@ -1651,58 +1671,72 @@ main,
   height: 0 !important;
 }
 
-/* ── Global Premium Migrate Config Button Style ── */
+/* ── Global Premium Primary Header Button Style ── */
+.btn-header-primary,
 .btn-migrate-config {
   background-color: rgba(var(--primary-rgb), 0.06) !important;
   border: 1px solid rgba(var(--primary-rgb), 0.15) !important;
   color: var(--primary) !important;
   border-radius: 99px !important;
-  padding: 12px 18px !important;    /* 12px 18px para igualar el searchbar de 42px */
+  padding: 0 18px !important;
+  height: 42px !important;
   font-size: 0.8rem !important;
   font-weight: 600 !important;
   display: inline-flex !important;
   align-items: center !important;
+  justify-content: center !important;
   gap: 8px !important;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  cursor: pointer;
-  outline: none;
-  box-sizing: border-box;
-}
-
-/* ── Global Dark-Green Export Button ── */
-.btn-export-dark-green {
-  background-color: #065f46 !important;
-  border: 1px solid #047857 !important;
-  color: #ffffff !important;
-  border-radius: 99px !important;
-  padding: 10px 18px !important;
-  font-size: 0.8rem !important;
-  font-weight: 600 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  box-shadow: 0 4px 12px rgba(6, 95, 70, 0.25) !important;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
   cursor: pointer !important;
   outline: none !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+}
+
+/* ── Global Green Export Button Style ── */
+.btn-export-dark-green {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+  color: #10b981 !important;
+  border-radius: 99px !important;
+  padding: 0 18px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  height: 42px !important;
 }
 
 .btn-export-dark-green:hover,
 .btn-export-dark-green:focus,
 .btn-export-dark-green:active,
 .btn-export-dark-green.show {
-  background-color: #047857 !important;
+  background-color: #10b981 !important;
   border-color: #10b981 !important;
   color: #ffffff !important;
-  box-shadow: 0 6px 18px rgba(6, 95, 70, 0.4) !important;
-  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.24) !important;
+  transform: translateY(-1.5px) !important;
 }
 
+.btn-export-dark-green:active {
+  transform: translateY(-0.5px) !important;
+}
+
+.btn-header-primary .icon-svg,
+.btn-migrate-config .icon-svg,
+.btn-header-primary svg,
 .btn-migrate-config svg {
+  background-color: var(--primary) !important;
   stroke: var(--primary) !important;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease !important;
 }
 
+.btn-header-primary:hover,
 .btn-migrate-config:hover {
   background-color: var(--primary) !important;
   border-color: var(--primary) !important;
@@ -1711,11 +1745,16 @@ main,
   transform: translateY(-1.5px) !important;
 }
 
+.btn-header-primary:hover .icon-svg,
+.btn-migrate-config:hover .icon-svg,
+.btn-header-primary:hover svg,
 .btn-migrate-config:hover svg {
+  background-color: var(--text-on-primary-btn, #ffffff) !important;
   stroke: var(--text-on-primary-btn, #ffffff) !important;
-  transform: translateX(1.5px) rotate(12deg) scale(1.05);
+  transform: scale(1.1);
 }
 
+.btn-header-primary:active,
 .btn-migrate-config:active {
   transform: translateY(-0.5px) !important;
 }
@@ -1731,10 +1770,12 @@ main,
     border-color: var(--primary) !important;
     box-shadow: 0 0 0 4px rgba(43, 127, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.05);
   }
+
   50% {
     border-color: var(--primary) !important;
     box-shadow: 0 0 0 6px rgba(43, 127, 255, 0.15), 0 4px 12px rgba(0, 0, 0, 0.05);
   }
+
   100% {
     transform: scale(1);
     box-shadow: none;
@@ -1751,6 +1792,7 @@ main,
     border-color: #3b82f6 !important;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
   }
+
   100% {
     box-shadow: none;
   }
@@ -1766,6 +1808,7 @@ main,
     border-color: #10b981 !important;
     box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.35);
   }
+
   100% {
     box-shadow: none;
   }
@@ -1776,6 +1819,7 @@ main,
     border-color: #ef4444 !important;
     box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.35);
   }
+
   100% {
     box-shadow: none;
   }
@@ -1799,11 +1843,13 @@ main,
     padding-top: inherit;
     padding-bottom: inherit;
   }
+
   50% {
     opacity: 0;
     transform: scale(0.93);
     max-height: 500px;
   }
+
   100% {
     opacity: 0;
     transform: scale(0.9);
@@ -1887,6 +1933,7 @@ main,
     opacity: 0;
     transform: translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1938,8 +1985,22 @@ main,
   border: 1px solid rgba(0, 229, 255, 0.3) !important;
 }
 
-.status-text-online { color: #10b981 !important; }
-.status-text-degraded { color: #f97316 !important; }
-.status-text-recovering { color: #eab308 !important; }
-.status-text-pending { color: #00e5ff !important; }
-.status-text-offline { color: #ef4444 !important; }
+.status-text-online {
+  color: #10b981 !important;
+}
+
+.status-text-degraded {
+  color: #f97316 !important;
+}
+
+.status-text-recovering {
+  color: #eab308 !important;
+}
+
+.status-text-pending {
+  color: #00e5ff !important;
+}
+
+.status-text-offline {
+  color: #ef4444 !important;
+}

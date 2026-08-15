@@ -1,0 +1,1117 @@
+<div class="analytic-params-form-wrapper d-flex flex-column gap-3">
+  <!-- SECCIÓN 1: CONFIGURACIÓN DE ANALÍTICA, MODELO DE IA & CLASES A MONITOREAR -->
+  <div class="form-section-card card p-3 border shadow-sm">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <span class="section-badge-dot bg-primary"></span>
+      <label class="form-section-title text-uppercase fw-bold text-muted small mb-0">
+        1. Configuración de Analítica
+      </label>
+    </div>
+
+    <!-- Fila 1: Configuración Principal de Analítica & Modelo de IA -->
+    <div class="row g-3 mb-3 align-inputs-bottom">
+      <!-- Columna 1: Tipo de Analítica de IA (Lado a lado col-6 si no es fija ni abajo, col-12 si es fija o modelo abajo) -->
+      <div [class.col-12]="isFixedModelAnalytic() || isModelDropdownBelow()"
+        [class.col-6]="!isFixedModelAnalytic() && !isModelDropdownBelow()" class="position-relative">
+        <label class="form-label text-muted small font-semibold mb-1">Tipo de Analítica de IA</label>
+
+        <!-- Trigger de Selección con Nombre de Modelo en la Opción Activa -->
+        <button type="button"
+          class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+          [class.active]="isTypeDropdownOpen()" [class.is-open]="isTypeDropdownOpen()"
+          [title]="getSelectedAnalyticTypeLabel()" (click)="toggleTypeDropdown($event)">
+          <span class="text-truncate font-semibold text-start flex-fill me-2" style="font-size: 0.8125rem;">
+            {{ getSelectedAnalyticTypeLabel() }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+            [class.rotated]="isTypeDropdownOpen()" [class.rotate-180]="isTypeDropdownOpen()"
+            style="width: 0.8125rem; height: 0.8125rem;"></span>
+        </button>
+
+        <!-- Menú Desplegable Flotante con Nombres de Analíticas Limpios (Sin Modelos) -->
+        @if (isTypeDropdownOpen()) {
+        <div
+          class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute bg-surface border"
+          (click)="$event.stopPropagation()">
+          <div class="multiselect-options-list pe-1" style="max-height: 18rem;">
+
+            <div class="optgroup-label text-micro text-uppercase fw-bold text-muted px-2 pt-1 pb-1">
+              🔷 Analíticas de Polígono (Área)
+            </div>
+            @for (type of analyticTypes; track type.id) {
+            @if (type.geometryType === 'polygon') {
+            <div
+              class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm"
+              [class.is-selected]="selectedType() === type.id" [class.is-disabled]="!isAnalyticTypeSupported(type)"
+              [style.opacity]="!isAnalyticTypeSupported(type) ? '0.45' : '1'"
+              [style.cursor]="!isAnalyticTypeSupported(type) ? 'not-allowed' : 'pointer'"
+              (click)="isAnalyticTypeSupported(type) && selectAnalyticTypeAndClose(type.id, $event)">
+              <span class="option-name font-semibold text-body me-2 text-nowrap">
+                {{ type.name }} {{ !isAnalyticTypeSupported(type) ? ' (No instalado)' : '' }}
+              </span>
+              @if (selectedType() === type.id) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+            }
+
+            <div class="optgroup-label text-micro text-uppercase fw-bold text-muted px-2 pt-2 pb-1">
+              🔶 Analíticas de Tramo (Cuadrilátero A-B-C-D)
+            </div>
+            @for (type of analyticTypes; track type.id) {
+            @if (type.geometryType === 'speed_quad') {
+            <div
+              class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm"
+              [class.is-selected]="selectedType() === type.id" [class.is-disabled]="!isAnalyticTypeSupported(type)"
+              [style.opacity]="!isAnalyticTypeSupported(type) ? '0.45' : '1'"
+              [style.cursor]="!isAnalyticTypeSupported(type) ? 'not-allowed' : 'pointer'"
+              (click)="isAnalyticTypeSupported(type) && selectAnalyticTypeAndClose(type.id, $event)">
+              <span class="option-name font-semibold text-body me-2 text-nowrap">
+                {{ type.name }} {{ !isAnalyticTypeSupported(type) ? ' (No instalado)' : '' }}
+              </span>
+              @if (selectedType() === type.id) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+            }
+
+            <div class="optgroup-label text-micro text-uppercase fw-bold text-muted px-2 pt-2 pb-1">
+              🟢 Analíticas de Línea (Cruce / Conteo)
+            </div>
+            @for (type of analyticTypes; track type.id) {
+            @if (type.geometryType === 'line') {
+            <div
+              class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm"
+              [class.is-selected]="selectedType() === type.id" [class.is-disabled]="!isAnalyticTypeSupported(type)"
+              [style.opacity]="!isAnalyticTypeSupported(type) ? '0.45' : '1'"
+              [style.cursor]="!isAnalyticTypeSupported(type) ? 'not-allowed' : 'pointer'"
+              (click)="isAnalyticTypeSupported(type) && selectAnalyticTypeAndClose(type.id, $event)">
+              <span class="option-name font-semibold text-body me-2 text-nowrap">
+                {{ type.name }} {{ !isAnalyticTypeSupported(type) ? ' (No instalado)' : '' }}
+              </span>
+              @if (selectedType() === type.id) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+            }
+
+          </div>
+        </div>
+        }
+      </div>
+
+      <!-- Columna 2: Modelo de IA de Detección (Solo cuando NO es fija y NO está abajo, comparte fila lado a lado) -->
+      @if (!isFixedModelAnalytic() && !isModelDropdownBelow()) {
+      <div class="col-6 position-relative">
+        <label class="form-label text-muted small font-semibold mb-1">
+          Modelo de IA de Detección
+        </label>
+
+        <!-- Trigger de Selección de Modelo -->
+        <button type="button"
+          class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+          [class.active]="isModelDropdownOpen()" [class.is-open]="isModelDropdownOpen()"
+          [title]="(selectedModel().split(/[/\\]/).pop() || selectedModel())" (click)="toggleModelDropdown($event)">
+          <span class="text-truncate font-semibold text-start flex-fill me-2" style="font-size: 0.8125rem;">
+            {{ (selectedModel().split(/[/\\]/).pop() || selectedModel()) }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+            [class.rotated]="isModelDropdownOpen()" [class.rotate-180]="isModelDropdownOpen()"
+            style="width: 0.8125rem; height: 0.8125rem;"></span>
+        </button>
+
+        <!-- Menú Desplegable Flotante de Modelos de IA -->
+        @if (isModelDropdownOpen()) {
+        <div
+          class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+          (click)="$event.stopPropagation()">
+          <div class="multiselect-options-list pe-1" style="max-height: 18rem;">
+            @if (nodeModelCatalog().length > 0) {
+            @for (cat of modelCategories(); track cat.label) {
+            <div class="optgroup-label text-micro text-uppercase fw-bold text-muted px-2 pt-2 pb-1">
+              {{ cat.label }}
+            </div>
+            @for (m of cat.models; track m.fullPath) {
+            @let isDisabled = isModelOptionDisabled(m);
+            @let isSelected = m.cleanName.toLowerCase() === (selectedModel().split(/[/\\]/).pop() ||
+            selectedModel()).toLowerCase();
+            <div
+              class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm"
+              [class.is-selected]="isSelected" [class.is-disabled]="isDisabled"
+              [style.opacity]="isDisabled ? '0.45' : '1'" [style.cursor]="isDisabled ? 'not-allowed' : 'pointer'"
+              (click)="!isDisabled && selectModelAndClose(m.cleanName, $event)">
+              <div class="d-flex align-items-center gap-2 min-w-0 flex-fill me-2 overflow-hidden">
+                <span class="option-name font-semibold text-body text-truncate">
+                  {{ m.cleanName }}
+                </span>
+                <span class="badge option-id-badge font-monospace text-micro rounded-pill px-2 py-0.5 flex-shrink-0">
+                  {{ m.classes.length }} clases
+                </span>
+                @if (isDisabled) {
+                <span class="text-micro text-muted font-normal">
+                  {{ getSelectedAnalyticTypeObj()?.fixedModel ? '(Modelo fijo)' : '(No compatible)' }}
+                </span>
+                }
+              </div>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+            }
+            } @else {
+            <div
+              class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm is-selected">
+              <span class="option-name font-semibold text-body me-2 text-truncate">
+                yolo26m.pt
+              </span>
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+            </div>
+            }
+          </div>
+        </div>
+        }
+      </div>
+      }
+    </div>
+
+    <!-- Fila 2 Especial: Modelo de IA Ubicado Abajo (Para Comportamiento Humano, Reconocimiento Facial y Reconocimiento de Placas) -->
+    @if (isModelDropdownBelow()) {
+    <div class="mb-3 position-relative">
+      <label class="form-label text-muted small font-semibold mb-1">
+        {{ selectedType() === 'human_behavior' ? 'Modelo de Estimación de Pose' : 'Modelo de IA de Detección' }}
+      </label>
+
+      <!-- Trigger de Selección de Modelo -->
+      <button type="button"
+        class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+        [class.active]="isModelDropdownOpen()" [class.is-open]="isModelDropdownOpen()"
+        [title]="(selectedModel().split(/[/\\]/).pop() || selectedModel())" (click)="toggleModelDropdown($event)">
+        <span class="text-truncate font-semibold text-start flex-fill me-2" style="font-size: 0.8125rem;">
+          {{ (selectedModel().split(/[/\\]/).pop() || selectedModel()) }}
+        </span>
+        <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+          [class.rotated]="isModelDropdownOpen()" [class.rotate-180]="isModelDropdownOpen()"
+          style="width: 0.8125rem; height: 0.8125rem;"></span>
+      </button>
+
+      <!-- Menú Desplegable Flotante de Modelos de IA -->
+      @if (isModelDropdownOpen()) {
+      <div
+        class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+        (click)="$event.stopPropagation()">
+        <div class="multiselect-options-list pe-1" style="max-height: 18rem;">
+          @if (nodeModelCatalog().length > 0) {
+          @for (cat of modelCategories(); track cat.label) {
+          <div class="optgroup-label text-micro text-uppercase fw-bold text-muted px-2 pt-2 pb-1">
+            {{ cat.label }}
+          </div>
+          @for (m of cat.models; track m.fullPath) {
+          @let isDisabled = isModelOptionDisabled(m);
+          @let isSelected = m.cleanName.toLowerCase() === (selectedModel().split(/[/\\]/).pop() ||
+          selectedModel()).toLowerCase();
+          <div
+            class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm"
+            [class.is-selected]="isSelected" [class.is-disabled]="isDisabled"
+            [style.opacity]="isDisabled ? '0.45' : '1'" [style.cursor]="isDisabled ? 'not-allowed' : 'pointer'"
+            (click)="!isDisabled && selectModelAndClose(m.cleanName, $event)">
+            <div class="d-flex align-items-center gap-2 min-w-0 flex-fill me-2 overflow-hidden">
+              <span class="option-name font-semibold text-body text-truncate">
+                {{ m.cleanName }}
+              </span>
+              <span class="badge option-id-badge font-monospace text-micro rounded-pill px-2 py-0.5 flex-shrink-0">
+                {{ m.classes.length }} clases
+              </span>
+              @if (isDisabled) {
+              <span class="text-micro text-muted font-normal">
+                {{ getSelectedAnalyticTypeObj()?.fixedModel ? '(Modelo fijo)' : '(No compatible)' }}
+              </span>
+              }
+            </div>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+            }
+          </div>
+          }
+          }
+          } @else {
+          <div
+            class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm is-selected">
+            <span class="option-name font-semibold text-body me-2 text-truncate">
+              yolo26m.pt
+            </span>
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+          </div>
+          }
+        </div>
+      </div>
+      }
+    </div>
+    }
+
+    <!-- MULTISELECCIONABLE DESPLEGABLE DE CLASES Y OBJETOS DETECTABLES (DISEÑO ULTRA-PREMIUM) -->
+    @if (!isFixedModelAnalytic() && currentModelClasses().length > 0) {
+    <div class="classes-multiselect-container position-relative">
+      <div class="mb-2">
+        <label class="form-label text-muted small font-semibold mb-0 d-flex align-items-center gap-1.5">
+          <span>Clases / Objetos a Monitorear</span>
+        </label>
+      </div>
+
+      <!-- Trigger & Menu Wrapper -->
+      <div class="position-relative w-100">
+        <!-- 1. Botón Trigger Personalizado a Ancho Completo (Ocupa toda su fila) -->
+        <div class="w-100 mb-3">
+          <button type="button"
+            class="btn btn-filter-dropdown multiselect-trigger-btn w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3.5 py-2 cursor-pointer"
+            [class.active]="isClassesDropdownOpen() || selectedClassIndexes().length > 0"
+            [class.is-open]="isClassesDropdownOpen()" [class.btn-proximity-warning]="!isClassSelectionValid()"
+            [class.btn-proximity-success]="isClassSelectionValid()"
+            [class.element-highlight-amber-pulse]="highlightError" (click)="toggleClassesDropdown($event)">
+            <div class="d-flex align-items-center gap-2 min-w-0 flex-fill me-2 overflow-hidden">
+              @if (!isClassSelectionValid()) {
+              <span class="icon-svg icon-warning flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              } @else {
+              <span class="icon-svg icon-check flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+              <span class="text-truncate font-semibold flex-fill text-start" style="font-size: 0.8125rem;">
+                {{ getSelectedClassNames() }}
+              </span>
+              <span class="badge option-id-badge font-monospace text-micro rounded-pill px-2 py-0.5 flex-shrink-0"
+                [class.bg-warning-subtle]="!isClassSelectionValid()" [class.text-warning]="!isClassSelectionValid()"
+                [class.bg-success-subtle]="isClassSelectionValid()" [class.text-success]="isClassSelectionValid()">
+                {{ getSelectedClassesSummary() }}
+              </span>
+            </div>
+
+            <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+              [class.rotated]="isClassesDropdownOpen()" [class.rotate-180]="isClassesDropdownOpen()"
+              style="width: 0.8125rem; height: 0.8125rem;"></span>
+          </button>
+        </div>
+
+        <!-- 2. Botones de Acción Rápida Exterior (NUEVA FILA - Ocupan 50% cada uno) -->
+        <div class="row g-2">
+          @if (selectedType() !== 'object_proximity') {
+          <div class="col-6">
+            <button type="button"
+              class="btn btn-filter-dropdown btn-action-all w-100 py-1.5 px-3 font-semibold d-inline-flex align-items-center justify-content-center"
+              [class.active]="selectedClassIndexes().length === currentModelClasses().length && currentModelClasses().length > 0"
+              title="Seleccionar todas las clases" (click)="selectAllClasses()">
+              <span>Todos</span>
+            </button>
+          </div>
+          <div class="col-6">
+            <button type="button"
+              class="btn btn-filter-dropdown btn-action-clear w-100 py-1.5 px-3 font-semibold d-inline-flex align-items-center justify-content-center"
+              title="Limpiar selección" (click)="deselectAllClasses()">
+              <span>Limpiar</span>
+            </button>
+          </div>
+          } @else {
+          <div class="col-12">
+            <button type="button"
+              class="btn btn-filter-dropdown btn-action-clear w-100 py-1.5 px-3 font-semibold d-inline-flex align-items-center justify-content-center"
+              title="Limpiar selección" (click)="deselectAllClasses()">
+              <span>Limpiar</span>
+            </button>
+          </div>
+          }
+        </div>
+
+        <!-- Menú Desplegable Flotante Minimalista & Elegante -->
+        @if (isClassesDropdownOpen()) {
+        <div class="classes-dropdown-menu shadow-xl p-3 rounded-4 position-absolute w-100 bg-surface border"
+          (click)="$event.stopPropagation()">
+
+          <!-- Searchbar Interno de Alta Definición -->
+          <div class="searchbar-floating-box mb-2">
+            <div class="search-input-wrapper">
+              <span class="search-icon-wrapper">
+                <span class="icon-svg icon-search icon-micro"></span>
+              </span>
+              <input #classSearchInput type="text" class="form-control search-input-field shadow-none"
+                placeholder="Buscar por clase o ID (#)..." (input)="classSearchQuery.set(classSearchInput.value)" />
+              @if (classSearchQuery()) {
+              <button type="button" class="btn-clear-search"
+                (click)="classSearchInput.value = ''; classSearchQuery.set('')" title="Limpiar búsqueda">
+                ✕
+              </button>
+              }
+            </div>
+          </div>
+
+          <!-- Lista de Opciones Filtradas con Badges Dinámicos de Núcleo / Órbita -->
+          <div class="multiselect-options-list pe-1">
+            @for (c of filteredModelClasses(); track c.classIndex) {
+            <label
+              class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm mb-1"
+              [class.is-selected]="selectedClassIndexes().includes(c.classIndex)"
+              [class.is-disabled]="isClassSelectionDisabled(c.classIndex)"
+              [style.opacity]="isClassSelectionDisabled(c.classIndex) ? '0.45' : '1'"
+              [style.cursor]="isClassSelectionDisabled(c.classIndex) ? 'not-allowed' : 'pointer'"
+              [title]="isClassSelectionDisabled(c.classIndex) ? 'Límite máximo de 2 objetos alcanzado para Cercanía entre Objetos' : ''">
+              <input type="checkbox" class="visually-hidden" [checked]="selectedClassIndexes().includes(c.classIndex)"
+                [disabled]="isClassSelectionDisabled(c.classIndex)" (change)="toggleClassSelection(c.classIndex)" />
+
+              <span class="option-name font-semibold text-body me-2 text-truncate">{{ c.className }}</span>
+
+              <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+                @if (getObjectRoleInfo(c.classIndex); as role) {
+                <span class="badge rounded-pill font-semibold text-micro px-2 py-0.5 me-1"
+                  [ngClass]="role.type === 'nucleus' ? 'bg-primary text-white' : 'bg-info text-dark'">
+                  {{ role.label }}
+                </span>
+                }
+                <span class="badge option-id-badge font-monospace text-micro rounded-pill px-2 py-0.5">#{{ c.classIndex
+                  }}</span>
+              </div>
+            </label>
+            }
+
+            @if (filteredModelClasses().length === 0) {
+            <div class="p-4 text-center text-muted">
+              <span class="icon-svg icon-search icon-medium d-block mx-auto mb-2 text-muted opacity-40"></span>
+              <p class="small font-semibold mb-1 text-body">Sin coincidencias</p>
+              <p class="text-micro text-muted mb-2">No encontramos clases para "{{ classSearchQuery() }}"</p>
+              <button type="button"
+                class="btn btn-xs btn-outline-primary py-1 px-2.5 rounded-pill font-semibold text-micro"
+                (click)="classSearchQuery.set('')">
+                Limpiar Búsqueda
+              </button>
+            </div>
+            }
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
+
+    <!-- Configuración de Tiempo por Clase · Comportamiento Humano (Reordenable por Drag and Drop) -->
+    @if (selectedType() === 'human_behavior' && selectedClassIndexes().length > 0) {
+    <div class="class-times-panel mt-3">
+      <div class="class-times-header">
+        <span class="class-times-title">Tiempo de Ejecución por Clase</span>
+        <span class="class-times-count">{{ selectedClassIndexes().length }} {{ selectedClassIndexes().length === 1 ?
+          'clase' : 'clases' }}</span>
+      </div>
+      <div class="class-times-list">
+        @for (classIdx of selectedClassIndexes(); track classIdx; let idx = $index) {
+        @let classObj = getClassObj(classIdx);
+        <div class="class-time-row d-flex align-items-center justify-content-between transition-all"
+          [attr.data-class-index]="idx"
+          [class.is-draggable]="selectedClassIndexes().length > 1"
+          [class.is-dragging]="draggedClassIndex() === idx"
+          [class.no-anim]="isClassTransitionDisabled()"
+          [style.transform]="getClassRowTransform(idx)"
+          (pointerdown)="startClassPointerDrag(idx, $event)">
+
+          <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0 me-2">
+            <!-- 1. SVG Reorder Icon a la extrema izquierda -->
+            @if (selectedClassIndexes().length > 1) {
+            <span class="icon-svg icon-drag-reorder drag-grip-icon flex-shrink-0" style="width: 1.15rem; height: 1.15rem;"></span>
+            }
+
+            <!-- 2. Badge de Posición #0, #1, #2... desde el primero hasta el último -->
+            <span class="badge class-position-badge font-monospace text-micro rounded-pill px-2 py-0.5 flex-shrink-0">
+              #{{ idx }}
+            </span>
+
+            <!-- 3. Nombre de la Clase -->
+            <span class="class-time-name font-semibold text-body text-truncate select-none">
+              {{ classObj?.className || ('Clase #' + classIdx) }}
+            </span>
+          </div>
+
+          <!-- Input de Tiempo en Segundos -->
+          <div class="input-group flex-shrink-0" style="width: 7.5rem;">
+            <input type="number" min="1" step="1" class="form-control text-paragraph-sm rounded-start-3"
+              [value]="getClassTime(classIdx)" (input)="updateClassTime(classIdx, $event)" placeholder="1" />
+            <span class="input-group-text text-micro font-monospace bg-light">seg</span>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
+  </div>
+
+  <!-- SECCIÓN 2: ALGORITMO DE TRACKER & UMBRALES GENERALES DE DETECCIÓN -->
+  <div class="form-section-card card p-3 border shadow-sm">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <span class="section-badge-dot bg-warning"></span>
+      <label class="form-section-title text-uppercase fw-bold text-muted small mb-0">
+        2. Parametros Generales
+      </label>
+    </div>
+
+    <!-- tipo_de_tracker -->
+    <div class="mb-3">
+      <label class="form-label text-muted small font-semibold mb-1"
+        title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">
+        Algoritmo de Rastreo (Tracker)
+      </label>
+      <select class="form-select text-paragraph-sm font-semibold rounded-3" [ngModel]="selectedTracker()"
+        (ngModelChange)="selectedTracker.set($event)"
+        title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">
+        <option value="Sort">Sort (Básico y Ligero)</option>
+        <option value="Oc-Sort">Oc-Sort (Intermedio)</option>
+        <option value="Bot-Sort">Bot-Sort (Complejo y Robusto)</option>
+      </select>
+    </div>
+
+    <div class="d-flex flex-column gap-3 pt-1">
+      <!-- conf_thres (0.15 - 1.0) -->
+      <div class="slider-field-group"
+        title="Confianza de la detección: A mayor porcentaje, menos falsos positivos, pero podría omitir objetos lejanos o semiocultos (min: 0.15 - max: 1.0).">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="slider-field-label"
+            title="Confianza de la detección: A mayor porcentaje, menos falsos positivos, pero podría omitir objetos lejanos o semiocultos (min: 0.15 - max: 1.0).">Confianza
+            de Detección</span>
+          <span class="slider-field-value font-monospace">{{ confThres() }}</span>
+        </div>
+        <input type="range" class="form-range custom-slider" min="0.15" max="1.0" step="0.05" [ngModel]="confThres()"
+          (ngModelChange)="confThres.set($event)"
+          title="Confianza de la detección: A mayor porcentaje, menos falsos positivos, pero podría omitir objetos lejanos o semiocultos (min: 0.15 - max: 1.0)." />
+      </div>
+
+      <!-- iou_thres (0.3 - 1.0) -->
+      <div class="slider-field-group"
+        title="El umbral para eliminar detecciones repetidas de un mismo objeto (min: 0.3 - max: 1.0).">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="slider-field-label"
+            title="El umbral para eliminar detecciones repetidas de un mismo objeto (min: 0.3 - max: 1.0).">Umbral NMS
+            (IoU)</span>
+          <span class="slider-field-value font-monospace">{{ iouThres() }}</span>
+        </div>
+        <input type="range" class="form-range custom-slider" min="0.3" max="1.0" step="0.05" [ngModel]="iouThres()"
+          (ngModelChange)="iouThres.set($event)"
+          title="El umbral para eliminar detecciones repetidas de un mismo objeto (min: 0.3 - max: 1.0)." />
+      </div>
+
+      <!-- max_age (15 - 120 frames) -->
+      <div class="slider-field-group"
+        title="Número de fotogramas que el sistema recordará un objeto si desaparece de la vista temporalmente (min: 15 - max: 120).">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="slider-field-label"
+            title="Número de fotogramas que el sistema recordará un objeto si desaparece de la vista temporalmente (min: 15 - max: 120).">Memoria
+            de Rastreo (Max Age)</span>
+          <span class="slider-field-value font-monospace">{{ maxAge() }}</span>
+        </div>
+        <input type="range" class="form-range custom-slider" min="15" max="120" step="5" [ngModel]="maxAge()"
+          (ngModelChange)="maxAge.set($event)"
+          title="Número de fotogramas que el sistema recordará un objeto si desaparece de la vista temporalmente (min: 15 - max: 120)." />
+      </div>
+
+      <!-- min_hits (2 - 10 hits) -->
+      <div class="slider-field-group"
+        title="Ayuda a filtrar 'fantasmas'. El objeto debe ser detectado X veces seguidas para empezar a contar de forma estable (min: 2 - max: 10).">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="slider-field-label"
+            title="Ayuda a filtrar 'fantasmas'. El objeto debe ser detectado X veces seguidas para empezar a contar de forma estable (min: 2 - max: 10).">Filtro
+            Anti-Fantasmas (Min Hits)</span>
+          <span class="slider-field-value font-monospace">{{ minHits() }}</span>
+        </div>
+        <input type="range" class="form-range custom-slider" min="2" max="10" step="1" [ngModel]="minHits()"
+          (ngModelChange)="minHits.set($event)"
+          title="Ayuda a filtrar 'fantasmas'. El objeto debe ser detectado X veces seguidas para empezar a contar de forma estable (min: 2 - max: 10)." />
+      </div>
+
+      <!-- iou_threshold (0.1 - 1.0) -->
+      <div class="slider-field-group"
+        title="En el tracking indica qué tanto deben cruzarse las cajas de tracking entre fotogramas para saber que es el mismo objeto (min: 0.1 - max: 1.0).">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="slider-field-label"
+            title="En el tracking indica qué tanto deben cruzarse las cajas de tracking entre fotogramas para saber que es el mismo objeto (min: 0.1 - max: 1.0).">Solapamiento
+            de Tracker (IoU)</span>
+          <span class="slider-field-value font-monospace">{{ iouTrackerThreshold() }}</span>
+        </div>
+        <input type="range" class="form-range custom-slider" min="0.1" max="1.0" step="0.05"
+          [ngModel]="iouTrackerThreshold()" (ngModelChange)="iouTrackerThreshold.set($event)"
+          title="En el tracking indica qué tanto deben cruzarse las cajas de tracking entre fotogramas para saber que es el mismo objeto (min: 0.1 - max: 1.0)." />
+      </div>
+
+      <!-- tiempo_reactivacion (5.0 - 200.0 min) -->
+      <div class="slider-field-group"
+        title="Tiempo en minutos para volver a generar evento del mismo objeto después del primer evento (min: 5.0 - max: 200.0).">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="slider-field-label"
+            title="Tiempo en minutos para volver a generar evento del mismo objeto después del primer evento (min: 5.0 - max: 200.0).">Tiempo
+            de Reactivación</span>
+          <span class="slider-field-value font-monospace">{{ tiempoReactivacion() }} min</span>
+        </div>
+        <input type="range" class="form-range custom-slider" min="5.0" max="200.0" step="5.0"
+          [ngModel]="tiempoReactivacion()" (ngModelChange)="tiempoReactivacion.set($event)"
+          title="Tiempo en minutos para volver a generar evento del mismo objeto después del primer evento (min: 5.0 - max: 200.0)." />
+      </div>
+
+      <!-- Escala -->
+      @if (getSelectedAnalyticTypeObj()?.geometryType === 'polygon' || getSelectedAnalyticTypeObj()?.geometryType ===
+      'speed_quad') {
+      <div class="slider-field-group"
+        title="Es el factor de escalado para obtener un polígono de mayor área, crea una zona periférica de detección (min: 1.1 - max: 1.9).">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="slider-field-label"
+            title="Es el factor de escalado para obtener un polígono de mayor área, crea una zona periférica de detección (min: 1.1 - max: 1.9).">Factor
+            de Escala de Zona</span>
+          <span class="slider-field-value font-monospace">{{ scaleFactor() }}</span>
+        </div>
+        <input type="range" class="form-range custom-slider" min="1.1" max="1.9" step="0.05" [ngModel]="scaleFactor()"
+          (ngModelChange)="scaleFactor.set($event)"
+          title="Es el factor de escalado para obtener un polígono de mayor área, crea una zona periférica de detección (min: 1.1 - max: 1.9)." />
+      </div>
+      }
+
+      <!-- Zona de Análisis -->
+      @if (getSelectedAnalyticTypeObj()?.geometryType === 'line') {
+      <div class="slider-field-group" title="Zona de análisis para cruce de línea en píxeles (min: 5 - max: 200).">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="slider-field-label"
+            title="Zona de análisis para cruce de línea en píxeles (min: 5 - max: 200).">Grosor de Zona de
+            Análisis</span>
+          <span class="slider-field-value font-monospace">{{ zonaLinea() }} px</span>
+        </div>
+        <input type="range" class="form-range custom-slider" min="5" max="200" step="5" [ngModel]="zonaLinea()"
+          (ngModelChange)="zonaLinea.set($event)"
+          title="Zona de análisis para cruce de línea en píxeles (min: 5 - max: 200)." />
+      </div>
+      }
+    </div>
+  </div>
+
+  <!-- SECCIÓN 3: PARÁMETROS CONDICIONALES ESPECÍFICOS DE CADA ANALÍTICA -->
+  <div class="form-section-card card p-3 border shadow-sm">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <span class="section-badge-dot bg-success"></span>
+      <label class="form-section-title text-uppercase fw-bold text-muted small mb-0">
+        3. Parámetros Específicos
+      </label>
+    </div>
+
+    <!-- 1. Objeto en Área -->
+    @if (selectedType() === 'object_in_area') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Representa el umbral mínimo de tiempo (s) de permanencia dentro del área para generar eventos (min: 0.01 - max: 72000).">Tiempo
+          de Permanencia</label>
+        <div class="input-group"
+          title="Representa el umbral mínimo de tiempo (s) de permanencia dentro del área para generar eventos (min: 0.01 - max: 72000).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="0.01" max="72000"
+            [ngModel]="tiempoPermanencia()" (ngModelChange)="tiempoPermanencia.set($event)"
+            title="Representa el umbral mínimo de tiempo (s) de permanencia dentro del área para generar eventos (min: 0.01 - max: 72000)." />
+          <span class="input-group-text text-micro font-monospace bg-light">seg</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Distancia de movimiento en píxeles que el objeto debe moverse para considerar que se encuentra en movimiento (min: 2 - max: 300).">Sensibilidad
+          de Movimiento</label>
+        <div class="input-group"
+          title="Distancia de movimiento en píxeles que el objeto debe moverse para considerar que se encuentra en movimiento (min: 2 - max: 300).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="2" max="300"
+            [ngModel]="pruebaMovimiento()" (ngModelChange)="pruebaMovimiento.set($event)"
+            title="Distancia de movimiento en píxeles que el objeto debe moverse para considerar que se encuentra en movimiento (min: 2 - max: 300)." />
+          <span class="input-group-text text-micro font-monospace bg-light">px</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Código o tono de color del objeto del que se quiera validar la presencia para generar eventos.">Filtro
+          de Color</label>
+        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="colorFiltro()"
+          (ngModelChange)="colorFiltro.set($event)"
+          title="Código o tono de color del objeto del que se quiera validar la presencia para generar eventos.">
+          <option value="Sin color">Sin filtro de color</option>
+          <option value="rojo">Rojo</option>
+          <option value="rosado">Rosado</option>
+          <option value="azul">Azul</option>
+          <option value="celeste">Celeste</option>
+          <option value="verde">Verde</option>
+          <option value="amarillo">Amarillo</option>
+          <option value="anaranjado">Anaranjado</option>
+          <option value="negro">Negro</option>
+          <option value="blanco">Blanco</option>
+          <option value="gris claro">Gris Claro</option>
+          <option value="gris oscuro">Gris Oscuro</option>
+          <option value="marron">Marrón</option>
+        </select>
+      </div>
+    </div>
+    }
+
+    <!-- 2. Gestión de Estacionamientos -->
+    @if (selectedType() === 'parking_management') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Cantidad de fotogramas en que un objeto ocupa o libera un espacio para confirmar el evento (min: 30 - max: 600).">Fotogramas
+          de Validación</label>
+        <div class="input-group"
+          title="Cantidad de fotogramas en que un objeto ocupa o libera un espacio para confirmar el evento (min: 30 - max: 600).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="30" max="600"
+            [ngModel]="nValidacionesEstacionamiento()" (ngModelChange)="nValidacionesEstacionamiento.set($event)"
+            title="Cantidad de fotogramas en que un objeto ocupa o libera un espacio para confirmar el evento (min: 30 - max: 600)." />
+          <span class="input-group-text text-micro font-monospace bg-light">frames</span>
+        </div>
+      </div>
+    </div>
+    }
+
+    <!-- 3. Vigilancia de Objeto -->
+    @if (selectedType() === 'object_surveillance') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Distancia de movimiento en píxeles que el objeto debe moverse para considerar que se encuentra en movimiento (min: 2 - max: 300).">Sensibilidad
+          de Movimiento</label>
+        <div class="input-group"
+          title="Distancia de movimiento en píxeles que el objeto debe moverse para considerar que se encuentra en movimiento (min: 2 - max: 300).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="2" max="300"
+            [ngModel]="pruebaMovimiento()" (ngModelChange)="pruebaMovimiento.set($event)"
+            title="Distancia de movimiento en píxeles que el objeto debe moverse para considerar que se encuentra en movimiento (min: 2 - max: 300)." />
+          <span class="input-group-text text-micro font-monospace bg-light">px</span>
+        </div>
+      </div>
+    </div>
+    }
+
+    <!-- 4. Personas con Objetos -->
+    @if (selectedType() === 'persons_with_objects') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Seleccionar la parte del cuerpo donde se debe validar el objeto seleccionado (Cabeza, Rostro, Manos, Pies, Rodillas, Pecho/Espalda, Cintura).">Parte
+          del Cuerpo a Validar</label>
+        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="parteDeCuerpo()"
+          (ngModelChange)="parteDeCuerpo.set($event)"
+          title="Seleccionar la parte del cuerpo donde se debe validar el objeto seleccionado (Cabeza, Rostro, Manos, Pies, Rodillas, Pecho/Espalda, Cintura).">
+          <option value="Cabeza">Cabeza</option>
+          <option value="Rostro">Rostro</option>
+          <option value="Manos">Manos</option>
+          <option value="Pies">Pies</option>
+          <option value="Rodillas">Rodillas</option>
+          <option value="Pecho/Espalda">Pecho/Espalda</option>
+          <option value="Cintura">Cintura</option>
+        </select>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Seleccionar si la persona debe o no debe tener el objeto para generar un evento (Con objeto / Sin objeto).">Condición
+          de Pertenencia</label>
+        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="pertenenciaObjeto()"
+          (ngModelChange)="pertenenciaObjeto.set($event)"
+          title="Seleccionar si la persona debe o no debe tener el objeto para generar un evento (Con objeto / Sin objeto).">
+          <option value="Con objeto">Con objeto</option>
+          <option value="Sin objeto">Sin objeto</option>
+        </select>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Factor de escala del box de la detección para determinar zona orbital de proximidad (min: 0.1 - max: 0.9).">Radio
+          / Órbita de Proximidad</label>
+        <input type="number" class="form-control text-paragraph-sm rounded-3" step="0.05" min="0.1" max="0.9"
+          [ngModel]="escalaOrbita()" (ngModelChange)="escalaOrbita.set($event)"
+          title="Factor de escala del box de la detección para determinar zona orbital de proximidad (min: 0.1 - max: 0.9)." />
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Cantidad de detecciones continuas para considerar evento (min: 5 - max: 300).">Detecciones
+          Continuas</label>
+        <div class="input-group" title="Cantidad de detecciones continuas para considerar evento (min: 5 - max: 300).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="5" max="300"
+            [ngModel]="nDeteccionesPersonasObjetos()" (ngModelChange)="nDeteccionesPersonasObjetos.set($event)"
+            title="Cantidad de detecciones continuas para considerar evento (min: 5 - max: 300)." />
+          <span class="input-group-text text-micro font-monospace bg-light">hits</span>
+        </div>
+      </div>
+    </div>
+    }
+
+    <!-- 5. Permanencia de Objeto -->
+    @if (selectedType() === 'object_permanence') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Tiempo(s) máximo que un objeto debe permanecer dentro de la zona para que se generen eventos de tiempo de espera prolongado (min: 60 - max: 72000).">Tiempo
+          Máximo de Permanencia</label>
+        <div class="input-group"
+          title="Tiempo(s) máximo que un objeto debe permanecer dentro de la zona para que se generen eventos de tiempo de espera prolongado (min: 60 - max: 72000).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="60" max="72000"
+            [ngModel]="humbralMaximo()" (ngModelChange)="humbralMaximo.set($event)"
+            title="Tiempo(s) máximo que un objeto debe permanecer dentro de la zona para que se generen eventos de tiempo de espera prolongado (min: 60 - max: 72000)." />
+          <span class="input-group-text text-micro font-monospace bg-light">seg</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Tiempo(s) mínimo que un objeto debe permanecer dentro de la zona para ser considerado en las métricas del dashboard (min: 3 - max: 600).">Tiempo
+          Mínimo para Métricas</label>
+        <div class="input-group"
+          title="Tiempo(s) mínimo que un objeto debe permanecer dentro de la zona para ser considerado en las métricas del dashboard (min: 3 - max: 600).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="3" max="600"
+            [ngModel]="humbralMinimo()" (ngModelChange)="humbralMinimo.set($event)"
+            title="Tiempo(s) mínimo que un objeto debe permanecer dentro de la zona para ser considerado en las métricas del dashboard (min: 3 - max: 600)." />
+          <span class="input-group-text text-micro font-monospace bg-light">seg</span>
+        </div>
+      </div>
+    </div>
+    }
+
+    <!-- 6. Cercanía entre Objetos -->
+    @if (selectedType() === 'object_proximity') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Cantidad de objetos detectados cerca al objeto principal para considerar evento (min: 1 - max: 10).">Cantidad
+          Mínima de Objetos</label>
+        <input type="number" class="form-control text-paragraph-sm rounded-3" min="1" max="10"
+          [ngModel]="nObjetosCercanos()" (ngModelChange)="nObjetosCercanos.set($event)"
+          title="Cantidad de objetos detectados cerca al objeto principal para considerar evento (min: 1 - max: 10)." />
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Factor de escala del box de la detección del objeto principal para determinar zona orbital de proximidad (min: 1.0 - max: 1.9).">Radio
+          / Órbita de Proximidad</label>
+        <input type="number" class="form-control text-paragraph-sm rounded-3" step="0.05" min="1.0" max="1.9"
+          [ngModel]="escalaOrbita()" (ngModelChange)="escalaOrbita.set($event)"
+          title="Factor de escala del box de la detección del objeto principal para determinar zona orbital de proximidad (min: 1.0 - max: 1.9)." />
+      </div>
+    </div>
+    }
+
+    <!-- 7. Vigilancia Vehicular -->
+    @if (selectedType() === 'vehicle_surveillance') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Tiempo(s) máximo que una persona debe permanecer cerca a un vehículo para ser comparada con el propietario (min: 5 - max: 60).">Tiempo
+          Cercano a Vehículo</label>
+        <div class="input-group"
+          title="Tiempo(s) máximo que una persona debe permanecer cerca a un vehículo para ser comparada con el propietario (min: 5 - max: 60).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="5" max="60"
+            [ngModel]="tiempoVigilanciaVehicular()" (ngModelChange)="tiempoVigilanciaVehicular.set($event)"
+            title="Tiempo(s) máximo que una persona debe permanecer cerca a un vehículo para ser comparada con el propietario (min: 5 - max: 60)." />
+          <span class="input-group-text text-micro font-monospace bg-light">seg</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Tiempo(s) máximo de descenso para considerar condición anormal, posible acción de reglaje (min: 45 - max: 300).">Tiempo
+          Máximo de Descenso</label>
+        <div class="input-group"
+          title="Tiempo(s) máximo de descenso para considerar condición anormal, posible acción de reglaje (min: 45 - max: 300).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="45" max="300"
+            [ngModel]="tiempoDescenso()" (ngModelChange)="tiempoDescenso.set($event)"
+            title="Tiempo(s) máximo de descenso para considerar condición anormal, posible acción de reglaje (min: 45 - max: 300)." />
+          <span class="input-group-text text-micro font-monospace bg-light">seg</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Umbral de porcentaje de similitud al realizar comparación de siluetas del sospechoso con el propietario (min: 60 - max: 100).">Porcentaje
+          de Similitud</label>
+        <div class="input-group"
+          title="Umbral de porcentaje de similitud al realizar comparación de siluetas del sospechoso con el propietario (min: 60 - max: 100).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="60" max="100"
+            [ngModel]="similitudProp()" (ngModelChange)="similitudProp.set($event)"
+            title="Umbral de porcentaje de similitud al realizar comparación de siluetas del sospechoso con el propietario (min: 60 - max: 100)." />
+          <span class="input-group-text text-micro font-monospace bg-light">%</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Cantidad de imágenes capturadas del sospechoso antes de realizar comparación (min: 2 - max: 30).">Muestras
+          de Silueta (Embeddings)</label>
+        <input type="number" class="form-control text-paragraph-sm rounded-3" min="2" max="30" [ngModel]="nEmbeddings()"
+          (ngModelChange)="nEmbeddings.set($event)"
+          title="Cantidad de imágenes capturadas del sospechoso antes de realizar comparación (min: 2 - max: 30)." />
+      </div>
+    </div>
+    }
+
+    <!-- 8. Aglomeración -->
+    @if (selectedType() === 'crowd_gathering') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Cantidad mínima de personas juntas para considerarse como aglomeración (min: 3 - max: 20).">Mínimo de
+          Personas</label>
+        <input type="number" class="form-control text-paragraph-sm rounded-3" min="3" max="20"
+          [ngModel]="minimoPersonas()" (ngModelChange)="minimoPersonas.set($event)"
+          title="Cantidad mínima de personas juntas para considerarse como aglomeración (min: 3 - max: 20)." />
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Densidad en metros (min: 0.0015 - max: 0.0065).">Densidad Poblacional</label>
+        <div class="input-group" title="Densidad en metros (min: 0.0015 - max: 0.0065).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" step="0.0005" min="0.0015"
+            max="0.0065" [ngModel]="densidadAglomeracion()" (ngModelChange)="densidadAglomeracion.set($event)"
+            title="Densidad en metros (min: 0.0015 - max: 0.0065)." />
+          <span class="input-group-text text-micro font-monospace bg-light">m</span>
+        </div>
+      </div>
+    </div>
+    }
+
+    <!-- 9. Objeto Fuera de Área -->
+    @if (selectedType() === 'object_out_of_area') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Representa el tiempo(s) de abandono del área (min: 30 - max: 600).">Tiempo de Abandono</label>
+        <div class="input-group" title="Representa el tiempo(s) de abandono del área (min: 30 - max: 600).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="30" max="600"
+            [ngModel]="tiempoAbandono()" (ngModelChange)="tiempoAbandono.set($event)"
+            title="Representa el tiempo(s) de abandono del área (min: 30 - max: 600)." />
+          <span class="input-group-text text-micro font-monospace bg-light">seg</span>
+        </div>
+      </div>
+    </div>
+    }
+
+    <!-- 10. Medición de Velocidad -->
+    @if (selectedType() === 'speed_measurement') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Velocidad máxima en km/h para considerar un evento (min: 3 - max: 200).">Velocidad Máxima
+          Permitida</label>
+        <div class="input-group" title="Velocidad máxima en km/h para considerar un evento (min: 3 - max: 200).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="3" max="200"
+            [ngModel]="maxSpeed()" (ngModelChange)="maxSpeed.set($event)"
+            title="Velocidad máxima en km/h para considerar un evento (min: 3 - max: 200)." />
+          <span class="input-group-text text-micro font-monospace bg-light">km/h</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Cantidad mínima de puntos para obtener la velocidad, evita lecturas absurdas en las primeras detecciones (min: 3 - max: 60).">Puntos
+          Mínimos de Calibración</label>
+        <input type="number" class="form-control text-paragraph-sm rounded-3" min="3" max="60"
+          [ngModel]="minPointsForSpeed()" (ngModelChange)="minPointsForSpeed.set($event)"
+          title="Cantidad mínima de puntos para obtener la velocidad, evita lecturas absurdas en las primeras detecciones (min: 3 - max: 60)." />
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Distancia real en metros desde el punto superior izquierdo hasta el punto superior derecho (min: 1 - max: 200).">Distancia
+          Superior (A -> B)</label>
+        <div class="input-group"
+          title="Distancia real en metros desde el punto superior izquierdo hasta el punto superior derecho (min: 1 - max: 200).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="1" max="200"
+            [ngModel]="distanciaAB()" (ngModelChange)="distanciaAB.set($event)"
+            title="Distancia real en metros desde el punto superior izquierdo hasta el punto superior derecho (min: 1 - max: 200)." />
+          <span class="input-group-text text-micro font-monospace bg-light">m</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Distancia real en metros desde el punto superior derecho hasta el punto inferior derecho (min: 1 - max: 400).">Distancia
+          Lateral (B -> C)</label>
+        <div class="input-group"
+          title="Distancia real en metros desde el punto superior derecho hasta el punto inferior derecho (min: 1 - max: 400).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="1" max="400"
+            [ngModel]="distanciaBC()" (ngModelChange)="distanciaBC.set($event)"
+            title="Distancia real en metros desde el punto superior derecho hasta el punto inferior derecho (min: 1 - max: 400)." />
+          <span class="input-group-text text-micro font-monospace bg-light">m</span>
+        </div>
+      </div>
+    </div>
+    }
+
+    <!-- 11. Comportamiento Humano -->
+    @if (selectedType() === 'human_behavior') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-4">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Lapso de tiempo en el que las personas deben estar realizando la acción seleccionada para completar una secuencia (min: 1 - max: 300).">Tiempo
+          de Secuencia</label>
+        <div class="input-group"
+          title="Lapso de tiempo en el que las personas deben estar realizando la acción seleccionada para completar una secuencia (min: 1 - max: 300).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="1" max="300"
+            [ngModel]="tiempoComportamiento()" (ngModelChange)="tiempoComportamiento.set($event)"
+            title="Lapso de tiempo en el que las personas deben estar realizando la acción seleccionada para completar una secuencia (min: 1 - max: 300)." />
+          <span class="input-group-text text-micro font-monospace bg-light">seg</span>
+        </div>
+      </div>
+      <div class="col-4">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Parámetro que permite seleccionar la condición que dispara los eventos cuando se cumple o no la secuencia de los micromovimientos (Cumple / No cumple).">Condición
+          de Disparo</label>
+        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="condicionEventoComportamiento()"
+          (ngModelChange)="condicionEventoComportamiento.set($event)"
+          title="Parámetro que permite seleccionar la condición que dispara los eventos cuando se cumple o no la secuencia de los micromovimientos (Cumple / No cumple).">
+          <option value="Cumple">Cumple</option>
+          <option value="No cumple">No cumple</option>
+        </select>
+      </div>
+      <div class="col-4">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Umbral de confianza del modelo de posturas humanas (min: 0.25 - max: 0.99).">Confianza Mínima de
+          Postura</label>
+        <input type="number" class="form-control text-paragraph-sm rounded-3" step="0.05" min="0.25" max="0.99"
+          [ngModel]="confianzaPostura()" (ngModelChange)="confianzaPostura.set($event)"
+          title="Umbral de confianza del modelo de posturas humanas (min: 0.25 - max: 0.99)." />
+      </div>
+    </div>
+    }
+
+    <!-- 12. Reconocimiento Facial -->
+    @if (selectedType() === 'face_recognition') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-12">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Vincular lista de rostros autorizados o lista negra.">Vincular Lista de Control</label>
+        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="selectedListId()"
+          (ngModelChange)="selectedListId.set($event)" title="Vincular lista de rostros autorizados o lista negra.">
+          <option value="">-- Seleccionar Lista RF --</option>
+          @for (list of watchlists(); track list.list_id) {
+          @if (list.list_type === 'RF' || list.list_type === 'face_recognition') {
+          <option [value]="list.list_id">{{ list.name }} ({{ list.description }})</option>
+          }
+          }
+        </select>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Umbral de similitud al comparar rostros con una lista (min: 0.25 - max: 0.85).">Umbral de Similitud
+          Facial</label>
+        <input type="number" class="form-control text-paragraph-sm rounded-3" step="0.05" min="0.25" max="0.85"
+          [ngModel]="confianzaRF()" (ngModelChange)="confianzaRF.set($event)"
+          title="Umbral de similitud al comparar rostros con una lista (min: 0.25 - max: 0.85)." />
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Número de veces que se debe detectar un rostro antes de hacer comparación con una lista, ayuda a reducir la carga de procesamiento (min: 1 - max: 5).">Filtro
+          de Detecciones Previas</label>
+        <input type="number" class="form-control text-paragraph-sm rounded-3" min="1" max="5"
+          [ngModel]="nDeteccionesRF()" (ngModelChange)="nDeteccionesRF.set($event)"
+          title="Número de veces que se debe detectar un rostro antes de hacer comparación con una lista, ayuda a reducir la carga de procesamiento (min: 1 - max: 5)." />
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Cantidad de veces que un rostro debe hacer match con una lista definida para que se genere el evento (min: 1 - max: 5).">Confirmaciones
+          de Coincidencia</label>
+        <input type="number" class="form-control text-paragraph-sm rounded-3" min="1" max="5"
+          [ngModel]="nReconocimientosRF()" (ngModelChange)="nReconocimientosRF.set($event)"
+          title="Cantidad de veces que un rostro debe hacer match con una lista definida para que se genere el evento (min: 1 - max: 5)." />
+      </div>
+    </div>
+    }
+
+    <!-- 13. Reconocimiento de Placas -->
+    @if (selectedType() === 'license_plate_recognition') {
+    <div class="mb-3">
+      <label class="form-label text-muted small font-semibold mb-1"
+        title="Vincular lista de patentes o vehículos autorizados/restringidos.">Vincular Lista de Control LPR</label>
+      <select class="form-select text-paragraph-sm rounded-3" [ngModel]="selectedListId()"
+        (ngModelChange)="selectedListId.set($event)"
+        title="Vincular lista de patentes o vehículos autorizados/restringidos.">
+        <option value="">-- Seleccionar Lista LPR --</option>
+        @for (list of watchlists(); track list.list_id) {
+        @if (list.list_type === 'LPR' || list.list_type === 'plate_recognition') {
+        <option [value]="list.list_id">{{ list.name }} ({{ list.description }})</option>
+        }
+        }
+      </select>
+    </div>
+    }
+
+    <!-- 14. Cruce de Línea -->
+    @if (selectedType() === 'line_crossing') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Dirección del objeto al cruzar la línea de análisis (Bidireccional, De A a B, De B a A).">Dirección de
+          Detección</label>
+        <select class="form-select text-paragraph-sm font-semibold rounded-3" [ngModel]="strDirection()"
+          (ngModelChange)="strDirection.set($event)"
+          title="Dirección del objeto al cruzar la línea de análisis (Bidireccional, De A a B, De B a A).">
+          <option value="Bidireccional">Bidireccional</option>
+          <option value="De A a B">De A a B</option>
+          <option value="De B a A">De B a A</option>
+        </select>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Código RGB o tono de color del objeto del que se quiera validar el cruce para generar eventos.">Filtro
+          de Color</label>
+        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="colorFiltro()"
+          (ngModelChange)="colorFiltro.set($event)"
+          title="Código RGB o tono de color del objeto del que se quiera validar el cruce para generar eventos.">
+          <option value="Sin color">Sin filtro de color</option>
+          <option value="rojo">Rojo</option>
+          <option value="rosado">Rosado</option>
+          <option value="azul">Azul</option>
+          <option value="celeste">Celeste</option>
+          <option value="verde">Verde</option>
+          <option value="amarillo">Amarillo</option>
+          <option value="anaranjado">Anaranjado</option>
+          <option value="negro">Negro</option>
+          <option value="blanco">Blanco</option>
+          <option value="gris claro">Gris Claro</option>
+          <option value="gris oscuro">Gris Oscuro</option>
+          <option value="marron">Marrón</option>
+        </select>
+      </div>
+    </div>
+    }
+
+    <!-- 15. Control de Aforo -->
+    @if (selectedType() === 'capacity_control') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Dirección en la que se cuenta el ingreso o salida de personas.">Dirección de Conteo</label>
+        <select class="form-select text-paragraph-sm font-semibold rounded-3" [ngModel]="strDirection()"
+          (ngModelChange)="strDirection.set($event)"
+          title="Dirección en la que se cuenta el ingreso o salida de personas.">
+          <option value="Bidireccional">Bidireccional</option>
+          <option value="De A a B">De A a B</option>
+          <option value="De B a A">De B a A</option>
+        </select>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Aforo máximo permitido (min: 0 - max: 10000).">Aforo Máximo Permitido</label>
+        <div class="input-group" title="Aforo máximo permitido (min: 0 - max: 10000).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="0" max="10000"
+            [ngModel]="aforoMaximo()" (ngModelChange)="aforoMaximo.set($event)"
+            title="Aforo máximo permitido (min: 0 - max: 10000)." />
+          <span class="input-group-text text-micro font-monospace bg-light">personas</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Aforo actual inicial (min: 0 - max: 10000).">Conteo de Aforo Inicial</label>
+        <div class="input-group" title="Aforo actual inicial (min: 0 - max: 10000).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="0" max="10000"
+            [ngModel]="aforoActual()" (ngModelChange)="aforoActual.set($event)"
+            title="Aforo actual inicial (min: 0 - max: 10000)." />
+          <span class="input-group-text text-micro font-monospace bg-light">personas</span>
+        </div>
+      </div>
+    </div>
+    }
+
+    <!-- 16. Análisis de Tráfico -->
+    @if (selectedType() === 'traffic_analysis') {
+    <div class="row g-3 align-inputs-bottom">
+      <div class="col-12">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Dirección de flujo vehicular a monitorear.">Dirección de Detección</label>
+        <select class="form-select text-paragraph-sm font-semibold rounded-3" [ngModel]="strDirection()"
+          (ngModelChange)="strDirection.set($event)" title="Dirección de flujo vehicular a monitorear.">
+          <option value="Bidireccional">Bidireccional</option>
+          <option value="De A a B">De A a B</option>
+          <option value="De B a A">De B a A</option>
+        </select>
+      </div>
+    </div>
+    }
+  </div>
+</div>

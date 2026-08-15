@@ -17,11 +17,12 @@ import { EmptyStateComponent } from '../../shared/empty-state/empty-state.compon
 import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
+import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 
 @Component({
   selector: 'app-eventos',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, EventDetailModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, EventDetailModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, FilterActionsComponent],
   templateUrl: './eventos.html',
   styleUrl: './eventos.css'
 })
@@ -60,6 +61,15 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     return [cols * 10, cols * 20, cols * 30];
   });
 
+  // Búsqueda interna del dropdown de cámaras
+  readonly cameraSearch = signal<string>('');
+
+  readonly filteredCamarasOptions = computed(() => {
+    const q = this.cameraSearch().trim().toLowerCase();
+    const all = this.filterOptions().camaras;
+    return q ? all.filter((c: string) => c.toLowerCase().includes(q)) : all;
+  });
+
   // Filter dropdown toggle states
   readonly activeDropdown = signal<string | null>(null);
   readonly showFilters = signal<boolean>(false);
@@ -74,6 +84,12 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   readonly activeHoverCardId = signal<string | null>(null);
   readonly mouseX = signal<number>(0);
   readonly mouseY = signal<number>(0);
+
+  readonly activeHoverRecord = computed<EventRecord | null>(() => {
+    const id = this.activeHoverCardId();
+    if (!id) return null;
+    return this.records().find(r => String(r.id) === String(id)) || null;
+  });
 
   // Modal state
   readonly selectedEventForModal = signal<EventRecord | null>(null);
@@ -135,7 +151,10 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
         timestampDesde: f.timestampDesde ? new Date(f.timestampDesde) : null,
         timestampHasta: f.timestampHasta ? new Date(f.timestampHasta) : null
       });
-      this.searchControl.setValue(f.search || '', { emitEvent: false });
+      const targetSearch = f.search || '';
+      if (this.searchControl.value !== targetSearch) {
+        this.searchControl.setValue(targetSearch, { emitEvent: false });
+      }
     });
 
     // Unified search control debounce
@@ -147,59 +166,11 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       this.tempFilters.update(f => ({ ...f, search: text }));
       this.eventService.updateFilters({ search: text });
     });
-
-    // Synchronize filters to query parameters in url
-    combineLatest({
-      page: toObservable(this.currentPage),
-      pageSize: toObservable(this.pageSize),
-      filters: toObservable(this.filters)
-    }).pipe(
-      debounceTime(150),
-      takeUntilDestroyed()
-    ).subscribe(({ page, pageSize, filters }) => {
-      const queryParams: any = {};
-      queryParams['page'] = page > 1 ? page : null;
-
-      const defaultPageSize = this.columns() * 10;
-      queryParams['limit'] = pageSize !== defaultPageSize ? pageSize : null;
-
-      queryParams['camaras'] = filters.camaras && filters.camaras.length > 0 ? filters.camaras.join(',') : null;
-      queryParams['analiticas'] = filters.analiticas && filters.analiticas.length > 0 ? filters.analiticas.join(',') : null;
-      queryParams['objetos'] = filters.objetos && filters.objetos.length > 0 ? filters.objetos.join(',') : null;
-      queryParams['desde'] = filters.timestampDesde ? filters.timestampDesde.toISOString() : null;
-      queryParams['hasta'] = filters.timestampHasta ? filters.timestampHasta.toISOString() : null;
-      queryParams['search'] = filters.search || null;
-
-      this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams,
-        queryParamsHandling: 'merge'
-      });
-    });
   }
 
   ngOnInit(): void {
     this.eventService.isViewActive.set(true);
-
-    // Handle initialization from route parameters
-    this.route.queryParams.pipe(
-      debounceTime(50),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(queryParams => {
-      const pageVal = queryParams['page'] ? parseInt(queryParams['page'], 10) : 1;
-      const page = !isNaN(pageVal) && pageVal > 0 ? pageVal : 1;
-
-      const defaultPageSize = this.columns() * 10;
-      const limitVal = queryParams['limit'] ? parseInt(queryParams['limit'], 10) : null;
-      const pageSize = limitVal && !isNaN(limitVal) && limitVal > 0 ? limitVal : defaultPageSize;
-
-      const parsedFilters = this.parseFiltersFromParams(queryParams);
-
-      this.eventService.setPageSize(pageSize);
-      this.eventService.currentPage.set(page);
-      this.eventService.filters.set(parsedFilters);
-      this.eventService.loadCurrentPage();
-    });
+    this.eventService.loadCurrentPage();
   }
 
   ngAfterViewInit(): void {
@@ -221,7 +192,14 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     setTimeout(() => {
       if (this.eventosContainer) {
         const width = this.eventosContainer.nativeElement.getBoundingClientRect().width;
-        this.adjustColumnsAndLimit(width);
+        if (width > 0) {
+          const realCols = Math.max(1, Math.floor((width + 24) / (335 + 24)));
+          const correctSize = realCols * 10;
+          this.columns.set(realCols);
+          if (this.eventService.pageSize() !== correctSize) {
+            this.eventService.setPageSize(correctSize);
+          }
+        }
       }
     }, 50);
   }
@@ -547,24 +525,24 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   }
 
   // --- Active State computations ---
-  readonly hasActiveFilters = computed(() => {
+  readonly hasActiveFilters = computed<boolean>(() => {
     const f = this.filters();
     return f.camaras.length > 0 ||
            f.analiticas.length > 0 ||
            f.objetos.length > 0 ||
            f.timestampDesde !== null ||
            f.timestampHasta !== null ||
-           (f.search && f.search.trim().length > 0);
+           Boolean(f.search && f.search.trim().length > 0);
   });
 
-  readonly hasActiveTempFilters = computed(() => {
+  readonly hasActiveTempFilters = computed<boolean>(() => {
     const f = this.tempFilters();
     return f.camaras.length > 0 ||
            f.analiticas.length > 0 ||
            f.objetos.length > 0 ||
            f.timestampDesde !== null ||
            f.timestampHasta !== null ||
-           (f.search && f.search.trim().length > 0);
+           Boolean(f.search && f.search.trim().length > 0);
   });
 
   readonly hasPendingFilterChanges = computed(() => {
@@ -678,23 +656,26 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   onCardMouseMove(event: MouseEvent, cardId: string): void {
     this.activeHoverCardId.set(cardId);
     
-    // Get grid or card container position to place coordinates relatively if needed
-    const cardEl = event.currentTarget as HTMLElement;
-    const rect = cardEl.getBoundingClientRect();
-    
-    // Calculate tooltip offsets
-    let x = event.clientX - rect.left + 15;
-    let y = event.clientY - rect.top + 15;
-    
     const viewportWidth = window.innerWidth;
-    const tooltipWidth = 260; // Estimated width
+    const viewportHeight = window.innerHeight;
+    const tooltipWidth = 360;
+    const tooltipHeight = 220;
+    const margin = 20;
+    const verticalMargin = 85;
     
-    if (event.clientX + tooltipWidth > viewportWidth) {
-      x = event.clientX - rect.left - tooltipWidth - 15;
+    let posX = event.clientX + 15;
+    let posY = event.clientY + 15;
+
+    if (event.clientX + tooltipWidth + 15 > viewportWidth - margin) {
+      posX = event.clientX - tooltipWidth - 15;
+    }
+
+    if (event.clientY + tooltipHeight + 15 > viewportHeight - verticalMargin) {
+      posY = event.clientY - tooltipHeight - 15;
     }
     
-    this.mouseX.set(x);
-    this.mouseY.set(y);
+    this.mouseX.set(posX);
+    this.mouseY.set(posY);
   }
 
   onCardMouseLeave(): void {
@@ -766,17 +747,18 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     if (!this.isZoomed()) return;
     const container = event.currentTarget as HTMLElement;
     const rect = container.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    const y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
 
     this.zoomX.set(x);
     this.zoomY.set(y);
 
     const zoomFactor = 2.5;
-    const lensSize = 350;
+    const lensEl = container.querySelector('.magnifier-lens') as HTMLElement;
+    const lensSize = (lensEl && lensEl.offsetWidth > 0) ? lensEl.offsetWidth : 500;
 
-    this.zoomBgX.set(Math.round(- (x * zoomFactor - lensSize / 2)));
-    this.zoomBgY.set(Math.round(- (y * zoomFactor - lensSize / 2)));
+    this.zoomBgX.set(Math.round(lensSize / 2 - x * zoomFactor));
+    this.zoomBgY.set(Math.round(lensSize / 2 - y * zoomFactor));
     this.zoomBgWidth.set(Math.round(rect.width * zoomFactor));
     this.zoomBgHeight.set(Math.round(rect.height * zoomFactor));
   }

@@ -25,6 +25,7 @@ function getEnvValue(key) {
 
 const apiTarget = getEnvValue('API_HOST');
 const openSearchTarget = getEnvValue('OPENSEARCH_HOST');
+const minioTarget = getEnvValue('MINIO_PUBLIC_URL') || apiTarget;
 
 const wsTarget = apiTarget ? apiTarget.replace(/^http/, 'ws') : '';
 
@@ -37,6 +38,7 @@ console.log(`=========================================`);
 console.log(`🔌 Cargando proxy desde variables de entorno:`);
 console.log(`   - /api        -> ${apiTarget}`);
 console.log(`   - /opensearch -> ${openSearchTarget}`);
+console.log(`   - /minio      -> ${minioTarget}`);
 console.log(`   - /ws         -> ${wsTarget} (WebSocket)`);
 console.log(`=========================================`);
 
@@ -66,6 +68,13 @@ module.exports = {
     "target": apiTarget,
     "pathRewrite": {
       "^/api": ""
+    }
+  },
+  "/minio": {
+    ...dynamicCorsBypass,
+    "target": minioTarget,
+    "pathRewrite": {
+      "^/minio": ""
     }
   },
   "/opensearch": {

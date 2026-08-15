@@ -60,6 +60,15 @@ export class HostHttpRepository implements IHostRepository {
     });
   }
 
+  getInfoModels(fingerprint: string): Observable<any> {
+    return this.http.get<any>(`${AppEnvironment.apiUrl}/frontend/hosts/info_models/${fingerprint}`).pipe(
+      catchError(err => {
+        console.error(`Error in HostHttpRepository.getInfoModels for ${fingerprint}:`, err);
+        return of({});
+      })
+    );
+  }
+
   delete(fingerprint: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}${fingerprint}`);
   }

@@ -4,8 +4,7 @@
        CABECERA REFACTORIZADA — 2 FILAS
        ══════════════════════════════════════════════════════ -->
   <!-- CABECERA REFACTORIZADA DRY — 2 FILAS -->
-  <app-page-header
-    title="Gestión de Nodos"
+  <app-page-header title="Gestión de Nodos"
     [subtitle]="'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + filteredHosts().length + '</span> nodos de cómputo registrados.'">
 
     <!-- Ranura para Fila 1 Derecha (Tabs, Exportar y Migrar) -->
@@ -15,21 +14,28 @@
 
       <!-- Botón de Exportar Verde Oscuro (Siempre Visible) -->
       <div class="dropdown d-inline-block position-relative">
-        <button class="btn btn-export-dark-green d-flex align-items-center gap-2" type="button" (click)="toggleExportDropdown($event)" title="Exportar reporte de nodos">
-          <span class="icon-svg icon-download" style="width: 15px; height: 15px; background-color: currentColor;"></span>
+        <button class="btn btn-export-dark-green d-flex align-items-center gap-2" type="button"
+          (click)="toggleExportDropdown($event)" title="Exportar reporte de nodos">
+          <span class="icon-svg icon-download"
+            style="width: 15px; height: 15px; background-color: currentColor;"></span>
           <span>Exportar</span>
         </button>
         @if (showExportDropdown()) {
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm show position-absolute end-0 mt-1" style="z-index: 1050; min-width: 200px;">
-          <li><button class="dropdown-item d-flex align-items-center gap-2 py-2 cursor-pointer" type="button" (click)="exportNodosXlsx(); showExportDropdown.set(false)"><span class="fw-bold text-success" style="font-size: 0.78rem;">XLSX</span> <span>Exportar a Excel (.xlsx)</span></button></li>
-          <li><button class="dropdown-item d-flex align-items-center gap-2 py-2 cursor-pointer" type="button" (click)="exportNodosCsv(); showExportDropdown.set(false)"><span class="fw-bold text-info" style="font-size: 0.78rem;">CSV</span> <span>Exportar a CSV (.csv)</span></button></li>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm show position-absolute end-0 mt-1"
+          style="z-index: 1050; min-width: 200px;">
+          <li><button class="dropdown-item d-flex align-items-center gap-2 py-2 cursor-pointer" type="button"
+              (click)="exportNodosXlsx(); showExportDropdown.set(false)"><span class="fw-bold text-success"
+                style="font-size: 0.78rem;">XLSX</span> <span>Exportar a Excel (.xlsx)</span></button></li>
+          <li><button class="dropdown-item d-flex align-items-center gap-2 py-2 cursor-pointer" type="button"
+              (click)="exportNodosCsv(); showExportDropdown.set(false)"><span class="fw-bold text-info"
+                style="font-size: 0.78rem;">CSV</span> <span>Exportar a CSV (.csv)</span></button></li>
         </ul>
         }
       </div>
 
       <!-- Botón de Migrar Configuración -->
       @if (permissionsService.hasPermission('Hosts', 'editar')) {
-      <button class="btn-migrate-config" (click)="openMigrateModal()">
+      <button class="btn-header-primary btn-migrate-config" (click)="openMigrateModal()">
         <span class="icon-svg icon-migrate-arrows" style="width: 15px; height: 15px;"></span>
         <span>Migrar Configuración</span>
       </button>
@@ -37,7 +43,7 @@
     </ng-container>
 
     <!-- Ranura para Fila 2 (Búsqueda + Paginación) -->
-    <div header-bottom class="header-row-bottom d-flex align-items-center gap-3 mt-3">
+    <div header-bottom class="header-row-bottom d-flex align-items-center gap-3 mt-4">
       <!-- Barra de Búsqueda + Botón de Filtros -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
         <app-search-input [control]="searchControl" placeholder="Buscar por hostname o IP..."></app-search-input>
@@ -230,24 +236,10 @@
         }
       </div>
 
-      <!-- BOTONES DE APLICAR Y LIMPIAR FILTROS -->
-      <div class="filter-actions-group d-flex align-items-center gap-2 ms-auto">
-        @if (hasActiveFilters()) {
-        <button type="button" (click)="resetFilters()"
-          class="btn btn-outline-secondary btn-premium-action d-flex align-items-center gap-2">
-          <span class="icon-svg icon-close" style="width: 14px; height: 14px;"></span>
-          Limpiar Filtros
-        </button>
-        }
-
-        @if (hasPendingFilterChanges()) {
-        <button type="button" (click)="applyFilters()"
-          class="btn btn-primary btn-premium-action d-flex align-items-center gap-2">
-          <span class="icon-svg icon-save" style="width: 14px; height: 14px; background-color: currentColor;"></span>
-          Aplicar Filtros
-        </button>
-        }
-      </div>
+      <!-- BOTONES DE APLICAR Y LIMPIAR FILTROS (COMPONENTE COMPARTIDO DRY) -->
+      <app-filter-actions [hasActiveFilters]="hasActiveFilters()" [hasPendingChanges]="hasPendingFilterChanges()"
+        (reset)="resetFilters()" (apply)="applyFilters()">
+      </app-filter-actions>
 
     </div>
   </div>
@@ -267,70 +259,67 @@
       <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
         <div>
           <!-- Cabecera de la Tarjeta: OS Icon + Hostname + Versión y Actividad -->
-          <div class="host-header-block d-flex align-items-center justify-content-between pb-3" style="gap: 12px;">
-            <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0;">
+          <div class="host-header-block d-flex align-items-center justify-content-between" style="gap: 12px;">
+            <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0" style="overflow: hidden;">
               @if (host.hwInfo; as hw) {
-              <span class="icon-svg os-avatar-icon" [class.icon-ubuntu]="!!hw?.system?.toLowerCase()?.includes('linux')"
+              <span class="icon-svg os-avatar-icon flex-shrink-0"
+                [class.icon-ubuntu]="!!hw?.system?.toLowerCase()?.includes('linux')"
                 [class.icon-windows]="!!hw?.system?.toLowerCase()?.includes('windows')"
                 [class.icon-nodos]="!hw?.system?.toLowerCase()?.includes('linux') && !hw?.system?.toLowerCase()?.includes('windows')">
               </span>
               } @else {
-              <span class="icon-svg os-avatar-icon icon-nodos"></span>
+              <span class="icon-svg os-avatar-icon icon-nodos flex-shrink-0"></span>
               }
-              <div class="host-title-container">
-                <h5 class="host-title fw-bold mb-0" [title]="host.hostname">
+              <div class="host-title-container min-w-0 flex-grow-1">
+                <h5 class="host-title fw-bold mb-0 text-truncate" [title]="host.hostname">
                   {{ host.hostname }}
                 </h5>
               </div>
             </div>
 
-            <div class="d-flex align-items-center gap-2">
+            <div class="host-header-right d-inline-flex align-items-center gap-1.5 flex-shrink-0 ms-auto">
               <!-- Estado de Actividad visualmente renovado -->
-              <span class="status-badge"
+              <span class="status-badge flex-shrink-0"
                 [class.status-badge-online]="host.status === 'active' || host.status === 'online'"
                 [class.status-badge-offline]="host.status !== 'active' && host.status !== 'online'">
                 {{ (host.status === 'active' || host.status === 'online') ? 'Online' : 'Offline' }}
               </span>
               <!-- Versión visualmente renovada -->
-              <span class="version-tag">v{{ host.version }}</span>
+              @if (host.version) {
+              <span class="version-tag flex-shrink-0">v{{ host.version }}</span>
+              }
             </div>
           </div>
 
           <!-- Información de Identidad y Hardware del Nodo -->
-          <div class="specs-list d-flex flex-column gap-1 mb-2">
-            <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-lastSeen'"
-              (click)="copyRowContent(formatLastSeen(host.metrics?.lastSeen), host.fingerprint + '-lastSeen'); $event.stopPropagation()">
-              <span class="spec-lbl">Últ. vez</span>
-              @if (copiedRowId() === host.fingerprint + '-lastSeen') {
-              <span class="copied-badge text-success fw-bold ms-auto"
-                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
-              } @else {
-              <span class="spec-val font-monospace text-truncate text-end">
-                {{ formatLastSeen(host.metrics?.lastSeen) }}
-              </span>
-              }
-            </div>
+          <div class="specs-list d-flex flex-column gap-1 my-3">
             <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-fingerprint'"
               (click)="copyRowContent(host.fingerprint, host.fingerprint + '-fingerprint'); $event.stopPropagation()">
-              <span class="spec-lbl">Fingerprint</span>
+              <span class="spec-lbl d-inline-flex align-items-center">
+                <span class="icon-svg icon-fingerprint me-2"
+                  style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                Fingerprint
+              </span>
               @if (copiedRowId() === host.fingerprint + '-fingerprint') {
-              <span class="copied-badge text-success fw-bold ms-auto"
-                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
               } @else {
               <span class="spec-val font-monospace text-truncate text-end">
-                {{host.fingerprint }}
+                {{ host.fingerprint }}
               </span>
               }
             </div>
             <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-ipAddress'"
               (click)="copyRowContent(host.ipAddress, host.fingerprint + '-ipAddress'); $event.stopPropagation()">
-              <span class="spec-lbl">Dirección IP</span>
+              <span class="spec-lbl d-inline-flex align-items-center">
+                <span class="icon-svg icon-wifi me-2"
+                  style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                DIRECCIÓN IP
+              </span>
               @if (copiedRowId() === host.fingerprint + '-ipAddress') {
-              <span class="copied-badge text-success fw-bold ms-auto"
-                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
               } @else {
               <span class="spec-val font-monospace text-truncate text-end">
-                {{ host.ipAddress}}
+                {{ host.ipAddress }}
               </span>
               }
             </div>
@@ -338,10 +327,13 @@
             <!-- SO + Release en una sola fila -->
             <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-system'"
               (click)="copyRowContent(hw?.system + ' ' + hw?.release, host.fingerprint + '-system'); $event.stopPropagation()">
-              <span class="spec-lbl">Sistema</span>
+              <span class="spec-lbl d-inline-flex align-items-center">
+                <span class="icon-svg icon-cpu me-2"
+                  style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                OS
+              </span>
               @if (copiedRowId() === host.fingerprint + '-system') {
-              <span class="copied-badge text-success fw-bold ms-auto"
-                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
               } @else {
               <span class="spec-val font-monospace text-truncate text-end">
                 {{ hw?.system }} &ndash; {{ hw?.release }}
@@ -350,10 +342,13 @@
             </div>
             <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-mac'"
               (click)="copyRowContent(hw?.mac || '', host.fingerprint + '-mac'); $event.stopPropagation()">
-              <span class="spec-lbl">Dirección MAC</span>
+              <span class="spec-lbl d-inline-flex align-items-center">
+                <span class="icon-svg icon-box me-2"
+                  style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                MAC
+              </span>
               @if (copiedRowId() === host.fingerprint + '-mac') {
-              <span class="copied-badge text-success fw-bold ms-auto"
-                style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
               } @else {
               <span class="spec-val font-monospace text-truncate text-end">
                 {{ hw?.mac }}
@@ -361,6 +356,21 @@
               }
             </div>
             }
+            <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-lastSeen'"
+              (click)="copyRowContent(formatLastSeen(host.metrics?.lastSeen), host.fingerprint + '-lastSeen'); $event.stopPropagation()">
+              <span class="spec-lbl d-inline-flex align-items-center">
+                <span class="icon-svg icon-clock me-2"
+                  style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                Últ. vez
+              </span>
+              @if (copiedRowId() === host.fingerprint + '-lastSeen') {
+              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-truncate text-end">
+                {{ formatLastSeen(host.metrics?.lastSeen) }}
+              </span>
+              }
+            </div>
           </div>
 
           <!-- Bloque CPU / RAM (actualizado con métricas del heartbeat) -->
@@ -393,18 +403,18 @@
                   <span class="resource-stat-lbl">RAM</span>
                   <span class="resource-stat-val">
                     @if (parseMemoryGB(host.hwInfo?.totalRam || host.hwInfo?.totalMemory); as totalRam) {
-                      @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
-                      {{ ((host.metrics.memory / 100) * totalRam) | number:'1.1-1' }}
-                      <span class="resource-stat-unit"> / {{ totalRam | number:'1.0-0' }} GB</span>
-                      } @else {
-                      - <span class="resource-stat-unit"> / {{ totalRam | number:'1.0-0' }} GB</span>
-                      }
+                    @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
+                    {{ ((host.metrics.memory / 100) * totalRam) | number:'1.1-1' }}
+                    <span class="resource-stat-unit"> / {{ totalRam | number:'1.0-0' }} GB</span>
                     } @else {
-                      @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
-                      {{ host.metrics.memory | number:'1.0-1' }}<span class="resource-stat-unit">%</span>
-                      } @else {
-                      -
-                      }
+                    - <span class="resource-stat-unit"> / {{ totalRam | number:'1.0-0' }} GB</span>
+                    }
+                    } @else {
+                    @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
+                    {{ host.metrics.memory | number:'1.0-1' }}<span class="resource-stat-unit">%</span>
+                    } @else {
+                    -
+                    }
                     }
                   </span>
                 </div>
@@ -448,18 +458,18 @@
                   <span class="resource-stat-lbl">VRAM</span>
                   <span class="resource-stat-val">
                     @if (parseMemoryGB(gpu?.totalMemory); as totalVram) {
-                      @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
-                      {{ ((host.metrics.vram / 100) * totalVram) | number:'1.1-1' }}
-                      <span class="resource-stat-unit"> / {{ totalVram | number:'1.0-0' }} GB</span>
-                      } @else {
-                      - <span class="resource-stat-unit"> / {{ totalVram | number:'1.0-0' }} GB</span>
-                      }
+                    @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
+                    {{ ((host.metrics.vram / 100) * totalVram) | number:'1.1-1' }}
+                    <span class="resource-stat-unit"> / {{ totalVram | number:'1.0-0' }} GB</span>
                     } @else {
-                      @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
-                      {{ host.metrics.vram | number:'1.0-1' }}<span class="resource-stat-unit">%</span>
-                      } @else {
-                      -
-                      }
+                    - <span class="resource-stat-unit"> / {{ totalVram | number:'1.0-0' }} GB</span>
+                    }
+                    } @else {
+                    @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
+                    {{ host.metrics.vram | number:'1.0-1' }}<span class="resource-stat-unit">%</span>
+                    } @else {
+                    -
+                    }
                     }
                   </span>
                 </div>
@@ -479,7 +489,7 @@
   </div>
   } @else {
   <!-- Tabla Premium de Nodos -->
-  <div class="border shadow-sm rounded-4 mb-4 bg-card overflow-hidden">
+  <div class="border shadow-sm rounded-4 bg-card overflow-hidden">
     <div class="nm-table-container">
       <table class="table nm-table align-middle mb-0">
         <thead>
@@ -581,17 +591,17 @@
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="text-muted font-monospace" style="font-size: 0.76rem; letter-spacing: 0.02em;">
                     RAM: @if (parseMemoryGB(host.hwInfo?.totalRam || host.hwInfo?.totalMemory); as totalRam) {
-                      @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
-                      {{ ((host.metrics.memory / 100) * totalRam) | number:'1.1-1' }} / {{ totalRam | number:'1.0-0' }} GB
-                      } @else {
-                      - / {{ totalRam | number:'1.0-0' }} GB
-                      }
+                    @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
+                    {{ ((host.metrics.memory / 100) * totalRam) | number:'1.1-1' }} / {{ totalRam | number:'1.0-0' }} GB
                     } @else {
-                      @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
-                      {{ host.metrics.memory | number:'1.0-1' }}%
-                      } @else {
-                      -
-                      }
+                    - / {{ totalRam | number:'1.0-0' }} GB
+                    }
+                    } @else {
+                    @if (host.metrics && host.metrics.memory !== null && host.metrics.memory !== undefined) {
+                    {{ host.metrics.memory | number:'1.0-1' }}%
+                    } @else {
+                    -
+                    }
                     }
                   </span>
                 </div>
@@ -622,17 +632,17 @@
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="text-muted font-monospace" style="font-size: 0.76rem; letter-spacing: 0.02em;">
                     VRAM: @if (parseMemoryGB(gpu?.totalMemory); as totalVram) {
-                      @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
-                      {{ ((host.metrics.vram / 100) * totalVram) | number:'1.1-1' }} / {{ totalVram | number:'1.0-0' }} GB
-                      } @else {
-                      - / {{ totalVram | number:'1.0-0' }} GB
-                      }
+                    @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
+                    {{ ((host.metrics.vram / 100) * totalVram) | number:'1.1-1' }} / {{ totalVram | number:'1.0-0' }} GB
                     } @else {
-                      @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
-                      {{ host.metrics.vram | number:'1.0-1' }}%
-                      } @else {
-                      -
-                      }
+                    - / {{ totalVram | number:'1.0-0' }} GB
+                    }
+                    } @else {
+                    @if (host.metrics && host.metrics.vram !== null && host.metrics.vram !== undefined) {
+                    {{ host.metrics.vram | number:'1.0-1' }}%
+                    } @else {
+                    -
+                    }
                     }
                   </span>
                 </div>
@@ -665,28 +675,21 @@
   }
 
   @if (filteredHosts().length === 0) {
-  <div class="card border-0 shadow-sm rounded-3 p-5 text-center mb-4">
-    <div class="py-4">
-      <span class="icon-svg icon-nodos text-muted"
-        style="width: 48px; height: 48px; opacity: 0.5; margin-bottom: 1rem;"></span>
-      <h5 class="fw-bold">No se encontraron nodos</h5>
-      <p class="text-muted">No hay servidores registrados que coincidan con los filtros aplicados en la página actual.
-      </p>
-    </div>
-  </div>
+  <app-empty-state title="No se encontraron nodos de cómputo"
+    description="No hay servidores registrados que coincidan con los filtros o criterios de búsqueda activos."
+    iconClass="icon-nodos" actionText="Restablecer Filtros" [showAction]="hasActiveFilters()" (action)="resetFilters()">
+  </app-empty-state>
   }
 
   <!-- Paginación con Ghost Buttons y Chevrons SVG (REUTILIZABLE DRY) -->
-  <app-pagination-controls
-    [currentPage]="currentPage()"
-    [totalPages]="totalPages()"
-    [visiblePages]="visiblePages()"
+  <app-pagination-controls [currentPage]="currentPage()" [totalPages]="totalPages()" [visiblePages]="visiblePages()"
     (pageChange)="setPage($event)">
   </app-pagination-controls>
 
   <!-- Modal de Migración de Configuración -->
   @if (showMigrateModal()) {
-  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center" (click)="closeMigrateModal()">
+  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center"
+    (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)">
     <div class="modal-card-custom modal-card-custom--large p-4 rounded-4 shadow-lg border"
       (click)="$event.stopPropagation()">
       <!-- Modal Header -->
@@ -724,10 +727,10 @@
               <span class="icon-svg icon-search nm-search-icon"></span>
               <input #originSearchInput type="text" class="nm-search-input"
                 placeholder="Buscar por nombre, IP o fingerprint..." [disabled]="isMigrating()"
-                [value]="originSearchText()" (input)="originSearchText.set(originSearchInput.value)" />
+                (input)="originSearchText.set(originSearchInput.value)" />
               @if (originSearchText()) {
               <button class="btn-clear-search position-absolute end-0 top-50 translate-middle-y btn-ghost p-1"
-                (click)="originSearchText.set('')" style="right: 8px !important;">
+                (click)="originSearchInput.value = ''; originSearchText.set('')" style="right: 8px !important;">
                 <span class="icon-svg icon-close" style="width: 12px; height: 12px;"></span>
               </button>
               }
@@ -789,10 +792,10 @@
               <span class="icon-svg icon-search nm-search-icon"></span>
               <input #targetSearchInput type="text" class="nm-search-input"
                 placeholder="Buscar por nombre, IP o fingerprint..." [disabled]="isMigrating()"
-                [value]="targetSearchText()" (input)="targetSearchText.set(targetSearchInput.value)" />
+                (input)="targetSearchText.set(targetSearchInput.value)" />
               @if (targetSearchText()) {
               <button class="btn-clear-search position-absolute end-0 top-50 translate-middle-y btn-ghost p-1"
-                (click)="targetSearchText.set('')" style="right: 8px !important;">
+                (click)="targetSearchInput.value = ''; targetSearchText.set('')" style="right: 8px !important;">
                 <span class="icon-svg icon-close" style="width: 12px; height: 12px;"></span>
               </button>
               }

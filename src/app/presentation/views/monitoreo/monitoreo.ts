@@ -10,6 +10,7 @@ import { AnalyticService } from '../../../core/services/analytic.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { WebsocketConnectionService } from '../../../core/services/websocket-connection.service';
+import { WebsocketService } from '../../../core/services/websocket.service';
 import { IEventRepository } from '../../../core/domain/repositories/event.repository';
 import { WebRtcService } from '../../../core/services/webrtc.service';
 
@@ -19,7 +20,7 @@ import { Analytic } from '../../../core/domain/entities/analytic.models';
 import { EventRecord } from '../../../core/domain/entities/event.models';
 import { parseUtcDate } from '../../../core/utils/date-utils';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
-import { getCameraEffectiveStatus, getCameraStatusCssClass } from '../../../core/utils/camera-status.utils';
+import { getCameraEffectiveStatus, getCameraStatusCssClass, getCameraStatusFilterLabel } from '../../../core/utils/camera-status.utils';
 import { EventDetailModalComponent } from '../../shared/event-detail-modal/event-detail-modal.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
@@ -56,6 +57,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   private analyticService = inject(AnalyticService);
   private sidebarService = inject(SidebarService);
   private wsConnectionService = inject(WebsocketConnectionService);
+  private websocketService = inject(WebsocketService);
   private eventRepository = inject(IEventRepository);
   public permissionsService = inject(PermissionsService);
   private webRtcService = inject(WebRtcService);
@@ -73,6 +75,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   // WebRTC Live Video Connections & States
   private activeWebRtcConnections = new Map<string, RTCPeerConnection>();
+  private activeGridCamerasMap = new Map<string, { cameraId: string; hostFingerprint: string }>();
   readonly webRtcStates = signal<Record<string, 'connecting' | 'connected' | 'failed'>>({});
 
   // Layout Grid States (Coordinate slots) - Empieza en 1x1 reactivo
@@ -199,7 +202,40 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   // Modal Search & Filter States
   readonly modalSearchQuery = signal<string>('');
-  readonly modalStatusFilter = signal<'all' | 'online' | 'offline'>('all');
+  readonly modalStatusFilter = signal<string>('all');
+  readonly showModalStatusDropdown = signal<boolean>(false);
+
+  toggleModalStatusDropdown(event?: Event): void {
+    if (event) event.stopPropagation();
+    this.showModalStatusDropdown.update(v => !v);
+  }
+
+  selectModalStatus(status: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.modalStatusFilter.set(status);
+    this.showModalStatusDropdown.set(false);
+  }
+
+  readonly modalStatusOptions = computed(() => {
+    const cams = this.allCameras();
+    const hosts = this.allHosts();
+    const set = new Set<string>();
+
+    cams.forEach(c => {
+      const effStatus = getCameraEffectiveStatus(c, hosts);
+      set.add(effStatus);
+    });
+
+    const statusOrder = ['Online', 'Degraded', 'Recovering', 'Pending', 'Offline'];
+    return Array.from(set).sort((a, b) => {
+      const idxA = statusOrder.indexOf(a);
+      const idxB = statusOrder.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  });
 
   // Player & Timeline States
   readonly playbackMode = signal<'live' | 'playback'>('live');
@@ -232,6 +268,17 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly activeRecStatuses = signal<Record<string, boolean>>({});
   readonly flashEffects = signal<Record<string, boolean>>({});
 
+  refreshCameraStream(slot: GridSlot, event?: MouseEvent): void {
+    if (event) event.stopPropagation();
+    if (!slot.camera?.id) return;
+
+    const camId = slot.camera.id;
+    const hostFp = slot.camera.hostFingerprint || '';
+
+    console.log(`[Monitoreo] Refrescando flujo de cámara "${slot.camera.name}" (ID: ${camId}, Host: ${hostFp}). Emitiendo camera_stream_refresh...`);
+    this.websocketService.sendCameraStreamRefresh(camId, hostFp);
+  }
+
 
 
   // Highlight effect
@@ -239,6 +286,25 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   // Logs Feed Control
   readonly isLogsFeedPaused = signal<boolean>(false);
+
+  private backdropMouseDownTarget: EventTarget | null = null;
+
+  onBackdropMouseDown(event: MouseEvent): void {
+    if (event.button === 0) {
+      this.backdropMouseDownTarget = event.target;
+    }
+  }
+
+  onBackdropMouseUp(event: MouseEvent): void {
+    if (
+      event.button === 0 &&
+      this.backdropMouseDownTarget === event.currentTarget &&
+      event.target === event.currentTarget
+    ) {
+      this.showModal.set(false);
+    }
+    this.backdropMouseDownTarget = null;
+  }
 
   // UI Tabs & Toggles
   readonly activeRightTab = signal<'registro' | 'analiticas'>('registro');
@@ -457,6 +523,41 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
         }, 150);
       }
     });
+
+    // Sincronizar eventos WebSocket (webrtc_start y webrtc_stop) EXCLUSIVAMENTE cuando se agregan o eliminan cámaras de la cuadrícula
+    effect(() => {
+      const slots = this.gridSlots();
+      const nextGridCamerasMap = new Map<string, { cameraId: string; hostFingerprint: string }>();
+
+      // Recopilar únicamente el conjunto único de cámaras presentes en los slots de la cuadrícula
+      for (const slot of slots) {
+        if (slot.camera && slot.camera.id) {
+          nextGridCamerasMap.set(slot.camera.id, {
+            cameraId: slot.camera.id,
+            hostFingerprint: slot.camera.hostFingerprint || ''
+          });
+        }
+      }
+
+      // 1. Detectar CÁMARAS ELIMINADAS (estaban en la cuadrícula y fueron quitadas)
+      for (const [camId, info] of this.activeGridCamerasMap.entries()) {
+        if (!nextGridCamerasMap.has(camId)) {
+          console.log(`[Monitoreo WebSocket] Cámara eliminada de la cuadrícula: ${camId}. Emitiendo webrtc_stop`);
+          this.websocketService.sendWebRtcStop(info.cameraId, info.hostFingerprint);
+        }
+      }
+
+      // 2. Detectar CÁMARAS AGREGADAS (no estaban en la cuadrícula y acaban de ingresarse)
+      for (const [camId, info] of nextGridCamerasMap.entries()) {
+        if (!this.activeGridCamerasMap.has(camId)) {
+          console.log(`[Monitoreo WebSocket] Nueva cámara agregada a la cuadrícula: ${camId}. Emitiendo webrtc_start`);
+          this.websocketService.sendWebRtcStart(info.cameraId, info.hostFingerprint);
+        }
+      }
+
+      // Actualizar mapa activo
+      this.activeGridCamerasMap = nextGridCamerasMap;
+    }, { allowSignalWrites: true });
   }
 
   readonly liveTickerClock = signal<Date>(new Date());
@@ -564,6 +665,13 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     if (this.canvasActivityTimer) {
       clearTimeout(this.canvasActivityTimer);
     }
+    // Emitir webrtc_stop por WebSocket para todas las cámaras presentes en la cuadrícula al abandonar Monitoreo
+    for (const [camId, info] of this.activeGridCamerasMap.entries()) {
+      console.log(`[Monitoreo WebSocket ngOnDestroy] Limpiando cámara de la cuadrícula: ${camId}. Emitiendo webrtc_stop`);
+      this.websocketService.sendWebRtcStop(info.cameraId, info.hostFingerprint);
+    }
+    this.activeGridCamerasMap.clear();
+
     // Cerrar todas las conexiones activas de WebRTC al destruir la vista
     for (const connKey of Array.from(this.activeWebRtcConnections.keys())) {
       this.stopWebRtcStreamByKey(connKey);
@@ -812,6 +920,14 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     return { minX, maxX, minY, maxY, width, height };
   }
 
+  getMinimapAspectRatio(): string {
+    const world = this.getMinimapWorldBounds();
+    if (!world || !world.height || world.height === 0) return '16 / 9';
+    const ratio = world.width / world.height;
+    const clampedRatio = Math.max(0.5, Math.min(2.5, ratio));
+    return `${clampedRatio.toFixed(3)}`;
+  }
+
   getMinimapLayoutRect(): { left: number; top: number; width: number; height: number } {
     const world = this.getMinimapWorldBounds();
     const { width: layoutW, height: layoutH } = this.getCanvasDimensions();
@@ -1045,7 +1161,12 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   @HostListener('window:keydown', ['$event'])
   onGlobalKeyDown(event: KeyboardEvent): void {
     const target = event.target as HTMLElement;
-    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable || target.closest('input, textarea, select, .modal'))) {
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable || target.closest('input, textarea, select, .modal, app-camera-detail-drawer, .drawer-container, [class*="drawer"]'))) {
+      return;
+    }
+
+    // Ignorar atajos de monitoreo si el drawer de detalle/analítica de cámara está abierto
+    if (this.showCameraConfigDrawer()) {
       return;
     }
 
@@ -1222,12 +1343,74 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
+  private isTrackpadActive = false;
+  private trackpadTimeoutTimer: any = null;
+
+  private zoomToPoint(nextZoom: number, clientX: number, clientY: number, containerEl?: HTMLElement | null): void {
+    const minZoom = this.getMinZoom();
+    const clampedZoom = Math.max(minZoom, Math.min(5.0, nextZoom));
+    const currentZoom = this.canvasZoom();
+
+    const targetEl = containerEl || (document.querySelector('.monitoring-grid-container') as HTMLElement);
+    if (!targetEl) {
+      this.canvasZoom.set(clampedZoom);
+      return;
+    }
+
+    const rect = targetEl.getBoundingClientRect();
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
+
+    const canvasX = (mouseX - this.canvasPanX()) / currentZoom;
+    const canvasY = (mouseY - this.canvasPanY()) / currentZoom;
+
+    const newPanX = mouseX - canvasX * clampedZoom;
+    const newPanY = mouseY - canvasY * clampedZoom;
+
+    const constrained = this.constrainPan(newPanX, newPanY, clampedZoom);
+
+    this.canvasZoom.set(clampedZoom);
+    this.canvasPanX.set(constrained.x);
+    this.canvasPanY.set(constrained.y);
+  }
+
   onCanvasWheel(event: WheelEvent): void {
     if (!this.isCanvasMode() || this.isCanvasPinned()) return;
     event.preventDefault();
 
-    // Desplazamiento del lienzo cuando hay movimiento horizontal (deltaX)
-    if (Math.abs(event.deltaX) > 0) {
+    // 1. PINCH-TO-ZOOM EN TRACKPAD / TOUCHPAD:
+    // Los navegadores modernos (Chromium, Firefox, Edge, Safari) activan el flag ctrlKey = true al pellizcar el trackpad.
+    if (event.ctrlKey) {
+      const zoomDelta = event.deltaY < 0 ? 0.05 : -0.05;
+      const currentZoom = this.canvasZoom();
+      const nextZoom = currentZoom + zoomDelta;
+      const gridContainer = (event.currentTarget || document.querySelector('.monitoring-grid-container')) as HTMLElement;
+      this.zoomToPoint(nextZoom, event.clientX, event.clientY, gridContainer);
+      return;
+    }
+
+    // 2. DETECCIÓN DE TRACKPAD Y MEMORIA DE SESIÓN DE GESTO OMNIDIRECCIONAL LIBRE
+    const hasHorizontalDelta = Math.abs(event.deltaX) > 0;
+    const isPixelDelta = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL;
+
+    // Se considera rueda de ratón físico solo si no hay delta horizontal, NO hay sesión de Trackpad previa activa y es una rueda discreta
+    const isExplicitMouseWheel = !hasHorizontalDelta && !this.isTrackpadActive && (
+      event.deltaMode === WheelEvent.DOM_DELTA_LINE ||
+      (isPixelDelta && Math.abs(event.deltaY) >= 100 && Math.abs(event.deltaY) % 10 === 0)
+    );
+
+    // Si la sesión de Trackpad está activa, o no es rueda explícita, o hay movimiento horizontal:
+    if (!isExplicitMouseWheel || hasHorizontalDelta || this.isTrackpadActive) {
+      // Activar / renovar memoria de sesión de trackpad por 400ms
+      this.isTrackpadActive = true;
+      if (this.trackpadTimeoutTimer) {
+        clearTimeout(this.trackpadTimeoutTimer);
+      }
+      this.trackpadTimeoutTimer = setTimeout(() => {
+        this.isTrackpadActive = false;
+      }, 400);
+
+      // Desplazamiento omnidireccional libre del lienzo en ejes X e Y (PAN 2 dedos)
       const currentPanX = this.canvasPanX();
       const currentPanY = this.canvasPanY();
       const currentZoom = this.canvasZoom();
@@ -1241,28 +1424,13 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    // Zoom del lienzo
+    // 3. RUEDA DE RATÓN FÍSICO (PHYSICAL MOUSE WHEEL):
+    // Rueda del ratón sube/baja -> Zoom In / Zoom Out centrado en la posición del puntero
     const zoomDelta = event.deltaY < 0 ? 0.08 : -0.08;
     const currentZoom = this.canvasZoom();
-    const minZoom = this.getMinZoom();
-    const nextZoom = Math.max(minZoom, Math.min(5.0, currentZoom + zoomDelta));
-
-    const gridContainer = event.currentTarget as HTMLElement;
-    const rect = gridContainer.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
-
-    const canvasX = (mouseX - this.canvasPanX()) / currentZoom;
-    const canvasY = (mouseY - this.canvasPanY()) / currentZoom;
-
-    const newPanX = mouseX - canvasX * nextZoom;
-    const newPanY = mouseY - canvasY * nextZoom;
-
-    const constrained = this.constrainPan(newPanX, newPanY, nextZoom);
-
-    this.canvasZoom.set(nextZoom);
-    this.canvasPanX.set(constrained.x);
-    this.canvasPanY.set(constrained.y);
+    const nextZoom = currentZoom + zoomDelta;
+    const gridContainer = (event.currentTarget || document.querySelector('.monitoring-grid-container')) as HTMLElement;
+    this.zoomToPoint(nextZoom, event.clientX, event.clientY, gridContainer);
   }
 
   onCanvasContextMenu(event: MouseEvent): void {
@@ -2556,6 +2724,16 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   readonly selectedFlagId = signal<string | null>(null);
 
+  isFlagSelected(flag: { event: EventRecord; events?: EventRecord[] }): boolean {
+    const currentSelectedId = this.selectedFlagId();
+    if (!currentSelectedId || !flag) return false;
+    if (flag.event && flag.event.id === currentSelectedId) return true;
+    if (flag.events && flag.events.length > 0) {
+      return flag.events.some(e => e.id === currentSelectedId);
+    }
+    return false;
+  }
+
   toggleTimelineFlag(eventRecord: EventRecord, clusterCount: number = 1, mouseEvent?: MouseEvent): void {
     if (mouseEvent) {
       mouseEvent.stopPropagation();
@@ -2922,8 +3100,8 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const durationMs = Math.min(86400 * 1000, this.zoomRangeSeconds() * 1000);
     const width = this.dragTrackWidth > 0 ? this.dragTrackWidth : window.innerWidth;
 
-    const wrapper = document.querySelector('.timeline-slider-wrapper') as HTMLElement;
-    const rect = wrapper ? wrapper.getBoundingClientRect() : null;
+    const trackElem = (document.querySelector('.timeline-ruler-track') || document.querySelector('.timeline-slider-wrapper')) as HTMLElement;
+    const rect = trackElem ? trackElem.getBoundingClientRect() : null;
     const left = rect ? rect.left : 0;
     const trackWidth = rect ? rect.width : width;
 
@@ -3575,12 +3753,17 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const seen = new Set<string>();
     const list: Camera[] = [];
     const selectedNames = this.selectedCameraNames();
+    const search = this.eventSearchQuery().trim().toLowerCase();
 
     for (const slot of this.gridSlots()) {
       if (slot.camera && !seen.has(slot.camera.id)) {
         // Filtrar por selección en ambos modos (SYNC y ASYNC)
         // Sin selección → todas las cámaras del lienzo
         if (selectedNames.size > 0 && !selectedNames.has(slot.camera.name)) {
+          continue;
+        }
+        // Filtrar por búsqueda de texto de cámara en la barra superior
+        if (search && !slot.camera.name.toLowerCase().includes(search)) {
           continue;
         }
         seen.add(slot.camera.id);
@@ -4219,17 +4402,18 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     if (!this.isZoomed()) return;
     const container = event.currentTarget as HTMLElement;
     const rect = container.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    const y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
 
     this.zoomX.set(x);
     this.zoomY.set(y);
 
     const zoomFactor = 2.5;
-    const lensSize = 350;
+    const lensEl = container.querySelector('.magnifier-lens') as HTMLElement;
+    const lensSize = (lensEl && lensEl.offsetWidth > 0) ? lensEl.offsetWidth : 500;
 
-    this.zoomBgX.set(Math.round(- (x * zoomFactor - lensSize / 2)));
-    this.zoomBgY.set(Math.round(- (y * zoomFactor - lensSize / 2)));
+    this.zoomBgX.set(Math.round(lensSize / 2 - x * zoomFactor));
+    this.zoomBgY.set(Math.round(lensSize / 2 - y * zoomFactor));
     this.zoomBgWidth.set(Math.round(rect.width * zoomFactor));
     this.zoomBgHeight.set(Math.round(rect.height * zoomFactor));
   }
@@ -4618,10 +4802,24 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     return !slot.camera.name.toLowerCase().includes(search);
   }
 
+  getStatusFilterLabel(status: string): string {
+    return getCameraStatusFilterLabel(status);
+  }
+
+  getStatusCssClass(status: string): string {
+    const stLower = status.trim().toLowerCase();
+    if (stLower === 'online' || stLower === 'active' || stLower === 'activo') return 'online';
+    if (stLower === 'degraded' || stLower === 'degradado') return 'degraded';
+    if (stLower === 'recovering' || stLower === 'recuperando') return 'recovering';
+    if (stLower === 'pending' || stLower === 'pendiente') return 'pending';
+    return 'offline';
+  }
+
   // --- Filtered computed properties for modal ---
   readonly filteredCamerasForModal = computed(() => {
     const query = this.modalSearchQuery().trim().toLowerCase();
     const statusFilter = this.modalStatusFilter();
+    const hosts = this.allHosts();
     let cams = this.allCameras();
 
     if (query) {
@@ -4632,10 +4830,18 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       );
     }
 
-    if (statusFilter === 'online') {
-      cams = cams.filter(c => c.status?.toLowerCase() === 'online' || c.status?.toLowerCase() === 'active');
-    } else if (statusFilter === 'offline') {
-      cams = cams.filter(c => c.status?.toLowerCase() !== 'online' && c.status?.toLowerCase() !== 'active');
+    if (statusFilter !== 'all') {
+      const stLower = statusFilter.toLowerCase();
+      cams = cams.filter(c => {
+        const effLower = getCameraEffectiveStatus(c, hosts).toLowerCase();
+        if (stLower === 'active' || stLower === 'online') {
+          return effLower === 'online';
+        }
+        if (stLower === 'inactive' || stLower === 'offline') {
+          return effLower === 'offline';
+        }
+        return effLower === stLower;
+      });
     }
 
     return cams;
@@ -4646,6 +4852,19 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const statusFilter = this.modalStatusFilter();
     const hosts = this.allHosts();
     const cameras = this.allCameras();
+
+    const matchesStatus = (c: Camera) => {
+      if (statusFilter === 'all') return true;
+      const stLower = statusFilter.toLowerCase();
+      const effLower = getCameraEffectiveStatus(c, hosts).toLowerCase();
+      if (stLower === 'active' || stLower === 'online') {
+        return effLower === 'online';
+      }
+      if (stLower === 'inactive' || stLower === 'offline') {
+        return effLower === 'offline';
+      }
+      return effLower === stLower;
+    };
 
     const groups: { host: Host; cameras: Camera[] }[] = [];
 
@@ -4660,16 +4879,12 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
         );
       }
 
-      if (statusFilter === 'online') {
-        hostCams = hostCams.filter(c => c.status?.toLowerCase() === 'online' || c.status?.toLowerCase() === 'active');
-      } else if (statusFilter === 'offline') {
-        hostCams = hostCams.filter(c => c.status?.toLowerCase() !== 'online' && c.status?.toLowerCase() !== 'active');
-      }
+      hostCams = hostCams.filter(matchesStatus);
 
       const matchesHost = query ? (h.hostname.toLowerCase().includes(query) || h.fingerprint.toLowerCase().includes(query)) : false;
 
       const finalCams = matchesHost
-        ? cameras.filter(c => c.hostFingerprint === h.fingerprint && (statusFilter === 'all' || (statusFilter === 'online' ? (c.status?.toLowerCase() === 'online' || c.status?.toLowerCase() === 'active') : (c.status?.toLowerCase() !== 'online' && c.status?.toLowerCase() !== 'active'))))
+        ? cameras.filter(c => c.hostFingerprint === h.fingerprint && matchesStatus(c))
         : hostCams;
 
       if (finalCams.length > 0) {

@@ -1,12 +1,20 @@
-<div class="empty-state-view text-center py-5 rounded bg-surface-card shadow-sm border">
-  <div class="empty-icon-wrapper mb-3 text-muted">
-    <span class="icon-svg {{ iconClass }} text-muted opacity-50" style="width: 48px; height: 48px;"></span>
+<div class="empty-state-view" [style.minHeight]="minHeight">
+  <div class="empty-icon-bubble">
+    <span class="icon-svg {{ iconClass }} empty-icon"></span>
   </div>
-  <h4 class="fw-bold">{{ title }}</h4>
+
+  <h4 class="empty-state-title">{{ title }}</h4>
+
   @if (description) {
-  <p class="text-muted mb-3">{{ description }}</p>
+  <p class="empty-state-description">{{ description }}</p>
   }
+
   @if (showAction && actionText) {
-  <button (click)="onAction()" class="btn btn-primary btn-premium mt-2">{{ actionText }}</button>
+  <button type="button" (click)="onAction()" class="empty-state-btn">
+    <span class="icon-svg {{ actionIconClass }}" style="width: 0.85rem; height: 0.85rem;"></span>
+    <span>{{ actionText }}</span>
+  </button>
   }
+
+  <ng-content></ng-content>
 </div>

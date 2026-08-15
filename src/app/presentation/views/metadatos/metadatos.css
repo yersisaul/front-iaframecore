@@ -167,12 +167,15 @@
   grid-template-columns: repeat(auto-fill, minmax(335px, 1fr));
   gap: 24px;
   width: 100%;
+  position: relative;
+  z-index: 1;
+  overflow: visible !important;
 }
 
 .metadata-card {
   position: relative;
   z-index: 1;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color) !important;
   display: flex;
@@ -183,11 +186,14 @@
 }
 
 .metadata-card:hover {
-  z-index: 50 !important;
+  z-index: 100 !important;
+}
+
+.metadata-card:has(.metadata-card-popover) {
+  z-index: 999999 !important;
 }
 
 .metadata-card .card-body {
-  height: 110px;
   /* Strict height for text section */
   padding: 1rem;
   flex: 0 0 auto;
@@ -231,7 +237,9 @@
 
 /* --- Floating Popover for Attribute Badges --- */
 .metadata-card-popover {
-  position: absolute;
+  position: fixed !important;
+  top: 0;
+  left: 0;
   width: 360px;
   padding: 1rem !important;
   /* Balanced layout spacing */
@@ -239,9 +247,9 @@
   backdrop-filter: blur(12px) !important;
   border: 1px solid var(--border-popover-menu) !important;
   border-radius: 12px;
-  z-index: 1000;
+  z-index: 9999999 !important;
   pointer-events: none;
-  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1) !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.25), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
   animation: popoverAppear 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 

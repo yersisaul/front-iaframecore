@@ -1,0 +1,954 @@
+/* =========================================================================
+   ANALYTIC CANVAS COMPONENT — PREMIUM MINIMALIST DESIGN v2
+   ========================================================================= */
+
+:host {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.analytic-canvas-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  container-type: size;
+}
+
+/* --- Contenedor Principal del Lienzo --- */
+.canvas-wrapper {
+  position: relative;
+  overflow: hidden !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: crosshair;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--aspect-ratio, 1.7778);
+  max-width: calc(100cqh * var(--aspect-ratio, 1.7778));
+  max-height: 100%;
+  margin: auto;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* --- Placeholder sin Imagen --- */
+.camera-snapshot-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+  z-index: 5;
+  padding: 2rem;
+  pointer-events: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+.camera-snapshot-placeholder * {
+  pointer-events: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+.placeholder-icon-ring {
+  width: 3.75rem;
+  height: 3.75rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.placeholder-icon {
+  width: 2rem;
+  height: 2rem;
+  display: block;
+}
+
+.placeholder-title {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+.placeholder-subtitle {
+  font-size: 0.6875rem;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* --- Imagen de Fondo del Evento --- */
+.camera-snapshot-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  border-radius: 0.75rem !important;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: brightness(0.95) contrast(1.04);
+}
+
+/* --- Capa SVG Vectorial --- */
+.canvas-svg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* =========================================================================
+   FLOATING TOOLBAR (GLASSMORPHISM PREMIUM — ESTILO MONITOREO)
+   ========================================================================= */
+.canvas-floating-toolbar {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 20;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  background-color: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 99px;
+  box-shadow: 0 0.5rem 1.75rem rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+  animation: toolbarSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.canvas-floating-toolbar:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0.75rem 2.25rem rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+@keyframes toolbarSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-0.375rem) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* --- Grupo de botones --- */
+.toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* --- Separador vertical --- */
+.toolbar-divider {
+  width: 1px;
+  height: 1.25rem;
+  background-color: rgba(0, 0, 0, 0.1);
+  margin: 0 0.25rem;
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+/* --- Botones de herramientas (circulares) --- */
+.btn-canvas-tool {
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease-in-out;
+}
+
+.btn-canvas-tool:hover:not([disabled]) {
+  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.1);
+  border-color: rgba(var(--primary-rgb, 59, 130, 246), 0.18);
+  color: var(--primary, #3b82f6);
+  transform: scale(1.08);
+}
+
+.btn-canvas-tool:active:not([disabled]) {
+  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.18);
+  transform: scale(0.94);
+}
+
+.btn-canvas-tool[disabled] {
+  opacity: 0.22;
+  cursor: not-allowed;
+}
+
+/* Botón de peligro (trash) */
+.btn-danger-tool:hover:not([disabled]) {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+  color: #ef4444 !important;
+}
+
+.btn-danger-tool:active:not([disabled]) {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* --- Iconos dentro de los botones --- */
+.toolbar-icon {
+  width: 1rem;
+  height: 1rem;
+  background-color: currentColor;
+  display: block;
+}
+
+/* --- Badge de Estado --- */
+.toolbar-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.625rem;
+  height: 1.625rem;
+  user-select: none;
+}
+
+.status-dot {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  background-color: #f59e0b;
+  flex-shrink: 0;
+  transition: background-color 0.3s ease;
+}
+
+.status-dot.closed {
+  background-color: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.status-dot.empty {
+  background-color: rgba(0, 0, 0, 0.2);
+  box-shadow: none;
+}
+
+.status-text {
+  font-family: var(--font-monospace, 'SF Mono', 'Fira Code', monospace);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.5);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+/* =========================================================================
+   GEOMETRÍA SVG — LÍNEAS Y POLÍGONOS PREMIUM v2
+   ========================================================================= */
+
+/* Líneas de arista entre puntos — sólidas, finas, premium */
+.svg-edge-line {
+  stroke-width: 2;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.25));
+  transition: stroke-width 0.15s ease;
+}
+
+/* Relleno del polígono cerrado — color dinámico desde el template */
+.svg-polygon-fill {
+  stroke: none;
+  transition: fill 0.3s ease;
+}
+
+/* Línea vectorial (modo line) — más gruesa que aristas de polígono */
+.svg-line-stroke {
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.3));
+}
+
+/* =========================================================================
+   PUNTOS DE CONTROL INTERACTIVOS — NODO INTEGRADO CELESTE NEÓN
+   ========================================================================= */
+.svg-control-point {
+  cursor: grab !important;
+  pointer-events: all !important;
+}
+
+.svg-control-point:active {
+  cursor: grabbing !important;
+}
+
+/* Halo exterior por defecto */
+.svg-point-halo {
+  fill: rgba(56, 189, 248, 0.18) !important;
+  opacity: 0;
+  transition: opacity 0.2s ease-out, fill 0.2s ease-out;
+  pointer-events: all !important;
+}
+
+.svg-control-point:hover .svg-point-halo {
+  opacity: 1;
+  fill: rgba(56, 189, 248, 0.35) !important;
+}
+
+/* Núcleo sólido por defecto (Polígonos y Líneas: Blanco compacto) */
+.svg-point-core {
+  fill: #ffffff !important;
+  stroke: #38bdf8 !important;
+  stroke-width: 2.5px !important;
+  transition: fill 0.15s ease-out, stroke 0.15s ease-out, stroke-width 0.15s ease-out, filter 0.15s ease-out;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.4));
+  pointer-events: all !important;
+}
+
+.svg-control-point:hover .svg-point-core {
+  fill: #38bdf8 !important;
+  stroke: #ffffff !important;
+  stroke-width: 3px !important;
+}
+
+/* Núcleo amplio con etiqueta (SOLO para Cuadrilátero A-B-C-D: speed-quad-point) */
+.svg-control-point.speed-quad-point .svg-point-core {
+  fill: #ffffff !important;
+  stroke: #0284c7 !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
+}
+
+.svg-control-point.speed-quad-point:hover .svg-point-core,
+.svg-control-point.speed-quad-point .svg-point-core.active {
+  fill: #0284c7 !important;
+  stroke: #ffffff !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 14px rgba(56, 189, 248, 0.9));
+}
+
+/* Indicador visual del primer punto para cerrar polígono */
+.svg-point-core.first-point {
+  stroke: #10b981 !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.7));
+  animation: pulseFirstPoint 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseFirstPoint {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.7));
+  }
+}
+
+/* Texto de Etiqueta (A, B, C, D) dentro del propio punto */
+.svg-point-text {
+  fill: #0284c7 !important;
+  font-family: var(--font-monospace, 'SF Mono', 'Fira Code', monospace);
+  font-size: 0.82rem !important;
+  font-weight: 900 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  transition: fill 0.15s ease-out;
+}
+
+.svg-control-point.speed-quad-point:hover .svg-point-text,
+.svg-control-point.speed-quad-point.active .svg-point-text {
+  fill: #ffffff !important;
+}
+
+/* =========================================================================
+   NUEVAS FUNCIONALIDADES UX/UI: GHOST LINE, SHAPE DRAGGING, EDGE SPLIT & DELETE
+   ========================================================================= */
+
+/* 1. Línea de Preview (Ghost Line) */
+.svg-ghost-line {
+  stroke-dasharray: 6, 4;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  opacity: 0.75;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.4));
+  animation: ghostLinePulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes ghostLinePulse {
+  from {
+    opacity: 0.55;
+  }
+
+  to {
+    opacity: 0.9;
+  }
+}
+
+/* 2. Shape Dragging (Polígonos, líneas y franja de análisis arrastables por su área) */
+.svg-polygon-fill.draggable,
+.svg-line-stroke.draggable,
+.svg-analysis-zone-polygon.draggable {
+  cursor: grab !important;
+  pointer-events: all !important;
+}
+
+.svg-polygon-fill.draggable:active,
+.svg-line-stroke.draggable:active,
+.svg-analysis-zone-polygon.draggable:active {
+  cursor: grabbing !important;
+}
+
+/* --- Insignias de Dirección A / B --- */
+.svg-direction-badge {
+  pointer-events: none;
+  user-select: none;
+}
+
+.svg-direction-badge-halo {
+  fill: #ffffff;
+  stroke-width: 2.2px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+  transition: fill 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
+}
+
+.svg-direction-badge-text {
+  fill: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  font-family: var(--font-mono, system-ui, monospace);
+  pointer-events: none;
+}
+
+/* --- Estilos de Selección de Formas (Ultra-Visibles Neón Glassmorphic) --- */
+.svg-polygon-fill.selected {
+  stroke: #38bdf8 !important;
+  stroke-width: 3.5px !important;
+  stroke-dasharray: 6, 4;
+  fill-opacity: 0.55 !important;
+  filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.95)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.9)) !important;
+  animation: selectedPolygonPulse 1.6s ease-in-out infinite alternate;
+}
+
+.svg-line-stroke.selected {
+  stroke: #38bdf8 !important;
+  stroke-width: 4.5px !important;
+  stroke-dasharray: 6, 4;
+  filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.95)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.9)) !important;
+  animation: selectedPolygonPulse 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes selectedPolygonPulse {
+  0% {
+    stroke-opacity: 0.75;
+    filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.7));
+  }
+
+  100% {
+    stroke-opacity: 1;
+    filter: drop-shadow(0 0 20px rgba(56, 189, 248, 1)) drop-shadow(0 0 6px rgba(255, 255, 255, 1));
+  }
+}
+
+/* 3. Punto Fantasma de División de Arista (Edge Splitting con SVG +) */
+.svg-edge-split-point {
+  cursor: pointer !important;
+  pointer-events: none !important;
+  /* Estricto: evita interferencias con la detección de posición del mousemove en la arista */
+  transition: transform 0.1s ease-out;
+}
+
+.svg-edge-split-point:hover {
+  transform: scale(1.25);
+}
+
+.split-point-halo {
+  opacity: 0.35;
+  animation: pulseSplitHalo 1.4s ease-in-out infinite;
+}
+
+.split-point-core {
+  stroke: #ffffff;
+  stroke-width: 2;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
+}
+
+@keyframes pulseSplitHalo {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.25;
+  }
+
+  50% {
+    transform: scale(1.3);
+    opacity: 0.5;
+  }
+}
+
+/* 4. Menú Contextual Flotante (Click Derecho "Borrar esta área") */
+.canvas-context-menu {
+  position: absolute;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  padding: 0.375rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.2);
+  animation: contextMenuPop 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top left;
+}
+
+@keyframes contextMenuPop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.btn-context-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  background: transparent;
+  border: none;
+  border-radius: 0.5rem;
+  font-family: var(--font-body, system-ui, -apple-system, sans-serif);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #ef4444;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.btn-context-item:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  transform: scale(1.03);
+}
+
+.context-item-icon {
+  width: 1rem;
+  height: 1rem;
+  background-color: currentColor;
+  display: block;
+}
+
+/* 5. Indicador visual de Imán Activo (Magnet Snap Ring) */
+.svg-magnet-ring {
+  fill: rgba(16, 185, 129, 0.22);
+  stroke: #10b981;
+  stroke-width: 2.5;
+  stroke-dasharray: 4, 3;
+  animation: magnetRingPulse 0.7s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes magnetRingPulse {
+  from {
+    opacity: 0.7;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* =========================================================================
+   DARK MODE OVERRIDES
+   ========================================================================= */
+:host-context([data-bs-theme="dark"]) .canvas-floating-toolbar,
+:host-context(.dark) .canvas-floating-toolbar {
+  background-color: rgba(18, 18, 18, 0.88);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+:host-context([data-bs-theme="dark"]) .canvas-floating-toolbar:hover,
+:host-context(.dark) .canvas-floating-toolbar:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:host-context([data-bs-theme="dark"]) .toolbar-divider,
+:host-context(.dark) .toolbar-divider {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+:host-context([data-bs-theme="dark"]) .btn-canvas-tool,
+:host-context(.dark) .btn-canvas-tool {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+:host-context([data-bs-theme="dark"]) .btn-canvas-tool:hover:not([disabled]),
+:host-context(.dark) .btn-canvas-tool:hover:not([disabled]) {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+:host-context([data-bs-theme="dark"]) .btn-canvas-tool:active:not([disabled]),
+:host-context(.dark) .btn-canvas-tool:active:not([disabled]) {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+:host-context([data-bs-theme="dark"]) .status-text,
+:host-context(.dark) .status-text {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+:host-context([data-bs-theme="dark"]) .status-dot.empty,
+:host-context(.dark) .status-dot.empty {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* --- Modo de Dibujo Activo --- */
+.canvas-wrapper.drawing-active,
+.canvas-wrapper.drawing-active * {
+  cursor: crosshair !important;
+}
+
+.canvas-wrapper.drawing-active .svg-polygon-fill,
+.canvas-wrapper.drawing-active .svg-line-stroke {
+  cursor: crosshair !important;
+  pointer-events: none !important;
+}
+
+.canvas-wrapper.drawing-active .svg-control-point:not(.active-drawing-point) {
+  cursor: crosshair !important;
+  pointer-events: none !important;
+}
+
+.canvas-wrapper.drawing-active {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.6), 0 0 20px rgba(59, 130, 246, 0.25);
+  transition: box-shadow 0.3s ease;
+}
+
+/* --- Tooltip Flotante de Coordenadas al Arrastrar (Auto-Width Dinámico Glassmorphism) --- */
+.canvas-drag-coord-tooltip {
+  position: absolute;
+  z-index: 25;
+  pointer-events: none !important;
+  user-select: none !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.55rem;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(14px) saturate(1.6);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: 0.4rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55), 0 0 10px rgba(56, 189, 248, 0.25);
+  white-space: nowrap;
+  line-height: 1;
+  transition: transform 0.08s ease-out;
+}
+
+.canvas-drag-coord-tooltip .coord-axis {
+  font-family: monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.canvas-drag-coord-tooltip .coord-val {
+  font-family: monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #38bdf8;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.canvas-drag-coord-tooltip .coord-divider {
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: bold;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+/* --- Animación Suave de Confirmación Visual al Cerrar Polígono / Área --- */
+.svg-polygon-fill.recently-closed,
+.svg-edge-line.recently-closed,
+.svg-line-stroke.recently-closed {
+  animation: polygonCloseFlash 0.5s ease-out;
+}
+
+@keyframes polygonCloseFlash {
+  0% {
+    filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.6)) brightness(1.25);
+    stroke-width: 3.5px;
+  }
+
+  50% {
+    filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.8)) brightness(1.35);
+    stroke-width: 4px;
+  }
+
+  100% {
+    filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.4)) brightness(1);
+    stroke-width: 2.5px;
+  }
+}
+
+/* --- Minibar Contextual Flotante de Atajos y Ayuda (Quick Help Bar) --- */
+.canvas-quick-help-bar {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  padding: 0.35rem 0.75rem;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 99px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.75);
+  white-space: nowrap;
+  animation: helpBarSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.canvas-quick-help-bar .kbd-key {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  font-family: monospace;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 0.25rem;
+  line-height: 1;
+  margin-right: 0.2rem;
+}
+
+.canvas-quick-help-bar .help-drawing-pill {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 99px;
+  font-size: 0.6875rem;
+  margin-right: 0.4rem;
+}
+
+.canvas-quick-help-bar .help-item-highlight {
+  color: #f87171;
+  font-weight: 600;
+}
+
+.canvas-quick-help-bar .help-item-highlight .kbd-key {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.canvas-quick-help-bar .help-sep {
+  color: rgba(255, 255, 255, 0.25);
+  margin: 0 0.35rem;
+  font-weight: bold;
+}
+
+@keyframes helpBarSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 0.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* --- Indicadores Flotantes de Distancia en Pixeles (Micro-Chip Minimalista Centrado Perfecto) --- */
+.canvas-edge-badge {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 18;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2px 7px !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  backdrop-filter: blur(8px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(1.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  white-space: nowrap;
+}
+
+.canvas-edge-badge .badge-px {
+  font-family: var(--font-monospace, 'SF Mono', 'Fira Code', monospace);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #e0f2fe;
+  letter-spacing: 0.02em;
+  line-height: 1 !important;
+  display: block !important;
+  text-align: center !important;
+  text-shadow: none !important;
+}
+
+/* --- Botón Preset Cuadrilátero A-B-C-D (Estilo Amplio & Cómodo) --- */
+.btn-preset-tool {
+  width: auto !important;
+  min-width: auto !important;
+  height: 2rem !important;
+  padding: 0 0.75rem !important;
+  border-radius: 99px !important;
+  background: rgba(59, 130, 246, 0.18) !important;
+  border: 1px solid rgba(59, 130, 246, 0.4) !important;
+  color: #60a5fa !important;
+  font-family: var(--font-body, system-ui, -apple-system, sans-serif) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-preset-tool:hover:not([disabled]) {
+  background: rgba(59, 130, 246, 0.35) !important;
+  border-color: rgba(59, 130, 246, 0.7) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.4) !important;
+  transform: scale(1.04) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CANVAS CAUTION FLOATING OVERLAY — NATURAL & SLEEK TYPOGRAPHY
+   (Ajustado estrictamente dentro del borde de la imagen / canvas-wrapper)
+   ═══════════════════════════════════════════════════════════ */
+.canvas-caution-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: none;
+  border-radius: inherit;
+  animation: canvasOverlayFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.caution-floating-content {
+  animation: cautionContentFadeIn 0.3s ease-out forwards;
+}
+
+.caution-heartbeat-icon {
+  width: 3rem;
+  height: 3rem;
+  background-color: #f59e0b;
+  animation: cautionIconPulse 2.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.caution-floating-title {
+  color: #ffffff !important;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin-bottom: 0.35rem;
+  text-shadow: none !important;
+}
+
+.caution-floating-text {
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.45;
+  max-width: 290px;
+  text-shadow: none !important;
+}
+
+@keyframes canvasOverlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cautionContentFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cautionIconPulse {
+  0% { transform: scale(0.65); }
+  15% { transform: scale(1.28); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.2); }
+  60% { transform: scale(1); }
+  75% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
+.canvas-wrapper.canvas-highlight-error {
+  border: 2px solid #f59e0b !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.5), inset 0 0 16px rgba(245, 158, 11, 0.25) !important;
+  transition: all 0.3s ease;
+}

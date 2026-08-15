@@ -1,11 +1,10 @@
-<div class="listas-view-container container-fluid py-4">
+<div class="listas-view-container container-fluid py-4 d-flex flex-column h-100 min-h-0">
   <!-- Cabecera REFACTORIZADA DRY -->
-  <app-page-header
-    [title]="'Listas de Control de ' + (listType() === 'face_recognition' ? 'Rostros' : 'Placas')"
+  <app-page-header [title]="'Listas de Control de ' + (listType() === 'face_recognition' ? 'Rostros' : 'Placas')"
     subtitle="Gestión global de watchlists y control de alertas en todos los nodos.">
     <ng-container header-actions>
       @if (permissionsService.hasPermission('Listas', 'crear')) {
-      <button class="btn-migrate-config" (click)="openListModal('create')">
+      <button class="btn-header-primary" (click)="openListModal('create')">
         <span class="icon-svg icon-plus" style="width: 14px; height: 14px;"></span>
         <span>Crear Lista</span>
       </button>
@@ -14,14 +13,15 @@
   </app-page-header>
 
   <!-- Grid & Inspector Drawer Layout -->
-  <div class="row g-4 align-items-stretch container-lists-layout">
+  <div class="row g-4 container-lists-layout flex-grow-1 min-h-0">
     <!-- Column 1: Watchlists Selector (Left Pane) -->
-    <div class="col-12 col-lg-4 d-flex flex-column container-lists-left">
-      <div class="card bento-card p-4 h-100 d-flex flex-column">
+    <div class="col-12 col-lg-4 d-flex flex-column container-lists-left min-h-0">
+      <div class="card bento-card p-4 flex-grow-1 d-flex flex-column overflow-hidden min-h-0">
         <h5 class="fw-bold fs-6 mb-3 d-flex align-items-center gap-2 text-primary">
           <span class="icon-svg icon-list details-header-icon" style="width: 18px; height: 18px;"></span>
           <span>Listas Disponibles</span>
-          <span class="badge bg-secondary-light text-primary fs-8 rounded-pill ms-auto">{{ filteredLists().length }}</span>
+          <span class="badge bg-secondary-light text-primary fs-8 rounded-pill ms-auto">{{ filteredLists().length
+            }}</span>
         </h5>
 
         @if (isListsLoading()) {
@@ -74,48 +74,79 @@
     </div>
 
     <!-- Column 2: Subjects Grid / Workspace (Right Pane) -->
-    <div class="col-12 col-lg-8 d-flex flex-column container-lists-right">
+    <div class="col-12 col-lg-8 d-flex flex-column container-lists-right min-h-0">
       @if (!selectedListId()) {
       <div
-        class="card bento-card w-100 p-5 d-flex flex-column align-items-center justify-content-center text-center h-100 min-height-detail">
-        <div style="max-width: 440px;">
-          <div class="empty-state-icon mb-4">
-            <span class="icon-svg icon-list text-muted opacity-40" style="width: 64px; height: 64px;"></span>
-          </div>
-          <h4 class="fw-bold mb-2 text-body">Ninguna Lista de Control Seleccionada</h4>
-          <p class="text-muted max-width-text mb-0 fs-paragraph-normal mx-auto">
-            Por favor, seleccione una watchlist en el menú izquierdo para visualizar sus integrantes y cargar su
-            historial de avistamientos y alertas.
-          </p>
-        </div>
+        class="card bento-card w-100 p-4 flex-grow-1 d-flex flex-column align-items-center justify-content-center min-h-0 overflow-hidden">
+        <app-empty-state title="Ninguna Lista de Control Seleccionada"
+          description="Por favor, seleccione una watchlist en el menú izquierdo para visualizar sus integrantes y cargar su historial de avistamientos."
+          iconClass="icon-list" [showAction]="false">
+        </app-empty-state>
       </div>
       } @else {
       <!-- Subjects Workspace Card -->
-      <div class="card bento-card w-100 p-4 d-flex flex-column h-100 min-height-detail">
-        <!-- Active List Header -->
+      <div class="card bento-card w-100 p-4 flex-grow-1 d-flex flex-column min-h-0 overflow-hidden">
+        <!-- Active List Header (Estilo 2 Filas) -->
         @if (activeList(); as list) {
-        <div class="d-flex justify-content-between align-items-center pb-2 mb-3">
-          <div class="text-truncate w-100-min-0">
-            <div class="d-flex align-items-center gap-2 w-100-min-0">
-              <h4 class="fw-bold text-body mb-0 text-truncate fs-heading-medium" [title]="list.name">{{ list.name }}
-              </h4>
-              @if (permissionsService.hasPermission('Listas', 'editar')) {
-              <button class="btn-ghost p-1 text-primary-hover rounded-3" (click)="openListModal('edit', list, $event)"
-                title="Editar Lista">
-                <span class="icon-svg icon-edit text-muted opacity-60" style="width: 14px; height: 14px;"></span>
+        <div class="d-flex flex-column gap-2.5 border-light-translucent">
+          <!-- Fila 1: Título y Contador de Registros (Izquierda) | Botón Agregar (Derecha) -->
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="text-truncate w-100-min-0">
+              <div class="d-flex align-items-center gap-2 w-100-min-0">
+                <h4 class="fw-bold text-body mb-0 text-truncate fs-heading-medium" [title]="list.name">{{ list.name }}
+                </h4>
+                @if (permissionsService.hasPermission('Listas', 'editar')) {
+                <button class="btn-ghost p-1 text-primary-hover rounded-3" (click)="openListModal('edit', list, $event)"
+                  title="Editar Lista">
+                  <span class="icon-svg icon-edit text-muted opacity-60" style="width: 14px; height: 14px;"></span>
+                </button>
+                }
+              </div>
+              <p class="text-muted small mb-0 mt-0.5 fs-paragraph-tiny">
+                Se encontraron <span class="fw-semibold text-primary">{{ filteredListDetails().length }}</span>
+                registros
+                en la lista
+              </p>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-2">
+              @if (hasSelectedSubjects()) {
+              <button class="btn-deselect-all flex-shrink-0" (click)="clearSubjectSelection()"
+                title="Deseleccionar todo">
+                <span class="icon-svg icon-close" style="width: 14px; height: 14px;"></span>
+                <span>Deseleccionar todo</span>
+              </button>
+              }
+
+              @if (filteredListDetails().length > 0 && !isAllSubjectsSelected()) {
+              <button class="btn-select-all flex-shrink-0" (click)="selectAllSubjects()" title="Seleccionar todo">
+                <span class="icon-svg icon-check" style="width: 14px; height: 14px;"></span>
+                <span>Seleccionar todo</span>
+              </button>
+              }
+
+              @if (hasSelectedSubjects() && permissionsService.hasPermission('Detalles Listas', 'eliminar')) {
+              <button class="btn-delete-selected flex-shrink-0" (click)="openDeleteSelectedSubjectsModal()"
+                title="Eliminar registros seleccionados">
+                <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
+                <span>Eliminar ({{ selectedSubjectDetailIds().size }})</span>
+              </button>
+              }
+
+              @if (permissionsService.hasPermission('Detalles Listas', 'crear')) {
+              <button class="btn-header-primary flex-shrink-0" (click)="openAddSubjectModal()">
+                <span class="icon-svg icon-plus" style="width: 14px; height: 14px;"></span>
+                <span>{{ listType() === 'plate_recognition' ? 'Agregar Placa' : 'Agregar Sujeto' }}</span>
               </button>
               }
             </div>
-            <p class="text-muted small mb-0 mt-1 fs-paragraph-tiny">
-              Se encontraron <span class="fw-semibold text-primary">{{ filteredListDetails().length }}</span> registros
-              en la lista
-            </p>
           </div>
 
-          <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-2">
+          <!-- Fila 2: Búsqueda y Botón de Filtro (Izquierda) | Selector de Registros por página (Derecha) -->
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-3">
             <!-- Barra de Búsqueda Unificada y Botón de Filtros Agrupados -->
             <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
-              <div class="search-input-wrapper position-relative d-flex align-items-center ps-1">
+              <div class="search-input-wrapper position-relative d-flex align-items-center">
                 <span class="icon-svg icon-search search-icon-prefix text-muted"
                   style="width: 18px; height: 18px; opacity: 0.5;"></span>
                 <input type="text" [formControl]="searchControl"
@@ -133,19 +164,26 @@
               </button>
             </div>
 
-            @if (permissionsService.hasPermission('Detalles Listas', 'crear')) {
-            <button class="btn-migrate-config" (click)="openAddSubjectModal()">
-              <span class="icon-svg icon-plus" style="width: 14px; height: 14px;"></span>
-              <span>{{ listType() === 'plate_recognition' ? 'Agregar Placa' : 'Agregar Sujeto' }}</span>
-            </button>
-            }
+            <!-- Selector Registros por página -->
+            <div class="d-flex align-items-center gap-1.5 flex-shrink-0 ms-auto">
+              <label for="list-limit-select" class="text-muted small fw-medium mb-0 text-nowrap pe-2"
+                style="font-size: 0.78rem;">
+                {{ listType() === 'plate_recognition' ? 'Placas' : 'Sujetos' }} por página:
+              </label>
+              <select id="list-limit-select" class="form-select form-select-sm shadow-sm border-color"
+                style="width: 75px; font-size: 0.78rem;" (change)="onLimitChange($event)">
+                @for (opt of limitOptions(); track $index) {
+                <option [value]="opt" [selected]="limit() === opt">{{ opt }}</option>
+                }
+              </select>
+            </div>
           </div>
         </div>
         }
 
-               <!-- Barra de Filtros Horizontal inside the card -->
+        <!-- Barra de Filtros Horizontal inside the card -->
         @if (showFilters()) {
-        <div class="horizontal-filters-bar mb-3">
+        <div class="horizontal-filters-bar">
           <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
             <!-- 1. UMBRAL DE DETECCIÓN (Solo para Rostros) -->
@@ -182,7 +220,8 @@
                 <div>
                   <label class="filter-label d-flex justify-content-between small mb-1.5 fw-medium text-muted">
                     <span>Similitud Mínima</span>
-                    <span class="text-primary fw-semibold">{{ (tempSimilarityThreshold() * 100) | number:'1.0-0' }}%</span>
+                    <span class="text-primary fw-semibold">{{ (tempSimilarityThreshold() * 100) | number:'1.0-0'
+                      }}%</span>
                   </label>
                   <input type="range" class="form-range" min="0.5" max="1.0" step="0.01"
                     [value]="tempSimilarityThreshold()" (input)="onSimilarityThresholdChange($event)">
@@ -199,7 +238,8 @@
                 <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
                 <span>
                   Avistamientos:
-                  {{ tempAvistamientosFilter() === 'all' ? 'Todos' : (tempAvistamientosFilter() === 'with' ? 'Con avistamientos' : 'Sin avistamientos') }}
+                  {{ tempAvistamientosFilter() === 'all' ? 'Todos' : (tempAvistamientosFilter() === 'with' ? 'Con
+                  avistamientos' : 'Sin avistamientos') }}
                 </span>
                 <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
                   [class.rotated]="activeDropdown() === 'avistamientos'" style="width: 10px; height: 10px;"></span>
@@ -223,66 +263,41 @@
               }
             </div>
 
-            <!-- ACCIONES DE FILTRO -->
-            <div class="filter-actions-group d-flex align-items-center gap-2">
-              @if (hasActiveFilters()) {
-              <button (click)="onResetFilters()"
-                class="btn btn-outline-secondary btn-premium-action d-flex align-items-center gap-2 py-1.5 px-3">
-                <span class="icon-svg icon-close" style="width: 12px; height: 12px;"></span>
-                <span class="fs-xs-btn">Limpiar Filtros</span>
-              </button>
-              }
-
-              @if (hasPendingFilterChanges()) {
-              <button (click)="onApplyFilters()"
-                class="btn btn-primary btn-premium-action d-flex align-items-center gap-2 py-1.5 px-3">
-                <span class="icon-svg icon-save"
-                  style="width: 12px; height: 12px; background-color: currentColor;"></span>
-                <span class="fs-xs-btn">Aplicar Filtros</span>
-              </button>
-              }
-            </div>
+            <!-- ACCIONES DE FILTRO (COMPONENTE COMPARTIDO DRY) -->
+            <app-filter-actions [hasActiveFilters]="hasActiveFilters()" [hasPendingChanges]="hasPendingFilterChanges()"
+              (reset)="onResetFilters()" (apply)="onApplyFilters()">
+            </app-filter-actions>
           </div>
         </div>
         }
 
         <!-- Grid Scrollable Viewport -->
-        <div class="flex-grow-1 overflow-y-auto scroll-container pe-1 min-h-0">
+        <div class="flex-grow-1 min-h-0 d-flex flex-column justify-content-between overflow-hidden">
           @if (isListsLoading()) {
           <div class="text-center py-5">
             <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
           </div>
           } @else if (listDetails().length === 0) {
-          <div class="d-flex flex-column align-items-center justify-content-center text-center py-5">
-            <div class="empty-state-icon mb-3">
-              <span class="icon-svg icon-warning text-muted opacity-50" style="width: 48px; height: 48px;"></span>
-            </div>
-            <h5 class="fw-bold mb-1">No hay sujetos registrados</h5>
-            <p class="text-muted small max-width-text mb-0">
-              Registra sujetos a esta watchlist desde **Metadatos** haciendo clic en **"Agregar a Lista"**, o haz clic
-              en **"Agregar Sujeto"** arriba.
-            </p>
-          </div>
+          <app-empty-state title="No Hay Sujetos Registrados"
+            description="Registra sujetos a esta watchlist desde Metadatos haciendo clic en 'Agregar a Lista', o haz clic en 'Agregar Sujeto' arriba."
+            iconClass="icon-user" actionText="Agregar Sujeto" actionIconClass="icon-plus"
+            [showAction]="permissionsService.hasPermission('Detalles Listas', 'crear')"
+            (action)="openAddSubjectModal()">
+          </app-empty-state>
           } @else if (filteredListDetails().length === 0) {
-          <div class="d-flex flex-column align-items-center justify-content-center text-center py-5">
-            <div class="empty-state-icon mb-3">
-              <span class="icon-svg icon-info-circle text-muted"
-                style="width: 48px; height: 48px; opacity: 0.5;"></span>
-            </div>
-            <h5 class="fw-bold mb-1">Sin coincidencias</h5>
-            <p class="text-muted small max-width-text mb-3">
-              No se encontraron sujetos con los filtros de búsqueda activos.
-            </p>
-            <button (click)="onResetFilters()" class="btn btn-outline-secondary btn-sm rounded-pill px-3">Limpiar
-              Filtros</button>
-          </div>
+          <app-empty-state title="Sin Coincidencias"
+            description="No se encontraron sujetos con los filtros de búsqueda o criterios activos."
+            iconClass="icon-search" actionText="Restablecer Filtros" actionIconClass="icon-close" [showAction]="true"
+            (action)="onResetFilters()">
+          </app-empty-state>
           } @else {
           <!-- Subjects Grid Auto-fit -->
-          <div class="subjects-grid">
-            @for (detail of filteredListDetails(); track detail.detail_id) {
+          <div #subjectsGridContainer class="subjects-grid flex-grow-1 overflow-y-auto min-h-0 pt-3 custom-scrollbar">
+            @for (detail of paginatedListDetails(); track detail.detail_id) {
             <div
-              class="subject-card rounded-4 p-4 bg-light-translucent cursor-pointer transition-all position-relative d-flex flex-column align-items-center justify-content-between text-center"
+              class="subject-card rounded-4 p-3.5 bg-light-translucent cursor-pointer transition-all position-relative d-flex flex-column align-items-center justify-content-start text-center"
               [class.active-subject]="selectedSubjectDetailId() === detail.detail_id"
+              [class.selected-subject]="isSubjectSelected(detail.detail_id)"
               [class.card-crud-new]="listNewIds().has(detail.detail_id)"
               [class.card-crud-updated]="listUpdatedIds().has(detail.detail_id)"
               [class.card-crud-deleting]="listDeletingIds().has(detail.detail_id)"
@@ -295,24 +310,34 @@
                 <span>{{ subjectDetections()[detail.detail_id]?.count || 0 }}</span>
               </span>
 
-              <!-- Delete Button (Top-Right, Hover) -->
+              <!-- Selection Checkbox (Top-Right) -->
               @if (permissionsService.hasPermission('Detalles Listas', 'eliminar')) {
-              <button
-                class="btn-ghost delete-subject-btn position-absolute p-1.5 text-danger-hover rounded-circle shadow-sm"
-                (click)="deleteSubject(detail.detail_id); $event.stopPropagation()" title="Eliminar de lista">
-                <span class="icon-svg icon-trash" style="width: 13px; height: 13px;"></span>
-              </button>
+              <div class="subject-card-select-wrap position-absolute"
+                (click)="toggleSelectSubjectDetail(detail.detail_id, $event)">
+                <input type="checkbox" class="form-check-input subject-card-checkbox cursor-pointer shadow-sm"
+                  [checked]="isSubjectSelected(detail.detail_id)"
+                  (change)="toggleSelectSubjectDetail(detail.detail_id, $event)" (click)="$event.stopPropagation()"
+                  title="Seleccionar para eliminar" />
+              </div>
               }
 
               <!-- Subject Avatar/Image -->
-              <div class="subject-card-img-wrapper mb-3 position-relative d-flex align-items-center justify-content-center">
-                <div class="placeholder-img-icon">
-                  <span class="fallback-text" style="font-size: 0.55rem; line-height: 1;">SIN IMAGEN</span>
-                </div>
-                <img [src]="detail.metadata?.url_img || ''" (error)="onImageError($event)"
+              <div class="subject-card-img-wrapper">
+                <div class="subject-card-placeholder shadow-sm"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'"
-                  class="object-fit-cover border shadow-sm subject-card-avatar position-relative" style="z-index: 1;" />
+                  [style.display]="detail.metadata?.url_img ? 'none' : 'flex'">
+                  <span class="icon-svg" [class.icon-user]="listType() === 'face_recognition'"
+                    [class.icon-camara]="listType() !== 'face_recognition'"
+                    style="width: 22px; height: 22px; background-color: var(--text-muted); opacity: 0.6;"></span>
+                  <span class="subject-card-placeholder-text">SIN IMAGEN</span>
+                </div>
+                @if (detail.metadata?.url_img) {
+                <img [src]="detail.metadata?.url_img || ''" (error)="onImageError($event)"
+                  [class.rounded-circle]="listType() === 'face_recognition'"
+                  [class.rounded-3]="listType() !== 'face_recognition'" class="subject-card-avatar shadow-sm"
+                  alt="Foto" />
+                }
               </div>
 
               <!-- Subject Information -->
@@ -359,6 +384,11 @@
             </div>
             }
           </div>
+
+          <!-- Paginación (REUTILIZABLE DRY) -->
+          <app-pagination-controls [currentPage]="currentPage()" [totalPages]="totalPages()"
+            [visiblePages]="visiblePages()" (pageChange)="setPage($event)">
+          </app-pagination-controls>
           }
         </div>
       </div>
@@ -393,14 +423,23 @@
             <div class="identity-column-left">
               <!-- Clean Avatar Header -->
               <div class="identity-avatar-header position-relative d-flex align-items-center justify-content-center">
-                <div class="placeholder-img-icon">
-                  <span class="fallback-text" style="font-size: 0.65rem;">SIN IMAGEN</span>
-                </div>
-                <img [src]="activeDetail.metadata?.url_img || ''" (error)="onImageError($event)"
-                  class="identity-avatar object-fit-cover bg-body position-relative" style="z-index: 1;"
+                <div class="subject-card-placeholder drawer-avatar-placeholder shadow-sm"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'"
-                  (click)="openFullscreenImage(activeDetail.metadata?.url_img || '', $event)" />
+                  [style.display]="activeDetail.metadata?.url_img ? 'none' : 'flex'">
+                  <span class="icon-svg" [class.icon-user]="listType() === 'face_recognition'"
+                    [class.icon-camara]="listType() !== 'face_recognition'"
+                    style="width: 32px; height: 32px; background-color: var(--text-muted); opacity: 0.6;"></span>
+                  <span class="subject-card-placeholder-text" style="font-size: 0.72rem; margin-top: 4px;">SIN
+                    IMAGEN</span>
+                </div>
+                @if (activeDetail.metadata?.url_img) {
+                <img [src]="activeDetail.metadata?.url_img || ''" (error)="onImageError($event)"
+                  class="identity-avatar object-fit-cover shadow-sm cursor-pointer"
+                  [class.rounded-circle]="listType() === 'face_recognition'"
+                  [class.rounded-3]="listType() !== 'face_recognition'"
+                  (click)="openFullscreenImage(activeDetail.metadata?.url_img || '', $event)" alt="Foto" />
+                }
               </div>
 
               <!-- Name / Plate with Edit Trigger -->
@@ -524,17 +563,28 @@
               <!-- Punto del Timeline Premium con Anillo de Glow -->
               <span class="timeline-bullet position-absolute rounded-circle"></span>
 
-              <div class="card timeline-card border p-3 rounded-3 transition-all shadow-sm border-start-3"
+              <div
+                class="card timeline-card border p-3 rounded-3 transition-all shadow-sm border-start-3 cursor-pointer position-relative"
                 [class.border-start-emerald]="hit.confiabilidad >= 0.8"
                 [class.border-start-amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
-                [class.border-start-rose]="hit.confiabilidad < 0.5" (mouseenter)="setHoveredHit(hit)"
-                (mouseleave)="setHoveredHit(null)">
+                [class.border-start-rose]="hit.confiabilidad < 0.5"
+                [class.active-timeline-selected]="selectedHit()?.id === hit.id"
+                [class.active-timeline-hovered]="hoveredHit()?.id === hit.id && !selectedHit()"
+                (mouseenter)="setHoveredHit(hit)" (mouseleave)="setHoveredHit(null)"
+                (click)="toggleSelectHit(hit, $event)"
+                [title]="selectedHit()?.id === hit.id ? 'Haz clic para desfijar este avistamiento' : 'Haz clic para fijar este avistamiento'">
                 <div class="d-flex gap-3 align-items-center">
-                  <div class="timeline-img-wrapper flex-shrink-0 position-relative d-flex align-items-center justify-content-center">
-                    <div class="placeholder-img-icon">
-                      <span class="fallback-text" style="font-size: 0.5rem; line-height: 1;">SIN IMAGEN</span>
+                  <div
+                    class="timeline-img-wrapper flex-shrink-0 position-relative d-flex align-items-center justify-content-center">
+                    <div class="subject-card-placeholder timeline-sighting-placeholder shadow-xs rounded-circle"
+                      [style.display]="hit.imagen ? 'none' : 'flex'">
+                      <span class="icon-svg icon-camara"
+                        style="width: 14px; height: 14px; background-color: var(--text-muted); opacity: 0.6;"></span>
                     </div>
-                    <img [src]="hit.imagen" (error)="onImageError($event)" class="border bg-dark timeline-sighting-img shadow-xs position-relative" style="z-index: 1;" />
+                    @if (hit.imagen) {
+                    <img [src]="hit.imagen" (error)="onImageError($event)"
+                      class="timeline-sighting-img rounded-circle shadow-xs" alt="Avistamiento" />
+                    }
                   </div>
                   <div class="text-truncate flex-grow-1">
                     <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
@@ -576,18 +626,32 @@
     }
   </div>
 
-  <!-- ── Sighting Preview Panel (Hover) ───────────────────── -->
-  @if (hoveredHit(); as hit) {
-  <div class="sighting-preview-panel" (mouseenter)="setHoveredHit(hit)" (mouseleave)="setHoveredHit(null)">
+  <!-- ── Sighting Preview Panel (Hover / Pinned) ───────────────────── -->
+  @if (activePreviewHit(); as hit) {
+  <div class="sighting-preview-panel" (mouseenter)="setHoveredHit(hit)"
+    (mouseleave)="!selectedHit() && setHoveredHit(null)">
 
     <!-- Image Hero -->
-    <div class="sighting-preview-hero">
-      <img [src]="hit.imagen" class="sighting-preview-img" alt="Avistamiento" />
-      <!-- Confidence badge -->
-      <div class="sighting-preview-conf" [class.conf-emerald]="hit.confiabilidad >= 0.8"
-        [class.conf-amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
-        [class.conf-rose]="hit.confiabilidad < 0.5">
-        {{ (hit.confiabilidad * 100) | number:'1.0-0' }}% Confianza
+    <div class="sighting-preview-hero position-relative">
+      <div class="subject-card-placeholder flex-column align-items-center justify-content-center"
+        [style.display]="hit.imagen ? 'none' : 'flex'"
+        style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; background-color: var(--bg-dark-surface, var(--bg-primary)); z-index: 1;">
+        <span class="icon-svg icon-camara" style="width: 32px; height: 32px; background-color: var(--text-muted); opacity: 0.6;"></span>
+        <span class="subject-card-placeholder-text mt-2" style="font-size: 0.75rem; letter-spacing: 0.05em; font-weight: 600;">SIN IMAGEN</span>
+      </div>
+
+      @if (hit.imagen) {
+      <img [src]="hit.imagen" (error)="onImageError($event)" class="sighting-preview-img" alt="Avistamiento" />
+      }
+
+      <!-- Top Bar Badges -->
+      <div class="d-flex align-items-center justify-content-between position-absolute top-0 start-0 w-100 p-3"
+        style="z-index: 2; pointer-events: none;">
+        <div class="sighting-preview-conf shadow-sm" [class.conf-emerald]="hit.confiabilidad >= 0.8"
+          [class.conf-amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
+          [class.conf-rose]="hit.confiabilidad < 0.5" style="position: static;">
+          {{ (hit.confiabilidad * 100) | number:'1.0-0' }}% Confianza
+        </div>
       </div>
     </div>
 
@@ -747,33 +811,52 @@
   </div>
   }
 
-  <!-- Modal Agregar Personas a Lista (Rostros - Multi-file) -->
+  <!-- Modal Agregar Sujeto / Fotos a Lista de Control (3 Pasos: Preparación -> Subiendo -> Resumen Exitosos vs Rechazados) -->
   @if (showAddFaceSubjectModal()) {
   <div class="modal-backdrop-custom glass-overlay d-flex align-items-center justify-content-center"
     (click)="closeAddFaceSubjectModal()">
-    <div class="modal-card-custom modal-card-premium p-5 shadow-lg border" (click)="$event.stopPropagation()">
-      <!-- Modal Header -->
+    <div class="modal-card-custom modal-card-premium modal-card-large p-5 shadow-lg border position-relative"
+      style="max-width: 680px;" (click)="$event.stopPropagation()">
+
+      <!-- Modal Header Dynamic per Step -->
       <div class="d-flex justify-content-between align-items-start mb-4">
         <div class="d-flex align-items-start gap-3">
           <div
             class="header-icon-wrapper d-flex align-items-center justify-content-center rounded-3 bg-primary-light text-primary"
             style="width: 40px; height: 40px; flex-shrink: 0; padding: 10px;">
-            <span class="icon-svg icon-user" style="width: 20px; height: 20px; background-color: currentColor;"></span>
+            @if (faceImportStep() === 'prepare') {
+            <span class="icon-svg icon-user" style="width: 20px; height: 20px;"></span>
+            } @else if (faceImportStep() === 'uploading') {
+            <span class="icon-svg icon-upload" style="width: 20px; height: 20px;"></span>
+            } @else {
+            <span class="icon-svg icon-check" style="width: 20px; height: 20px;"></span>
+            }
           </div>
           <div>
-            <h4 class="fw-bold mb-1 text-body fs-5" style="letter-spacing: -0.02em;">Agregar sujeto a Lista de Rostros
+            <h4 class="fw-bold mb-1 text-body fs-5" style="letter-spacing: -0.02em;">
+              @if (faceImportStep() === 'prepare') {
+              Importar Fotos de Sujetos a Lista de Control
+              } @else if (faceImportStep() === 'uploading') {
+              Subiendo y Validando Rostros...
+              } @else {
+              Resumen de Importación de Rostros
+              }
             </h4>
-            <p class="text-muted extra-small mb-0">Arrastra archivos o selecciona múltiples fotos para prerregistrar
-              sujetos en lote.</p>
+            <p class="text-muted extra-small mb-0">
+              @if (faceImportStep() === 'prepare') {
+              Arrastra archivos o selecciona múltiples fotos para registrarlas en lote.
+              } @else if (faceImportStep() === 'uploading') {
+              Procesando y verificando detección de rostros uno a uno en el servidor.
+              } @else {
+              Proceso completado. Revisa los registros aprobados y los rechazados a continuación.
+              }
+            </p>
           </div>
         </div>
-        <button class="btn-ghost rounded-circle shadow-sm border p-1" (click)="closeAddFaceSubjectModal()"
-          aria-label="Cerrar modal" [disabled]="isSavingSubject()" style="width: 32px; height: 32px;">
-          <span class="icon-svg icon-close text-muted" style="width: 16px; height: 16px;"></span>
-        </button>
       </div>
 
-      <!-- Modal Body -->
+      <!-- PASO 1: PREPARACIÓN -->
+      @if (faceImportStep() === 'prepare') {
       <div class="modal-body-custom">
         <!-- Zona de Carga con Drag & Drop -->
         <div class="mb-4">
@@ -795,7 +878,7 @@
             <span class="text-muted extra-small mt-1">Soporta JPG y PNG. Los nombres se extraerán automáticamente de los
               archivos.</span>
             } @else {
-            <!-- Grid Premium de Borradores de Importación (Responsivo) -->
+            <!-- Grid Premium de Borradores de Importación -->
             <div class="import-drafts-grid w-100 mt-2 overflow-y-auto scroll-container pe-1"
               (scroll)="onDraftsScroll($event)" (click)="$event.stopPropagation()">
               @for (draft of faceImportDrafts(); track draft.previewUrl; let idx = $index) {
@@ -806,20 +889,17 @@
                 <div class="draft-avatar-wrapper position-relative w-100 mb-3 overflow-hidden rounded-3 border">
                   <img [src]="draft.previewUrl" class="draft-avatar object-fit-cover w-100 h-100" />
 
-                  <!-- Overlay de eliminación (Oscurecimiento + aspa blanca de cierre) -->
                   <div class="draft-remove-overlay d-flex align-items-center justify-content-center cursor-pointer"
                     (click)="removeFile(idx)" title="Quitar sujeto">
                     <span class="icon-svg icon-close draft-remove-icon" style="width: 2.25rem; height: 2.25rem;"></span>
                   </div>
                 </div>
 
-                <!-- Insignia de Peso -->
                 <span class="badge bg-light text-muted border extra-small mb-2"
                   style="font-size: 0.62rem; font-weight: 600; padding: 0.15rem 0.4rem; border-radius: 4px;">
                   {{ formatFileSize(draft.file.size) }}
                 </span>
 
-                <!-- Nombre Asociado (Editable Inline Notion-style) -->
                 <div class="name-edit-container w-100 text-center">
                   @if (!draft.isEditingName) {
                   <div
@@ -843,26 +923,22 @@
               </div>
               }
 
-              <!-- Tarjeta Especial de Carga (Integrada en el Grid) -->
               <div
                 class="add-more-card-premium d-flex flex-column align-items-center justify-content-center rounded-4 border-dashed cursor-pointer transition-all"
                 (click)="fileInput.click()">
                 <div
                   class="add-icon-circle d-flex align-items-center justify-content-center mb-2 shadow-sm rounded-circle bg-primary-light text-primary">
-                  <span class="icon-svg icon-plus"
-                    style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                  <span class="icon-svg icon-plus" style="width: 14px; height: 14px;"></span>
                 </div>
                 <span class="text-primary fw-bold" style="font-size: 0.75rem;">Añadir Fotos</span>
               </div>
             </div>
 
-            <!-- Botón flotante para scroll/añadir fotos (Premium FAB) -->
             @if (showFloatingAddButton() && faceImportDrafts().length > 0) {
             <button
               class="btn-scroll-add-premium d-flex align-items-center gap-2 cursor-pointer shadow-lg animate-fade-in"
               (click)="scrollToBottom()" title="Desplazarse abajo">
-              <span class="icon-svg icon-close"
-                style="width: 12px; height: 12px; transform: rotate(45deg); background-color: currentColor;"></span>
+              <span class="icon-svg icon-close" style="width: 12px; height: 12px; transform: rotate(45deg);"></span>
               <span class="extra-small fw-bold">Añadir más fotos</span>
             </button>
             }
@@ -870,14 +946,12 @@
           </div>
         </div>
 
-        <!-- Indicador de Resumen de Carga (Premium Minimal Capsule Card) -->
         @if (faceImportDrafts().length > 0) {
         <div class="import-status-bar-linear d-flex align-items-center justify-content-between">
           <div class="d-flex align-items-center gap-3">
             <div
               class="status-icon-circle d-flex align-items-center justify-content-center rounded-circle text-primary">
-              <span class="icon-svg icon-user"
-                style="width: 12px; height: 12px; background-color: currentColor;"></span>
+              <span class="icon-svg icon-user" style="width: 12px; height: 12px;"></span>
             </div>
             <div class="d-flex align-items-center gap-2" style="font-size: 0.75rem;">
               <span class="text-muted fw-semibold">Sujetos preparados:</span>
@@ -894,24 +968,172 @@
         }
       </div>
 
-      <!-- Modal Footer -->
       <div class="d-flex gap-3 pt-4 mt-2">
         <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
-          (click)="closeAddFaceSubjectModal()" [disabled]="isSavingSubject()">
+          (click)="closeAddFaceSubjectModal()">
           Cancelar
         </button>
         <button
           class="btn btn-primary flex-fill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 border-radius-8 fs-btn-save"
-          (click)="saveFaceSubjects()" [disabled]="isSavingSubject() || faceImportDrafts().length === 0">
-          @if (isSavingSubject()) {
-          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-          <span>Importando (1 de {{ faceImportDrafts().length }})...</span>
-          } @else {
-          <span class="icon-svg icon-save" style="width: 14px; height: 14px; background-color: currentColor;"></span>
-          <span>Importar</span>
-          }
+          (click)="saveFaceSubjects()" [disabled]="faceImportDrafts().length === 0">
+          <span class="icon-svg icon-save" style="width: 14px; height: 14px;"></span>
+          <span>Importar ({{ faceImportDrafts().length }})</span>
         </button>
       </div>
+      }
+
+      <!-- PASO 2: SUBIENDO Y PROCESANDO EN TIEMPO REAL -->
+      @if (faceImportStep() === 'uploading') {
+      <div class="modal-body-custom py-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="d-flex align-items-center gap-2">
+            <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+            <span class="fw-bold text-body" style="font-size: 0.9rem;">
+              Procesando {{ uploadCurrentIndex() }} de {{ uploadTotalCount() }}
+            </span>
+          </div>
+          <span class="badge bg-primary text-white font-monospace rounded-pill px-3 py-1" style="font-size: 0.8rem;">
+            {{ uploadPercentage() }}%
+          </span>
+        </div>
+
+        <div class="progress mb-4"
+          style="height: 10px; border-radius: 99px; background-color: rgba(var(--primary-rgb), 0.1);">
+          <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar"
+            [style.width.%]="uploadPercentage()"></div>
+        </div>
+
+        <div class="p-3 rounded-4 border bg-surface-card d-flex align-items-center gap-3 mb-3 shadow-sm">
+          <div
+            class="status-icon-circle bg-primary-light text-primary rounded-circle p-2 d-flex align-items-center justify-content-center"
+            style="width: 38px; height: 38px;">
+            <span class="icon-svg icon-upload" style="width: 18px; height: 18px;"></span>
+          </div>
+          <div class="flex-grow-1 min-w-0">
+            <span class="extra-small text-muted d-block fw-semibold text-uppercase"
+              style="font-size: 0.68rem; letter-spacing: 0.05em;">Verificando en servidor facial</span>
+            <span class="fw-bold text-body text-truncate d-block" style="font-size: 0.88rem;"
+              [title]="uploadCurrentFileName()">{{ uploadCurrentFileName() }}</span>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-center align-items-center gap-3 pt-2">
+          <span
+            class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1.5 rounded-pill extra-small fw-semibold">
+            ✓ Exitosos: {{ successfulUploads().length }}
+          </span>
+          <span
+            class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1.5 rounded-pill extra-small fw-semibold">
+            ✕ Rechazados: {{ failedUploads().length }}
+          </span>
+        </div>
+      </div>
+      }
+
+      <!-- PASO 3: RESUMEN FINAL (LISTA IZQUIERDA Y DERECHA: SUBIDOS VS RECHAZADOS) -->
+      @if (faceImportStep() === 'summary') {
+      <div class="modal-body-custom">
+        <div class="row g-3">
+          <!-- Columna Izquierda: Subidos con Éxito (Verde) -->
+          <div class="col-6">
+            <div class="p-3 rounded-4 border border-success-subtle bg-success-subtle-light h-100 d-flex flex-column"
+              style="min-height: 280px;">
+              <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-success-subtle">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="status-dot online"></span>
+                  <span class="fw-bold text-success" style="font-size: 0.85rem;">Subidos con Éxito</span>
+                </div>
+                <span class="badge bg-success text-white font-monospace rounded-pill px-2 py-0.5"
+                  style="font-size: 0.72rem;">
+                  {{ successfulUploads().length }}
+                </span>
+              </div>
+
+              <div class="upload-results-scroll overflow-y-auto scroll-container pe-1 flex-grow-1"
+                style="max-height: 250px;">
+                @if (successfulUploads().length === 0) {
+                <p class="extra-small text-muted italic text-center py-4 mb-0">Ninguna foto fue registrada con éxito.
+                </p>
+                } @else {
+                <div class="d-flex flex-column gap-2">
+                  @for (item of successfulUploads(); track item.previewUrl) {
+                  <div
+                    class="d-flex align-items-center justify-content-between p-2 rounded-3 border bg-surface-card shadow-xs"
+                    style="font-size: 0.75rem;">
+                    <div class="d-flex align-items-center gap-2 min-w-0">
+                      <img [src]="item.previewUrl" class="rounded-circle object-fit-cover flex-shrink-0"
+                        style="width: 28px; height: 28px;" />
+                      <span class="fw-semibold text-body text-truncate" [title]="item.name">{{ item.name }}</span>
+                    </div>
+                    <span
+                      class="badge bg-success-subtle text-success extra-small flex-shrink-0 px-2 py-0.5 rounded">Aprobado</span>
+                  </div>
+                  }
+                </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Rechazados / Fallidos (Rojo) -->
+          <div class="col-6">
+            <div class="p-3 rounded-4 border border-danger-subtle bg-danger-subtle-light h-100 d-flex flex-column"
+              style="min-height: 280px;">
+              <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-danger-subtle">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="status-dot offline"></span>
+                  <span class="fw-bold text-danger" style="font-size: 0.85rem;">Rechazados / Fallidos</span>
+                </div>
+                <span class="badge bg-danger text-white font-monospace rounded-pill px-2 py-0.5"
+                  style="font-size: 0.72rem;">
+                  {{ failedUploads().length }}
+                </span>
+              </div>
+
+              <div class="upload-results-scroll overflow-y-auto scroll-container pe-1 flex-grow-1"
+                style="max-height: 250px;">
+                @if (failedUploads().length === 0) {
+                <div class="d-flex flex-column align-items-center justify-content-center text-center py-4">
+                  <span class="icon-svg icon-check text-success mb-2" style="width: 24px; height: 24px;"></span>
+                  <p class="extra-small text-success fw-bold mb-0">¡Todas las fotos fueron procesadas sin ningún error!
+                  </p>
+                </div>
+                } @else {
+                <div class="d-flex flex-column gap-2">
+                  @for (item of failedUploads(); track item.previewUrl) {
+                  <div class="d-flex flex-column p-2 rounded-3 border border-danger-subtle bg-surface-card shadow-xs"
+                    style="font-size: 0.75rem;">
+                    <div class="d-flex align-items-center gap-2 min-w-0 mb-1">
+                      <img [src]="item.previewUrl" class="rounded-circle object-fit-cover flex-shrink-0"
+                        style="width: 28px; height: 28px;" />
+                      <span class="fw-semibold text-body text-truncate" [title]="item.name">{{ item.name }}</span>
+                    </div>
+                    <span class="extra-small text-danger opacity-90 text-truncate" [title]="item.errorMessage">
+                      {{ item.errorMessage || 'No se detectó un rostro válido en la imagen.' }}
+                    </span>
+                  </div>
+                  }
+                </div>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-3 pt-4 mt-2">
+        @if (failedUploads().length > 0) {
+        <button class="btn btn-outline-danger flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
+          (click)="retryFailedFaceUploads()">
+          Reintentar Fallidos ({{ failedUploads().length }})
+        </button>
+        }
+        <button class="btn btn-primary flex-fill py-2 fw-semibold border-radius-8 fs-btn-save"
+          (click)="closeAddFaceSubjectModal()">
+          Finalizar
+        </button>
+      </div>
+      }
     </div>
   </div>
   }
@@ -1137,27 +1359,17 @@
   }
 
   <!-- Modal de Confirmación: Eliminar Lista de Control (REUTILIZABLE DRY) -->
-  <app-confirm-delete-modal
-    [show]="showDeleteListModal()"
-    title="Eliminar Lista de Control"
-    [itemName]="listToDelete()?.name || ''"
-    messagePrefix="¿Estás seguro de que deseas eliminar la lista "
+  <app-confirm-delete-modal [show]="showDeleteListModal()" title="Eliminar Lista de Control"
+    [itemName]="listToDelete()?.name || ''" messagePrefix="¿Estás seguro de que deseas eliminar la lista "
     messageSuffix="? Se eliminarán todos los sujetos asociados y esta acción no se puede deshacer."
-    [isDeleting]="isDeletingList()"
-    (confirm)="confirmDeleteWatchlist()"
-    (cancel)="closeDeleteListModal()">
+    [isDeleting]="isDeletingList()" (confirm)="confirmDeleteWatchlist()" (cancel)="closeDeleteListModal()">
   </app-confirm-delete-modal>
 
   <!-- Modal de Confirmación: Eliminar Sujeto (REUTILIZABLE DRY) -->
-  <app-confirm-delete-modal
-    [show]="showDeleteSubjectModal()"
-    title="Eliminar Registro"
-    [itemName]="subjectToDeleteName() || ''"
-    messagePrefix="¿Estás seguro de que deseas eliminar a "
-    messageSuffix=" de la lista de control? Esta acción no se puede deshacer."
-    [isDeleting]="isDeletingSubject()"
-    (confirm)="confirmDeleteSubject()"
-    (cancel)="closeDeleteSubjectModal()">
+  <app-confirm-delete-modal [show]="showDeleteSubjectModal()" title="Eliminar Registro"
+    [itemName]="subjectToDeleteName() || ''" messagePrefix="¿Estás seguro de que deseas eliminar a "
+    messageSuffix=" de la lista de control? Esta acción no se puede deshacer." [isDeleting]="isDeletingSubject()"
+    (confirm)="confirmDeleteSubject()" (cancel)="closeDeleteSubjectModal()">
   </app-confirm-delete-modal>
   <!-- Modal Editar Persona (Rostros) -->
   @if (showEditFaceSubjectModal()) {
@@ -1292,4 +1504,12 @@
       alt="Imagen completa" />
   </div>
   }
+
+  <!-- Modal de Confirmación: Eliminar Registros Seleccionados (REUTILIZABLE DRY) -->
+  <app-confirm-delete-modal [show]="showDeleteSubjectModal()" title="Eliminar Registros Seleccionados"
+    [itemName]="selectedSubjectDetailIds().size + (listType() === 'plate_recognition' ? ' placa(s)' : ' sujeto(s)')"
+    messagePrefix="¿Estás seguro de que deseas eliminar "
+    messageSuffix=" de esta lista de control? Esta acción removerá los registros seleccionados de forma permanente y no se puede deshacer."
+    [isDeleting]="isDeletingSubject()" (confirm)="confirmDeleteSelectedSubjects()" (cancel)="closeDeleteSubjectModal()">
+  </app-confirm-delete-modal>
 </div>

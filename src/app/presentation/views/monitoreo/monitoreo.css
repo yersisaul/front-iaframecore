@@ -1,6 +1,15 @@
 /* =========================================================================
    MONITOREO VIEW LAYOUT (Flexbox Fluididad Consistente)
    ========================================================================= */
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
 .monitoreo-view-container {
   height: 100%;
   min-height: 0;
@@ -8,7 +17,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 0.75rem 0.5rem 0.5rem 0.5rem;
 }
 
 .header-page-title {
@@ -884,7 +892,6 @@ body.is-box-selecting * {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 18px 24px !important;
   box-shadow: none !important;
   transition: background-color 0.2s ease, border-color 0.2s ease;
   position: relative;
@@ -911,8 +918,12 @@ body.is-box-selecting * {
 body.is-timeline-dragging,
 body.is-timeline-dragging *,
 .timeline-slider-wrapper.is-dragging,
-.timeline-slider-wrapper.is-dragging * {
+.timeline-slider-wrapper.is-dragging *,
+.timeline-slider-wrapper.is-seeking,
+.timeline-slider-wrapper.is-seeking * {
   cursor: grabbing !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -969,18 +980,16 @@ body.is-timeline-dragging *,
 }
 
 .vms-flag-item:hover {
-  transform: translateX(-50%) rotate(45deg) scale(1.6);
-  box-shadow: 0 0 12px var(--flag-color, #2b7fff);
+  transform: translateX(-50%) rotate(45deg) scale(1.25);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
   z-index: 55 !important;
 }
 
-/* Estado Seleccionado */
+/* Estado Seleccionado (Sin borde ni resplandor azul, zoom reducido) */
 .vms-flag-item.is-selected {
-  transform: translateX(-50%) rotate(45deg) scale(1.85);
+  transform: translateX(-50%) rotate(45deg) scale(1.5);
   border-color: #ffffff !important;
-  box-shadow:
-    0 0 0 3.5px rgba(var(--primary-rgb, 43, 127, 255), 0.45),
-    0 0 16px var(--flag-color, #2b7fff);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   z-index: 65 !important;
 }
 
@@ -988,15 +997,13 @@ body.is-timeline-dragging *,
 [data-bs-theme="dark"] .vms-flag-item,
 [data-theme="dark"] .vms-flag-item {
   border: 1.5px solid rgba(15, 23, 42, 0.9);
-  box-shadow: 0 0 8px var(--flag-color, #2b7fff);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 [data-bs-theme="dark"] .vms-flag-item.is-selected,
 [data-theme="dark"] .vms-flag-item.is-selected {
   border-color: #ffffff !important;
-  box-shadow:
-    0 0 0 4px rgba(255, 255, 255, 0.4),
-    0 0 20px var(--flag-color, #2b7fff);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1392,12 +1399,14 @@ body.is-timeline-dragging *,
   transition: left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Desactivar transiciones CSS durante el arrastre para respuesta 1:1 fluida sin luchar contra la animación CSS */
+/* Desactivar transiciones CSS durante el arrastre/búsqueda para respuesta 1:1 fluida sin luchar contra la animación CSS */
 body.is-timeline-dragging *,
 body.is-timeline-dragging .timeline-playhead,
 body.is-timeline-dragging .timeline-ruler-hash,
 body.is-timeline-dragging .timeline-ruler-time,
-body.is-timeline-dragging .event-flag-pin {
+body.is-timeline-dragging .event-flag-pin,
+.timeline-slider-wrapper.is-seeking .timeline-playhead,
+.timeline-slider-wrapper.is-dragging .timeline-playhead {
   transition: none !important;
 }
 
@@ -1924,8 +1933,6 @@ body.is-timeline-dragging .event-flag-pin {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 16px;
-  padding: 0rem 2.5rem;
   background-color: var(--bg-surface);
   width: 100%;
 }
@@ -2065,6 +2072,59 @@ body.is-timeline-dragging .event-flag-pin {
   border-color: var(--primary) !important;
   color: var(--text-on-primary-btn, #ffffff) !important;
   box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2) !important;
+}
+
+.modal-filter-pill .dropdown-chevron {
+  transition: transform 0.25s ease;
+  background-color: currentColor;
+}
+
+.modal-filter-pill .dropdown-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+.modal-filter-pill .filter-icon {
+  background-color: currentColor;
+}
+
+.modal-filter-dropdown-menu {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 16px !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  padding: 10px !important;
+  min-width: 210px !important;
+}
+
+.modal-filter-dropdown-menu .dropdown-item {
+  color: var(--text-secondary);
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  padding: 8px 16px !important;
+  border-radius: 99px !important;
+  border: 1px solid transparent;
+  background: transparent;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-filter-dropdown-menu .dropdown-item:hover:not(.active) {
+  background-color: var(--primary-light) !important;
+  color: var(--primary) !important;
+  border-color: rgba(var(--primary-rgb), 0.15) !important;
+}
+
+.modal-filter-dropdown-menu .dropdown-item.active {
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3) !important;
 }
 
 /* Node collapsible container */
@@ -2294,8 +2354,8 @@ body.is-timeline-dragging .event-flag-pin {
 
 .magnifier-lens {
   position: absolute;
-  width: 350px;
-  height: 350px;
+  width: 500px;
+  height: 500px;
   border-radius: 50%;
   border: 3px solid rgba(255, 255, 255, 0.85);
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 0, 0, 0.25);
@@ -2534,6 +2594,7 @@ body.is-timeline-dragging .event-flag-pin {
   overflow: hidden !important;
   cursor: default !important;
   user-select: none;
+  touch-action: none !important;
 }
 
 .canvas-viewport:active {
@@ -2891,26 +2952,28 @@ body.is-timeline-dragging .event-flag-pin {
   box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3) !important;
 }
 
-/* Minimapa de Navegación Premium (PIP Minimalista del Lienzo Infinito 100% Responsivo) */
+/* ═══════════════════════════════════════════════════════════
+   MAPA DE NAVEGACIÓN PIP (MINIMAP)
+   ═══════════════════════════════════════════════════════════ */
 .canvas-minimap-container {
   position: absolute;
   top: clamp(0.6rem, 1.5vh, 1.2rem);
   right: clamp(0.6rem, 1.5vw, 1.2rem);
-  width: clamp(10rem, 16vw, 14.5rem);
-  height: clamp(7.5rem, 14vh, 11.5rem);
-  background-color: rgba(14, 14, 14, 0.85);
-  backdrop-filter: blur(1.25rem);
-  -webkit-backdrop-filter: blur(1.25rem);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  width: clamp(9.5rem, 15vw, 13.5rem);
+  height: clamp(7rem, 13vh, 10.5rem);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 41, 59, 0.92) 100%);
+  backdrop-filter: blur(1.25rem) saturate(1.6);
+  -webkit-backdrop-filter: blur(1.25rem) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0.75rem;
   padding: 0.35rem;
   z-index: 1000;
-  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.65), inset 0 0 1px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: auto;
-  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   animation: minimapFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -2929,46 +2992,38 @@ body.is-timeline-dragging .event-flag-pin {
 .minimap-viewport-area {
   width: 100%;
   height: 100%;
-  background-color: rgba(6, 9, 16, 0.85);
+  background-color: rgba(15, 23, 42, 0.5);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 8px 8px;
   border-radius: 0.5rem;
   overflow: hidden;
   position: relative;
   cursor: crosshair;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-/* Borde del Layout Completo */
-.minimap-layout-outline {
-  border: 1px dashed rgba(255, 255, 255, 0.35);
-  background-color: rgba(255, 255, 255, 0.03);
-  pointer-events: none;
-  border-radius: 0.25rem;
-  z-index: 2;
-  transition: all 0.15s ease;
 }
 
 .minimap-slot-mini {
-  background-color: rgba(255, 255, 255, 0.06);
-  border: 0.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.15rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 0.25rem;
   pointer-events: none;
   z-index: 3;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .minimap-slot-mini.occupied {
-  background-color: rgba(59, 130, 246, 0.45) !important;
-  border: 1px solid rgba(147, 197, 253, 0.85) !important;
-  box-shadow: 0 0 0.5rem rgba(59, 130, 246, 0.35) !important;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border: 1px solid rgba(147, 197, 253, 0.4) !important;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35) !important;
+  border-radius: 0.25rem !important;
   z-index: 5;
 }
 
-/* Indicador de Ventana de Visibilidad Premium (Cian Brillante) */
+/* Indicador de Viewport Minimalista Nítido con Glow Cyan */
 .minimap-viewport-indicator {
-  border: 2px solid #38bdf8 !important;
-  background-color: rgba(56, 189, 248, 0.22) !important;
-  border-radius: 0.25rem !important;
-  box-shadow: 0 0 0.85rem rgba(56, 189, 248, 0.7), inset 0 0 0.3rem rgba(56, 189, 248, 0.4) !important;
+  border: 1.5px solid #38bdf8 !important;
+  background-color: rgba(56, 189, 248, 0.15) !important;
+  border-radius: 0.35rem !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4), inset 0 0 8px rgba(56, 189, 248, 0.12) !important;
   pointer-events: none;
   z-index: 10;
 }
@@ -4055,8 +4110,6 @@ body.is-timeline-dragging .event-flag-pin {
   position: relative;
   overflow: visible !important;
   z-index: 100;
-  margin-bottom: 1rem !important;
-  padding: 0.5rem 0;
   animation: filterBarSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 

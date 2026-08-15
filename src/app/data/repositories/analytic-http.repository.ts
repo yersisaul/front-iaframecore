@@ -34,6 +34,27 @@ export class AnalyticHttpRepository implements IAnalyticRepository {
     );
   }
 
+  register(payload: any): Observable<any> {
+    console.log('[AnalyticHttpRepository] POST /frontend/analytics/ payload:', payload);
+    return this.http.post<any>(`${this.apiUrl}/`, payload).pipe(
+      catchError(err => {
+        console.error('[AnalyticHttpRepository] Error en register (POST):', err);
+        throw err;
+      })
+    );
+  }
+
+  update(analyticId: string, payload: any): Observable<any> {
+    // PUT /frontend/analytics/{analytic_id}
+    console.log(`[AnalyticHttpRepository] PUT /frontend/analytics/${analyticId} payload:`, payload);
+    return this.http.put<any>(`${this.apiUrl}/${analyticId}`, payload).pipe(
+      catchError(err => {
+        console.error(`[AnalyticHttpRepository] Error en update (PUT ${analyticId}):`, err);
+        throw err;
+      })
+    );
+  }
+
   updateStatus(analyticId: string, status: 'active' | 'inactive'): Observable<any> {
     // PATCH /frontend/analytics/update_status/{analytic_id}
     return this.http.patch(`${this.apiUrl}/update_status/${analyticId}`, {

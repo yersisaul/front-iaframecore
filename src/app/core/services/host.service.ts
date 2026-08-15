@@ -139,6 +139,10 @@ export class HostService {
     return this.hostRepository.getHeartbeat(fingerprint);
   }
 
+  getHostInfoModels(fingerprint: string): Observable<any> {
+    return this.hostRepository.getInfoModels(fingerprint);
+  }
+
   updateHostMetrics(fingerprint: string, metrics: HostMetrics | null, status?: string): void {
     this.allHosts.update(hosts => 
       hosts.map(h => {

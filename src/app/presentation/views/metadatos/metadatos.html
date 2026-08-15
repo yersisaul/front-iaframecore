@@ -59,7 +59,31 @@
         </button>
         @if (activeDropdown() === 'camaras') {
         <div class="filter-dropdown-menu dropdown-camaras p-2 scrollable-menu" (click)="$event.stopPropagation()">
-          @for (cam of camarasOptions(); track cam) {
+          <!-- Searchbar interno de cámaras -->
+          <div class="camera-search-wrapper px-1 pb-2">
+            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1" style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
+              <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
+              <input
+                #cameraSearchInput
+                type="text"
+                class="camera-search-input border-0 bg-transparent w-100"
+                placeholder="Buscar cámara..."
+                (input)="cameraSearch.set(cameraSearchInput.value)"
+                (click)="$event.stopPropagation()"
+                autocomplete="off"
+                style="font-size: 0.8rem; outline: none; min-width: 0;" />
+              @if (cameraSearch()) {
+              <button type="button" class="btn-ghost p-0 d-flex" style="opacity: 0.5; line-height: 1;"
+                (click)="cameraSearchInput.value = ''; cameraSearch.set(''); $event.stopPropagation()" title="Limpiar búsqueda">
+                <span style="font-size: 0.75rem;">✕</span>
+              </button>
+              }
+            </div>
+          </div>
+          @if (filteredCamarasOptions().length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin resultados</div>
+          }
+          @for (cam of filteredCamarasOptions(); track cam) {
           <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
             <input type="checkbox" [checked]="tempFilters().camaras.includes(cam)"
               (change)="toggleMultiSelectFilter('camaras', cam)" class="form-check-input flex-shrink-0" />
@@ -576,23 +600,10 @@
       </div>
       }
 
-      <!-- BOTONES DE APLICAR Y LIMPIAR FILTROS -->
-      <div class="filter-actions-group d-flex align-items-center gap-2">
-        @if (hasActiveFilters()) {
-        <button (click)="onResetFilters()"
-          class="btn btn-outline-secondary btn-premium-action d-flex align-items-center gap-2">
-          <span class="icon-svg icon-close" style="width: 14px; height: 14px;"></span>
-          Limpiar Filtros
-        </button>
-        }
-
-        @if (hasPendingFilterChanges()) {
-        <button (click)="onApplyFilters()" class="btn btn-primary btn-premium-action d-flex align-items-center gap-2">
-          <span class="icon-svg icon-save" style="width: 14px; height: 14px; background-color: currentColor;"></span>
-          Aplicar Filtros
-        </button>
-        }
-      </div>
+      <!-- BOTONES DE APLICAR Y LIMPIAR FILTROS (COMPONENTE COMPARTIDO DRY) -->
+      <app-filter-actions [hasActiveFilters]="hasActiveFilters()" [hasPendingChanges]="hasPendingFilterChanges()"
+        (reset)="onResetFilters()" (apply)="onApplyFilters()">
+      </app-filter-actions>
     </div>
   </div>
   }
@@ -718,93 +729,92 @@
               </div>
             </div>
           </div>
-
-          <!-- Floating popover on hover for attribute badges -->
-          @if (activeHoverCardId() === record.id) {
-          <div class="metadata-card-popover" [style.left.px]="mouseX()" [style.top.px]="mouseY()">
-            <div class="popover-header d-flex align-items-center justify-content-between">
-              <div class="d-flex align-items-center gap-1.5">
-                <span class="icon-svg icon-box text-primary popover-header-icon"
-                  style="width: 12px; height: 12px;"></span>
-                <span class="popover-header-title text-muted text-uppercase fw-bold">Atributos</span>
-              </div>
-              <span class="badge bg-secondary-light text-secondary text-capitalize"
-                style="font-size: 0.65rem; padding: 2px 6px;">
-                {{ activeIndex() }}
-              </span>
-            </div>
-
-            <!-- Sección Identificación -->
-            @if (getTipoObjeto(record) || getEdad(record) || getGenero(record) || getReconocimiento(record)) {
-            <div class="popover-section">
-              <div class="popover-section-title text-muted text-uppercase fw-bold">Identificación</div>
-              <div class="attributes-grid">
-                @if (getTipoObjeto(record)) {
-                <span class="attribute-pill object-type-pill text-capitalize">
-                  <span class="pill-dot"></span>
-                  {{ getTipoObjeto(record) }}
-                </span>
-                }
-                @if (getEdad(record)) {
-                <span class="attribute-pill age-pill text-capitalize">
-                  Edad: {{ getEdad(record) }}
-                </span>
-                }
-                @if (getGenero(record)) {
-                <span class="attribute-pill gender-pill text-capitalize">
-                  Género: {{ getGenero(record) }}
-                </span>
-                }
-                @if (getReconocimiento(record)) {
-                <span class="attribute-pill recognition-pill text-capitalize">
-                  {{ getReconocimiento(record) }}
-                </span>
-                }
-              </div>
-            </div>
-            }
-
-            <!-- Sección Posturas -->
-            @if (getPosturas(record) && getPosturas(record).length > 0) {
-            <div class="popover-section">
-              <div class="popover-section-title text-muted text-uppercase fw-bold">Posturas</div>
-              <div class="attributes-grid">
-                @for (pos of getPosturas(record); track $index) {
-                <span class="attribute-pill posture-pill text-capitalize">
-                  {{ pos.postura }}
-                  <span class="posture-count">{{ pos.conteo }}</span>
-                </span>
-                }
-              </div>
-            </div>
-            }
-
-            <!-- Sección Colores -->
-            @if (record.colores && record.colores.length > 0) {
-            <div class="popover-section">
-              <div class="popover-section-title text-muted text-uppercase fw-bold">Colores</div>
-              <div class="attributes-grid">
-                @for (col of record.colores; track $index) {
-                <span class="color-pill-v2 d-inline-flex align-items-center rounded-pill py-1 px-2 border"
-                  [style.background-color]="getColorStyle(col)"
-                  [style.color]="getColorLuminance(col.r, col.g, col.b) > 0.6 ? '#1e293b' : '#ffffff'"
-                  [style.border-color]="getColorLuminance(col.r, col.g, col.b) > 0.9 ? '#cbd5e1' : 'transparent'"
-                  [title]="col.colorText + ' (' + (col.porcentaje * 100 | number:'1.0-0') + '%)'">
-                  <span class="color-text text-capitalize" style="font-size: 0.7rem; font-weight: 600;">{{ col.colorText
-                    }}</span>
-                  <span class="color-percentage-v2" style="font-size: 0.65rem; opacity: 0.85; margin-left: 4px;">{{
-                    (col.porcentaje * 100) | number:'1.0-0' }}%</span>
-                </span>
-                }
-              </div>
-            </div>
-            }
-          </div>
-          }
-
         </div>
         }
       </div>
+
+      <!-- Floating popover on hover for attribute badges (Single global viewport-elevated overlay) -->
+      @if (activeHoverCardId() && activeHoverRecord(); as record) {
+      <div class="metadata-card-popover" [style.left.px]="mouseX()" [style.top.px]="mouseY()">
+        <div class="popover-header d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-1.5">
+            <span class="icon-svg icon-box text-primary popover-header-icon"
+              style="width: 12px; height: 12px;"></span>
+            <span class="popover-header-title text-muted text-uppercase fw-bold">Atributos</span>
+          </div>
+          <span class="badge bg-secondary-light text-secondary text-capitalize"
+            style="font-size: 0.65rem; padding: 2px 6px;">
+            {{ activeIndex() }}
+          </span>
+        </div>
+
+        <!-- Sección Identificación -->
+        @if (getTipoObjeto(record) || getEdad(record) || getGenero(record) || getReconocimiento(record)) {
+        <div class="popover-section">
+          <div class="popover-section-title text-muted text-uppercase fw-bold">Identificación</div>
+          <div class="attributes-grid">
+            @if (getTipoObjeto(record)) {
+            <span class="attribute-pill object-type-pill text-capitalize">
+              <span class="pill-dot"></span>
+              {{ getTipoObjeto(record) }}
+            </span>
+            }
+            @if (getEdad(record)) {
+            <span class="attribute-pill age-pill text-capitalize">
+              Edad: {{ getEdad(record) }}
+            </span>
+            }
+            @if (getGenero(record)) {
+            <span class="attribute-pill gender-pill text-capitalize">
+              Género: {{ getGenero(record) }}
+            </span>
+            }
+            @if (getReconocimiento(record)) {
+            <span class="attribute-pill recognition-pill text-capitalize">
+              {{ getReconocimiento(record) }}
+            </span>
+            }
+          </div>
+        </div>
+        }
+
+        <!-- Sección Posturas -->
+        @if (getPosturas(record) && getPosturas(record).length > 0) {
+        <div class="popover-section">
+          <div class="popover-section-title text-muted text-uppercase fw-bold">Posturas</div>
+          <div class="attributes-grid">
+            @for (pos of getPosturas(record); track $index) {
+            <span class="attribute-pill posture-pill text-capitalize">
+              {{ pos.postura }}
+              <span class="posture-count">{{ pos.conteo }}</span>
+            </span>
+            }
+          </div>
+        </div>
+        }
+
+        <!-- Sección Colores -->
+        @if (record.colores && record.colores.length > 0) {
+        <div class="popover-section">
+          <div class="popover-section-title text-muted text-uppercase fw-bold">Colores</div>
+          <div class="attributes-grid">
+            @for (col of record.colores; track $index) {
+            <span class="color-pill-v2 d-inline-flex align-items-center rounded-pill py-1 px-2 border"
+              [style.background-color]="getColorStyle(col)"
+              [style.color]="getColorLuminance(col.r, col.g, col.b) > 0.6 ? '#1e293b' : '#ffffff'"
+              [style.border-color]="getColorLuminance(col.r, col.g, col.b) > 0.9 ? '#cbd5e1' : 'transparent'"
+              [title]="col.colorText + ' (' + (col.porcentaje * 100 | number:'1.0-0') + '%)'">
+              <span class="color-text text-capitalize" style="font-size: 0.7rem; font-weight: 600;">{{ col.colorText
+                }}</span>
+              <span class="color-percentage-v2" style="font-size: 0.65rem; opacity: 0.85; margin-left: 4px;">{{
+                (col.porcentaje * 100) | number:'1.0-0' }}%</span>
+            </span>
+            }
+          </div>
+        </div>
+        }
+      </div>
+      }
       }
 
       <!-- Paginación (REUTILIZABLE DRY) -->

@@ -1,124 +1,199 @@
 @if (event; as selectedEvent) {
-<div class="modal-backdrop-blur d-flex align-items-center justify-content-center" (click)="onClose()">
-  <div class="premium-detail-modal d-flex flex-column flex-md-row overflow-hidden shadow-2xl"
-    (click)="$event.stopPropagation()">
+<!-- Backdrop Overlay -->
+<div class="event-detail-backdrop" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)"></div>
 
-    <!-- Left side: Image (80%) -->
-    <div
-      class="modal-image-panel d-flex align-items-center justify-content-center bg-dark position-relative overflow-hidden">
-      <!-- Fallback placeholder (visible if no image or if image fails 404) -->
-      <div class="placeholder-img-icon">
-        <span class="icon-svg icon-warning fallback-icon" style="width: 48px; height: 48px;"></span>
-        <span class="fallback-text" style="font-size: 0.85rem;">SIN IMAGEN</span>
-      </div>
+<!-- Componente 1: Workspace Izquierdo de Imagen Centrada (3/4 del Ancho de Pantalla) -->
+<div class="event-image-workspace" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)">
+  <div class="event-image-container">
+    @if (activeMediaType() === 'video' && selectedEvent.urlVideo) {
+    <div class="modal-img-wrapper position-relative overflow-hidden shadow-2xl"
+      [style.aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null"
+      [style.--aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null">
+      <video [src]="selectedEvent.urlVideo" (loadedmetadata)="onVideoLoadedMetadata($event)" class="event-capture-video select-none" controls autoplay loop></video>
+    </div>
+    } @else if (selectedEvent.urlImg && !hasImageError()) {
+    <div #imgWrapper class="modal-img-wrapper position-relative overflow-hidden shadow-2xl" (mousemove)="onZoomMouseMove($event)"
+      (click)="toggleZoom($event)" [class.zoom-active-cursor]="isZoomed()"
+      [style.aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null"
+      [style.--aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null">
+      <!-- Imagen respetando la relación de aspecto original sin deformarse -->
+      <img [src]="selectedEvent.urlImg" (load)="onImageLoad($event)" (error)="onImageError($event)" class="event-capture-img select-none"
+        alt="Vista previa del evento" />
 
-      @if (selectedEvent.urlImg) {
-      <div class="modal-img-wrapper position-relative overflow-hidden shadow-lg" style="z-index: 1;" (mousemove)="onZoomMouseMove($event)"
-        (click)="toggleZoom($event)" [class.zoom-active-cursor]="isZoomed()">
-        <!-- Normal image -->
-        <img [src]="selectedEvent.urlImg" (error)="onImageError($event)" class="w-100 h-100 select-none object-fit-contain transition-all"
-          alt="Full screen preview" />
-
-        <!-- Magnifier circular lens -->
-        @if (isZoomed()) {
-        <div class="magnifier-lens" [style.left.px]="zoomX()" [style.top.px]="zoomY()"
-          [style.background-image]="'url(' + selectedEvent.urlImg + ')'"
-          [style.background-position]="zoomBgX() + 'px ' + zoomBgY() + 'px'"
-          [style.background-size]="zoomBgWidth() + 'px ' + zoomBgHeight() + 'px'">
-        </div>
-        }
+      <!-- Lente Lupa Magnifier Zoom Ajustable con Rueda / Pellizco -->
+      @if (isZoomed()) {
+      <div class="magnifier-lens"
+        [style.left.px]="zoomX()"
+        [style.top.px]="zoomY()"
+        [style.width.px]="zoomLensDiameter()"
+        [style.height.px]="zoomLensDiameter()"
+        [style.background-image]="'url(' + selectedEvent.urlImg + ')'"
+        [style.background-position]="zoomBgX() + 'px ' + zoomBgY() + 'px'"
+        [style.background-size]="zoomBgWidth() + 'px ' + zoomBgHeight() + 'px'">
       </div>
       }
     </div>
+    } @else {
+    <!-- Texto centrado sin ningún contenedor ni borde con alta legibilidad en tema claro y oscuro -->
+    <div class="no-image-text-container select-none">
+      <span class="icon-svg icon-warning no-image-icon"></span>
+      <span class="no-image-title text-uppercase">SIN VISTA PREVIA DE IMAGEN</span>
+      <span class="no-image-subtitle">Este evento no contiene captura de imagen adjunta</span>
+    </div>
+    }
+  </div>
+</div>
 
-    <!-- Right side: Event Detail Panel (20%) -->
-    <div class="modal-details-panel">
+<!-- Componente 2: Panel Desplegable Derecho (1/4 de Pantalla = 25vw, Estilo CameraDetailDrawer) -->
+<div class="event-detail-drawer shadow-2xl" (click)="$event.stopPropagation()">
+  <div class="drawer-content p-4 h-100 d-flex flex-column justify-content-between">
+    <div class="drawer-scroll-area">
 
-      <!-- Sighting Preview Header -->
-      <div class="sighting-preview-body-header p-4 pb-2 d-flex justify-content-between align-items-start">
-        <div>
-          <h5 class="sighting-preview-title fw-bold mb-1">Detalle del Evento</h5>
-          <p class="text-muted small mb-0">Información capturada en el evento de detección</p>
+      <!-- Cabecera del Drawer (Estilo idéntico a CameraDetailDrawer) -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-uppercase fw-bold text-muted" style="font-size: 0.72rem; letter-spacing: 0.08em;">Detalle
+            del Evento</span>
         </div>
-        <!-- Close Button (Ghost Style) -->
-        <button class="btn-ghost d-flex align-items-center justify-content-center"
-          style="width: 32px; height: 32px; border-radius: 50%; margin-top: -4px; margin-right: -8px;"
-          (click)="onClose()" aria-label="Cerrar modal">
-          <span class="icon-svg icon-close text-muted" style="width: 16px; height: 16px;"></span>
-        </button>
+
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn-ghost close-drawer-btn d-flex align-items-center justify-content-center"
+            (click)="onClose()" aria-label="Cerrar panel">
+            <span class="icon-svg icon-close text-muted" style="width: 16px; height: 16px;"></span>
+          </button>
+        </div>
       </div>
 
-      <!-- Scrollable body -->
-      <div class="scroll-details-content p-4 d-flex flex-column gap-3">
-        <!-- Meta list -->
-        <div class="sighting-preview-meta d-flex flex-column gap-2.5">
-          <!-- Cámara -->
-          <div class="sighting-preview-row">
-            <div class="sighting-preview-icon sp-icon--camera">
-              <span class="icon-svg icon-camara"
-                style="width: 14px; height: 14px; background-color: currentColor;"></span>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">Cámara</span>
-              <span class="sp-value">{{ selectedEvent.nombreCamara }}</span>
-            </div>
+      <!-- Tarjeta Contenedora de la Cámara (Estilo idéntico a CameraDetailDrawer) -->
+      <div class="card p-3 mb-4"
+        style="background-color: var(--bg-card); border: 1px solid var(--border-color); box-shadow: var(--card-shadow); border-radius: var(--radius-lg, 12px);">
+        <!-- Fila Superior: Badge Avatar de Cámara y Nombre -->
+        <div class="d-flex align-items-center gap-3">
+          <div class="camera-avatar-badge" style="color: var(--primary); border-color: var(--primary);"
+            title="Cámara de origen">
+            <span class="icon-svg icon-camara camera-icon-svg"></span>
           </div>
-
-          <!-- ID Cámara (Click to copy) -->
-          <div class="sighting-preview-row" [class.copied-flash]="copiedField() === 'camId'"
-            (click)="copyToClipboard(selectedEvent.idCamara, 'camId'); $event.stopPropagation()"
-            style="cursor: pointer;">
-            <div class="sighting-preview-icon sp-icon--id">
-              <span class="icon-svg icon-box" style="width: 14px; height: 14px; background-color: currentColor;"></span>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">ID Cámara</span>
-              @if (copiedField() === 'camId') {
-              <span class="text-success fw-bold font-monospace" style="font-size: 0.875rem;">¡Copiado!</span>
-              } @else {
-              <span class="sp-value font-monospace text-truncate d-block" [title]="selectedEvent.idCamara">
-                {{ selectedEvent.idCamara }}
-              </span>
-              }
-            </div>
-          </div>
-
-          <!-- Fecha y Hora -->
-          <div class="sighting-preview-row">
-            <div class="sighting-preview-icon sp-icon--time">
-              <span class="icon-svg icon-clock"
-                style="width: 14px; height: 14px; background-color: currentColor;"></span>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">Fecha y Hora</span>
-              <span class="sp-value font-monospace">{{ selectedEvent.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}</span>
-            </div>
-          </div>
-
-          <!-- Sistema de IA -->
-          <div class="sighting-preview-row">
-            <div class="sighting-preview-icon sp-icon--subject"
-              [style.color]="getAnalyticColor(selectedEvent.analitica)"
-              style="background-color: var(--color-primary-light-bg);">
-              <span class="icon-svg icon-activity"
-                style="width: 14px; height: 14px; background-color: currentColor;"></span>
-            </div>
-            <div class="sighting-preview-field">
-              <span class="sp-label">Sistema de IA</span>
-              <span class="sp-value text-capitalize">{{ selectedEvent.analitica }}</span>
-            </div>
+          <div class="d-flex align-items-center gap-2 overflow-hidden flex-fill">
+            <h5 class="fw-bold mb-0 text-truncate text-body" style="font-size: 1.05rem;"
+              [title]="selectedEvent.nombreCamara">
+              {{ selectedEvent.nombreCamara }}
+            </h5>
           </div>
         </div>
 
-        <!-- Atributos Detallados Section -->
-        <h6 class="sighting-preview-section-title fw-bold text-uppercase mt-2"
-          style="font-size: 0.75rem; letter-spacing: 0.08em; color: var(--text-muted);">Atributos Detectados</h6>
+        <!-- 4 Filas de Detalles Técnicos en Lista (specs-list) -->
+        <div class="specs-list d-flex flex-column gap-1 mt-3">
+          <!-- 1. Camera ID -->
+          <div class="spec-row d-flex justify-content-between align-items-center"
+            [class.copied-flash]="copiedField() === 'camId'"
+            (click)="copyToClipboard(selectedEvent.idCamara, 'camId'); $event.stopPropagation()">
+            <span class="spec-lbl d-inline-flex align-items-center">
+              <span class="icon-svg icon-fingerprint me-2"
+                style="width: 14px; height: 14px; background-color: currentColor;"></span>
+              Camera ID
+            </span>
+            @if (copiedField() === 'camId') {
+            <span class="copied-badge text-success fw-bold ms-auto"
+              style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+            } @else {
+            <span class="spec-val font-monospace text-truncate text-end" [title]="selectedEvent.idCamara">
+              {{ selectedEvent.idCamara }}
+            </span>
+            }
+          </div>
 
-        <div class="sighting-attributes-container d-flex flex-column gap-3">
+          <!-- 2. Sistema de IA -->
+          <div class="spec-row d-flex justify-content-between align-items-center">
+            <span class="spec-lbl d-inline-flex align-items-center">
+              <span class="icon-svg icon-activity me-2"
+                style="width: 14px; height: 14px; background-color: currentColor;"></span>
+              Sistema de IA
+            </span>
+            <span class="spec-val text-capitalize font-monospace text-truncate text-end"
+              [style.color]="getAnalyticColor(selectedEvent.analitica)">
+              {{ selectedEvent.analitica }}
+            </span>
+          </div>
+
+          <!-- 3. Fecha y Hora -->
+          <div class="spec-row d-flex justify-content-between align-items-center">
+            <span class="spec-lbl d-inline-flex align-items-center">
+              <span class="icon-svg icon-clock me-2"
+                style="width: 14px; height: 14px; background-color: currentColor;"></span>
+              Fecha y Hora
+            </span>
+            <span class="spec-val font-monospace text-truncate text-end">
+              {{ selectedEvent.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}
+            </span>
+          </div>
+
+          <!-- 4. Localización -->
+          <div class="spec-row d-flex justify-content-between align-items-center"
+            [class.copied-flash]="copiedField() === 'geo'"
+            (click)="selectedEvent.location ? copyToClipboard(selectedEvent.location.lat + ', ' + selectedEvent.location.lon, 'geo') : null; $event.stopPropagation()"
+            [style.cursor]="selectedEvent.location ? 'pointer' : 'default'">
+            <span class="spec-lbl d-inline-flex align-items-center">
+              <span class="icon-svg icon-location-pin me-2"
+                style="width: 14px; height: 14px; background-color: currentColor;"></span>
+              Localización
+            </span>
+            @if (copiedField() === 'geo') {
+            <span class="copied-badge text-success fw-bold ms-auto"
+              style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+            } @else if (selectedEvent.location) {
+            <span class="spec-val font-monospace text-truncate text-end">
+              {{ selectedEvent.location.lat | number:'1.4-4' }}, {{ selectedEvent.location.lon | number:'1.4-4' }}
+            </span>
+            } @else {
+            <span class="spec-val text-muted text-end" style="font-size: 0.78rem;">N/A</span>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Selector de Medios (Imagen / Video) - Rediseño Premium -->
+      @if (selectedEvent.urlVideo) {
+      <div class="media-toggle-container mb-4">
+        <div class="popover-section-title text-uppercase fw-bold mb-2"
+          style="font-size: 0.68rem; letter-spacing: 0.08em; color: var(--text-muted);">Visualización de Medio</div>
+        <div class="media-toggle-pill-wrapper p-1.5 rounded-pill d-flex align-items-center gap-1.5 border shadow-xs">
+          <button type="button"
+            class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center gap-2 py-2 px-3 rounded-pill transition-all"
+            [class.active]="activeMediaType() === 'image'" (click)="activeMediaType.set('image')">
+            <span class="icon-svg icon-camera-photo media-toggle-icon"></span>
+            <span class="fw-bold">Imagen</span>
+          </button>
+          <button type="button"
+            class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center gap-2 py-2 px-3 rounded-pill transition-all"
+            [class.active]="activeMediaType() === 'video'" (click)="activeMediaType.set('video')">
+            <span class="icon-svg icon-camera-video media-toggle-icon"></span>
+            <span class="fw-bold">Video</span>
+          </button>
+        </div>
+      </div>
+      }
+
+      <!-- Descripción del Evento -->
+      @if (selectedEvent.detalleEvento) {
+      <div class="popover-section mb-4">
+        <div class="popover-section-title text-uppercase fw-bold mb-2"
+          style="font-size: 0.68rem; letter-spacing: 0.08em; color: var(--text-muted);">Descripción</div>
+        <p class="text-secondary small px-2" style="line-height: 1.5; word-break: break-word;">
+          {{ formatDetalleEvento(selectedEvent.detalleEvento) }}
+        </p>
+      </div>
+      }
+
+      <!-- Atributos Detectados Section -->
+      <div class="popover-section mb-4">
+        <div class="popover-section-title text-uppercase fw-bold mb-3"
+          style="font-size: 0.68rem; letter-spacing: 0.08em; color: var(--text-muted);">Atributos Detectados</div>
+
+        <div class="sighting-attributes-container d-flex flex-column gap-3 px-2">
           <!-- Identificación -->
-          <div class="popover-section">
-            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
-              style="font-size: 0.65rem; letter-spacing: 0.05em;">Identificación</div>
+          <div class="attributes-group">
+            <div class="text-muted text-uppercase fw-bold mb-2" style="font-size: 0.62rem; letter-spacing: 0.05em;">
+              Identificación</div>
             <div class="attributes-grid">
               <span class="attribute-pill object-type-pill text-capitalize">
                 <span class="pill-dot"></span>
@@ -136,9 +211,9 @@
 
           <!-- Métricas -->
           @if (hasMetrics(selectedEvent)) {
-          <div class="popover-section">
-            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
-              style="font-size: 0.65rem; letter-spacing: 0.05em;">Métricas</div>
+          <div class="attributes-group">
+            <div class="text-muted text-uppercase fw-bold mb-2" style="font-size: 0.62rem; letter-spacing: 0.05em;">
+              Métricas</div>
             <div class="attributes-grid">
               @if (selectedEvent.conteoAforo !== null) {
               <span class="attribute-pill age-pill text-capitalize">
@@ -163,59 +238,24 @@
             </div>
           </div>
           }
-
-          <!-- Localización -->
-          @if (selectedEvent.location) {
-          <div class="popover-section">
-            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
-              style="font-size: 0.65rem; letter-spacing: 0.05em;">Localización</div>
-            <div class="attributes-grid">
-              <span class="attribute-pill recognition-pill font-monospace"
-                (click)="copyToClipboard(selectedEvent.location.lat + ', ' + selectedEvent.location.lon, 'geo')"
-                [class.copied-flash]="copiedField() === 'geo'" style="cursor: pointer;">
-                <span class="pill-dot"></span>
-                @if (copiedField() === 'geo') {
-                <span class="text-success fw-bold">¡Copiado!</span>
-                } @else {
-                Geo: {{ selectedEvent.location.lat | number:'1.5-5' }}, {{ selectedEvent.location.lon | number:'1.5-5'
-                }}
-                }
-              </span>
-            </div>
-          </div>
-          }
-
-          <!-- Descripción -->
-          <div class="popover-section">
-            <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
-              style="font-size: 0.65rem; letter-spacing: 0.05em;">Descripción</div>
-            <p class="text-secondary small mb-0" style="line-height: 1.5; word-break: break-word;">
-              {{ formatDetalleEvento(selectedEvent.detalleEvento) }}
-            </p>
-          </div>
         </div>
-
-      </div><!-- /scroll-details-content -->
-
-      <!-- Footer Action -->
-      <div class="modal-footer-action p-3 bg-transparent">
-        @if (selectedEvent.location) {
-        <a class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 py-2 px-3 rounded-3"
-          [href]="getGoogleMapsUrl(selectedEvent)" target="_blank" rel="noopener noreferrer"
-          (click)="$event.stopPropagation()"
-          style="font-size: 0.8rem; font-weight: 600; width: 100%; justify-content: center;">
-          <span class="icon-svg icon-location-pin"
-            style="width: 13px; height: 13px; background-color: currentColor;"></span>
-          Ver en Google Maps
-          <span class="icon-svg icon-external-link" style="width: 11px; height: 11px; opacity: 0.55;"></span>
-        </a>
-        } @else {
-        <span class="text-muted small w-100 text-center">Sin localización disponible</span>
-        }
       </div>
 
-    </div>
+    </div><!-- /drawer-scroll-area -->
 
+    <!-- Footer Action (Abajo del todo) -->
+    @if (selectedEvent.location) {
+    <div class="pt-3 mt-auto">
+      <a class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 py-2 px-3 rounded-3 w-100 justify-content-center"
+        [href]="getGoogleMapsUrl(selectedEvent)" target="_blank" rel="noopener noreferrer"
+        (click)="$event.stopPropagation()" style="font-size: 0.8rem; font-weight: 600;">
+        <span class="icon-svg icon-location-pin"
+          style="width: 13px; height: 13px; background-color: currentColor;"></span>
+        Ver en Google Maps
+        <span class="icon-svg icon-external-link" style="width: 11px; height: 11px; opacity: 0.55;"></span>
+      </a>
+    </div>
+    }
   </div>
 </div>
 }

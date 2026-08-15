@@ -26,7 +26,10 @@ let lastUploadedImage = {
 const dbUsuarios = [
   {
     user_id: 'e4b10fa0-7988-466d-a111-c917b2b73bc5',
-    usuario: 'admin',
+    email: 'admin@iaframecore.com',
+    usuario: 'admin@iaframecore.com',
+    nombres: 'Administrador',
+    apellidos: 'del Sistema',
     nombre: 'Administrador del Sistema',
     contrasena: 'admin123', // En producción se debe usar hashing (e.g. bcrypt)
     rol_id: '73bd9b9e-53da-4901-8bd8-9a127081e61b',
@@ -34,7 +37,10 @@ const dbUsuarios = [
   },
   {
     user_id: '67a7a5cc-98a9-4672-9cc9-5b7d0a68d712',
-    usuario: 'operador',
+    email: 'operador@iaframecore.com',
+    usuario: 'operador@iaframecore.com',
+    nombres: 'Operador',
+    apellidos: 'de Control',
     nombre: 'Operador de Control',
     contrasena: 'op123456',
     rol_id: 'd597024c-7362-4d41-a96b-a9321b8a0d77',
@@ -810,8 +816,16 @@ const server = http.createServer((req, res) => {
 
     // ---- RUTA: POST /auth/login ----
     if (pathname === '/auth/login' && req.method === 'POST') {
-      const { usuario, password } = parsedBody; // frontend envía usuario/password en DTO
-      const user = dbUsuarios.find(u => u.usuario === usuario && u.contrasena === password);
+      const emailInput = (parsedBody.email || parsedBody.usuario || '').trim().toLowerCase();
+      const passwordInput = parsedBody.password || parsedBody.contrasena;
+
+      const user = dbUsuarios.find(u => {
+        const matchesEmail = u.email.toLowerCase() === emailInput ||
+                             u.usuario.toLowerCase() === emailInput ||
+                             (emailInput === 'admin' && u.email === 'admin@iaframecore.com') ||
+                             (emailInput === 'operador' && u.email === 'operador@iaframecore.com');
+        return matchesEmail && u.contrasena === passwordInput;
+      });
 
       if (user) {
         const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -826,12 +840,12 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({
           access_token: 'mock-jwt-token-xyz',
           token_type: 'bearer',
-          usuario: user.usuario,
+          usuario: user.email,
           rol_id: user.rol_id
         }));
       } else {
         res.writeHead(401, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ detail: 'Usuario o contraseña incorrectos' }));
+        res.end(JSON.stringify({ detail: 'Correo o contraseña incorrectos' }));
       }
       return;
     }

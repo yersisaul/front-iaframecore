@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AuthService } from './auth.service';
@@ -43,6 +43,9 @@ export class WebsocketService {
 
   private connectionService = inject(WebsocketConnectionService);
   private subscription: Subscription | null = null;
+
+  // Registro global en tiempo real de cámaras con streaming WebRTC activo (Eficiencia O(1))
+  readonly activeWebRtcStreams = signal<Set<string>>(new Set());
 
   constructor() {
     // Suscribirse al flujo asíncrono de mensajes de conexión
@@ -611,6 +614,64 @@ export class WebsocketService {
       this.subscription.unsubscribe();
       this.subscription = null;
     }
+  }
+
+  /**
+   * Notifica por WebSocket el inicio de transmisión WebRTC para una cámara y registra su estado activo.
+   */
+  sendWebRtcStart(cameraId: string, hostFingerprint: string): void {
+    if (!cameraId) return;
+    const current = new Set(this.activeWebRtcStreams());
+    current.add(cameraId);
+    this.activeWebRtcStreams.set(current);
+
+    this.connectionService.send({
+      action: 'webrtc_start',
+      body: {
+        camera_id: cameraId,
+        fingerprint_host: hostFingerprint || ''
+      }
+    });
+  }
+
+  /**
+   * Notifica por WebSocket la detención de transmisión WebRTC para una cámara y remueve su estado activo.
+   */
+  sendWebRtcStop(cameraId: string, hostFingerprint: string): void {
+    if (!cameraId) return;
+    const current = new Set(this.activeWebRtcStreams());
+    current.delete(cameraId);
+    this.activeWebRtcStreams.set(current);
+
+    this.connectionService.send({
+      action: 'webrtc_stop',
+      body: {
+        camera_id: cameraId,
+        fingerprint_host: hostFingerprint || ''
+      }
+    });
+  }
+
+  /**
+   * Notifica por WebSocket la solicitud de refresco de transmisión de video para una cámara.
+   */
+  sendCameraStreamRefresh(cameraId: string, hostFingerprint: string): void {
+    if (!cameraId) return;
+    this.connectionService.send({
+      action: 'camera_stream_refresh',
+      body: {
+        camera_id: cameraId,
+        fingerprint_host: hostFingerprint || ''
+      }
+    });
+  }
+
+  /**
+   * Verifica reactivamente en O(1) si una cámara tiene actualmente transmisión WebRTC activa.
+   */
+  isWebRtcActive(cameraId: string): boolean {
+    if (!cameraId) return false;
+    return this.activeWebRtcStreams().has(cameraId);
   }
 
   /**

@@ -21,6 +21,25 @@ export class ConfirmDeleteModalComponent {
   @Output() confirm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
 
+  private backdropMouseDownTarget: EventTarget | null = null;
+
+  onBackdropMouseDown(event: MouseEvent): void {
+    if (event.button === 0) {
+      this.backdropMouseDownTarget = event.target;
+    }
+  }
+
+  onBackdropMouseUp(event: MouseEvent): void {
+    if (
+      event.button === 0 &&
+      this.backdropMouseDownTarget === event.currentTarget &&
+      event.target === event.currentTarget
+    ) {
+      this.onCancel();
+    }
+    this.backdropMouseDownTarget = null;
+  }
+
   onCancel(): void {
     if (!this.isDeleting) {
       this.cancel.emit();

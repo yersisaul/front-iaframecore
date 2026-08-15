@@ -1,15 +1,385 @@
-.listas-view-container {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  min-height: calc(100vh - 80px);
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
 }
 
-/* Bento Card Style - Clean Solid Theme */
+.listas-view-container {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Row de dos paneles: sin wrap para evitar solapamiento */
+.container-lists-layout {
+  display: flex;
+  flex-wrap: nowrap !important;
+  flex: 1 1 0%;
+  min-height: 0;
+  align-items: stretch;
+  margin-bottom: 0 !important;
+}
+
+/* Columnas: flex puro, sin height% */
+.container-lists-left,
+.container-lists-right {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Bento Card: se estira al alto de su columna */
 .bento-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Panel Izquierdo: Scroll Interno para las Listas */
+.lists-selector-container {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto !important;
+}
+
+/* Panel Derecho: Workspace Paginado con Scroll Interno */
+.subjects-workspace-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.subjects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-auto-rows: max-content;
+  gap: 1rem;
+  overflow-y: auto !important;
+  align-content: start;
+}
+
+.subject-card {
+  height: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 16px !important;
+  padding: 1.25rem 1rem !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.subject-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--primary);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.12);
+}
+
+.subject-card-badge {
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  background: var(--bg-primary);
+  color: var(--primary);
+  border: 1px solid var(--border-color);
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.subject-card-select-wrap {
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.88);
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.subject-card:hover .subject-card-select-wrap,
+.subject-card.selected-subject .subject-card-select-wrap,
+.subject-card-select-wrap:has(.subject-card-checkbox:checked) {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.subject-card-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  border-radius: 5px !important;
+  border: 1.5px solid var(--border-color);
+  background-color: var(--bg-surface);
+  transition: all 0.2s ease;
+}
+
+.subject-card-checkbox:checked {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+.subject-card.selected-subject {
+  border-color: var(--primary) !important;
+  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.04) !important;
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb, 59, 130, 246), 0.35), 0 8px 16px -4px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ── Premium Action Header Buttons (Agregar / Eliminar) ── */
+.btn-header-primary,
+.btn-migrate-config {
+  background-color: rgba(var(--primary-rgb), 0.06) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.15) !important;
+  color: var(--primary) !important;
+  border-radius: 99px !important;
+  padding: 0 18px !important;
+  height: 42px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.btn-header-primary .icon-svg,
+.btn-migrate-config .icon-svg {
+  background-color: var(--primary) !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease !important;
+}
+
+.btn-header-primary:hover,
+.btn-migrate-config:hover {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: var(--text-on-primary-btn, #ffffff) !important;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.24) !important;
+  transform: translateY(-1.5px) !important;
+}
+
+.btn-header-primary:hover .icon-svg,
+.btn-migrate-config:hover .icon-svg {
+  background-color: var(--text-on-primary-btn, #ffffff) !important;
+  transform: scale(1.1);
+}
+
+.btn-header-primary:active,
+.btn-migrate-config:active {
+  transform: translateY(-0.5px) !important;
+}
+
+.btn-delete-selected {
+  background-color: rgba(239, 68, 68, 0.06) !important;
+  border: 1px solid rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+  border-radius: 99px !important;
+  padding: 0 18px !important;
+  height: 42px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.btn-delete-selected .icon-svg {
+  background-color: #ef4444 !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease !important;
+}
+
+.btn-delete-selected:hover {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.24) !important;
+  transform: translateY(-1.5px) !important;
+}
+
+.btn-delete-selected:hover .icon-svg {
+  background-color: #ffffff !important;
+  transform: scale(1.1);
+}
+
+.btn-delete-selected:active {
+  transform: translateY(-0.5px) !important;
+}
+
+.btn-select-all {
+  background-color: rgba(var(--primary-rgb), 0.06) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.15) !important;
+  color: var(--primary) !important;
+  border-radius: 99px !important;
+  padding: 8px 18px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.btn-select-all .icon-svg {
+  background-color: var(--primary) !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease !important;
+}
+
+.btn-select-all:hover {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: var(--text-on-primary-btn, #ffffff) !important;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.24) !important;
+  transform: translateY(-1.5px) !important;
+}
+
+.btn-select-all:hover .icon-svg {
+  background-color: var(--text-on-primary-btn, #ffffff) !important;
+  transform: scale(1.1);
+}
+
+.btn-select-all:active {
+  transform: translateY(-0.5px) !important;
+}
+
+.btn-deselect-all {
+  background-color: rgba(100, 116, 139, 0.08) !important;
+  border: 1px solid rgba(100, 116, 139, 0.2) !important;
+  color: var(--text-secondary, #64748b) !important;
+  border-radius: 99px !important;
+  padding: 8px 18px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.btn-deselect-all .icon-svg {
+  background-color: var(--text-secondary, #64748b) !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease !important;
+}
+
+.btn-deselect-all:hover {
+  background-color: var(--text-secondary, #64748b) !important;
+  border-color: var(--text-secondary, #64748b) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.24) !important;
+  transform: translateY(-1.5px) !important;
+}
+
+.btn-deselect-all:hover .icon-svg {
+  background-color: #ffffff !important;
+  transform: scale(1.1);
+}
+
+.btn-deselect-all:active {
+  transform: translateY(-0.5px) !important;
+}
+
+.subject-card-img-wrapper {
+  width: 84px;
+  height: 84px;
+  margin: 0.5rem auto 0.75rem auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.subject-card-avatar {
+  width: 84px;
+  height: 84px;
+  object-fit: cover;
+  background-color: var(--bg-primary);
+  border: 2px solid var(--border-color);
+}
+
+.subject-card-placeholder {
+  width: 84px;
+  height: 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-surface) 100%);
+  border: 2px dashed var(--border-color);
+  color: var(--text-muted);
+  gap: 4px;
+}
+
+.subject-card-placeholder-text {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.drawer-avatar-placeholder {
+  width: 150px !important;
+  height: 150px !important;
+  border-width: 2.5px !important;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+.identity-card:hover .drawer-avatar-placeholder {
+  transform: scale(1.04);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
+}
+
+.timeline-sighting-placeholder {
+  width: 42px !important;
+  height: 42px !important;
+  border-width: 1.5px !important;
+  gap: 0 !important;
+}
+
+.sighting-status-indicator {
+  padding: 4px 10px;
+  border-radius: 20px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  font-size: 0.73rem;
 }
 
 [data-bs-theme="dark"] .bento-card {
@@ -138,7 +508,8 @@
 
 /* Detail Area Min Height */
 .min-height-detail {
-  min-height: 580px;
+  height: 100% !important;
+  min-height: 0 !important;
 }
 
 .max-width-text {
@@ -266,8 +637,7 @@
   position: relative;
   overflow: visible !important;
   z-index: 100;
-  margin-top: 0.25rem !important;
-  margin-bottom: 0.75rem !important;
+  margin-top: 0.75rem !important;
   padding: 0.15rem 0;
   animation: filterBarSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -519,6 +889,23 @@
   outline: none !important;
 }
 
+/* Dual Column Face Upload Summary Backgrounds */
+.bg-success-subtle-light {
+  background-color: rgba(16, 185, 129, 0.03) !important;
+}
+
+.bg-danger-subtle-light {
+  background-color: rgba(239, 68, 68, 0.03) !important;
+}
+
+[data-bs-theme="dark"] .bg-success-subtle-light {
+  background-color: rgba(16, 185, 129, 0.07) !important;
+}
+
+[data-bs-theme="dark"] .bg-danger-subtle-light {
+  background-color: rgba(239, 68, 68, 0.07) !important;
+}
+
 /* Image Upload Zone Custom Styles */
 .image-upload-zone {
   background-color: var(--bg-primary);
@@ -559,7 +946,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
   gap: 1.5rem;
-  padding: 12px 8px 1.5rem;
   width: 100%;
 }
 
@@ -786,7 +1172,6 @@
 }
 
 .max-height-grid-workspace {
-  max-height: calc(100vh - 250px);
   margin-top: -12px;
   padding-top: 12px;
 }
@@ -1004,7 +1389,7 @@
 }
 
 .identity-name {
-  font-size: 1.125rem;
+  font-size: 1rem;
   letter-spacing: -0.01em;
   line-height: 1.3;
 }
@@ -1063,7 +1448,6 @@
   align-items: center;
   gap: 12px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--border-color);
   transition: background 0.2s ease;
 }
 
@@ -1715,8 +2099,31 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Sighting Preview Panel (Hover Float)
+   Timeline Sighting Card & Preview Panel States
    ═══════════════════════════════════════════════════════════ */
+.timeline-card {
+  cursor: pointer !important;
+  user-select: none;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.timeline-card.active-timeline-hovered {
+  transform: translateX(-3px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
+}
+
+.timeline-card.active-timeline-selected {
+  border-color: var(--primary) !important;
+  background-color: var(--primary-light) !important;
+  box-shadow: 0 4px 16px rgba(var(--primary-rgb), 0.22) !important;
+  transform: translateX(-5px);
+}
+
+[data-bs-theme="dark"] .timeline-card.active-timeline-selected {
+  background-color: rgba(var(--primary-rgb), 0.15) !important;
+  border-color: var(--primary) !important;
+}
+
 .sighting-preview-panel {
   position: fixed;
   top: 16px;
@@ -2235,7 +2642,6 @@
 
 /* Restructuración Layout Listas de Control */
 .listas-view-container .card.bento-card {
-  height: calc(100vh - 180px) !important;
   display: flex;
   flex-direction: column;
 }
@@ -2784,6 +3190,7 @@
     flex-direction: column;
     gap: 20px;
   }
+
   .identity-column-left {
     flex: 1;
     width: 100%;

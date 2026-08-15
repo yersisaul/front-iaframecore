@@ -1,0 +1,15 @@
+<div class="filter-actions-group">
+  @if (hasActiveFilters) {
+  <button type="button" (click)="reset.emit()" class="btn-filter-action btn-filter-reset">
+    <span class="icon-svg icon-close" style="width: 13px; height: 13px;"></span>
+    <span>{{ resetLabel }}</span>
+  </button>
+  }
+
+  @if (hasPendingChanges) {
+  <button type="button" (click)="apply.emit()" class="btn-filter-action btn-filter-apply">
+    <span class="icon-svg icon-save" style="width: 13px; height: 13px; background-color: currentColor;"></span>
+    <span>{{ applyLabel }}</span>
+  </button>
+  }
+</div>

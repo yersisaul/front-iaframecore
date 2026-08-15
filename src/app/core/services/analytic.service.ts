@@ -96,6 +96,14 @@ export class AnalyticService {
     );
   }
 
+  registerAnalytic(payload: any): Observable<any> {
+    return this.analyticRepository.register(payload);
+  }
+
+  updateAnalytic(analyticId: string, payload: any): Observable<any> {
+    return this.analyticRepository.update(analyticId, payload);
+  }
+
   updateAnalyticStatus(analyticId: string, status: 'active' | 'inactive'): Observable<any> {
     return this.analyticRepository.updateStatus(analyticId, status);
   }

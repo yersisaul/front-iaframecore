@@ -10,7 +10,7 @@ import { SidebarService } from '../../../core/services/sidebar.service';
 import { HostService } from '../../../core/services/host.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
-import { getCameraEffectiveStatus, getCameraStatusCssClass } from '../../../core/utils/camera-status.utils';
+import { getCameraEffectiveStatus, getCameraStatusCssClass, getCameraStatusFilterLabel } from '../../../core/utils/camera-status.utils';
 import { Schedule } from '../../../core/domain/entities/schedule.models';
 import { Analytic } from '../../../core/domain/entities/analytic.models';
 import { Camera } from '../../../core/domain/entities/camera.models';
@@ -23,12 +23,13 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
 import { ViewModeToggleComponent } from '../../shared/view-mode-toggle/view-mode-toggle.component';
 import { CameraDetailDrawerComponent } from '../../shared/camera-detail-drawer/camera-detail-drawer.component';
+import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 import { exportToCsv, exportToXlsx, ExportColumn } from '../../../core/utils/export-utils';
 
 @Component({
   selector: 'app-camaras',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, CameraDetailDrawerComponent],
+  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, CameraDetailDrawerComponent, FilterActionsComponent],
   templateUrl: './camaras.html',
   styleUrl: './camaras.css'
 })
@@ -214,13 +215,15 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const list = this.hostId()
       ? this.cameras().filter(c => c.hostFingerprint === this.hostId())
       : this.cameras();
+    const hosts = this.hostService.allHosts();
     const statuses = new Set<string>();
     const streams = new Set<string>();
     const decoders = new Set<string>();
     const hostsSet = new Set<string>();
 
     list.forEach(c => {
-      if (c.status) statuses.add(c.status);
+      const effStatus = getCameraEffectiveStatus(c, hosts);
+      statuses.add(effStatus);
       if (c.streamType) streams.add(c.streamType);
       if (c.decoder) decoders.add(c.decoder);
       if (c.hostFingerprint) hostsSet.add(c.hostFingerprint);
@@ -241,8 +244,18 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       name: this.getHostName(fp)
     })).sort((a, b) => a.name.localeCompare(b.name));
 
+    const statusOrder = ['Online', 'Degraded', 'Recovering', 'Pending', 'Offline'];
+    const sortedStatuses = Array.from(statuses).sort((a, b) => {
+      const idxA = statusOrder.indexOf(a);
+      const idxB = statusOrder.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
     return {
-      status: Array.from(statuses).sort(),
+      status: sortedStatuses,
       hosts: hostOptions,
       streamType: Array.from(streams).sort(),
       decoder: Array.from(decoders).sort(),
@@ -271,11 +284,19 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
         if (!matchesName && !matchesId) return false;
       }
 
-      // Filter by status (Activo / Inactivo mapping)
+      // Filter by status (Basado exclusivamente en el estado efectivo visual de la cámara)
       if (st !== 'all') {
-        const isOnline = c.status.toLowerCase() === 'online' || c.status.toLowerCase() === 'active';
-        if ((st === 'active' || st === 'online') && !isOnline) return false;
-        if ((st === 'inactive' || st === 'offline') && isOnline) return false;
+        const effStatus = getCameraEffectiveStatus(c, this.hostService.allHosts());
+        const stLower = st.toLowerCase();
+        const effLower = effStatus.toLowerCase();
+
+        if (stLower === 'active' || stLower === 'online') {
+          if (effLower !== 'online') return false;
+        } else if (stLower === 'inactive' || stLower === 'offline') {
+          if (effLower !== 'offline') return false;
+        } else {
+          if (effLower !== stLower) return false;
+        }
       }
 
       // Filter by stream type
@@ -452,50 +473,9 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     return 3;
   }
 
-  private initializeFromQueryParams(params: Params | undefined): void {
-    if (!params) return;
-    const page = params['page'] ? parseInt(params['page'], 10) : 1;
-    const p = !isNaN(page) && page > 0 ? page : 1;
-    if (this.currentPage() !== p) {
-      this.currentPage.set(p);
-    }
 
-    const limitVal = params['limit'] ? parseInt(params['limit'], 10) : null;
-    const defaultLimit = this.columns() * 10;
-    const l = limitVal && !isNaN(limitVal) && limitVal > 0 ? limitVal : defaultLimit;
-    if (this.limit() !== l) {
-      this.limit.set(l);
-    }
-
-    if (params['search']) {
-      this.searchControl.setValue(params['search'], { emitEvent: false });
-      this.searchTerm.set(params['search']);
-    } else {
-      this.searchControl.setValue('', { emitEvent: false });
-      this.searchTerm.set('');
-    }
-
-    this.filterStatus.set(params['status'] || 'all');
-    this.filterStreamType.set(params['streamType'] || 'all');
-    this.filterDecoder.set(params['decoder'] || 'all');
-    this.filterAnalyticType.set(params['analyticType'] || 'all');
-
-    if (params['camera']) {
-      this.pendingCameraId.set(params['camera']);
-    } else {
-      this.pendingCameraId.set(null);
-    }
-    if (params['analytic']) {
-      this.pendingAnalyticId.set(params['analytic']);
-    } else {
-      this.pendingAnalyticId.set(null);
-    }
-  }
 
   constructor() {
-    const initialParams = this.route.snapshot?.queryParams;
-    this.initializeFromQueryParams(initialParams);
-
     effect(() => {
       const pCamId = this.pendingCameraId();
       const pAnId = this.pendingAnalyticId();
@@ -539,45 +519,6 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
         this.currentPage.set(1);
       }
     });
-
-    // Sincronizar paginación, búsqueda y filtros avanzados con QueryParams
-    combineLatest({
-      page: toObservable(this.currentPage),
-      limit: toObservable(this.limit),
-      search: toObservable(this.searchTerm),
-      status: toObservable(this.filterStatus),
-      streamType: toObservable(this.filterStreamType),
-      decoder: toObservable(this.filterDecoder),
-      analyticType: toObservable(this.filterAnalyticType)
-    }).pipe(
-      debounceTime(20),
-      takeUntilDestroyed()
-    ).subscribe(({ page, limit, search, status, streamType, decoder, analyticType }) => {
-      const queryParams: any = {};
-      queryParams['page'] = page > 1 ? page : null;
-      const defaultLimit = this.columns() * 10;
-      queryParams['limit'] = limit !== defaultLimit ? limit : null;
-      queryParams['search'] = search || null;
-      queryParams['status'] = status !== 'all' ? status : null;
-      queryParams['streamType'] = streamType !== 'all' ? streamType : null;
-      queryParams['decoder'] = decoder !== 'all' ? decoder : null;
-      queryParams['analyticType'] = analyticType !== 'all' ? analyticType : null;
-
-      this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams,
-        queryParamsHandling: 'merge'
-      });
-    });
-
-    if (this.route.queryParams) {
-      this.route.queryParams.pipe(
-        skip(1),
-        takeUntilDestroyed()
-      ).subscribe(params => {
-        this.initializeFromQueryParams(params);
-      });
-    }
   }
 
   // ── Advanced Filters Drawer Controls ──
@@ -967,6 +908,28 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   getCameraStatusLabel(camera: Camera | null | undefined): string {
     return getCameraEffectiveStatus(camera, this.hostService.allHosts());
+  }
+
+  getStatusFilterLabel(status: string): string {
+    return getCameraStatusFilterLabel(status);
+  }
+
+  getStatusCssClass(status: string): string {
+    const stLower = status.trim().toLowerCase();
+    if (stLower === 'online' || stLower === 'active' || stLower === 'activo') return 'online';
+    if (stLower === 'degraded' || stLower === 'degradado') return 'degraded';
+    if (stLower === 'recovering' || stLower === 'recuperando') return 'recovering';
+    if (stLower === 'pending' || stLower === 'pendiente') return 'pending';
+    return 'offline';
+  }
+
+  isStatusSelected(tempStatus: string, statusOpt: string): boolean {
+    if (tempStatus === statusOpt) return true;
+    const tempLower = tempStatus.toLowerCase();
+    const optLower = statusOpt.toLowerCase();
+    if ((tempLower === 'active' || tempLower === 'online') && (optLower === 'active' || optLower === 'online')) return true;
+    if ((tempLower === 'inactive' || tempLower === 'offline') && (optLower === 'inactive' || optLower === 'offline')) return true;
+    return tempLower === optLower;
   }
 
   // ── Analíticas ──────────────────────────────────────────────────────────────
