@@ -17,6 +17,7 @@ export interface Camera {
   rtspUrl?: string;
   streamUrl?: string;
   url?: string;
+  nxId?: string;
 }
 
 export interface CameraDTO {
@@ -31,6 +32,7 @@ export interface CameraDTO {
     lon: number;
   };
   created_at?: string | null;
+  nx_id?: string;
 }
 
 export class CameraMapper {
@@ -43,7 +45,8 @@ export class CameraMapper {
       status: dto.status || 'online',
       decoder: dto.decoder || '',
       location: dto.location || { lat: 0, lon: 0 },
-      createdAt: dto.created_at ? parseUtcDate(dto.created_at) : null
+      createdAt: dto.created_at ? parseUtcDate(dto.created_at) : null,
+      nxId: dto.nx_id || dto.nxId || undefined
     };
   }
 }

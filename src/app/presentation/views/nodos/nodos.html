@@ -63,12 +63,9 @@
       <!-- Selector de Nodos por Página -->
       <div class="d-flex align-items-center gap-2">
         <label for="limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Nodos por página:</label>
-        <select id="limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
-          (change)="onLimitChange($event)">
-          @for (opt of limitOptions(); track $index) {
-          <option [value]="opt" [selected]="limit() === opt">{{ opt }}</option>
-          }
-        </select>
+        <app-custom-select [options]="limitOptions()" [value]="limit()" size="sm"
+          (valueChange)="onLimitValueChange($event)">
+        </app-custom-select>
       </div>
     </div>
   </app-page-header>
@@ -245,6 +242,7 @@
   </div>
   }
 
+  @if (!isLoading() && filteredHosts().length > 0) {
   @if (viewMode() === 'cards') {
   <!-- CSS Grid Bento Box -->
   <div #hostsGrid class="hosts-grid mb-4">
@@ -270,8 +268,8 @@
               } @else {
               <span class="icon-svg os-avatar-icon icon-nodos flex-shrink-0"></span>
               }
-              <div class="host-title-container min-w-0 flex-grow-1">
-                <h5 class="host-title fw-bold mb-0 text-truncate" [title]="host.hostname">
+              <div class="host-title-container min-w-0 flex-grow-1 d-flex align-items-center">
+                <h5 class="host-title fw-bold mb-0 text-truncate">
                   {{ host.hostname }}
                 </h5>
               </div>
@@ -293,19 +291,22 @@
 
           <!-- Información de Identidad y Hardware del Nodo -->
           <div class="specs-list d-flex flex-column gap-1 my-3">
-            <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-fingerprint'"
+            <div class="spec-row spec-row-fingerprint"
+              [class.copied-flash]="copiedRowId() === host.fingerprint + '-fingerprint'"
               (click)="copyRowContent(host.fingerprint, host.fingerprint + '-fingerprint'); $event.stopPropagation()">
-              <span class="spec-lbl d-inline-flex align-items-center">
+              <span class="spec-lbl d-inline-flex align-items-center flex-shrink-0">
                 <span class="icon-svg icon-fingerprint me-2"
                   style="width: 14px; height: 14px; background-color: currentColor;"></span>
                 Fingerprint
               </span>
               @if (copiedRowId() === host.fingerprint + '-fingerprint') {
-              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
+              <span class="copied-badge text-success fw-bold ms-auto flex-shrink-0">¡Copiado!</span>
               } @else {
-              <span class="spec-val font-monospace text-truncate text-end">
-                {{ host.fingerprint }}
-              </span>
+              <div class="spec-val-container min-w-0 ms-auto text-end">
+                <span class="spec-val spec-val-scrollable font-monospace d-block">
+                  {{ host.fingerprint }}
+                </span>
+              </div>
               }
             </div>
             <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-ipAddress'"
@@ -551,21 +552,17 @@
             <!-- SO -->
             <td>
               <div class="d-flex align-items-center" style="min-width: 0;">
-                <span class="icon-svg os-avatar-icon table-os-icon flex-shrink-0"
-                  style="width: 24px; height: 24px; margin-right: 10px;"
+                <span class="icon-svg os-avatar-icon table-os-icon flex-shrink-0 me-2"
+                  style="width: 24px; height: 24px;"
                   [class.icon-ubuntu]="!!host.hwInfo?.system?.toLowerCase()?.includes('linux')"
                   [class.icon-windows]="!!host.hwInfo?.system?.toLowerCase()?.includes('windows')"
                   [class.icon-nodos]="!host.hwInfo?.system?.toLowerCase()?.includes('linux') && !host.hwInfo?.system?.toLowerCase()?.includes('windows')">
                 </span>
-                <span class="text-body fw-medium flex-shrink-0"
-                  style="font-size: 0.88rem; white-space: nowrap; margin-right: 5px;">{{ host.hwInfo?.system || '-'
-                  }}</span>
-                @if (host.hwInfo?.release) {
-                <div class="os-release-container">
-                  <span class="os-release-text text-muted font-monospace" style="font-size: 0.78rem;">{{
-                    host.hwInfo?.release }}</span>
+                <div class="os-release-container min-w-0">
+                  <span class="os-release-text text-body fw-medium font-monospace" style="font-size: 0.82rem;">
+                    {{ host.hwInfo?.system || '-' }}@if (host.hwInfo?.release) { &ndash; {{ host.hwInfo?.release }} }
+                  </span>
                 </div>
-                }
               </div>
             </td>
             <!-- CPU / RAM -->
@@ -673,8 +670,9 @@
     </div>
   </div>
   }
+  }
 
-  @if (filteredHosts().length === 0) {
+  @if (!isLoading() && filteredHosts().length === 0) {
   <app-empty-state title="No se encontraron nodos de cómputo"
     description="No hay servidores registrados que coincidan con los filtros o criterios de búsqueda activos."
     iconClass="icon-nodos" actionText="Restablecer Filtros" [showAction]="hasActiveFilters()" (action)="resetFilters()">

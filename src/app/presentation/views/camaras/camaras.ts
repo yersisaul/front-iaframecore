@@ -24,12 +24,13 @@ import { SearchInputComponent } from '../../shared/search-input/search-input.com
 import { ViewModeToggleComponent } from '../../shared/view-mode-toggle/view-mode-toggle.component';
 import { CameraDetailDrawerComponent } from '../../shared/camera-detail-drawer/camera-detail-drawer.component';
 import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
+import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
 import { exportToCsv, exportToXlsx, ExportColumn } from '../../../core/utils/export-utils';
 
 @Component({
   selector: 'app-camaras',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, CameraDetailDrawerComponent, FilterActionsComponent],
+  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, CameraDetailDrawerComponent, FilterActionsComponent, CustomSelectComponent],
   templateUrl: './camaras.html',
   styleUrl: './camaras.css'
 })
@@ -209,6 +210,17 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly showFilterPanel = signal<boolean>(false);
   readonly activeDropdown = signal<string | null>(null);
   readonly showExportDropdown = signal<boolean>(false);
+  readonly hostSearch = signal<string>('');
+
+  readonly filteredHostOptions = computed(() => {
+    const query = this.hostSearch().trim().toLowerCase();
+    const allHosts = this.filterOptions().hosts;
+    if (!query) return allHosts;
+    return allHosts.filter(h =>
+      h.name.toLowerCase().includes(query) ||
+      h.fingerprint.toLowerCase().includes(query)
+    );
+  });
 
   // Opciones de filtro dinámicas (construidas a partir de las cámaras y analíticas cargadas)
   readonly filterOptions = computed(() => {
@@ -569,6 +581,9 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     if (this.activeDropdown() === dropdown) {
       this.activeDropdown.set(null);
     } else {
+      if (dropdown === 'host') {
+        this.hostSearch.set('');
+      }
       this.activeDropdown.set(dropdown);
     }
   }
@@ -741,6 +756,14 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     this.currentPage.set(1);
   }
 
+  onLimitValueChange(val: any): void {
+    const newLimit = parseInt(val, 10);
+    if (!isNaN(newLimit)) {
+      this.limit.set(newLimit);
+      this.currentPage.set(1);
+    }
+  }
+
   openAiPanel(camera: Camera): void {
     this.selectedCamera.set(camera);
     this.showAiPanel.set(true);
@@ -892,8 +915,39 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   }
 
   getHostName(fingerprint: string): string {
-    const host = this.hostService.allHosts().find(h => h.fingerprint === fingerprint);
-    return host ? host.hostname : fingerprint;
+    if (!fingerprint) return 'SIN NODO';
+    const fpLower = fingerprint.trim().toLowerCase();
+    const hosts = this.hostService.allHosts();
+    const host = hosts.find(h =>
+      (h.fingerprint && h.fingerprint.trim().toLowerCase() === fpLower) ||
+      (h.id && h.id.trim().toLowerCase() === fpLower) ||
+      (h.hostname && h.hostname.trim().toLowerCase() === fpLower)
+    );
+    if (host && host.hostname && host.hostname.trim() !== '') {
+      return host.hostname;
+    }
+    if (hosts.length === 1 && hosts[0].hostname && hosts[0].hostname.trim() !== '') {
+      return hosts[0].hostname;
+    }
+    return 'SIN NODO';
+  }
+
+  getHostIp(fingerprint: string): string {
+    if (!fingerprint) return '-';
+    const fpLower = fingerprint.trim().toLowerCase();
+    const hosts = this.hostService.allHosts();
+    const host = hosts.find(h =>
+      (h.fingerprint && h.fingerprint.trim().toLowerCase() === fpLower) ||
+      (h.id && h.id.trim().toLowerCase() === fpLower) ||
+      (h.hostname && h.hostname.trim().toLowerCase() === fpLower)
+    );
+    if (host && host.ipAddress && host.ipAddress.trim() !== '') {
+      return host.ipAddress;
+    }
+    if (hosts.length === 1 && hosts[0].ipAddress && hosts[0].ipAddress.trim() !== '') {
+      return hosts[0].ipAddress;
+    }
+    return '-';
   }
 
   isCameraOnline(camera: Camera | null | undefined): boolean {
@@ -1272,7 +1326,9 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       { header: 'Estado', key: 'status' },
       { header: 'Nombre de Cámara', key: 'name' },
       { header: 'ID Cámara', key: 'id' },
+      { header: 'NX ID', key: 'nxId' },
       { header: 'Nodo Asociado', key: 'hostName' },
+      { header: 'IP del Nodo', key: 'hostIp' },
       { header: 'Fingerprint Nodo', key: 'hostFingerprint' },
       { header: 'Tipo Stream', key: 'streamType' },
       { header: 'Decodificador', key: 'decoder' },
@@ -1284,11 +1340,14 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const data = this.filteredCameras().map(c => {
       const isOnline = this.isCameraOnline(c);
       const analytics = this.getAnalyticsForCamera(c.id).map(a => this.getAnalyticLabel(a.type)).join(', ');
+      const isNxCodec = (c.decoder || '').toLowerCase().includes('nx') || (c.streamType || '').toLowerCase().includes('nx');
       return {
         status: isOnline ? 'Online' : 'Offline',
         name: c.name,
         id: c.id,
+        nxId: (c.nxId && isNxCodec) ? c.nxId : 'N/A',
         hostName: this.getHostName(c.hostFingerprint),
+        hostIp: this.getHostIp(c.hostFingerprint),
         hostFingerprint: c.hostFingerprint,
         streamType: c.streamType.toUpperCase(),
         decoder: c.decoder.toUpperCase(),
@@ -1308,7 +1367,9 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       { header: 'Estado', key: 'status' },
       { header: 'Nombre de Cámara', key: 'name' },
       { header: 'ID Cámara', key: 'id' },
+      { header: 'NX ID', key: 'nxId' },
       { header: 'Nodo Asociado', key: 'hostName' },
+      { header: 'IP del Nodo', key: 'hostIp' },
       { header: 'Fingerprint Nodo', key: 'hostFingerprint' },
       { header: 'Tipo Stream', key: 'streamType' },
       { header: 'Decodificador', key: 'decoder' },
@@ -1320,11 +1381,14 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const data = this.filteredCameras().map(c => {
       const isOnline = this.isCameraOnline(c);
       const analytics = this.getAnalyticsForCamera(c.id).map(a => this.getAnalyticLabel(a.type)).join(', ');
+      const isNxCodec = (c.decoder || '').toLowerCase().includes('nx') || (c.streamType || '').toLowerCase().includes('nx');
       return {
         status: isOnline ? 'Online' : 'Offline',
         name: c.name,
         id: c.id,
+        nxId: (c.nxId && isNxCodec) ? c.nxId : 'N/A',
         hostName: this.getHostName(c.hostFingerprint),
+        hostIp: this.getHostIp(c.hostFingerprint),
         hostFingerprint: c.hostFingerprint,
         streamType: c.streamType.toUpperCase(),
         decoder: c.decoder.toUpperCase(),

@@ -150,30 +150,23 @@
 
                 <!-- Elemento de Video WebRTC en Vivo -->
                 @if (slot.camera) {
-                <video [id]="'video-feed-' + slot.id" [attr.data-camera-id]="slot.camera.id" [attr.data-camera-name]="slot.camera.name" class="slot-video-element w-100 h-100 object-fit-contain"
+                <video [id]="'video-feed-' + slot.id" [attr.data-camera-id]="slot.camera.id"
+                  [attr.data-camera-name]="slot.camera.name" class="slot-video-element w-100 h-100 object-fit-contain"
                   [class.d-none]="webRtcStates()[slot.id] !== 'connected' || isSlotInPlaybackMode(slot)"
                   [class.feed-paused-grayscale]="isFeedPaused(slot.camera.name)" autoplay playsinline muted>
                 </video>
                 }
 
-                <!-- Snapshot Histórico en Modo PLAYBACK (timestamp <= T) -->
-                @if (isSlotInPlaybackMode(slot) && slot.camera) {
+                <!-- Imagen de Evento / Instantánea (Modo Reproducción Histórica o Fallback Estático) -->
+                @if (slot.camera && (webRtcStates()[slot.id] !== 'connected' || isSlotInPlaybackMode(slot))) {
                 @let displayImgEvent = getDisplayedEventForSlot(slot);
-                @if (displayImgEvent) {
-                <img [src]="displayImgEvent.urlImg" (error)="onImageError($event)"
+                @if (displayImgEvent && displayImgEvent.urlImg) {
+                <img [src]="displayImgEvent.urlImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
                   class="slot-event-img object-fit-contain w-100 h-100 position-absolute top-0 start-0"
-                  style="z-index: 7;" [class.feed-paused-grayscale]="isFeedPaused(slot.camera.name)"
-                  alt="" draggable="false" />
-                }
-                }
-
-                <!-- Fallback a Imagen de Evento o Placeholder de Carga -->
-                @if (webRtcStates()[slot.id] !== 'connected' && !isSlotInPlaybackMode(slot)) {
-                @if (slot.camera && latestEventsMap()[slot.camera.name]; as lastEvent) {
-                <img [src]="lastEvent.urlImg" (error)="onImageError($event)" class="slot-event-img object-fit-contain w-100 h-100"
-                  [class.feed-paused-grayscale]="isFeedPaused(slot.camera.name)" alt="" draggable="false" />
-                } @else {
-                <!-- Placeholder Esperando Evento -->
+                  style="z-index: 7;" [class.feed-paused-grayscale]="isFeedPaused(slot.camera.name)" alt=""
+                  draggable="false" />
+                } @else if (webRtcStates()[slot.id] === 'connecting' || isLoadingEvents()) {
+                <!-- Placeholder Conectando Cámara (Mientras se efectúa la consulta/conexión) -->
                 <div class="waiting-event-placeholder d-flex flex-column align-items-center justify-content-center">
                   <div class="placeholder-wave-container mb-2">
                     <div class="placeholder-wave-bar"></div>
@@ -183,11 +176,21 @@
                   <span class="text-white-50 small text-uppercase fw-semibold tracking-wider"
                     style="font-size: 0.65rem; letter-spacing: 0.05em;">Conectando Cámara...</span>
                 </div>
+                } @else {
+                <!-- Placeholder Sin Imagen (Falló conexión WebRTC o fecha histórica sin eventos para esta cámara) -->
+                <div
+                  class="no-image-placeholder d-flex flex-column align-items-center justify-content-center w-100 h-100 select-none">
+                  <span class="icon-svg icon-camara text-white-50 opacity-40 mb-2"
+                    style="width: 24px; height: 24px; background-color: currentColor;"></span>
+                  <span class="text-white-50 small text-uppercase fw-semibold tracking-wider"
+                    style="font-size: 0.65rem; letter-spacing: 0.05em;">Sin imagen</span>
+                </div>
                 }
                 }
 
                 <!-- Controles Flotantes y Overlays comunes (compatibles con Video e Imagen) -->
-                @if (slot.camera && (webRtcStates()[slot.id] === 'connected' || latestEventsMap()[slot.camera.name])) {
+                @if (slot.camera && (webRtcStates()[slot.id] === 'connected' ||
+                getLatestEventForCamera(slot.camera.name, slot.camera.id))) {
                 <!-- Bounding Box IA -->
                 @if (activeAiOverlays()[slot.camera.name]) {
                 @if (aiBoundingBoxes()[slot.camera.name]; as box) {
@@ -216,7 +219,8 @@
                 <div class="feed-actions-vertical-dock d-flex flex-column align-items-center"
                   (click)="$event.stopPropagation()">
                   <!-- Refrescar Flujo de Cámara (WebSocket: camera_stream_refresh) -->
-                  <button class="action-dock-btn" (click)="refreshCameraStream(slot, $event)" title="Refrescar flujo de video">
+                  <button class="action-dock-btn" (click)="refreshCameraStream(slot, $event)"
+                    title="Refrescar flujo de video">
                     <span class="icon-svg icon-refresh vms-icon-fluid-xs"></span>
                   </button>
 
@@ -462,8 +466,6 @@
                 <span class="icon-svg icon-chevron-left" style="width: 18px; height: 18px;"></span>
               </button>
 
-              <div class="vms-dock-divider"></div>
-
               <button class="vms-dock-play" (click)="togglePlayPause()"
                 [title]="paused() ? 'Reanudar' : 'Pausar reproductor'">
                 @if (paused()) {
@@ -472,8 +474,6 @@
                 <span class="icon-svg icon-pause-simple" style="width: 18px; height: 18px;"></span>
                 }
               </button>
-
-              <div class="vms-dock-divider"></div>
 
               <button class="vms-dock-btn" [disabled]="playbackMode() === 'live'" (click)="forwardEvent()"
                 title="Siguiente Evento">
@@ -743,8 +743,8 @@
       <div class="modal-search-row">
         <div class="modal-search-wrapper d-flex align-items-center flex-grow-1">
           <span class="icon-svg icon-search me-2 text-muted" style="width: 14px; height: 14px; opacity: 0.5;"></span>
-          <input #modalSearchInput type="text" placeholder="Buscar por cámara, nodo o tipo..." class="modal-search-input"
-            (input)="modalSearchQuery.set(modalSearchInput.value)" />
+          <input #modalSearchInput type="text" placeholder="Buscar por cámara, nodo o tipo..."
+            class="modal-search-input" (input)="modalSearchQuery.set(modalSearchInput.value)" />
         </div>
         <!-- Dropdown con Chevrón en formato Pill Redonda de Estado de Cámara -->
         <div class="filter-dropdown-wrapper position-relative flex-shrink-0">
@@ -760,8 +760,8 @@
           @if (showModalStatusDropdown()) {
           <div class="modal-filter-dropdown-menu p-2 show position-absolute end-0 mt-1 shadow-sm"
             style="z-index: 1060; min-width: 190px;" (click)="$event.stopPropagation()">
-            <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="modalStatusFilter() === 'all'"
-              (click)="selectModalStatus('all', $event)">
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+              [class.active]="modalStatusFilter() === 'all'" (click)="selectModalStatus('all', $event)">
               Todos los Estados
             </button>
             @for (st of modalStatusOptions(); track st) {
@@ -950,27 +950,35 @@
         <span class="fullscreen-camera-name text-truncate" [title]="fslot.camera?.name">{{ fslot.camera?.name }}</span>
       </div>
       @if (fslot.camera) {
-      <video [id]="'video-feed-fullscreen-' + fslot.id" [attr.data-camera-id]="fslot.camera.id" [attr.data-camera-name]="fslot.camera.name" class="fullscreen-video-element w-100 h-100 object-fit-contain"
+      <video [id]="'video-feed-fullscreen-' + fslot.id" [attr.data-camera-id]="fslot.camera.id"
+        [attr.data-camera-name]="fslot.camera.name" class="fullscreen-video-element w-100 h-100 object-fit-contain"
         [class.d-none]="webRtcStates()[fslot.id] !== 'connected' || isSlotInPlaybackMode(fslot)"
         [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)" autoplay playsinline muted>
       </video>
       }
 
-      <!-- Snapshot Histórico en Modo PLAYBACK -->
-      @if (isSlotInPlaybackMode(fslot) && fslot.camera && getSnapshotForCameraAt(fslot.camera.name); as snapshotEvent)
-      {
-      <img [src]="snapshotEvent.urlImg" (error)="onImageError($event)" class="w-100 h-100 object-fit-contain"
-        [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)" alt="" draggable="false" />
-      }
-
-      <!-- Fallback a Imagen de Evento o Placeholder -->
-      @if (webRtcStates()[fslot.id] !== 'connected' && !isSlotInPlaybackMode(fslot)) {
-      @if (fslot.camera && latestEventsMap()[fslot.camera.name]; as lastEvent) {
-      <img [src]="lastEvent.urlImg" (error)="onImageError($event)" class="w-100 h-100 object-fit-contain"
-        [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)" alt="" draggable="false" />
-      } @else {
+      <!-- Imagen de Evento / Instantánea (Modo Reproducción Histórica o Fallback Estático) -->
+      @if (fslot.camera && (webRtcStates()[fslot.id] !== 'connected' || isSlotInPlaybackMode(fslot))) {
+      @let displayImgEvent = getDisplayedEventForSlot(fslot);
+      @if (displayImgEvent && displayImgEvent.urlImg) {
+      <img [src]="displayImgEvent.urlImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
+        class="w-100 h-100 object-fit-contain" [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)" alt=""
+        draggable="false" />
+      } @else if (webRtcStates()[fslot.id] === 'connecting' || isLoadingEvents()) {
       <div class="waiting-event-placeholder d-flex flex-column align-items-center justify-content-center text-white-50">
-        <span class="text-uppercase fw-semibold tracking-wider small mb-2">Conectando transmisión en vivo...</span>
+        <div class="placeholder-wave-container mb-2">
+          <div class="placeholder-wave-bar"></div>
+          <div class="placeholder-wave-bar"></div>
+          <div class="placeholder-wave-bar"></div>
+        </div>
+        <span class="text-uppercase fw-semibold tracking-wider small">Conectando Cámara...</span>
+      </div>
+      } @else {
+      <div
+        class="no-image-placeholder d-flex flex-column align-items-center justify-content-center w-100 h-100 text-white-50 select-none">
+        <span class="icon-svg icon-camara text-white-50 opacity-40 mb-2"
+          style="width: 28px; height: 28px; background-color: currentColor;"></span>
+        <span class="text-uppercase fw-semibold tracking-wider small">Sin imagen</span>
       </div>
       }
       }
@@ -986,5 +994,6 @@
 
 <!-- Componente Compartido Reutilizable (DRY): Drawer Lateral de Configuración de Cámara -->
 <app-camera-detail-drawer [show]="showCameraConfigDrawer()" [camera]="selectedConfigCamera()"
-  (close)="showCameraConfigDrawer.set(false)">
+  [hostId]="selectedConfigCamera()?.hostFingerprint || null" (close)="showCameraConfigDrawer.set(false)"
+  (cameraUpdated)="onDrawerCameraUpdated($event)">
 </app-camera-detail-drawer>

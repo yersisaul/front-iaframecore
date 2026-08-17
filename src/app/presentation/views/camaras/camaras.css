@@ -192,7 +192,6 @@
 .fs-7 {
   font-size: 0.72rem;
   color: var(--text-muted);
-  text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.05em;
 }
@@ -200,7 +199,6 @@
 .spec-lbl {
   font-size: 0.67rem;
   color: var(--text-muted);
-  text-transform: uppercase;
   font-weight: 700;
   letter-spacing: 0.07em;
   white-space: nowrap;
@@ -943,7 +941,7 @@ code.code-badge {
 /* FORMS & SELECTS */
 .form-select,
 .form-control {
-  background: var(--bg-card);
+  background: var(--bg-surface);
   color: var(--text-primary);
   border-color: var(--border-color);
 }
@@ -1313,16 +1311,16 @@ code.code-badge {
   top: calc(100% + 6px);
   left: 0;
   z-index: 1000;
-  background-color: var(--bg-surface) !important;
-  border: 1px solid var(--border-color) !important;
-  border-radius: 16px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+  background-color: var(--bg-filter-dropdown-menu) !important;
+  border: 1px solid var(--border-filter-dropdown-menu) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
   animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  min-width: 210px;
+  min-width: 190px;
   display: flex !important;
   flex-direction: column !important;
-  gap: 6px !important;
-  padding: 10px !important;
+  gap: 2px !important;
+  padding: 6px !important;
 }
 
 @keyframes dropdownFadeIn {
@@ -1338,33 +1336,114 @@ code.code-badge {
 }
 
 .filter-dropdown-menu .dropdown-item {
-  color: var(--text-secondary);
-  font-size: 0.88rem !important;
-  font-weight: 600 !important;
-  padding: 8px 16px !important;
-  border-radius: 99px !important;
+  color: var(--text-secondary) !important;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  padding: 8px 14px !important;
+  border-radius: 8px !important;
   width: 100%;
-  border: 1px solid transparent;
-  background: transparent;
+  border: none !important;
+  background: transparent !important;
   text-align: left;
   cursor: pointer;
   display: flex !important;
   align-items: center !important;
-  gap: 10px !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 8px !important;
+  transition: background-color 0.15s ease, color 0.15s ease !important;
 }
 
 .filter-dropdown-menu .dropdown-item:hover:not(.active) {
-  background-color: var(--primary-light) !important;
-  color: var(--primary) !important;
-  border-color: rgba(var(--primary-rgb), 0.15) !important;
+  background-color: var(--bg-filter-dropdown-item-hover) !important;
+  color: var(--text-primary) !important;
+  border: none !important;
 }
 
 .filter-dropdown-menu .dropdown-item.active {
-  background-color: var(--primary) !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.25) !important;
+  background-color: var(--primary-light) !important;
+  color: var(--primary) !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+[data-bs-theme="dark"] .filter-dropdown-menu,
+[data-theme="dark"] .filter-dropdown-menu,
+.dark .filter-dropdown-menu {
+  background-color: var(--bg-filter-dropdown-menu) !important;
+  border-color: var(--border-filter-dropdown-menu) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .45), 0 4px 12px rgba(0, 0, 0, .2) !important;
+}
+
+[data-bs-theme="dark"] .filter-dropdown-menu .dropdown-item:hover:not(.active),
+[data-theme="dark"] .filter-dropdown-menu .dropdown-item:hover:not(.active),
+.dark .filter-dropdown-menu .dropdown-item:hover:not(.active) {
+  background-color: var(--bg-filter-dropdown-item-hover) !important;
+  color: var(--text-filter-dropdown-item-hover) !important;
+}
+
+[data-bs-theme="dark"] .filter-dropdown-menu .dropdown-item.active,
+[data-theme="dark"] .filter-dropdown-menu .dropdown-item.active,
+.dark .filter-dropdown-menu .dropdown-item.active {
+  background-color: rgba(var(--primary-rgb), 0.18) !important;
+  color: var(--primary) !important;
+}
+
+.filter-dropdown-menu.scrollable-menu {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.node-search-wrapper {
+  position: sticky;
+  top: -6px;
+  z-index: 2;
+  background: var(--bg-filter-dropdown-menu) !important;
+  padding-top: 2px;
+  margin-bottom: 4px;
+}
+
+[data-bs-theme="dark"] .node-search-wrapper,
+[data-theme="dark"] .node-search-wrapper,
+.dark .node-search-wrapper {
+  background: var(--bg-filter-dropdown-menu) !important;
+}
+
+.node-search-input-row {
+  background: var(--bg-surface, #ffffff) !important;
+  border: 1px solid var(--border-color, #e2e8f0) !important;
+  border-radius: 8px !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+[data-bs-theme="dark"] .node-search-input-row,
+[data-theme="dark"] .node-search-input-row,
+.dark .node-search-input-row {
+  background: #2d3e56 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.node-search-input-row:focus-within {
+  border-color: var(--primary) !important;
+  background: var(--bg-surface, #ffffff) !important;
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.12) !important;
+}
+
+[data-bs-theme="dark"] .node-search-input-row:focus-within,
+[data-theme="dark"] .node-search-input-row:focus-within,
+.dark .node-search-input-row:focus-within {
+  background: #2d3e56 !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.25) !important;
+}
+
+.node-search-input {
+  color: var(--text-primary) !important;
+  font-size: 0.825rem !important;
+}
+
+.node-search-input::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.65;
 }
 
 .btn-premium-action {
@@ -3702,7 +3781,7 @@ code.code-badge {
 .nm-table-tr {
   cursor: pointer;
   border-bottom: 1px solid var(--border-color) !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.2s ease;
   position: relative;
 }
 
@@ -3717,7 +3796,7 @@ code.code-badge {
   vertical-align: middle;
 }
 
-/* Camera Name marquesina en hover de fila (tabla lista) */
+/* Camera Name en tabla lista (fijo y estable sin desplazamientos) */
 .camera-name-marquee-container {
   flex: 1;
   min-width: 0;
@@ -3726,33 +3805,11 @@ code.code-badge {
 }
 
 .camera-name-marquee-text {
-  display: inline-block;
+  display: block;
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.nm-table-tr:hover .camera-name-marquee-text {
-  max-width: unset;
-  min-width: 100%;
-  width: max-content;
-  overflow: visible;
-  text-overflow: clip;
-  animation: marquee-camera-name 2.5s linear infinite alternate;
-}
-
-@keyframes marquee-camera-name {
-
-  0%,
-  10% {
-    transform: translate3d(0, 0, 0);
-  }
-
-  90%,
-  100% {
-    transform: translate3d(min(0px, calc(-100% + 180px)), 0, 0);
-  }
 }
 
 /* Hover general */

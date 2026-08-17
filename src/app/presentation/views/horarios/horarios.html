@@ -237,7 +237,7 @@
                       style="font-size: 0.74rem;">
                       <span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span>
                     </div>
-                    <div class="timeline-track-premium w-100 mb-2.5">
+                    <div class="timeline-track-premium w-100 mb-3">
                       <div class="timeline-bar-premium h-100"
                         [style.background]="getTimelineBackground(getTimeString(activeSched.start), getTimeString(activeSched.end))"
                         style="width: 100%;"></div>
@@ -415,7 +415,8 @@
   Modal de Registro: Crear Horario
 ══════════════════════════════════════════════════════════════════════════ -->
 @if (showCreateScheduleModal()) {
-<div class="schedule-modal-overlay" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event, 'create')" aria-modal="true" role="dialog">
+<div class="schedule-modal-overlay" (mousedown)="onBackdropMouseDown($event)"
+  (mouseup)="onBackdropMouseUp($event, 'create')" aria-modal="true" role="dialog">
   <div class="schedule-modal-card" (click)="$event.stopPropagation()">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2">
@@ -610,7 +611,8 @@
   Modal de Edición: Editar Horario
 ══════════════════════════════════════════════════════════════════════════ -->
 @if (showEditScheduleModal()) {
-<div class="schedule-modal-overlay" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event, 'edit')" aria-modal="true" role="dialog">
+<div class="schedule-modal-overlay" (mousedown)="onBackdropMouseDown($event)"
+  (mouseup)="onBackdropMouseUp($event, 'edit')" aria-modal="true" role="dialog">
   <div class="schedule-modal-card" (click)="$event.stopPropagation()">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2">

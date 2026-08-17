@@ -79,12 +79,9 @@
 
       <div class="d-flex align-items-center gap-2">
         <label for="cam-limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Cámaras por página:</label>
-        <select id="cam-limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
-          (change)="onLimitChange($event)">
-          @for (opt of limitOptions(); track $index) {
-          <option [value]="opt" [selected]="limit() === opt">{{ opt }}</option>
-          }
-        </select>
+        <app-custom-select [options]="limitOptions()" [value]="limit()" size="sm"
+          (valueChange)="onLimitValueChange($event)">
+        </app-custom-select>
       </div>
     </div>
   </app-page-header>
@@ -107,13 +104,13 @@
             [class.rotated]="activeDropdown() === 'status'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'status') {
-        <div class="filter-dropdown-menu dropdown-status p-2" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterStatus() === 'all'"
+        <div class="filter-dropdown-menu dropdown-status" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item" [class.active]="tempFilterStatus() === 'all'"
             (click)="selectFilterValue('status', 'all', $event)">
             Todos los Estados
           </button>
           @for (st of filterOptions().status; track st) {
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center gap-2"
+          <button type="button" class="dropdown-item d-flex align-items-center gap-2"
             [class.active]="isStatusSelected(tempFilterStatus(), st)"
             (click)="selectFilterValue('status', st, $event)">
             <span class="status-dot" [class]="getStatusCssClass(st)"></span>
@@ -135,13 +132,37 @@
             [class.rotated]="activeDropdown() === 'host'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'host') {
-        <div class="filter-dropdown-menu dropdown-host p-2 scrollable-menu" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterHost() === 'all'"
+        <div class="filter-dropdown-menu dropdown-host scrollable-menu" (click)="$event.stopPropagation()">
+          <!-- Searchbar interno de Nodos -->
+          <div class="node-search-wrapper px-1 pb-1">
+            <div class="node-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1">
+              <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
+              <input
+                #nodeSearchInput
+                type="text"
+                class="node-search-input border-0 bg-transparent w-100"
+                placeholder="Buscar nodo..."
+                (input)="hostSearch.set(nodeSearchInput.value)"
+                (click)="$event.stopPropagation()"
+                autocomplete="off"
+                style="font-size: 0.8rem; outline: none; min-width: 0;" />
+              @if (hostSearch()) {
+              <button type="button" class="btn-ghost p-0 d-flex border-0 bg-transparent" style="opacity: 0.5; line-height: 1;"
+                (click)="nodeSearchInput.value = ''; hostSearch.set(''); $event.stopPropagation()" title="Limpiar búsqueda">
+                <span style="font-size: 0.75rem;">✕</span>
+              </button>
+              }
+            </div>
+          </div>
+          <button type="button" class="dropdown-item" [class.active]="tempFilterHost() === 'all'"
             (click)="selectFilterValue('host', 'all', $event)">
             Todos los Nodos
           </button>
-          @for (h of filterOptions().hosts; track h.fingerprint) {
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+          @if (filteredHostOptions().length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin resultados</div>
+          }
+          @for (h of filteredHostOptions(); track h.fingerprint) {
+          <button type="button" class="dropdown-item"
             [class.active]="tempFilterHost() === h.fingerprint"
             (click)="selectFilterValue('host', h.fingerprint, $event)">
             {{ h.name }}
@@ -157,19 +178,19 @@
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilterStreamType() !== 'all'" (click)="toggleDropdown('streamType', $event)">
           <span class="icon-svg icon-wifi filter-icon" style="width: 14px; height: 14px;"></span>
-          <span class="text-uppercase">Stream: {{ tempFilterStreamType() === 'all' ? 'Todos' : tempFilterStreamType()
+          <span>Stream: {{ tempFilterStreamType() === 'all' ? 'Todos' : tempFilterStreamType()
             }}</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'streamType'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'streamType') {
-        <div class="filter-dropdown-menu dropdown-streamType p-2" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+        <div class="filter-dropdown-menu dropdown-streamType" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item"
             [class.active]="tempFilterStreamType() === 'all'" (click)="selectFilterValue('streamType', 'all', $event)">
             Todos los Streams
           </button>
           @for (st of filterOptions().streamType; track st) {
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded text-uppercase"
+          <button type="button" class="dropdown-item"
             [class.active]="tempFilterStreamType() === st" (click)="selectFilterValue('streamType', st, $event)">
             {{ st }}
           </button>
@@ -183,19 +204,19 @@
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilterDecoder() !== 'all'" (click)="toggleDropdown('decoder', $event)">
           <span class="icon-svg icon-settings filter-icon" style="width: 14px; height: 14px;"></span>
-          <span class="text-uppercase">Decodificador: {{ tempFilterDecoder() === 'all' ? 'Todos' : tempFilterDecoder()
+          <span>Decodificador: {{ tempFilterDecoder() === 'all' ? 'Todos' : tempFilterDecoder()
             }}</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'decoder'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'decoder') {
-        <div class="filter-dropdown-menu dropdown-decoder p-2" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterDecoder() === 'all'"
+        <div class="filter-dropdown-menu dropdown-decoder" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item" [class.active]="tempFilterDecoder() === 'all'"
             (click)="selectFilterValue('decoder', 'all', $event)">
             Todos los Decodificadores
           </button>
           @for (dec of filterOptions().decoder; track dec) {
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded text-uppercase"
+          <button type="button" class="dropdown-item"
             [class.active]="tempFilterDecoder() === dec" (click)="selectFilterValue('decoder', dec, $event)">
             {{ dec }}
           </button>
@@ -215,14 +236,14 @@
             [class.rotated]="activeDropdown() === 'analyticType'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'analyticType') {
-        <div class="filter-dropdown-menu dropdown-analyticType p-2 scrollable-menu" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+        <div class="filter-dropdown-menu dropdown-analyticType scrollable-menu" (click)="$event.stopPropagation()">
+          <button type="button" class="dropdown-item"
             [class.active]="tempFilterAnalyticType() === 'all'"
             (click)="selectFilterValue('analyticType', 'all', $event)">
             Todas las Analíticas
           </button>
           @for (type of filterOptions().analyticType; track type) {
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded text-capitalize"
+          <button type="button" class="dropdown-item text-capitalize"
             [class.active]="tempFilterAnalyticType() === type"
             (click)="selectFilterValue('analyticType', type, $event)">
             {{ getAnalyticLabel(type) }}
@@ -260,7 +281,7 @@
   }
 
   <!-- Cuadrícula de Cámaras (Estilo Bento Nodos) o Tabla Premium -->
-  @if (!isLoading() && cameras().length > 0) {
+  @if (!isLoading() && filteredCameras().length > 0) {
   @if (viewMode() === 'cards') {
   <div #camerasGrid class="hosts-grid mb-4">
     @for (camera of pagedCameras(); track camera.id) {
@@ -315,6 +336,25 @@
               }
             </div>
 
+            @if (camera.nxId && (camera.decoder.toLowerCase().includes('nx') || camera.streamType.toLowerCase().includes('nx'))) {
+            <div class="spec-row d-flex justify-content-between"
+              [class.copied-flash]="copiedRowId() === camera.id + '-nxId'"
+              (click)="copyRowContent(camera.nxId!, camera.id + '-nxId'); $event.stopPropagation()">
+              <span class="spec-lbl d-inline-flex align-items-center">
+                <span class="icon-svg icon-nx me-2"
+                  style="width: 14px; height: 14px; background-color: currentColor;"></span>
+                NX ID
+              </span>
+              @if (copiedRowId() === camera.id + '-nxId') {
+              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
+              } @else {
+              <span class="spec-val font-monospace text-truncate text-end">
+                {{ camera.nxId }}
+              </span>
+              }
+            </div>
+            }
+
             <div class="spec-row d-flex justify-content-between"
               [class.copied-flash]="copiedRowId() === camera.id + '-host'"
               (click)="copyRowContent(camera.hostFingerprint, camera.id + '-host'); $event.stopPropagation()">
@@ -326,8 +366,9 @@
               @if (copiedRowId() === camera.id + '-host') {
               <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
               } @else {
-              <span class="spec-val font-monospace text-truncate text-end">
-                {{ getHostName(camera.hostFingerprint) }}
+              @let nodeNameBento = getHostName(camera.hostFingerprint);
+              <span class="spec-val font-monospace text-truncate text-end" [class.text-muted]="nodeNameBento.toUpperCase() === 'SIN NODO'" [class.opacity-50]="nodeNameBento.toUpperCase() === 'SIN NODO'">
+                {{ nodeNameBento }}
               </span>
               }
             </div>
@@ -409,14 +450,24 @@
                 <span class="camera-name-marquee-text fw-bold text-body" style="font-size: 0.88rem;">{{ camera.name
                   }}</span>
               </div>
+              @if (camera.nxId && (camera.decoder.toLowerCase().includes('nx') || camera.streamType.toLowerCase().includes('nx'))) {
+              <div class="text-muted font-monospace small" style="font-size: 0.72rem;">NX ID: {{ camera.nxId }}</div>
+              }
             </td>
             <!-- Nodo / Host -->
             @if (!hostId()) {
             <td>
-              <span class="text-body text-truncate d-inline-block" style="font-size: 0.88rem;"
-                [title]="camera.hostFingerprint">
-                {{ getHostName(camera.hostFingerprint) }}
+              @let nodeNameTable = getHostName(camera.hostFingerprint);
+              @if (nodeNameTable.toUpperCase() === 'SIN NODO') {
+              <span class="text-muted opacity-50 fw-semibold d-inline-block" style="font-size: 0.82rem; letter-spacing: 0.04em;">
+                SIN NODO
               </span>
+              } @else {
+              <span class="text-body text-truncate d-inline-block" style="font-size: 0.88rem;"
+                [title]="nodeNameTable">
+                {{ nodeNameTable }}
+              </span>
+              }
             </td>
             }
             <!-- Stream -->

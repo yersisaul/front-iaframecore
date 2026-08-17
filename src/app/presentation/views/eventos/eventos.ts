@@ -18,11 +18,12 @@ import { PaginationControlsComponent } from '../../shared/pagination-controls/pa
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
 import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
+import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
 
 @Component({
   selector: 'app-eventos',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, EventDetailModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, FilterActionsComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, EventDetailModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, FilterActionsComponent, CustomSelectComponent],
   templateUrl: './eventos.html',
   styleUrl: './eventos.css'
 })
@@ -246,6 +247,14 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     const select = event.target as HTMLSelectElement;
     const newLimit = parseInt(select.value, 10);
     this.eventService.setPageSize(newLimit);
+  }
+
+  onLimitValueChange(val: any): void {
+    const newLimit = parseInt(val, 10);
+    if (!isNaN(newLimit)) {
+      this.eventService.setPageSize(newLimit);
+      this.eventService.setPage(1);
+    }
   }
 
   private parseFiltersFromParams(params: any): EventFilters {

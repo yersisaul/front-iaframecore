@@ -3,6 +3,20 @@
   width: 100%;
 }
 
+.user-control.collapsed-mode,
+.user-control.collapsed-mode * {
+  cursor: pointer !important;
+}
+
+.user-control:not(.collapsed-mode) {
+  cursor: default !important;
+}
+
+.user-control:not(.collapsed-mode) button,
+.user-control:not(.collapsed-mode) button * {
+  cursor: pointer !important;
+}
+
 .user-control {
   height: 48px;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);

@@ -334,8 +334,8 @@
   top: calc(100% + 6px);
   left: 0;
   z-index: 1000;
-  background-color: var(--bg-surface) !important;
-  border: 1px solid var(--border-color) !important;
+  background-color: var(--bg-filter-dropdown-menu) !important;
+  border: 1px solid var(--border-filter-dropdown-menu) !important;
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08);
   animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -630,8 +630,39 @@
 
 /* Dark mode deep overrides */
 ::ng-deep .dark .event-card,
-::ng-deep [data-bs-theme="dark"] .event-card {
+::ng-deep [data-bs-theme="dark"] .event-card,
+::ng-deep [data-theme="dark"] .event-card {
   background-color: var(--bg-surface);
+}
+
+::ng-deep .dark .filter-dropdown-menu,
+::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu,
+::ng-deep [data-theme="dark"] .filter-dropdown-menu,
+[data-bs-theme="dark"] .filter-dropdown-menu,
+[data-theme="dark"] .filter-dropdown-menu,
+.dark .filter-dropdown-menu {
+  background-color: var(--bg-filter-dropdown-menu) !important;
+  border: 1px solid var(--border-filter-dropdown-menu) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .45), 0 4px 12px rgba(0, 0, 0, .2) !important;
+}
+
+::ng-deep .dark .filter-dropdown-menu .dropdown-item,
+::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu .dropdown-item,
+::ng-deep [data-theme="dark"] .filter-dropdown-menu .dropdown-item,
+[data-bs-theme="dark"] .filter-dropdown-menu .dropdown-item,
+[data-theme="dark"] .filter-dropdown-menu .dropdown-item,
+.dark .filter-dropdown-menu .dropdown-item {
+  color: var(--text-filter-dropdown-item) !important;
+}
+
+::ng-deep .dark .filter-dropdown-menu .dropdown-item:hover,
+::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu .dropdown-item:hover,
+::ng-deep [data-theme="dark"] .filter-dropdown-menu .dropdown-item:hover,
+[data-bs-theme="dark"] .filter-dropdown-menu .dropdown-item:hover,
+[data-theme="dark"] .filter-dropdown-menu .dropdown-item:hover,
+.dark .filter-dropdown-menu .dropdown-item:hover {
+  background-color: var(--bg-filter-dropdown-item-hover) !important;
+  color: var(--text-filter-dropdown-item-hover) !important;
 }
 
 /* Search prefix and custom styling */

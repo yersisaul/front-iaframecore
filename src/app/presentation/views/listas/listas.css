@@ -694,8 +694,8 @@
   top: calc(100% + 6px);
   left: 0;
   z-index: 1000;
-  background-color: var(--bg-surface) !important;
-  border: 1px solid var(--border-color) !important;
+  background-color: var(--bg-filter-dropdown-menu) !important;
+  border: 1px solid var(--border-filter-dropdown-menu) !important;
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
   animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -777,7 +777,12 @@
 }
 
 /* Dark Mode Popover Overrides */
-[data-bs-theme="dark"] .filter-dropdown-menu {
+::ng-deep .dark .filter-dropdown-menu,
+::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu,
+::ng-deep [data-theme="dark"] .filter-dropdown-menu,
+[data-bs-theme="dark"] .filter-dropdown-menu,
+[data-theme="dark"] .filter-dropdown-menu,
+.dark .filter-dropdown-menu {
   background-color: var(--bg-filter-dropdown-menu) !important;
   border-color: var(--border-filter-dropdown-menu) !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.45) !important;

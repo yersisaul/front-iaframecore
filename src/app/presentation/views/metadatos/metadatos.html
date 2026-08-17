@@ -30,12 +30,9 @@
       <!-- Selector de Registros por Página -->
       <div class="d-flex align-items-center gap-2">
         <label for="limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Registros por página:</label>
-        <select id="limit-select" class="form-select form-select-sm shadow-sm" style="width: 80px;"
-          (change)="onLimitChange($event)">
-          @for (opt of limitOptions(); track $index) {
-          <option [value]="opt" [selected]="pageSize() === opt">{{ opt }}</option>
-          }
-        </select>
+        <app-custom-select [options]="limitOptions()" [value]="pageSize()" size="sm"
+          (valueChange)="onLimitValueChange($event)">
+        </app-custom-select>
       </div>
     </ng-container>
   </app-page-header>
@@ -263,7 +260,7 @@
       <!-- FILTRO PLACA (SOLO PARA VEHÍCULOS) - DESPLEGABLE CON ENTRADA EN TIEMPO REAL -->
       @if (activeIndex() === 'vehiculos') {
       <div class="filter-dropdown-wrapper position-relative">
-        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-uppercase"
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilters().reconocimiento !== null" (click)="toggleDropdown('placa', $event)">
           <span class="icon-svg icon-list filter-icon" style="width: 14px; height: 14px;"></span>
           <span>Placa: {{ tempFilters().reconocimiento || 'Todas' }}</span>
@@ -338,7 +335,7 @@
         </button>
         @if (activeDropdown() === 'confiabilidad') {
         <div class="filter-dropdown-menu dropdown-confiabilidad p-3" (click)="$event.stopPropagation()">
-          <div class="dropdown-header-title mb-2 text-uppercase text-muted fw-bold">Confiabilidad</div>
+          <div class="dropdown-header-title mb-2 text-muted fw-bold">Confiabilidad</div>
 
           <!-- Presets -->
           <div class="d-flex gap-2 mb-3 preset-buttons-row">
@@ -400,7 +397,7 @@
         </button>
         @if (activeDropdown() === 'fechas') {
         <div class="filter-dropdown-menu dropdown-fechas p-3" (click)="$event.stopPropagation()">
-          <div class="dropdown-header-title mb-3 text-uppercase text-muted fw-bold">Rango de Fechas</div>
+          <div class="dropdown-header-title mb-3 text-muted fw-bold">Rango de Fechas</div>
 
           <!-- Presets -->
           <div class="d-flex flex-wrap gap-2 mb-3 preset-buttons-row">

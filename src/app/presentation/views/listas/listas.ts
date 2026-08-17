@@ -13,6 +13,7 @@ import { PaginationControlsComponent } from '../../shared/pagination-controls/pa
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
+import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
 
 export interface FaceUploadResult {
   file: File;
@@ -62,7 +63,7 @@ export interface SubjectImportDraft {
 @Component({
   selector: 'app-listas',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent, FilterActionsComponent, EmptyStateComponent, PaginationControlsComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent, FilterActionsComponent, EmptyStateComponent, PaginationControlsComponent, CustomSelectComponent],
   templateUrl: './listas.html',
   styleUrl: './listas.css'
 })
@@ -322,6 +323,14 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   onLimitChange(event: Event): void {
     const select = event.target as HTMLSelectElement;
     const newLimit = parseInt(select.value, 10);
+    if (!isNaN(newLimit)) {
+      this.limit.set(newLimit);
+      this.currentPage.set(1);
+    }
+  }
+
+  onLimitValueChange(val: any): void {
+    const newLimit = parseInt(val, 10);
     if (!isNaN(newLimit)) {
       this.limit.set(newLimit);
       this.currentPage.set(1);

@@ -68,14 +68,22 @@
   margin: auto;
 }
 
-.event-capture-img,
-.event-capture-video {
+.event-capture-img {
   width: 100%;
   height: auto;
   display: block;
   object-fit: contain;
   border-radius: 0.95rem !important;
   pointer-events: none;
+}
+
+.event-capture-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  border-radius: 0.95rem !important;
+  pointer-events: auto;
 }
 
 /* Estado Sin Imagen (Tema claro y oscuro adaptativo) */
@@ -568,6 +576,8 @@
   background-color: var(--text-on-primary-btn, #ffffff) !important;
   transform: scale(1.08);
 }
+
+
 
 /* Responsividad Móvil (<768px) */
 @media (max-width: 768px) {

@@ -1,3 +1,5 @@
+import * as XLSX from 'xlsx';
+
 export interface ExportColumn {
   header: string;
   key: string;
@@ -20,59 +22,38 @@ export function exportToCsv(filename: string, columns: ExportColumn[], data: any
 }
 
 export function exportToXlsx(filename: string, sheetName: string, columns: ExportColumn[], data: any[]): void {
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  xml += `<?mso-application progid="Excel.Sheet"?>\n`;
-  xml += `<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"\n`;
-  xml += ` xmlns:o="urn:schemas-microsoft-com:office:office"\n`;
-  xml += ` xmlns:x="urn:schemas-microsoft-com:office:excel"\n`;
-  xml += ` xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n`;
-  xml += ` <Styles>\n`;
-  xml += `  <Style ss:ID="Header">\n`;
-  xml += `   <Font ss:Bold="1" ss:Color="#FFFFFF" ss:Size="11"/>\n`;
-  xml += `   <Interior ss:Color="#065F46" ss:Pattern="Solid"/>\n`;
-  xml += `   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>\n`;
-  xml += `  </Style>\n`;
-  xml += `  <Style ss:ID="Cell">\n`;
-  xml += `   <Alignment ss:Vertical="Center"/>\n`;
-  xml += `  </Style>\n`;
-  xml += ` </Styles>\n`;
-  xml += ` <Worksheet ss:Name="${escapeXml(sheetName)}">\n`;
-  xml += `  <Table>\n`;
-
-  // Header Row
-  xml += `   <Row ss:Height="26">\n`;
-  columns.forEach(col => {
-    xml += `    <Cell ss:StyleID="Header"><Data ss:Type="String">${escapeXml(col.header)}</Data></Cell>\n`;
-  });
-  xml += `   </Row>\n`;
-
-  // Data Rows
-  data.forEach(row => {
-    xml += `   <Row ss:Height="22">\n`;
+  const formattedData = data.map(row => {
+    const rowObj: Record<string, any> = {};
     columns.forEach(col => {
       let val = row[col.key];
       if (val === null || val === undefined) val = '';
-      xml += `    <Cell ss:StyleID="Cell"><Data ss:Type="String">${escapeXml(String(val))}</Data></Cell>\n`;
+      rowObj[col.header] = val;
     });
-    xml += `   </Row>\n`;
+    return rowObj;
   });
 
-  xml += `  </Table>\n`;
-  xml += ` </Worksheet>\n`;
-  xml += `</Workbook>`;
+  const worksheet = XLSX.utils.json_to_sheet(formattedData, {
+    header: columns.map(c => c.header)
+  });
 
-  const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-  const finalName = filename.endsWith('.xlsx') || filename.endsWith('.xls') ? filename : `${filename}.xlsx`;
-  downloadBlob(blob, finalName);
-}
+  // Auto-ajustar ancho de columnas de forma inteligente
+  const colWidths = columns.map(col => {
+    let maxLen = col.header.length;
+    formattedData.forEach(row => {
+      const valStr = String(row[col.header] || '');
+      if (valStr.length > maxLen) {
+        maxLen = valStr.length;
+      }
+    });
+    return { wch: Math.min(Math.max(maxLen + 3, 12), 60) };
+  });
+  worksheet['!cols'] = colWidths;
 
-function escapeXml(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName || 'Reporte');
+
+  const finalName = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+  XLSX.writeFile(workbook, finalName);
 }
 
 function downloadBlob(blob: Blob, filename: string): void {

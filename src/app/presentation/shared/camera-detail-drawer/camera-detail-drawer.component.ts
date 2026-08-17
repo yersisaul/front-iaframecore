@@ -49,6 +49,14 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
     if (cam?.fingerprint) return cam.fingerprint;
     if (cam?.host_id) return cam.host_id;
     if (cam?.hostId) return cam.hostId;
+    if (this.camera?.id) {
+      const foundCam = this.cameraService.cameras().find(c => c.id === this.camera!.id);
+      if (foundCam?.hostFingerprint) return foundCam.hostFingerprint;
+    }
+    const all = this.hostService.allHosts();
+    if (all.length > 0 && all[0].fingerprint) {
+      return all[0].fingerprint;
+    }
     return '';
   }
 
@@ -61,6 +69,11 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
     const hostJustChanged = !!(changes['hostId'] && changes['hostId'].previousValue !== changes['hostId'].currentValue);
 
     if (this.show) {
+      this.cameraService.isViewActive.set(true);
+      this.analyticService.isViewActive.set(true);
+      this.scheduleService.isViewActive.set(true);
+      this.hostService.isViewActive.set(true);
+
       if (showJustOpened || cameraJustChanged || hostJustChanged) {
         this.lastEventImageUrl.set('');
         this.liveWebRtcFrameUrl.set('');
@@ -341,6 +354,25 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
 
 
 
+  private calculateAnalysisZone(p1: { x: number; y: number }, p2: { x: number; y: number }, halfWidth: number): { x: number; y: number }[] {
+    if (!p1 || !p2) return [];
+    const vx = p2.x - p1.x;
+    const vy = p2.y - p1.y;
+    const len = Math.hypot(vx, vy);
+    if (len === 0) return [p1, p1, p2, p2];
+    const nx = -vy / len;
+    const ny = vx / len;
+    const hw = halfWidth > 0 ? halfWidth : 20;
+    const ox = nx * hw;
+    const oy = ny * hw;
+    return [
+      { x: Math.round(p1.x - ox), y: Math.round(p1.y - oy) },
+      { x: Math.round(p1.x + ox), y: Math.round(p1.y + oy) },
+      { x: Math.round(p2.x + ox), y: Math.round(p2.y + oy) },
+      { x: Math.round(p2.x - ox), y: Math.round(p2.y - oy) }
+    ];
+  }
+
   onGeometryChanged(data: any): void {
     this.drawnGeometryData.set(data);
   }
@@ -438,6 +470,9 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
 
     const editingAnalytic = this.selectedAnalyticForConfig();
 
+    const currentZoneWidth = formState?.detection_params?.zona_analisis ?? formState?.specific_params?.zona_analisis ?? 40;
+    const halfW = Number(currentZoneWidth) / 2;
+
     const rawGeo = this.drawnGeometryData();
     const cleanGeometricObjects = {
       polygons: Array.isArray(rawGeo?.polygons) ? rawGeo.polygons.map((p: any) => {
@@ -445,10 +480,18 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
         delete cleaned.camera_id;
         return cleaned;
       }) : [],
-      lines: Array.isArray(rawGeo?.lines) ? rawGeo.lines.map((l: any) => ({
-        ...l,
-        camera_id: l.camera_id || this.camera?.id || ''
-      })) : []
+      lines: Array.isArray(rawGeo?.lines) ? rawGeo.lines.map((l: any) => {
+        const pts = l.extreme_points || l.points || [];
+        const p1 = pts[0] || { x: 0, y: 0 };
+        const p2 = pts[1] || p1;
+        const freshAnalysisZone = this.calculateAnalysisZone(p1, p2, halfW);
+
+        return {
+          ...l,
+          camera_id: l.camera_id || this.camera?.id || '',
+          analysis_zone: freshAnalysisZone
+        };
+      }) : []
     };
 
     const payload: any = {

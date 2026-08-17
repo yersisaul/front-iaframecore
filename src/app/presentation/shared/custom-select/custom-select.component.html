@@ -1,0 +1,32 @@
+<div class="custom-select-wrapper position-relative d-inline-block" [class.is-open]="isOpen()" [class.is-disabled]="disabled">
+  <!-- Trigger Pill Button -->
+  <button
+    type="button"
+    class="custom-select-trigger d-flex align-items-center justify-content-between gap-2 shadow-sm"
+    [class.size-sm]="size === 'sm'"
+    [class.size-md]="size === 'md'"
+    [class.size-lg]="size === 'lg'"
+    [disabled]="disabled"
+    (click)="toggleOpen($event)"
+    [attr.aria-expanded]="isOpen()">
+    <span class="custom-select-label text-truncate">{{ displayLabel() }}</span>
+    <span class="custom-select-arrow icon-svg icon-chevron-down transition-transform" [class.rotated]="isOpen()"></span>
+  </button>
+
+  <!-- Dropdown Menu (Replicando el diseño idéntico de los otros dropdowns de la app) -->
+  @if (isOpen()) {
+  <div class="filter-dropdown-menu custom-select-menu p-1.5 shadow-lg animation-popover-in" (click)="$event.stopPropagation()">
+    <div class="custom-select-menu-inner custom-scrollbar">
+      @for (opt of normalizedOptions(); track opt.value) {
+      <button
+        type="button"
+        class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center justify-content-between w-100"
+        [class.active]="isSelected(opt.value)"
+        (click)="selectOption(opt, $event)">
+        <span class="option-label text-truncate">{{ opt.label }} {{ labelSuffix }}</span>
+      </button>
+      }
+    </div>
+  </div>
+  }
+</div>

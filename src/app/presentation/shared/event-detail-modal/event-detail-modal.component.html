@@ -5,12 +5,24 @@
 <!-- Componente 1: Workspace Izquierdo de Imagen Centrada (3/4 del Ancho de Pantalla) -->
 <div class="event-image-workspace" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)">
   <div class="event-image-container">
-    @if (activeMediaType() === 'video' && selectedEvent.urlVideo) {
-    <div class="modal-img-wrapper position-relative overflow-hidden shadow-2xl"
-      [style.aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null"
-      [style.--aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null">
-      <video [src]="selectedEvent.urlVideo" (loadedmetadata)="onVideoLoadedMetadata($event)" class="event-capture-video select-none" controls autoplay loop></video>
-    </div>
+    @if (activeMediaType() === 'video') {
+      @if (selectedEvent.urlVideo && !hasVideoError()) {
+      <div class="modal-img-wrapper position-relative overflow-hidden shadow-2xl"
+        [style.aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null"
+        [style.--aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null">
+        <video [src]="selectedEvent.urlVideo" (loadedmetadata)="onVideoLoadedMetadata($event)" (error)="onVideoError($event)" class="event-capture-video select-none" controls autoplay loop></video>
+      </div>
+      } @else {
+      <div class="no-image-text-container select-none">
+        <span class="icon-svg icon-warning no-image-icon" style="background-color: #f59e0b;"></span>
+        <span class="no-image-title text-uppercase">
+          {{ hasVideoError() ? 'NO SE PUDO CARGAR EL VIDEO' : 'SIN VIDEO DISPONIBLE' }}
+        </span>
+        <span class="no-image-subtitle">
+          {{ hasVideoError() ? 'El archivo de video no está disponible o no se pudo reproducir' : 'Este evento no contiene clip de video grabado' }}
+        </span>
+      </div>
+      }
     } @else if (selectedEvent.urlImg && !hasImageError()) {
     <div #imgWrapper class="modal-img-wrapper position-relative overflow-hidden shadow-2xl" (mousemove)="onZoomMouseMove($event)"
       (click)="toggleZoom($event)" [class.zoom-active-cursor]="isZoomed()"
@@ -152,7 +164,6 @@
       </div>
 
       <!-- Selector de Medios (Imagen / Video) - Rediseño Premium -->
-      @if (selectedEvent.urlVideo) {
       <div class="media-toggle-container mb-4">
         <div class="popover-section-title text-uppercase fw-bold mb-2"
           style="font-size: 0.68rem; letter-spacing: 0.08em; color: var(--text-muted);">Visualización de Medio</div>
@@ -165,13 +176,18 @@
           </button>
           <button type="button"
             class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center gap-2 py-2 px-3 rounded-pill transition-all"
-            [class.active]="activeMediaType() === 'video'" (click)="activeMediaType.set('video')">
+            [class.active]="activeMediaType() === 'video'"
+            [title]="!selectedEvent.urlVideo ? 'Sin video disponible para este evento' : (hasVideoError() ? 'No se pudo cargar el video' : 'Ver video del evento')"
+            (click)="activeMediaType.set('video')">
+            @if (!selectedEvent.urlVideo || hasVideoError()) {
+            <span class="icon-svg icon-warning" style="width: 15px; height: 15px; background-color: #f59e0b; flex-shrink: 0;"></span>
+            } @else {
             <span class="icon-svg icon-camera-video media-toggle-icon"></span>
+            }
             <span class="fw-bold">Video</span>
           </button>
         </div>
       </div>
-      }
 
       <!-- Descripción del Evento -->
       @if (selectedEvent.detalleEvento) {

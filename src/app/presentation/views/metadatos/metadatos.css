@@ -105,7 +105,6 @@
 .filter-group label.filter-label {
   font-size: 0.8125rem;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
   margin-bottom: 0.5rem;
@@ -694,8 +693,8 @@
   top: calc(100% + 6px);
   left: 0;
   z-index: 1000;
-  background-color: var(--bg-surface) !important;
-  border: 1px solid var(--border-color) !important;
+  background-color: var(--bg-filter-dropdown-menu) !important;
+  border: 1px solid var(--border-filter-dropdown-menu) !important;
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
   animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -949,21 +948,33 @@
 
 
 ::ng-deep .dark .filter-dropdown-menu,
-::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu {
+::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu,
+::ng-deep [data-theme="dark"] .filter-dropdown-menu,
+[data-bs-theme="dark"] .filter-dropdown-menu,
+[data-theme="dark"] .filter-dropdown-menu,
+.dark .filter-dropdown-menu {
   background-color: var(--bg-filter-dropdown-menu) !important;
   border: 1px solid var(--border-filter-dropdown-menu) !important;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, .45), 0 4px 12px rgba(0, 0, 0, .2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .45), 0 4px 12px rgba(0, 0, 0, .2) !important;
 }
 
 ::ng-deep .dark .filter-dropdown-menu .dropdown-item,
-::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu .dropdown-item {
+::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu .dropdown-item,
+::ng-deep [data-theme="dark"] .filter-dropdown-menu .dropdown-item,
+[data-bs-theme="dark"] .filter-dropdown-menu .dropdown-item,
+[data-theme="dark"] .filter-dropdown-menu .dropdown-item,
+.dark .filter-dropdown-menu .dropdown-item {
   color: var(--text-filter-dropdown-item) !important;
 }
 
 ::ng-deep .dark .filter-dropdown-menu .dropdown-item:hover,
-::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu .dropdown-item:hover {
+::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu .dropdown-item:hover,
+::ng-deep [data-theme="dark"] .filter-dropdown-menu .dropdown-item:hover,
+[data-bs-theme="dark"] .filter-dropdown-menu .dropdown-item:hover,
+[data-theme="dark"] .filter-dropdown-menu .dropdown-item:hover,
+.dark .filter-dropdown-menu .dropdown-item:hover {
   background-color: var(--bg-filter-dropdown-item-hover) !important;
-  color: var(--text-filter-dropdown-item-hover);
+  color: var(--text-filter-dropdown-item-hover) !important;
 }
 
 ::ng-deep .dark .custom-checkbox-wrapper:hover,
@@ -1001,9 +1012,46 @@
 
 ::ng-deep .dark .filter-dropdown-menu .form-control-sm:focus,
 ::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu .form-control-sm:focus {
-  background-color: var(--bg-custom-checkbox) !important;
+  background-color: rgba(15, 23, 42, 0.45) !important;
   border-color: var(--primary, #3b82f6) !important;
   box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.25) !important;
+}
+
+.camera-search-wrapper {
+  position: sticky;
+  top: -6px;
+  z-index: 2;
+  background: var(--bg-filter-dropdown-menu) !important;
+  padding-top: 2px;
+  margin-bottom: 4px;
+}
+
+.camera-search-input-row {
+  background: var(--bg-surface, #ffffff) !important;
+  border: 1px solid var(--border-color, #e2e8f0) !important;
+  border-radius: 8px !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+[data-bs-theme="dark"] .camera-search-input-row,
+[data-theme="dark"] .camera-search-input-row,
+.dark .camera-search-input-row {
+  background: #2d3e56 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.camera-search-input-row:focus-within {
+  border-color: var(--primary) !important;
+  background: var(--bg-surface, #ffffff) !important;
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.12) !important;
+}
+
+[data-bs-theme="dark"] .camera-search-input-row:focus-within,
+[data-theme="dark"] .camera-search-input-row:focus-within,
+.dark .camera-search-input-row:focus-within {
+  background: #2d3e56 !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.25) !important;
 }
 
 /* --- Premium Filter Action Buttons --- */

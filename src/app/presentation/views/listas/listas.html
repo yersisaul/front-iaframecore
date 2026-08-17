@@ -170,12 +170,9 @@
                 style="font-size: 0.78rem;">
                 {{ listType() === 'plate_recognition' ? 'Placas' : 'Sujetos' }} por página:
               </label>
-              <select id="list-limit-select" class="form-select form-select-sm shadow-sm border-color"
-                style="width: 75px; font-size: 0.78rem;" (change)="onLimitChange($event)">
-                @for (opt of limitOptions(); track $index) {
-                <option [value]="opt" [selected]="limit() === opt">{{ opt }}</option>
-                }
-              </select>
+              <app-custom-select [options]="limitOptions()" [value]="limit()" size="sm"
+                (valueChange)="onLimitValueChange($event)">
+              </app-custom-select>
             </div>
           </div>
         </div>
@@ -198,7 +195,7 @@
               </button>
               @if (activeDropdown() === 'umbral') {
               <div class="filter-dropdown-menu dropdown-confiabilidad p-3" (click)="$event.stopPropagation()">
-                <div class="dropdown-header-title mb-2 text-uppercase text-muted fw-bold">Umbral de Detección</div>
+                <div class="dropdown-header-title mb-2 text-muted fw-bold">Umbral de Detección</div>
 
                 <!-- Presets -->
                 <div class="d-flex gap-2 mb-3 preset-buttons-row">

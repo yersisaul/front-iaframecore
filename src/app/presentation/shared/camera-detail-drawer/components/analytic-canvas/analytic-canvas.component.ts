@@ -180,6 +180,16 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
         this.emitGeometry();
       }
     }
+    if (changes['zoneWidth']) {
+      if (this.shapes().length > 0) {
+        this.emitGeometry();
+      }
+    }
+    if (changes['scaleFactor']) {
+      if (this.shapes().length > 0) {
+        this.emitGeometry();
+      }
+    }
     if (changes['geometryType']) {
       const newType = this.geometryType || 'polygon';
       this.currentGeometryType.set(newType);

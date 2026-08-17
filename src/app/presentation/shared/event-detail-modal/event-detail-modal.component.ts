@@ -16,6 +16,7 @@ export class EventDetailModalComponent implements OnDestroy {
 
   readonly copiedField = signal<string | null>(null);
   readonly hasImageError = signal<boolean>(false);
+  readonly hasVideoError = signal<boolean>(false);
   readonly activeMediaType = signal<'image' | 'video'>('image');
   readonly mediaAspectRatio = signal<number | null>(null);
 
@@ -120,6 +121,7 @@ export class EventDetailModalComponent implements OnDestroy {
   onClose(): void {
     this.isZoomed.set(false);
     this.hasImageError.set(false);
+    this.hasVideoError.set(false);
     this.activeMediaType.set('image');
     this.mediaAspectRatio.set(null);
     this.close.emit();
@@ -137,6 +139,10 @@ export class EventDetailModalComponent implements OnDestroy {
     if (video && video.videoWidth > 0 && video.videoHeight > 0) {
       this.mediaAspectRatio.set(video.videoWidth / video.videoHeight);
     }
+  }
+
+  onVideoError(event: Event): void {
+    this.hasVideoError.set(true);
   }
 
   toggleZoom(mouseEvent: MouseEvent): void {

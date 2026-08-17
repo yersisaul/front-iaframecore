@@ -7,6 +7,8 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { CameraService } from '../../../core/services/camera.service';
 import { HostService } from '../../../core/services/host.service';
 import { AnalyticService } from '../../../core/services/analytic.service';
+import { ScheduleService } from '../../../core/services/schedule.service';
+import { EventService } from '../../../core/services/event.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { WebsocketConnectionService } from '../../../core/services/websocket-connection.service';
@@ -55,6 +57,8 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   private cameraService = inject(CameraService);
   private hostService = inject(HostService);
   private analyticService = inject(AnalyticService);
+  private scheduleService = inject(ScheduleService);
+  private eventService = inject(EventService);
   private sidebarService = inject(SidebarService);
   private wsConnectionService = inject(WebsocketConnectionService);
   private websocketService = inject(WebsocketService);
@@ -71,6 +75,10 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     if (event) event.stopPropagation();
     this.selectedConfigCamera.set(camera);
     this.showCameraConfigDrawer.set(true);
+  }
+
+  onDrawerCameraUpdated(updatedCamera: Camera): void {
+    this.allCameras.update(cams => cams.map(c => c.id === updatedCamera.id ? updatedCamera : c));
   }
 
   // WebRTC Live Video Connections & States
@@ -365,7 +373,15 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   onImageError(event: Event): void {
     const target = event.target as HTMLElement;
     if (target) {
-      target.style.display = 'none';
+      target.style.opacity = '0';
+    }
+  }
+
+  onImageLoad(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (target) {
+      target.style.display = '';
+      target.style.opacity = '1';
     }
   }
 
@@ -473,11 +489,16 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
           this.pruneEventsOlderThan24h();
           this.isLoadingEvents.set(false);
 
-          // Rellenar mapa de últimos eventos
+          // Rellenar mapa de últimos eventos de forma insensible a mayúsculas/minúsculas y por ID/Nombre
           const latestMap: Record<string, EventRecord> = {};
           res.records.forEach(r => {
-            if (!latestMap[r.nombreCamara]) {
-              latestMap[r.nombreCamara] = r;
+            if (r.nombreCamara) {
+              if (!latestMap[r.nombreCamara]) latestMap[r.nombreCamara] = r;
+              const lowerName = r.nombreCamara.trim().toLowerCase();
+              if (!latestMap[lowerName]) latestMap[lowerName] = r;
+            }
+            if (r.idCamara) {
+              if (!latestMap[r.idCamara]) latestMap[r.idCamara] = r;
             }
           });
           this.latestEventsMap.set(latestMap);
@@ -563,6 +584,12 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly liveTickerClock = signal<Date>(new Date());
 
   ngOnInit(): void {
+    this.cameraService.isViewActive.set(true);
+    this.analyticService.isViewActive.set(true);
+    this.scheduleService.isViewActive.set(true);
+    this.hostService.isViewActive.set(true);
+    this.eventService.isViewActive.set(true);
+
     this.cameraService.getAllCameras().subscribe({
       next: (cams) => this.allCameras.set(cams)
     });
@@ -625,6 +652,8 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   }
 
   pruneEventsOlderThan24h(): void {
+    if (this.selectedManualDate()) return;
+
     const bounds = this.activeDayBounds();
     const startMs = bounds.start.getTime();
     const endMs = bounds.end.getTime();
@@ -656,6 +685,12 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnDestroy(): void {
+    this.cameraService.isViewActive.set(false);
+    this.analyticService.isViewActive.set(false);
+    this.scheduleService.isViewActive.set(false);
+    this.hostService.isViewActive.set(false);
+    this.eventService.isViewActive.set(false);
+
     if (this.wsSubscription) {
       this.wsSubscription.unsubscribe();
     }
@@ -2504,10 +2539,43 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     }
 
     if (!bestMatch) {
-      bestMatch = this.latestEventsMap()[cameraName] || null;
+      bestMatch = this.getLatestEventForCamera(cameraName) || null;
     }
 
     return bestMatch;
+  }
+
+  getLatestEventForCamera(cameraName: string, cameraId?: string): EventRecord | null {
+    if (!cameraName && !cameraId) return null;
+    const map = this.latestEventsMap();
+
+    if (cameraName && map[cameraName]) return map[cameraName];
+    if (cameraId && map[cameraId]) return map[cameraId];
+
+    const nameLower = (cameraName || '').trim().toLowerCase();
+    const idLower = (cameraId || '').trim().toLowerCase();
+
+    if (nameLower && map[nameLower]) return map[nameLower];
+    if (idLower && map[idLower]) return map[idLower];
+
+    for (const key of Object.keys(map)) {
+      const kLower = key.trim().toLowerCase();
+      if ((nameLower && kLower === nameLower) || (idLower && kLower === idLower)) {
+        return map[key];
+      }
+    }
+
+    const allEvents = this.eventsList();
+    for (let i = 0; i < allEvents.length; i++) {
+      const e = allEvents[i];
+      const matchesName = e.nombreCamara && e.nombreCamara.trim().toLowerCase() === nameLower;
+      const matchesId = e.idCamara && e.idCamara.trim().toLowerCase() === idLower;
+      if (matchesName || matchesId) {
+        return e;
+      }
+    }
+
+    return null;
   }
 
   getDisplayedEventForSlot(slot: GridSlot): EventRecord | null {
@@ -2531,74 +2599,18 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       const snap = this.getSnapshotForCameraAt(cameraName);
       if (snap) return snap;
 
-      const lastMap = this.latestEventsMap();
-      if (lastMap[cameraName]) return lastMap[cameraName];
-      if (lastMap[cameraId]) return lastMap[cameraId];
+      const latestEvt = this.getLatestEventForCamera(cameraName, cameraId);
+      if (latestEvt) return latestEvt;
 
-      for (const key of Object.keys(lastMap)) {
-        if (key.toLowerCase() === cameraName.toLowerCase()) {
-          return lastMap[key];
-        }
-      }
-
-      const allEvents = this.eventsList();
-      for (let i = 0; i < allEvents.length; i++) {
-        const e = allEvents[i];
-        const matchesName = e.nombreCamara && e.nombreCamara.toLowerCase() === cameraName.toLowerCase();
-        const matchesId = e.idCamara && e.idCamara === cameraId;
-        if (matchesName || matchesId) {
-          return e;
-        }
-      }
-
-      const defaultAnalytic = this.getCameraAnalytics(camera)[0] || 'Detección';
-      const lastMapTyped = lastMap as Record<string, EventRecord>;
-      const fallbackImg = lastMapTyped[cameraName]?.urlImg || lastMapTyped[cameraId]?.urlImg || '';
-      return {
-        id: `synthetic-${cameraId}`,
-        idCamara: cameraId,
-        nombreCamara: cameraName,
-        timestamp: this.currentTimePointer() || new Date(),
-        analitica: defaultAnalytic,
-        detalleEvento: `Detección ${defaultAnalytic}`,
-        urlImg: fallbackImg
-      } as EventRecord;
+      return null;
     }
 
     // 3. Fallback en la lista/mapa de eventos para cámaras estáticas no conectadas a WebRTC
     if (this.webRtcStates()[slot.id] !== 'connected') {
-      const lastMap = this.latestEventsMap();
-      if (lastMap[cameraName]) return lastMap[cameraName];
-      if (lastMap[cameraId]) return lastMap[cameraId];
+      const latestEvt = this.getLatestEventForCamera(cameraName, cameraId);
+      if (latestEvt) return latestEvt;
 
-      for (const key of Object.keys(lastMap)) {
-        if (key.toLowerCase() === cameraName.toLowerCase()) {
-          return lastMap[key];
-        }
-      }
-
-      const allEvents = this.eventsList();
-      for (let i = 0; i < allEvents.length; i++) {
-        const e = allEvents[i];
-        const matchesName = e.nombreCamara && e.nombreCamara.toLowerCase() === cameraName.toLowerCase();
-        const matchesId = e.idCamara && e.idCamara === cameraId;
-        if (matchesName || matchesId) {
-          return e;
-        }
-      }
-
-      const defaultAnalytic = this.getCameraAnalytics(camera)[0] || 'Detección';
-      const lastMapTyped = lastMap as Record<string, EventRecord>;
-      const fallbackImg = lastMapTyped[cameraName]?.urlImg || lastMapTyped[cameraId]?.urlImg || '';
-      return {
-        id: `synthetic-${cameraId}`,
-        idCamara: cameraId,
-        nombreCamara: cameraName,
-        timestamp: this.currentTimePointer() || new Date(),
-        analitica: defaultAnalytic,
-        detalleEvento: `Detección ${defaultAnalytic}`,
-        urlImg: fallbackImg
-      } as EventRecord;
+      return null;
     }
 
     return null;
@@ -2606,15 +2618,15 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   isSlotShowingEventPhoto(slot: GridSlot): boolean {
     if (!slot || !slot.camera) return false;
-    // 1. Si la celda individual está en modo reproducción/playback (en SYNC: todas las celdas; en ASYNC: solo las celdas en playback)
-    if (this.isSlotInPlaybackMode(slot)) {
-      return true;
+
+    // Si la celda está transmitiendo video WebRTC en tiempo real y no en reproducción histórica, no es foto de evento
+    if (this.webRtcStates()[slot.id] === 'connected' && !this.isSlotInPlaybackMode(slot)) {
+      return false;
     }
-    // 2. Si la cámara NO está transmitiendo video en vivo WebRTC (mostrando foto estática de fallback por desconexión)
-    if (this.webRtcStates()[slot.id] !== 'connected') {
-      return true;
-    }
-    return false;
+
+    // Solo se muestra foto/insignia si se encontró un evento real válido con imagen
+    const displayedEvt = this.getDisplayedEventForSlot(slot);
+    return displayedEvt !== null && !!displayedEvt.urlImg;
   }
 
   readonly formattedZoomSpanLabel = computed(() => {

@@ -77,28 +77,27 @@
 .users-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-auto-rows: 1fr;
   gap: 24px;
+  padding: 12px 14px 20px 12px;
 }
 
 .user-card {
   position: relative;
   overflow: hidden;
   background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 14px;
   box-shadow: var(--card-shadow);
-  transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
 }
 
 .user-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--primary);
-  box-shadow: 0 8px 24px rgba(var(--primary-rgb), .12);
-}
-
-/* Role-specific highlights */
-.user-card {
-  border-left: 4px solid var(--role-color, var(--border-color)) !important;
+  z-index: 10;
+  transform: scale(1.025);
+  border-color: var(--role-color, var(--primary)) !important;
+  box-shadow: 0 14px 32px var(--role-bg, rgba(0, 0, 0, 0.16));
 }
 
 /* AVATAR */
@@ -116,6 +115,71 @@
   font-size: 1.05rem;
 }
 
+.user-meta-marquee-wrapper {
+  flex: 1 1 0%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.user-name-marquee-container,
+.user-email-marquee-container {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.info-val-container {
+  flex: 1 1 0%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: right;
+}
+
+.user-name-marquee-text,
+.user-email-marquee-text {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1.3;
+  width: 100%;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.user-card:hover .user-name-marquee-text,
+.user-card:hover .user-email-marquee-text {
+  width: max-content !important;
+  max-width: none !important;
+  text-align: left !important;
+  overflow: visible;
+  text-overflow: clip;
+  animation: userCardMarquee 3.5s linear infinite alternate;
+}
+
+@keyframes userCardMarquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(min(0px, calc(-100% + 100cqw)), 0, 0);
+  }
+}
+
 /* ROLE BADGES */
 .role-badge {
   font-size: 0.68rem;
@@ -125,15 +189,16 @@
   letter-spacing: 0.05em;
   background-color: var(--role-bg, rgba(100, 116, 139, 0.15));
   color: var(--role-color, var(--text-secondary));
+  flex-shrink: 0;
 }
 
 /* USER INFO */
 .info-label {
   font-size: 0.72rem;
   color: var(--text-muted);
-  text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.05em;
+  flex-shrink: 0;
 }
 
 .info-value {
@@ -458,8 +523,8 @@
   top: calc(100% + 6px);
   left: 0;
   z-index: 1000;
-  background-color: var(--bg-surface) !important;
-  border: 1px solid var(--border-color) !important;
+  background-color: var(--bg-filter-dropdown-menu) !important;
+  border: 1px solid var(--border-filter-dropdown-menu) !important;
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
   animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -561,10 +626,15 @@
   box-shadow: none !important;
 }
 
-::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu {
+::ng-deep .dark .filter-dropdown-menu,
+::ng-deep [data-bs-theme="dark"] .filter-dropdown-menu,
+::ng-deep [data-theme="dark"] .filter-dropdown-menu,
+[data-bs-theme="dark"] .filter-dropdown-menu,
+[data-theme="dark"] .filter-dropdown-menu,
+.dark .filter-dropdown-menu {
   background-color: var(--bg-filter-dropdown-menu) !important;
   border: 1px solid var(--border-filter-dropdown-menu) !important;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, .45), 0 4px 12px rgba(0, 0, 0, .2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .45), 0 4px 12px rgba(0, 0, 0, .2) !important;
 }
 
 ::ng-deep [data-bs-theme="dark"] .custom-checkbox-wrapper:hover {

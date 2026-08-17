@@ -3,7 +3,7 @@ import { provideRouter, ActivatedRoute, Router } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { of } from 'rxjs';
-import { vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Camaras } from './camaras';
 import { CameraService } from '../../../core/services/camera.service';
 import { ScheduleService } from '../../../core/services/schedule.service';
@@ -628,5 +628,34 @@ describe('Camaras', () => {
 
     // Should no longer match active hostFingerprint, so it disappears in real time
     expect(component.filteredCameras().length).toBe(0);
+  });
+
+  it('should correctly map nx_id in CameraMapper.toDomain when provided', () => {
+    const dto = {
+      camera_id: 'cam-nx-1',
+      camera_name: 'NX Camera',
+      fingerprint_host: 'HOST-ABC123XYZ',
+      stream_type: 'rtsp',
+      status: 'online',
+      decoder: 'nx',
+      location: { lat: 10.0, lon: 20.0 },
+      created_at: '2026-06-10T12:00:00Z',
+      nx_id: '550e8400-e29b-41d4-a716-446655440001'
+    };
+
+    const camera = CameraMapper.toDomain(dto);
+    expect(camera.nxId).toBe('550e8400-e29b-41d4-a716-446655440001');
+
+    const nonNxDto = {
+      camera_id: 'cam-normal-1',
+      camera_name: 'Normal Camera',
+      fingerprint_host: 'HOST-ABC123XYZ',
+      stream_type: 'rtsp',
+      status: 'online',
+      decoder: 'opencv',
+      location: { lat: 10.0, lon: 20.0 }
+    };
+    const normalCam = CameraMapper.toDomain(nonNxDto);
+    expect(normalCam.nxId).toBeUndefined();
   });
 });

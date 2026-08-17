@@ -21,11 +21,12 @@ import { SearchInputComponent } from '../../shared/search-input/search-input.com
 import { ViewModeToggleComponent } from '../../shared/view-mode-toggle/view-mode-toggle.component';
 import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
+import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
 import { exportToCsv, exportToXlsx, ExportColumn } from '../../../core/utils/export-utils';
 
 @Component({
   selector: 'app-nodos',
-  imports: [CommonModule, ReactiveFormsModule, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, FilterActionsComponent, EmptyStateComponent],
+  imports: [CommonModule, ReactiveFormsModule, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, FilterActionsComponent, EmptyStateComponent, CustomSelectComponent],
   templateUrl: './nodos.html',
   styleUrl: './nodos.css',
 })
@@ -408,6 +409,14 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     const newLimit = parseInt((event.target as HTMLSelectElement).value, 10);
     this.limit.set(newLimit);
     this.currentPage.set(1);
+  }
+
+  onLimitValueChange(val: any): void {
+    const newLimit = parseInt(val, 10);
+    if (!isNaN(newLimit)) {
+      this.limit.set(newLimit);
+      this.currentPage.set(1);
+    }
   }
 
   // Parse total memory string or number (bytes), returns number in GB or null if invalid/absent

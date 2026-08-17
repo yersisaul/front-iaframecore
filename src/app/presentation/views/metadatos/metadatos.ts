@@ -20,11 +20,12 @@ import { PaginationControlsComponent } from '../../shared/pagination-controls/pa
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
 import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
+import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
 
 @Component({
   selector: 'app-metadatos',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, FilterActionsComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, FilterActionsComponent, CustomSelectComponent],
   templateUrl: './metadatos.html',
   styleUrl: './metadatos.css'
 })
@@ -638,6 +639,14 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     const select = event.target as HTMLSelectElement;
     const newLimit = parseInt(select.value, 10);
     this.metadataService.setPageSize(newLimit);
+  }
+
+  onLimitValueChange(val: any): void {
+    const newLimit = parseInt(val, 10);
+    if (!isNaN(newLimit)) {
+      this.metadataService.setPageSize(newLimit);
+      this.metadataService.setPage(1);
+    }
   }
 
   private parseFiltersFromParams(params: any): MetaFilterState {
