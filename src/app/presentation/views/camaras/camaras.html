@@ -533,7 +533,7 @@
   }
 
   <!-- Paginación (REUTILIZABLE DRY) -->
-  <app-pagination-controls [currentPage]="currentPage()" [totalPages]="totalPages()" [visiblePages]="visiblePages()"
+  <app-pagination-controls [currentPage]="currentPage()" [totalPages]="totalPages()" [totalRecords]="totalRecords()" [visiblePages]="visiblePages()"
     (pageChange)="setPage($event)">
   </app-pagination-controls>
 

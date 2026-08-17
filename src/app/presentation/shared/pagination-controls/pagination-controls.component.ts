@@ -11,6 +11,7 @@ import { CommonModule } from '@angular/common';
 export class PaginationControlsComponent {
   @Input() currentPage: number = 1;
   @Input() totalPages: number = 1;
+  @Input() totalRecords: number = 1;
   @Input() visiblePages: number[] = [];
 
   @Output() pageChange = new EventEmitter<number>();

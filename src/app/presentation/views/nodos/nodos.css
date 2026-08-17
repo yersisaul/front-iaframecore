@@ -7,6 +7,10 @@
   --bg-card: var(--bg-surface);
 }
 
+.nodos-view-container {
+  padding-bottom: 5rem !important;
+}
+
 .hosts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(335px, 1fr));

@@ -207,8 +207,10 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     return list.slice(start, start + this.limit());
   });
 
+  readonly totalRecords = computed<number>(() => this.filteredHosts().length);
+
   readonly totalPages = computed<number>(() => {
-    const total = this.filteredHosts().length;
+    const total = this.totalRecords();
     const lim = this.limit();
     return total > 0 ? Math.ceil(total / lim) : 1;
   });
@@ -267,9 +269,6 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     const savedMode = localStorage.getItem('nodos_view_mode') as 'cards' | 'list';
     if (savedMode) {
       this.viewMode.set(savedMode);
-      if (savedMode === 'list') {
-        this.limit.set(10);
-      }
     }
 
     // Wire searchControl → searchTerm signal with debounce

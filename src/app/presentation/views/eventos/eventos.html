@@ -70,10 +70,10 @@
           <div class="text-muted small text-center py-2 opacity-60">Sin resultados</div>
           }
           @for (cam of filteredCamarasOptions(); track cam) {
-          <label class="dropdown-item d-flex align-items-center gap-2 py-1.5 px-3 rounded select-none cursor-pointer">
+          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
             <input type="checkbox" [checked]="tempFilters().camaras.includes(cam)"
               (change)="toggleMultiSelectFilter('camaras', cam)" class="form-check-input flex-shrink-0" />
-            <span class="text-truncate">{{ cam }}</span>
+            <span class="text-truncate" [title]="cam">{{ cam }}</span>
           </label>
           }
         </div>
@@ -498,6 +498,7 @@
       <app-pagination-controls
         [currentPage]="currentPage()"
         [totalPages]="totalPages()"
+        [totalRecords]="totalRecords()"
         [visiblePages]="visiblePages()"
         (pageChange)="setPage($event)">
       </app-pagination-controls>

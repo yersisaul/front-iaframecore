@@ -8,6 +8,10 @@
   --bg-card: var(--bg-surface);
 }
 
+.camaras-view-container {
+  padding-bottom: 5rem !important;
+}
+
 /* GRID */
 .hosts-grid {
   display: grid;

@@ -284,8 +284,10 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     return list.slice(start, end);
   });
 
+  readonly totalRecords = computed<number>(() => this.filteredListDetails().length);
+
   readonly totalPages = computed<number>(() => {
-    const total = this.filteredListDetails().length;
+    const total = this.totalRecords();
     const lim = this.limit();
     return total > 0 ? Math.ceil(total / lim) : 1;
   });

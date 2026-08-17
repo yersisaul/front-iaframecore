@@ -815,14 +815,13 @@
       }
 
       <!-- Paginación (REUTILIZABLE DRY) -->
-      @if (!tempFilters().imageSearchUrl) {
       <app-pagination-controls
         [currentPage]="currentPage()"
         [totalPages]="totalPages()"
+        [totalRecords]="totalRecords()"
         [visiblePages]="visiblePages()"
         (pageChange)="setPage($event)">
       </app-pagination-controls>
-      }
     </div>
   </div>
 

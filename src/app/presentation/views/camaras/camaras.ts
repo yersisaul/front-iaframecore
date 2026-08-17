@@ -395,8 +395,10 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     return list.slice(start, end);
   });
 
+  readonly totalRecords = computed(() => this.filteredCameras().length);
+
   readonly totalPages = computed(() => {
-    const total = this.filteredCameras().length;
+    const total = this.totalRecords();
     const lim = this.limit();
     return total > 0 ? Math.ceil(total / lim) : 1;
   });
