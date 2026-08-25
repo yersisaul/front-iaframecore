@@ -91,6 +91,8 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   readonly listModalId = signal<string>('');
   readonly listModalName = signal<string>('');
   readonly listModalDesc = signal<string>('');
+  readonly listModalError = signal<string>('');
+  readonly isSavingList = signal<boolean>(false);
 
   readonly showDeleteListModal = signal<boolean>(false);
   readonly listToDelete = signal<List | null>(null);
@@ -178,11 +180,11 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
 
   // Local draft filters state (matches metadatos temp/apply flow)
   readonly tempSimilarityThreshold = signal<number>(0.85);
-  readonly tempAvistamientosFilter = signal<'all' | 'with' | 'without'>('all');
+  readonly tempAvistamientosFilter = signal<string[]>([]);
 
   // Applied filter state
   readonly appliedSimilarityThreshold = signal<number>(0.85);
-  readonly appliedAvistamientosFilter = signal<'all' | 'with' | 'without'>('all');
+  readonly appliedAvistamientosFilter = signal<string[]>([]);
 
 
 
@@ -203,6 +205,7 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     let details = this.listDetails();
     const search = this.searchQuery().trim().toLowerCase();
     const withDetections = this.appliedAvistamientosFilter();
+    const detections = this.subjectDetections();
 
     if (search) {
       details = details.filter(d => {
@@ -212,14 +215,39 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    if (withDetections !== 'all') {
+    if (withDetections.length > 0 && withDetections.length < 2) {
+      const mode = withDetections[0];
       details = details.filter(d => {
-        const count = this.subjectDetections()[d.detail_id]?.count || 0;
-        return withDetections === 'with' ? count > 0 : count === 0;
+        const count = detections[d.detail_id]?.count || 0;
+        return mode === 'with' ? count > 0 : count === 0;
       });
     }
 
-    return details;
+    // Ordenamiento: 1.° Mayor a menor cantidad de avistamientos, 2.° Alfabético por nombre
+    return [...details].sort((a, b) => {
+      const countA = detections[a.detail_id]?.count || 0;
+      const countB = detections[b.detail_id]?.count || 0;
+
+      if (countB !== countA) {
+        return countB - countA;
+      }
+
+      const nameA = (a.nombre_asociado || a.metadata?.text_placa || '').trim();
+      const nameB = (b.nombre_asociado || b.metadata?.text_placa || '').trim();
+      return nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+    });
+  });
+
+  readonly availableAvistamientosOptions = computed<{ key: string; label: string }[]>(() => {
+    const details = this.listDetails();
+    if (!details || details.length === 0) return [];
+    const detections = this.subjectDetections();
+    const hasWith = details.some(d => (detections[d.detail_id]?.count || 0) > 0);
+    const hasWithout = details.some(d => (detections[d.detail_id]?.count || 0) === 0);
+    const opts: { key: string; label: string }[] = [];
+    if (hasWith) opts.push({ key: 'with', label: 'Con Avistamientos' });
+    if (hasWithout) opts.push({ key: 'without', label: 'Sin Avistamientos' });
+    return opts;
   });
 
   @ViewChild('subjectsGridContainer', { static: false }) subjectsGridContainer?: ElementRef<HTMLDivElement>;
@@ -343,12 +371,13 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     const search = this.searchQuery().trim().length || 0;
     const withDetections = this.appliedAvistamientosFilter();
     const threshold = this.appliedSimilarityThreshold();
-    return search > 0 || withDetections !== 'all' || threshold !== 0.85;
+    return search > 0 || withDetections.length > 0 || threshold !== 0.85;
   });
 
   readonly hasPendingFilterChanges = computed(() => {
+    const arraysEqual = (a: string[], b: string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
     return this.tempSimilarityThreshold() !== this.appliedSimilarityThreshold() ||
-      this.tempAvistamientosFilter() !== this.appliedAvistamientosFilter();
+      !arraysEqual([...this.tempAvistamientosFilter()].sort(), [...this.appliedAvistamientosFilter()].sort());
   });
 
   constructor() {
@@ -364,9 +393,9 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
       this.searchControl.setValue('', { emitEvent: false });
       this.searchQuery.set('');
       this.tempSimilarityThreshold.set(0.85);
-      this.tempAvistamientosFilter.set('all');
+      this.tempAvistamientosFilter.set([]);
       this.appliedSimilarityThreshold.set(0.85);
-      this.appliedAvistamientosFilter.set('all');
+      this.appliedAvistamientosFilter.set([]);
       this.listService.similarityThreshold.set(0.85);
     });
 
@@ -425,9 +454,9 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     this.searchControl.setValue('', { emitEvent: false });
     this.searchQuery.set('');
     this.tempSimilarityThreshold.set(0.85);
-    this.tempAvistamientosFilter.set('all');
+    this.tempAvistamientosFilter.set([]);
     this.appliedSimilarityThreshold.set(0.85);
-    this.appliedAvistamientosFilter.set('all');
+    this.appliedAvistamientosFilter.set([]);
     this.listService.similarityThreshold.set(0.85);
     if (listId) {
       this.listService.loadListDetails(listId).subscribe(details => {
@@ -1106,6 +1135,8 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
       event.stopPropagation();
     }
     this.listModalMode.set(mode);
+    this.listModalError.set('');
+    this.isSavingList.set(false);
     if (mode === 'edit' && list) {
       this.listModalId.set(list.list_id);
       this.listModalName.set(list.name);
@@ -1123,34 +1154,75 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     this.listModalId.set('');
     this.listModalName.set('');
     this.listModalDesc.set('');
+    this.listModalError.set('');
+    this.isSavingList.set(false);
   }
 
   saveWatchlist(): void {
     const name = this.listModalName().trim();
     const desc = this.listModalDesc().trim();
-    if (!name) return;
+    if (!name) {
+      this.listModalError.set('El nombre de la lista es obligatorio.');
+      return;
+    }
+
+    // Validación preventiva en frontend de nombres duplicados
+    const isDuplicate = this.lists().some(l =>
+      l.name.trim().toLowerCase() === name.toLowerCase() &&
+      (this.listModalMode() === 'create' || l.list_id !== this.listModalId())
+    );
+    if (isDuplicate) {
+      this.listModalError.set('Ya existe una lista de control con este nombre.');
+      return;
+    }
+
+    this.listModalError.set('');
+    this.isSavingList.set(true);
 
     if (this.listModalMode() === 'create') {
       const type = this.listType();
       this.listService.createList(name, desc, type).subscribe({
         next: (newList) => {
+          this.isSavingList.set(false);
           this.closeListModal();
         },
         error: (err) => {
+          this.isSavingList.set(false);
           console.error('Error creating watchlist:', err);
-          alert('Error al crear la lista de control.');
+          let errorMsg = 'Error al crear la lista de control.';
+          if (err?.error?.detail) {
+            errorMsg = typeof err.error.detail === 'string' ? err.error.detail : JSON.stringify(err.error.detail);
+          } else if (err?.error?.message) {
+            errorMsg = err.error.message;
+          } else if (err?.message) {
+            errorMsg = err.message;
+          }
+          this.listModalError.set(errorMsg);
         }
       });
     } else {
       const listId = this.listModalId();
-      if (!listId) return;
+      if (!listId) {
+        this.isSavingList.set(false);
+        return;
+      }
       this.listService.updateList(listId, name, desc, this.listType()).subscribe({
         next: () => {
+          this.isSavingList.set(false);
           this.closeListModal();
         },
         error: (err) => {
+          this.isSavingList.set(false);
           console.error('Error updating watchlist:', err);
-          alert('Error al guardar los cambios de la lista de control.');
+          let errorMsg = 'Error al guardar los cambios de la lista de control.';
+          if (err?.error?.detail) {
+            errorMsg = typeof err.error.detail === 'string' ? err.error.detail : JSON.stringify(err.error.detail);
+          } else if (err?.error?.message) {
+            errorMsg = err.error.message;
+          } else if (err?.message) {
+            errorMsg = err.message;
+          }
+          this.listModalError.set(errorMsg);
         }
       });
     }
@@ -1346,24 +1418,29 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  selectAvistamientosFilter(value: 'all' | 'with' | 'without'): void {
-    this.tempAvistamientosFilter.set(value);
-    this.activeDropdown.set(null);
+  toggleAvistamientosFilter(value: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    const current = this.tempAvistamientosFilter();
+    if (current.includes(value)) {
+      this.tempAvistamientosFilter.set(current.filter(v => v !== value));
+    } else {
+      this.tempAvistamientosFilter.set([...current, value]);
+    }
   }
 
   onResetFilters(): void {
     this.searchControl.setValue('', { emitEvent: true });
     this.tempSimilarityThreshold.set(0.85);
-    this.tempAvistamientosFilter.set('all');
+    this.tempAvistamientosFilter.set([]);
     this.appliedSimilarityThreshold.set(0.85);
-    this.appliedAvistamientosFilter.set('all');
+    this.appliedAvistamientosFilter.set([]);
     this.listService.similarityThreshold.set(0.85);
     this.currentPage.set(1);
   }
 
   onApplyFilters(): void {
     this.appliedSimilarityThreshold.set(this.tempSimilarityThreshold());
-    this.appliedAvistamientosFilter.set(this.tempAvistamientosFilter());
+    this.appliedAvistamientosFilter.set([...this.tempAvistamientosFilter()]);
     this.listService.similarityThreshold.set(this.tempSimilarityThreshold());
     this.currentPage.set(1);
   }

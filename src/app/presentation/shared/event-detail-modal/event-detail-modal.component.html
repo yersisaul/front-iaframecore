@@ -1,49 +1,165 @@
 @if (event; as selectedEvent) {
 <!-- Backdrop Overlay -->
-<div class="event-detail-backdrop" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)"></div>
+<div class="event-detail-backdrop" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)">
+</div>
 
 <!-- Componente 1: Workspace Izquierdo de Imagen Centrada (3/4 del Ancho de Pantalla) -->
 <div class="event-image-workspace" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)">
   <div class="event-image-container">
-    @if (activeMediaType() === 'video') {
-      @if (selectedEvent.urlVideo && !hasVideoError()) {
-      <div class="modal-img-wrapper position-relative overflow-hidden shadow-2xl"
-        [style.aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null"
-        [style.--aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null">
-        <video [src]="selectedEvent.urlVideo" (loadedmetadata)="onVideoLoadedMetadata($event)" (error)="onVideoError($event)" class="event-capture-video select-none" controls autoplay loop></video>
-      </div>
-      } @else {
-      <div class="no-image-text-container select-none">
-        <span class="icon-svg icon-warning no-image-icon" style="background-color: #f59e0b;"></span>
-        <span class="no-image-title text-uppercase">
-          {{ hasVideoError() ? 'NO SE PUDO CARGAR EL VIDEO' : 'SIN VIDEO DISPONIBLE' }}
-        </span>
-        <span class="no-image-subtitle">
-          {{ hasVideoError() ? 'El archivo de video no está disponible o no se pudo reproducir' : 'Este evento no contiene clip de video grabado' }}
-        </span>
-      </div>
-      }
-    } @else if (selectedEvent.urlImg && !hasImageError()) {
-    <div #imgWrapper class="modal-img-wrapper position-relative overflow-hidden shadow-2xl" (mousemove)="onZoomMouseMove($event)"
-      (click)="toggleZoom($event)" [class.zoom-active-cursor]="isZoomed()"
-      [style.aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null"
-      [style.--aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null">
-      <!-- Imagen respetando la relación de aspecto original sin deformarse -->
-      <img [src]="selectedEvent.urlImg" (load)="onImageLoad($event)" (error)="onImageError($event)" class="event-capture-img select-none"
-        alt="Vista previa del evento" />
+    @if (selectedEvent.urlImg || selectedEvent.urlVideo) {
+    <!-- Contenedor Unificado Permanente del Workspace (Mantiene el DOM vivo para transiciones continuas de redimensionamiento) -->
+    <div class="unified-media-stage d-flex flex-column align-items-center justify-content-center w-100 h-100"
+      [class.mode-image]="activeMediaType() === 'image'" [class.mode-video]="activeMediaType() === 'video'"
+      [class.mode-comparison]="activeMediaType() === 'comparison'"
+      [class.focus-detection]="focusedComparisonCard() === 'detection'"
+      [class.focus-reference]="focusedComparisonCard() === 'reference'">
 
-      <!-- Lente Lupa Magnifier Zoom Ajustable con Rueda / Pellizco -->
-      @if (isZoomed()) {
-      <div class="magnifier-lens"
-        [style.left.px]="zoomX()"
-        [style.top.px]="zoomY()"
-        [style.width.px]="zoomLensDiameter()"
-        [style.height.px]="zoomLensDiameter()"
-        [style.background-image]="'url(' + selectedEvent.urlImg + ')'"
-        [style.background-position]="zoomBgX() + 'px ' + zoomBgY() + 'px'"
-        [style.background-size]="zoomBgWidth() + 'px ' + zoomBgHeight() + 'px'">
+      <!-- Fila Dual de Medios (Primary Card + Reference Card) -->
+      <div class="stage-dual-container">
+
+        <!-- 1. Tarjeta Principal (Detección en Cámara / Video / Imagen) -->
+        <div class="stage-media-card primary-media-card position-relative"
+          [class.card-is-focused]="focusedComparisonCard() === 'detection'"
+          [style.aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null"
+          [style.--media-aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null"
+          [title]="activeMediaType() === 'comparison' ? (focusedComparisonCard() === 'detection' ? 'Click para restaurar vista dividida' : 'Click para maximizar captura de cámara') : ''"
+          (click)="activeMediaType() === 'comparison' ? toggleComparisonFocus('detection', $event) : null">
+
+          <!-- Badge superior visible sólo en modo comparativa -->
+          <div class="comparison-card-badge detection-badge">
+            <span class="icon-svg icon-camara card-badge-icon"></span>
+            <span>Detección en Cámara</span>
+          </div>
+
+          <div class="stage-img-box" #imgWrapper [class.zoom-active-cursor]="isZoomed()"
+            (mousemove)="activeMediaType() === 'image' ? onZoomMouseMove($event) : null"
+            (click)="activeMediaType() === 'image' ? toggleZoom($event) : null">
+
+            @if (activeMediaType() === 'video') {
+            @if (selectedEvent.urlVideo && !hasVideoError()) {
+            <video [src]="selectedEvent.urlVideo" (loadedmetadata)="onVideoLoadedMetadata($event)"
+              (error)="onVideoError($event)" class="stage-media-element video-element select-none" controls autoplay
+              loop></video>
+            } @else {
+            <div class="no-image-text-container select-none">
+              <span class="icon-svg icon-warning no-image-icon" style="background-color: #f59e0b;"></span>
+              <span class="no-image-title text-uppercase">
+                {{ hasVideoError() ? 'NO SE PUDO CARGAR EL VIDEO' : 'SIN VIDEO DISPONIBLE' }}
+              </span>
+              <span class="no-image-subtitle">
+                {{ hasVideoError() ? 'El archivo de video no está disponible o no se pudo reproducir' : 'Este evento no
+                contiene clip de video grabado' }}
+              </span>
+            </div>
+            }
+            } @else {
+            @if (selectedEvent.urlImg && !hasImageError()) {
+            <img [src]="selectedEvent.urlImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
+              class="stage-media-element img-element select-none" alt="Captura del evento" />
+
+            <!-- Lente Lupa Magnifier (Sólo en modo Imagen normal) -->
+            @if (activeMediaType() === 'image' && isZoomed()) {
+            <div class="magnifier-lens" [style.left.px]="zoomX()" [style.top.px]="zoomY()"
+              [style.width.px]="zoomLensDiameter()" [style.height.px]="zoomLensDiameter()"
+              [style.background-image]="'url(' + selectedEvent.urlImg + ')'"
+              [style.background-position]="zoomBgX() + 'px ' + zoomBgY() + 'px'"
+              [style.background-size]="zoomBgWidth() + 'px ' + zoomBgHeight() + 'px'">
+            </div>
+            }
+            } @else {
+            <div class="comparison-img-fallback select-none">
+              <span class="icon-svg icon-warning fallback-icon" style="background-color: #f59e0b;"></span>
+              <span>Captura no disponible</span>
+            </div>
+            }
+            }
+          </div>
+        </div>
+
+        <!-- 2. Tarjeta Secundaria de Referencia (Foto en Lista de Control) -->
+        <div class="stage-media-card reference-media-card position-relative"
+          [class.card-is-focused]="focusedComparisonCard() === 'reference'"
+          [title]="focusedComparisonCard() === 'reference' ? 'Click para restaurar vista dividida' : 'Click para maximizar foto de lista'"
+          (click)="toggleComparisonFocus('reference', $event)">
+
+          <div class="comparison-card-badge reference-badge">
+            <span class="icon-svg icon-user card-badge-icon"></span>
+            <span>Foto de Lista</span>
+          </div>
+
+          <div class="stage-img-box">
+            @if (isMatchLoading()) {
+            <div class="comparison-img-fallback select-none">
+              <span class="spinner-border spinner-border-sm text-primary mb-2" role="status"></span>
+              <span class="text-muted small">Cargando foto...</span>
+            </div>
+            } @else if (matchData()?.matchImgUrl && !hasMatchImageError()) {
+            <img [src]="matchData()?.matchImgUrl" (error)="onMatchImageError($event)"
+              class="stage-media-element img-element select-none" alt="Fotografía en Lista de Control" />
+            } @else {
+            <div class="comparison-img-fallback select-none">
+              <span class="icon-svg icon-user fallback-icon text-muted" style="width: 28px; height: 28px;"></span>
+              <span class="text-muted small">Foto no disponible</span>
+            </div>
+            }
+          </div>
+        </div>
+
       </div>
-      }
+
+      <!-- Consola de Precisión Biométrica (HUD Inferior que sube y baja fluidamente) -->
+      <div class="biometric-hud-console" (click)="$event.stopPropagation()">
+        <!-- Columna 1: Sujeto Reconocido con Icono de Persona y Nombre Completo -->
+        <div class="hud-col hud-identity">
+          <div class="biometric-scanner-orb" [style.--accent-color]="getSimilarityColor(matchData()?.similarity || 85)">
+            <div class="orb-scan-wave"></div>
+            <span class="icon-svg icon-user orb-icon"></span>
+          </div>
+          <div class="hud-identity-meta">
+            <div class="hud-eyebrow">
+              <span class="eyebrow-dot"
+                [style.background-color]="getSimilarityColor(matchData()?.similarity || 85)"></span>
+              <span>Sujeto reconocido</span>
+            </div>
+            <div class="hud-subject-name" [title]="matchData()?.personName || selectedEvent.objeto">
+              {{ matchData()?.personName || selectedEvent.objeto }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Columna 2: Calibrador de Similitud Biométrica -->
+        <div class="hud-col hud-gauge">
+          <div class="gauge-header d-flex justify-content-between align-items-center mb-1.5">
+            <span class="gauge-lbl">Similitud Biométrica</span>
+          </div>
+          <div class="gauge-track-wrapper position-relative">
+            <div class="gauge-track-bg"></div>
+            <div class="gauge-track-fill" [style.width.%]="matchData()?.similarity || 85"
+              [style.--fill-color]="getSimilarityColor(matchData()?.similarity || 85)">
+              <div class="gauge-track-glow"></div>
+            </div>
+          </div>
+          <div class="gauge-scale-labels d-flex justify-content-between mt-1">
+            <span>0%</span>
+            <span>25%</span>
+            <span>50%</span>
+            <span>75%</span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        <!-- Columna 3: Score Hero Numérico (% de Similitud del Sistema) -->
+        <div class="hud-col hud-score-badge d-flex flex-column align-items-center justify-content-center text-center">
+          <span class="hud-score-label text-uppercase text-center">Nivel de Similitud</span>
+          <div class="hud-score-display text-center">
+            <span class="hud-score-number font-monospace fw-black"
+              [style.color]="getSimilarityColor(matchData()?.similarity || 85)">
+              {{ matchData()?.similarity || 85 }}<span class="hud-score-percent">%</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
     </div>
     } @else {
     <!-- Texto centrado sin ningún contenedor ni borde con alta legibilidad en tema claro y oscuro -->
@@ -93,9 +209,28 @@
           </div>
         </div>
 
-        <!-- 4 Filas de Detalles Técnicos en Lista (specs-list) -->
+        <!-- Filas de Detalles Técnicos en Lista (specs-list) -->
         <div class="specs-list d-flex flex-column gap-1 mt-3">
-          <!-- 1. Camera ID -->
+          <!-- 1. Evento ID -->
+          <div class="spec-row d-flex justify-content-between align-items-center"
+            [class.copied-flash]="copiedField() === 'eventId'"
+            (click)="copyToClipboard(selectedEvent.id, 'eventId'); $event.stopPropagation()">
+            <span class="spec-lbl d-inline-flex align-items-center">
+              <span class="icon-svg icon-fingerprint me-2"
+                style="width: 14px; height: 14px; background-color: currentColor;"></span>
+              Evento ID
+            </span>
+            @if (copiedField() === 'eventId') {
+            <span class="copied-badge text-success fw-bold ms-auto"
+              style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+            } @else {
+            <span class="spec-val font-monospace text-truncate text-end" [title]="selectedEvent.id">
+              {{ selectedEvent.id }}
+            </span>
+            }
+          </div>
+
+          <!-- 2. Camera ID -->
           <div class="spec-row d-flex justify-content-between align-items-center"
             [class.copied-flash]="copiedField() === 'camId'"
             (click)="copyToClipboard(selectedEvent.idCamara, 'camId'); $event.stopPropagation()">
@@ -163,24 +298,37 @@
         </div>
       </div>
 
-      <!-- Selector de Medios (Imagen / Video) - Rediseño Premium -->
+      <!-- Selector de Medios (Imagen / Comparativa / Video) - Rediseño Premium -->
       <div class="media-toggle-container mb-4">
         <div class="popover-section-title text-uppercase fw-bold mb-2"
           style="font-size: 0.68rem; letter-spacing: 0.08em; color: var(--text-muted);">Visualización de Medio</div>
-        <div class="media-toggle-pill-wrapper p-1.5 rounded-pill d-flex align-items-center gap-1.5 border shadow-xs">
+        <div class="media-toggle-pill-wrapper p-1 rounded-pill d-flex align-items-center gap-1 border shadow-xs">
           <button type="button"
             class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center gap-2 py-2 px-3 rounded-pill transition-all"
-            [class.active]="activeMediaType() === 'image'" (click)="activeMediaType.set('image')">
+            [class.active]="activeMediaType() === 'image'" (click)="setMediaType('image')">
             <span class="icon-svg icon-camera-photo media-toggle-icon"></span>
             <span class="fw-bold">Imagen</span>
           </button>
+
+          @if (isComparisonAvailable(selectedEvent)) {
+          <button type="button"
+            class="btn-media-toggle btn-media-comparison flex-fill d-flex align-items-center justify-content-center gap-2 py-2 px-3 rounded-pill transition-all"
+            [class.active]="activeMediaType() === 'comparison'"
+            [title]="'Ver comparativa de detección de cámara vs registro en lista de control'"
+            (click)="setMediaType('comparison')">
+            <span class="icon-svg icon-user media-toggle-icon"></span>
+            <span class="fw-bold">Comparativa</span>
+          </button>
+          }
+
           <button type="button"
             class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center gap-2 py-2 px-3 rounded-pill transition-all"
             [class.active]="activeMediaType() === 'video'"
             [title]="!selectedEvent.urlVideo ? 'Sin video disponible para este evento' : (hasVideoError() ? 'No se pudo cargar el video' : 'Ver video del evento')"
-            (click)="activeMediaType.set('video')">
+            (click)="setMediaType('video')">
             @if (!selectedEvent.urlVideo || hasVideoError()) {
-            <span class="icon-svg icon-warning" style="width: 15px; height: 15px; background-color: #f59e0b; flex-shrink: 0;"></span>
+            <span class="icon-svg icon-warning"
+              style="width: 15px; height: 15px; background-color: #f59e0b; flex-shrink: 0;"></span>
             } @else {
             <span class="icon-svg icon-camera-video media-toggle-icon"></span>
             }
@@ -194,19 +342,91 @@
       <div class="popover-section mb-4">
         <div class="popover-section-title text-uppercase fw-bold mb-2"
           style="font-size: 0.68rem; letter-spacing: 0.08em; color: var(--text-muted);">Descripción</div>
-        <p class="text-secondary small px-2" style="line-height: 1.5; word-break: break-word;">
-          {{ formatDetalleEvento(selectedEvent.detalleEvento) }}
-        </p>
+        <div class="event-description-box">
+          <p class="event-description-text mb-0">
+            {{ formatDetalleEvento(selectedEvent.detalleEvento) }}
+          </p>
+        </div>
       </div>
       }
 
-      <!-- Atributos Detectados Section -->
+      <!-- Atributos / Ficha de Identificación Section -->
+      @if (isFacialEvent(selectedEvent)) {
+      <!-- Componente Unificado: Ficha de Identificación Facial -->
+      <div class="popover-section mb-4">
+        <div class="popover-section-title text-uppercase fw-bold mb-3"
+          style="font-size: 0.68rem; letter-spacing: 0.08em; color: var(--text-muted);">
+          Identificación Facial
+        </div>
+
+        <div class="facial-identity-card p-3 rounded-3">
+          <div class="d-flex gap-3 align-items-center">
+            <!-- Columna Izquierda: Fotografía Cuadrada (Enfocada al Rostro) -->
+            <div class="identity-photo-col flex-shrink-0"
+              [style.border-color]="getSimilarityColor(matchData()?.similarity || selectedEvent.porcentajeSimilitud || 0)">
+              @if (matchData()?.matchImgUrl && !hasMatchImageError()) {
+              <img [src]="matchData()?.matchImgUrl" class="identity-photo-img" alt="Foto en Lista de Control" />
+              } @else {
+              <div
+                class="identity-photo-placeholder d-flex flex-column align-items-center justify-content-center h-100">
+                <span class="icon-svg icon-user identity-photo-placeholder-icon"
+                  [style.color]="getSimilarityColor(matchData()?.similarity || selectedEvent.porcentajeSimilitud || 0)"></span>
+                <span class="text-muted small mt-1" style="font-size: 0.65rem;">Sin foto</span>
+              </div>
+              }
+            </div>
+
+            <!-- Columna Derecha: Datos de Identificación y Barra de Similitud -->
+            <div class="identity-info-col d-flex flex-column justify-content-between flex-fill min-w-0">
+              <div class="d-flex flex-column gap-1">
+                <span class="identity-card-name fw-bold text-break"
+                  [title]="matchData()?.personName || selectedEvent.objeto">
+                  {{ matchData()?.personName || selectedEvent.objeto }}
+                </span>
+                <span class="identity-card-group text-muted">
+                  {{ matchData()?.groupName || selectedEvent.grupoLista || 'Lista de Control Facial' }}
+                </span>
+                @if (selectedEvent.direccion) {
+                <div class="mt-0.5">
+                  <span class="badge bg-body-secondary border text-body text-capitalize px-2 py-0.5"
+                    style="font-size: 0.72rem;">
+                    {{ selectedEvent.direccion }}
+                  </span>
+                </div>
+                }
+              </div>
+
+              <!-- Barra de Similitud Biométrica Integrada -->
+              @if ((matchData()?.similarity || selectedEvent.porcentajeSimilitud); as sim) {
+              <div class="identity-similarity-block d-flex flex-column gap-1.5 mt-2">
+                <div class="d-flex justify-content-between align-items-center pb-1">
+                  <span class="identity-stat-label text-uppercase">Similitud Biométrica</span>
+                  <span class="font-monospace fw-bold identity-stat-val"
+                    [style.color]="getSimilarityColor(sim)">
+                    {{ sim }}%
+                  </span>
+                </div>
+                <div class="progress" style="height: 6px; background-color: var(--border-color, #e2e8f0); border-radius: 99px;">
+                  <div class="progress-bar" role="progressbar"
+                    [style.width.%]="sim"
+                    [style.background-color]="getSimilarityColor(sim)"
+                    [attr.aria-valuenow]="sim" aria-valuemin="0" aria-valuemax="100">
+                  </div>
+                </div>
+              </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+      } @else {
+      <!-- Atributos Detectados Estándar (No Faciales) -->
       <div class="popover-section mb-4">
         <div class="popover-section-title text-uppercase fw-bold mb-3"
           style="font-size: 0.68rem; letter-spacing: 0.08em; color: var(--text-muted);">Atributos Detectados</div>
 
         <div class="sighting-attributes-container d-flex flex-column gap-3 px-2">
-          <!-- Identificación -->
+          <!-- Identificación de Objeto -->
           <div class="attributes-group">
             <div class="text-muted text-uppercase fw-bold mb-2" style="font-size: 0.62rem; letter-spacing: 0.05em;">
               Identificación</div>
@@ -215,6 +435,7 @@
                 <span class="pill-dot"></span>
                 Objeto: {{ selectedEvent.objeto }}
               </span>
+
               @if (selectedEvent.direccion) {
               <span class="attribute-pill recognition-pill text-capitalize"
                 [class.gender-pill]="selectedEvent.direccion.toLowerCase() === 'entrada'"
@@ -224,38 +445,41 @@
               }
             </div>
           </div>
-
-          <!-- Métricas -->
-          @if (hasMetrics(selectedEvent)) {
-          <div class="attributes-group">
-            <div class="text-muted text-uppercase fw-bold mb-2" style="font-size: 0.62rem; letter-spacing: 0.05em;">
-              Métricas</div>
-            <div class="attributes-grid">
-              @if (selectedEvent.conteoAforo !== null) {
-              <span class="attribute-pill age-pill text-capitalize">
-                Aforo: {{ selectedEvent.conteoAforo }}
-              </span>
-              }
-              @if (selectedEvent.tiempoPermanencia !== null) {
-              <span class="attribute-pill gender-pill text-capitalize">
-                Permanencia: {{ selectedEvent.tiempoPermanencia | number:'1.0-2' }}s
-              </span>
-              }
-              @if (selectedEvent.objetosEnArea !== null) {
-              <span class="attribute-pill object-type-pill text-capitalize">
-                En Área: {{ selectedEvent.objetosEnArea }}
-              </span>
-              }
-              @if (selectedEvent.espaciosLibres !== null) {
-              <span class="attribute-pill recognition-pill text-capitalize">
-                Libres: {{ selectedEvent.espaciosLibres }}
-              </span>
-              }
-            </div>
-          </div>
-          }
         </div>
       </div>
+      }
+
+      <!-- Métricas (Aforo, Permanencia, etc.) -->
+      @if (hasMetrics(selectedEvent)) {
+      <div class="popover-section mb-4">
+        <div class="popover-section-title text-uppercase fw-bold mb-3"
+          style="font-size: 0.68rem; letter-spacing: 0.08em; color: var(--text-muted);">Métricas</div>
+        <div class="sighting-attributes-container d-flex flex-column gap-3 px-2">
+          <div class="attributes-grid">
+            @if (selectedEvent.conteoAforo !== null) {
+            <span class="attribute-pill age-pill text-capitalize">
+              Aforo: {{ selectedEvent.conteoAforo }}
+            </span>
+            }
+            @if (selectedEvent.tiempoPermanencia !== null) {
+            <span class="attribute-pill gender-pill text-capitalize">
+              Permanencia: {{ selectedEvent.tiempoPermanencia | number:'1.0-2' }}s
+            </span>
+            }
+            @if (selectedEvent.objetosEnArea !== null) {
+            <span class="attribute-pill object-type-pill text-capitalize">
+              En Área: {{ selectedEvent.objetosEnArea }}
+            </span>
+            }
+            @if (selectedEvent.espaciosLibres !== null) {
+            <span class="attribute-pill recognition-pill text-capitalize">
+              Libres: {{ selectedEvent.espaciosLibres }}
+            </span>
+            }
+          </div>
+        </div>
+      </div>
+      }
 
     </div><!-- /drawer-scroll-area -->
 

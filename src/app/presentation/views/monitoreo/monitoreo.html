@@ -117,18 +117,10 @@
                   <span class="status-dot-pulse me-2"
                     [class]="'status-dot-pulse me-2 ' + getCameraStatusClass(slot.camera)"
                     [title]="getCameraStatusLabel(slot.camera)"></span>
-                  <span class="slot-camera-name fw-bold text-truncate" [title]="slot.camera?.name">{{ slot.camera?.name
-                    }}</span>
+                  <div class="slot-camera-name-container min-w-0 flex-grow-1">
+                    <span class="slot-camera-name fw-bold" [title]="slot.camera?.name">{{ slot.camera?.name }}</span>
+                  </div>
                 </div>
-
-                @if (slot.camera && isSlotShowingEventPhoto(slot)) {
-                @let targetEvt = getDisplayedEventForSlot(slot);
-                @if (targetEvt && targetEvt.timestamp) {
-                <div class="canvas-slot-time-top-right">
-                  <span>{{ formatDatePart(targetEvt.timestamp) }} • {{ formatTimePart(targetEvt.timestamp) }}</span>
-                </div>
-                }
-                }
               </div>
 
               <!-- Feed / Imagen del último evento o Video en Tiempo Real -->
@@ -212,6 +204,13 @@
                     <span class="vms-analytic-chip__text">{{ getAnalyticLabel(analyticType) }}</span>
                   </span>
                 </div>
+
+                <!-- Fecha y Hora del Evento abajo a la derecha -->
+                @if (targetEvt && targetEvt.timestamp) {
+                <span class="canvas-slot-time-bottom-right">
+                  {{ formatDatePart(targetEvt.timestamp) }} • {{ formatTimePart(targetEvt.timestamp) }}
+                </span>
+                }
                 }
 
                 <!-- BARRA DE CONTROLES VERTICAL EN HOVER (Premium Action Dock) -->
@@ -720,9 +719,6 @@
         <p class="text-muted small mb-0">Active o desactive las cámaras del sistema para distribuirlas en la cuadrícula.
         </p>
       </div>
-      <button class="btn-close-premium" (click)="showModal.set(false)" aria-label="Cerrar modal">
-        <span class="icon-svg icon-close" style="width: 16px; height: 16px;"></span>
-      </button>
     </div>
 
     <!-- Modal Controls Area: Centered, containing Tabs and Search/Filters -->

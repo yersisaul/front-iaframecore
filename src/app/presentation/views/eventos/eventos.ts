@@ -7,6 +7,7 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 import { EventService } from '../../../core/services/event.service';
+import { CameraService } from '../../../core/services/camera.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { EventFilters, EventRecord, defaultEventFilters } from '../../../core/domain/entities/event.models';
@@ -31,6 +32,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private eventService = inject(EventService);
+  private cameraService = inject(CameraService);
   private sidebarService = inject(SidebarService);
   private permissionsService = inject(PermissionsService);
   private destroyRef = inject(DestroyRef);
@@ -67,7 +69,10 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
 
   readonly filteredCamarasOptions = computed(() => {
     const q = this.cameraSearch().trim().toLowerCase();
-    const all = this.filterOptions().camaras;
+    const systemCameras = this.cameraService.cameras().map((c: any) => c.name).filter(Boolean);
+    const eventCameras = this.filterOptions().camaras || [];
+    const tempCameras = this.tempFilters()?.camaras || [];
+    const all = Array.from(new Set([...systemCameras, ...eventCameras, ...tempCameras])).filter(Boolean).sort();
     return q ? all.filter((c: string) => c.toLowerCase().includes(q)) : all;
   });
 
@@ -122,6 +127,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   readonly dateHastaStr = signal<string>('');
   readonly timeDesdeStr = signal<string>('00:00');
   readonly timeHastaStr = signal<string>('23:59');
+  readonly activeDatePreset = signal<'today' | '24h' | '7d' | null>(null);
 
   readonly calendarGrid = computed(() => {
     const month = this.calendarViewMonth();
@@ -171,6 +177,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnInit(): void {
     this.eventService.isViewActive.set(true);
+    this.cameraService.getAllCameras().subscribe();
     this.eventService.loadCurrentPage();
   }
 
@@ -319,10 +326,13 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onResetFilters(): void {
+    this.searchControl.setValue('', { emitEvent: false });
+    this.tempFilters.set(defaultEventFilters());
     this.dateDesdeStr.set('');
     this.timeDesdeStr.set('00:00');
     this.dateHastaStr.set('');
     this.timeHastaStr.set('23:59');
+    this.activeDatePreset.set(null);
     this.eventService.resetFilters();
   }
 
@@ -382,6 +392,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       this.dateHastaStr.set(dateStr);
       this._applyDateTimeToFilter('hasta');
     }
+    this.activeDatePreset.set(null);
     this.activeCalendarField.set(null);
   }
 
@@ -454,6 +465,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     const newTs = `${pad(h)}:${pad(parts.minute)}`;
     if (field === 'desde') { this.timeDesdeStr.set(newTs); this._applyDateTimeToFilter('desde'); }
     else { this.timeHastaStr.set(newTs); this._applyDateTimeToFilter('hasta'); }
+    this.activeDatePreset.set(null);
   }
 
   selectTimeMinute(m: number): void {
@@ -465,6 +477,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     const newTs = `${pad(parts.hour)}:${pad(m)}`;
     if (field === 'desde') { this.timeDesdeStr.set(newTs); this._applyDateTimeToFilter('desde'); }
     else { this.timeHastaStr.set(newTs); this._applyDateTimeToFilter('hasta'); }
+    this.activeDatePreset.set(null);
   }
 
   private _applyDateTimeToFilter(field: 'desde' | 'hasta'): void {
@@ -497,11 +510,13 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
 
     if (preset === 'today') {
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       this.dateDesdeStr.set(toDateStr(todayStart));
       this.timeDesdeStr.set('00:00');
-      this.dateHastaStr.set('');
+      this.dateHastaStr.set(toDateStr(todayEnd));
       this.timeHastaStr.set('23:59');
-      this.tempFilters.update(f => ({ ...f, timestampDesde: todayStart, timestampHasta: null }));
+      this.tempFilters.update(f => ({ ...f, timestampDesde: todayStart, timestampHasta: todayEnd }));
+      this.activeDatePreset.set('today');
     } else if (preset === '24h') {
       const past24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       this.dateDesdeStr.set(toDateStr(past24h));
@@ -509,6 +524,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       this.dateHastaStr.set(toDateStr(now));
       this.timeHastaStr.set(toTimeStr(now));
       this.tempFilters.update(f => ({ ...f, timestampDesde: past24h, timestampHasta: now }));
+      this.activeDatePreset.set('24h');
     } else if (preset === '7d') {
       const past7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       this.dateDesdeStr.set(toDateStr(past7d));
@@ -516,12 +532,14 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       this.dateHastaStr.set(toDateStr(now));
       this.timeHastaStr.set(toTimeStr(now));
       this.tempFilters.update(f => ({ ...f, timestampDesde: past7d, timestampHasta: now }));
+      this.activeDatePreset.set('7d');
     } else if (preset === 'clear') {
       this.dateDesdeStr.set('');
       this.timeDesdeStr.set('00:00');
       this.dateHastaStr.set('');
       this.timeHastaStr.set('23:59');
       this.tempFilters.update(f => ({ ...f, timestampDesde: null, timestampHasta: null }));
+      this.activeDatePreset.set(null);
     }
   }
 
@@ -732,6 +750,13 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     if (target) {
       target.style.display = 'none';
     }
+  }
+
+  isMatchingAnalytic(analitica: string): boolean {
+    if (!analitica) return false;
+    const lower = analitica.toLowerCase();
+    return lower.includes('facial') || lower.includes('rostro') || lower.includes('face') ||
+           lower.includes('placa') || lower.includes('plate') || lower.includes('lpr');
   }
 
   // --- Image Detail Modal & Magnifier Zoom Logic ---

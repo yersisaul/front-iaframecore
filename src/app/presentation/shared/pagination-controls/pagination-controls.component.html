@@ -32,7 +32,7 @@
         style="width: 65px; height: 32px; border-radius: 8px; font-weight: 600;" [placeholder]="currentPage"
         inputmode="numeric" pattern="[0-9]*" (input)="onPageInput($event)" (keydown.enter)="jumpToPage($event)"
         (blur)="jumpToPage($event)" />
-      <span class="text-muted small fw-medium">de {{ totalPages }}</span>
+      <span class="text-muted small fw-medium pe-3">de {{ totalPages }}</span>
     </div>
   </div>
 </div>

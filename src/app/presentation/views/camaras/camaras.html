@@ -1,4 +1,4 @@
-<div #camerasContainer class="nodos-container container-fluid py-4 position-relative"
+<div #camerasContainer class="camaras-view-container nodos-container container-fluid py-4 position-relative"
   [class.host-page--deleting]="isHostDeleting()">
 
   <!-- ══════════════════════════════════════════════════════
@@ -75,6 +75,18 @@
         </button>
       </div>
 
+      <!-- Botón de Alternancia de Ordenamiento A-Z / Z-A (Válido para Tarjetas y Tabla) -->
+      @let currentSortLabel = (viewMode() === 'list' && sortBy() === 'host') ? 'Nodo' : 'Nombre';
+      <button type="button"
+        class="btn btn-sort-toggle d-flex align-items-center gap-2 shadow-sm rounded-pill border px-3 py-1.5"
+        (click)="toggleSortDirection()"
+        [title]="sortDirection() === 'asc' ? 'Orden actual: ' + currentSortLabel + ' (A → Z) · Clic para cambiar a (Z → A)' : 'Orden actual: ' + currentSortLabel + ' (Z → A) · Clic para cambiar a (A → Z)'"
+        aria-label="Alternar orden alfabético">
+        <span class="sort-icon-letters font-monospace fw-bold">{{ sortDirection() === 'asc' ? 'A→Z' : 'Z→A' }}</span>
+        <span class="icon-svg sort-arrow-icon" [class.icon-arrow-up]="sortDirection() === 'asc'"
+          [class.icon-arrow-down]="sortDirection() === 'desc'"></span>
+      </button>
+
       <div class="flex-grow-1"></div>
 
       <div class="d-flex align-items-center gap-2">
@@ -95,26 +107,38 @@
       <!-- 1. ESTADO DE ACTIVIDAD -->
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-          [class.active]="tempFilterStatus() !== 'all'" (click)="toggleDropdown('status', $event)">
+          [class.active]="tempFilterStatus().length > 0" (click)="toggleDropdown('status', $event)">
           <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
           <span>
-            Estado: {{ tempFilterStatus() === 'all' ? 'Todos' : getStatusFilterLabel(tempFilterStatus()) }}
+            Estado ({{ tempFilterStatus().length || 'Todos' }})
+          </span>
+          <span class="filter-dropdown-count-pill" [class.active-pill]="tempFilterStatus().length > 0">
+            {{ getStatusCountSummary() }}
           </span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'status'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'status') {
         <div class="filter-dropdown-menu dropdown-status" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item" [class.active]="tempFilterStatus() === 'all'"
-            (click)="selectFilterValue('status', 'all', $event)">
-            Todos los Estados
-          </button>
+          @if (filterOptions().status.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
           @for (st of filterOptions().status; track st) {
-          <button type="button" class="dropdown-item d-flex align-items-center gap-2"
-            [class.active]="isStatusSelected(tempFilterStatus(), st)"
-            (click)="selectFilterValue('status', st, $event)">
-            <span class="status-dot" [class]="getStatusCssClass(st)"></span>
-            <span>{{ getStatusFilterLabel(st) }}</span>
+          @let isSelected = tempFilterStatus().includes(st);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="toggleFilterValue('status', st, $event)">
+            <div class="d-flex align-items-center gap-2">
+              <span class="status-dot" [class]="getStatusCssClass(st)"></span>
+              <span>{{ getStatusFilterLabel(st) }}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="filter-item-badge" [class]="'badge-status-' + getStatusCssClass(st)">
+                {{ getStatusCount(st) }}
+              </span>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </div>
           </button>
           }
         </div>
@@ -122,12 +146,12 @@
       </div>
 
       <!-- 2. NODO / HOST (SOLO EN MODO "TODAS LAS CÁMARAS") -->
-      @if (!hostId() && filterOptions().hosts.length > 0) {
+      @if (!hostId()) {
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-          [class.active]="tempFilterHost() !== 'all'" (click)="toggleDropdown('host', $event)">
+          [class.active]="tempFilterHost().length > 0" (click)="toggleDropdown('host', $event)">
           <span class="icon-svg icon-nodos filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Nodo: {{ tempFilterHost() === 'all' ? 'Todos' : getHostName(tempFilterHost()) }}</span>
+          <span>Nodo ({{ tempFilterHost().length || 'Todos' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'host'" style="width: 10px; height: 10px;"></span>
         </button>
@@ -137,35 +161,31 @@
           <div class="node-search-wrapper px-1 pb-1">
             <div class="node-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
-              <input
-                #nodeSearchInput
-                type="text"
-                class="node-search-input border-0 bg-transparent w-100"
-                placeholder="Buscar nodo..."
-                (input)="hostSearch.set(nodeSearchInput.value)"
-                (click)="$event.stopPropagation()"
-                autocomplete="off"
+              <input #nodeSearchInput type="text" class="node-search-input border-0 bg-transparent w-100"
+                placeholder="Buscar nodo..." (input)="hostSearch.set(nodeSearchInput.value)"
+                (click)="$event.stopPropagation()" autocomplete="off"
                 style="font-size: 0.8rem; outline: none; min-width: 0;" />
               @if (hostSearch()) {
-              <button type="button" class="btn-ghost p-0 d-flex border-0 bg-transparent" style="opacity: 0.5; line-height: 1;"
-                (click)="nodeSearchInput.value = ''; hostSearch.set(''); $event.stopPropagation()" title="Limpiar búsqueda">
+              <button type="button" class="btn-ghost p-0 d-flex border-0 bg-transparent"
+                style="opacity: 0.5; line-height: 1;"
+                (click)="nodeSearchInput.value = ''; hostSearch.set(''); $event.stopPropagation()"
+                title="Limpiar búsqueda">
                 <span style="font-size: 0.75rem;">✕</span>
               </button>
               }
             </div>
           </div>
-          <button type="button" class="dropdown-item" [class.active]="tempFilterHost() === 'all'"
-            (click)="selectFilterValue('host', 'all', $event)">
-            Todos los Nodos
-          </button>
           @if (filteredHostOptions().length === 0) {
-          <div class="text-muted small text-center py-2 opacity-60">Sin resultados</div>
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }
           @for (h of filteredHostOptions(); track h.fingerprint) {
-          <button type="button" class="dropdown-item"
-            [class.active]="tempFilterHost() === h.fingerprint"
-            (click)="selectFilterValue('host', h.fingerprint, $event)">
-            {{ h.name }}
+          @let isSelected = tempFilterHost().includes(h.fingerprint);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="toggleFilterValue('host', h.fingerprint, $event)">
+            <span class="text-truncate">{{ h.name }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
           }
         </div>
@@ -176,23 +196,25 @@
       <!-- 3. TIPO DE STREAM -->
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-          [class.active]="tempFilterStreamType() !== 'all'" (click)="toggleDropdown('streamType', $event)">
+          [class.active]="tempFilterStreamType().length > 0" (click)="toggleDropdown('streamType', $event)">
           <span class="icon-svg icon-wifi filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Stream: {{ tempFilterStreamType() === 'all' ? 'Todos' : tempFilterStreamType()
-            }}</span>
+          <span>Stream ({{ tempFilterStreamType().length || 'Todos' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'streamType'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'streamType') {
         <div class="filter-dropdown-menu dropdown-streamType" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item"
-            [class.active]="tempFilterStreamType() === 'all'" (click)="selectFilterValue('streamType', 'all', $event)">
-            Todos los Streams
-          </button>
+          @if (filterOptions().streamType.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
           @for (st of filterOptions().streamType; track st) {
-          <button type="button" class="dropdown-item"
-            [class.active]="tempFilterStreamType() === st" (click)="selectFilterValue('streamType', st, $event)">
-            {{ st }}
+          @let isSelected = tempFilterStreamType().includes(st);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="toggleFilterValue('streamType', st, $event)">
+            <span>{{ st }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
           }
         </div>
@@ -202,23 +224,25 @@
       <!-- 4. DECODIFICADOR -->
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-          [class.active]="tempFilterDecoder() !== 'all'" (click)="toggleDropdown('decoder', $event)">
+          [class.active]="tempFilterDecoder().length > 0" (click)="toggleDropdown('decoder', $event)">
           <span class="icon-svg icon-settings filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Decodificador: {{ tempFilterDecoder() === 'all' ? 'Todos' : tempFilterDecoder()
-            }}</span>
+          <span>Decodificador ({{ tempFilterDecoder().length || 'Todos' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'decoder'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'decoder') {
         <div class="filter-dropdown-menu dropdown-decoder" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item" [class.active]="tempFilterDecoder() === 'all'"
-            (click)="selectFilterValue('decoder', 'all', $event)">
-            Todos los Decodificadores
-          </button>
+          @if (filterOptions().decoder.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
           @for (dec of filterOptions().decoder; track dec) {
-          <button type="button" class="dropdown-item"
-            [class.active]="tempFilterDecoder() === dec" (click)="selectFilterValue('decoder', dec, $event)">
-            {{ dec }}
+          @let isSelected = tempFilterDecoder().includes(dec);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="toggleFilterValue('decoder', dec, $event)">
+            <span>{{ dec }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
           }
         </div>
@@ -228,25 +252,25 @@
       <!-- 5. ANALÍTICA DE IA -->
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-          [class.active]="tempFilterAnalyticType() !== 'all'" (click)="toggleDropdown('analyticType', $event)">
+          [class.active]="tempFilterAnalyticType().length > 0" (click)="toggleDropdown('analyticType', $event)">
           <span class="icon-svg icon-info-circle filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Analítica: {{ tempFilterAnalyticType() === 'all' ? 'Todas' : getAnalyticLabel(tempFilterAnalyticType())
-            }}</span>
+          <span>Analítica ({{ tempFilterAnalyticType().length || 'Todas' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'analyticType'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'analyticType') {
         <div class="filter-dropdown-menu dropdown-analyticType scrollable-menu" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item"
-            [class.active]="tempFilterAnalyticType() === 'all'"
-            (click)="selectFilterValue('analyticType', 'all', $event)">
-            Todas las Analíticas
-          </button>
+          @if (filterOptions().analyticType.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
           @for (type of filterOptions().analyticType; track type) {
-          <button type="button" class="dropdown-item text-capitalize"
-            [class.active]="tempFilterAnalyticType() === type"
-            (click)="selectFilterValue('analyticType', type, $event)">
-            {{ getAnalyticLabel(type) }}
+          @let isSelected = tempFilterAnalyticType().includes(type);
+          <button type="button" class="dropdown-item text-capitalize d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="toggleFilterValue('analyticType', type, $event)">
+            <span>{{ getAnalyticLabel(type) }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
           }
         </div>
@@ -296,8 +320,8 @@
           <!-- Cabecera: Icono + Nombre + Decoder + Estado -->
           <div class="host-header-block d-flex align-items-center justify-content-between" style="gap: 12px;">
             <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0" style="overflow: hidden;">
-              <span class="icon-svg os-avatar-icon icon-camara flex-shrink-0" style="width: 24px; height: 24px;"></span>
-              <div class="host-title-container min-w-0 flex-grow-1">
+              <span class="icon-svg os-avatar-icon icon-camara flex-shrink-0"></span>
+              <div class="host-title-container min-w-0 flex-grow-1 d-flex align-items-center">
                 <h5 class="host-title fw-bold mb-0 text-truncate" [title]="camera.name">
                   {{ camera.name }}
                 </h5>
@@ -319,38 +343,43 @@
 
           <!-- Lista de especificaciones -->
           <div class="specs-list d-flex flex-column gap-1 mt-3">
-            <div class="spec-row d-flex justify-content-between"
+            <div class="spec-row spec-row-camera-id d-flex justify-content-between"
               [class.copied-flash]="copiedRowId() === camera.id + '-id'"
               (click)="copyRowContent(camera.id, camera.id + '-id'); $event.stopPropagation()">
-              <span class="spec-lbl d-inline-flex align-items-center">
+              <span class="spec-lbl d-inline-flex align-items-center flex-shrink-0">
                 <span class="icon-svg icon-fingerprint me-2"
                   style="width: 14px; height: 14px; background-color: currentColor;"></span>
                 Camera ID
               </span>
               @if (copiedRowId() === camera.id + '-id') {
-              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
+              <span class="copied-badge text-success fw-bold ms-auto flex-shrink-0">¡Copiado!</span>
               } @else {
-              <span class="spec-val font-monospace text-truncate text-end">
-                {{ camera.id }}
-              </span>
+              <div class="spec-val-container min-w-0 ms-auto text-end">
+                <span class="spec-val spec-val-scrollable font-monospace d-block">
+                  {{ camera.id }}
+                </span>
+              </div>
               }
             </div>
 
-            @if (camera.nxId && (camera.decoder.toLowerCase().includes('nx') || camera.streamType.toLowerCase().includes('nx'))) {
-            <div class="spec-row d-flex justify-content-between"
+            @if (camera.nxId && (camera.decoder.toLowerCase().includes('nx') ||
+            camera.streamType.toLowerCase().includes('nx'))) {
+            <div class="spec-row spec-row-nx d-flex justify-content-between"
               [class.copied-flash]="copiedRowId() === camera.id + '-nxId'"
               (click)="copyRowContent(camera.nxId!, camera.id + '-nxId'); $event.stopPropagation()">
-              <span class="spec-lbl d-inline-flex align-items-center">
+              <span class="spec-lbl d-inline-flex align-items-center flex-shrink-0">
                 <span class="icon-svg icon-nx me-2"
                   style="width: 14px; height: 14px; background-color: currentColor;"></span>
                 NX ID
               </span>
               @if (copiedRowId() === camera.id + '-nxId') {
-              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
+              <span class="copied-badge text-success fw-bold ms-auto flex-shrink-0">¡Copiado!</span>
               } @else {
-              <span class="spec-val font-monospace text-truncate text-end">
-                {{ camera.nxId }}
-              </span>
+              <div class="spec-val-container min-w-0 ms-auto text-end">
+                <span class="spec-val spec-val-scrollable font-monospace d-block">
+                  {{ camera.nxId }}
+                </span>
+              </div>
               }
             </div>
             }
@@ -367,7 +396,9 @@
               <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
               } @else {
               @let nodeNameBento = getHostName(camera.hostFingerprint);
-              <span class="spec-val font-monospace text-truncate text-end" [class.text-muted]="nodeNameBento.toUpperCase() === 'SIN NODO'" [class.opacity-50]="nodeNameBento.toUpperCase() === 'SIN NODO'">
+              <span class="spec-val font-monospace text-truncate text-end"
+                [class.text-muted]="nodeNameBento.toUpperCase() === 'SIN NODO'"
+                [class.opacity-50]="nodeNameBento.toUpperCase() === 'SIN NODO'">
                 {{ nodeNameBento }}
               </span>
               }
@@ -414,17 +445,121 @@
   <div class="border shadow-sm rounded-4 bg-card overflow-hidden">
     <div class="nm-table-container">
       <table class="table nm-table align-middle mb-0">
+        <colgroup>
+          <col class="col-status">
+          <col class="col-camera-name">
+          @if (!hostId()) {
+          <col class="col-host">
+          }
+          @if (isColumnVisible('stream')) {
+          <col class="col-stream">
+          }
+          @if (isColumnVisible('decoder')) {
+          <col class="col-decoder">
+          }
+          @if (isColumnVisible('coords')) {
+          <col class="col-coords">
+          }
+          @if (hasHiddenColumns()) {
+          <col class="col-add-column">
+          }
+          <col class="col-analytics">
+        </colgroup>
         <thead>
           <tr>
-            <th scope="col">ESTADO</th>
-            <th scope="col">NOMBRE DE CÁMARA</th>
+            <th scope="col" class="col-status text-muted small fw-bold text-center">ESTADO</th>
+            <th scope="col" class="col-camera-name th-sortable text-muted small fw-bold" (click)="setSortBy('name')"
+              [title]="(sortBy() === 'name' && sortDirection() === 'asc') ? 'Orden actual: Nombre (A → Z) · Clic para ordenar (Z → A)' : 'Clic para ordenar por Nombre'">
+              <div class="d-inline-flex align-items-center gap-2">
+                <span [class.text-primary]="sortBy() === 'name'">NOMBRE DE CÁMARA</span>
+                @if (sortBy() === 'name') {
+                <span class="sort-indicator-arrow font-monospace text-primary">{{ sortDirection() === 'asc' ? '▲' : '▼'
+                  }}</span>
+                }
+              </div>
+            </th>
             @if (!hostId()) {
-            <th scope="col">NODO ASOCIADO</th>
+            <th scope="col" class="col-host th-sortable text-muted small fw-bold" (click)="setSortBy('host')"
+              [title]="(sortBy() === 'host' && sortDirection() === 'asc') ? 'Orden actual: Nodo (A → Z) · Clic para ordenar (Z → A)' : 'Clic para ordenar por Nodo'">
+              <div class="d-inline-flex align-items-center gap-2">
+                <span [class.text-primary]="sortBy() === 'host'">NODO</span>
+                @if (sortBy() === 'host') {
+                <span class="sort-indicator-arrow font-monospace text-primary">{{ sortDirection() === 'asc' ? '▲' : '▼'
+                  }}</span>
+                }
+              </div>
+            </th>
             }
-            <th scope="col">STREAM</th>
-            <th scope="col">DECODIFICADOR</th>
-            <th scope="col">COORDENADAS</th>
-            <th scope="col" class="pe-3">ANALITICAS POR CAMARA</th>
+            @if (isColumnVisible('stream')) {
+            <th scope="col" class="col-stream text-muted small fw-bold text-center">
+              <button type="button" class="btn-th-column-toggle" (click)="hideColumn('stream', $event)"
+                title="Ocultar columna Stream">
+                <span class="col-label-text">STREAM</span>
+                <span class="col-label-hover-icon">
+                  <span class="icon-svg icon-trash"></span>
+                </span>
+              </button>
+            </th>
+            }
+            @if (isColumnVisible('decoder')) {
+            <th scope="col" class="col-decoder text-muted small fw-bold text-center">
+              <button type="button" class="btn-th-column-toggle" (click)="hideColumn('decoder', $event)"
+                title="Ocultar columna Decodificador">
+                <span class="col-label-text">DECODIFICADOR</span>
+                <span class="col-label-hover-icon">
+                  <span class="icon-svg icon-trash"></span>
+                </span>
+              </button>
+            </th>
+            }
+            @if (isColumnVisible('coords')) {
+            <th scope="col" class="col-coords text-muted small fw-bold text-center">
+              <button type="button" class="btn-th-column-toggle" (click)="hideColumn('coords', $event)"
+                title="Ocultar columna Coordenadas">
+                <span class="col-label-text">COORDENADAS</span>
+                <span class="col-label-hover-icon">
+                  <span class="icon-svg icon-trash"></span>
+                </span>
+              </button>
+            </th>
+            }
+            @if (hasHiddenColumns()) {
+            <th scope="col" class="col-add-column text-center position-relative">
+              <div class="position-relative d-inline-block">
+                <button type="button" class="btn-add-table-column"
+                  [class.active]="activeDropdown() === 'restoreColumns'"
+                  (click)="toggleDropdown('restoreColumns', $event)" title="Restaurar columnas ocultas">
+                  <span class="icon-svg icon-plus" style="width: 12px; height: 12px;"></span>
+                </button>
+
+                @if (activeDropdown() === 'restoreColumns') {
+                <div class="filter-dropdown-menu dropdown-restore-columns p-2 shadow-lg"
+                  (click)="$event.stopPropagation()">
+                  <div class="dropdown-header-title text-uppercase text-muted px-2 py-1 mb-1 fw-bold"
+                    style="font-size: 0.68rem; letter-spacing: 0.05em;">
+                    Columnas ocultas
+                  </div>
+                  @for (col of hiddenColumnsList(); track col.key) {
+                  <button type="button" class="dropdown-item d-flex align-items-center gap-2 py-1.5 px-3 rounded"
+                    (click)="showColumn(col.key, $event)">
+                    <span class="icon-svg icon-plus text-primary flex-shrink-0"
+                      style="width: 12px; height: 12px;"></span>
+                    <span>{{ col.label }}</span>
+                  </button>
+                  }
+                  @if (hiddenColumnsList().length > 1) {
+                  <div class="dropdown-divider my-1"></div>
+                  <button type="button" class="dropdown-item text-primary fw-semibold py-1.5 px-3 rounded"
+                    (click)="showAllColumns($event)">
+                    <span>Mostrar todas</span>
+                  </button>
+                  }
+                </div>
+                }
+              </div>
+            </th>
+            }
+            <th scope="col" class="col-analytics text-muted small fw-bold pe-3">ANALITICAS POR CAMARA</th>
           </tr>
         </thead>
         <tbody>
@@ -435,8 +570,8 @@
             [class.card-crud-status-active]="cameraActiveStatusIds().has(camera.id)"
             [class.card-crud-status-inactive]="cameraInactiveStatusIds().has(camera.id)" (click)="openAiPanel(camera)">
             <!-- Estado -->
-            <td class="ps-3">
-              <span class="d-inline-flex align-items-center gap-2">
+            <td class="col-status text-center">
+              <span class="d-inline-flex align-items-center justify-content-center gap-2">
                 <span [class]="'status-dot ' + getCameraStatusClass(camera)"></span>
                 <span class="fw-semibold" style="font-size: 0.88rem;"
                   [class]="'fw-semibold status-text-' + getCameraStatusClass(camera)">
@@ -445,34 +580,44 @@
               </span>
             </td>
             <!-- Nombre -->
-            <td>
-              <div class="camera-name-marquee-container">
-                <span class="camera-name-marquee-text fw-bold text-body" style="font-size: 0.88rem;">{{ camera.name
-                  }}</span>
+            <td class="col-camera-name">
+              <div class="d-flex align-items-center" style="min-width: 0;">
+                <div class="camera-table-name-container min-w-0">
+                  <span class="camera-table-name-text fw-bold text-body" style="font-size: 0.88rem;"
+                    [title]="camera.name">
+                    {{ camera.name }}
+                  </span>
+                  @if (camera.nxId && (camera.decoder.toLowerCase().includes('nx') ||
+                  camera.streamType.toLowerCase().includes('nx'))) {
+                  <span class="camera-table-nx-subtext text-muted font-monospace"
+                    style="font-size: 0.72rem; line-height: 1.2;" [title]="'NX ID: ' + camera.nxId">
+                    NX ID: {{ camera.nxId }}
+                  </span>
+                  }
+                </div>
               </div>
-              @if (camera.nxId && (camera.decoder.toLowerCase().includes('nx') || camera.streamType.toLowerCase().includes('nx'))) {
-              <div class="text-muted font-monospace small" style="font-size: 0.72rem;">NX ID: {{ camera.nxId }}</div>
-              }
             </td>
             <!-- Nodo / Host -->
             @if (!hostId()) {
-            <td>
+            <td class="col-host">
               @let nodeNameTable = getHostName(camera.hostFingerprint);
               @if (nodeNameTable.toUpperCase() === 'SIN NODO') {
-              <span class="text-muted opacity-50 fw-semibold d-inline-block" style="font-size: 0.82rem; letter-spacing: 0.04em;">
+              <span class="text-muted opacity-50 fw-semibold d-inline-block"
+                style="font-size: 0.82rem; letter-spacing: 0.04em;">
                 SIN NODO
               </span>
               } @else {
-              <span class="text-body text-truncate d-inline-block" style="font-size: 0.88rem;"
-                [title]="nodeNameTable">
+              <span class="text-body text-truncate d-inline-block" style="font-size: 0.88rem;" [title]="nodeNameTable">
                 {{ nodeNameTable }}
               </span>
               }
             </td>
             }
             <!-- Stream -->
-            <td>
-              <div class="d-inline-flex align-items-center gap-2 text-uppercase font-monospace text-body"
+            @if (isColumnVisible('stream')) {
+            <td class="col-stream text-center">
+              <div
+                class="d-inline-flex align-items-center justify-content-center gap-2 text-uppercase font-monospace text-body"
                 style="font-size: 0.85rem; font-weight: 600;">
                 @if (camera.streamType.toLowerCase().includes('webrtc')) {
                 <span class="icon-svg icon-webrtc" style="width: 15px; height: 15px; background-color: #0ea5e9;"></span>
@@ -484,39 +629,49 @@
                 <span>{{ camera.streamType }}</span>
               </div>
             </td>
+            }
             <!-- Decodificador -->
-            <td>
-              <span class="text-body font-monospace text-uppercase" style="font-size: 0.85rem; font-weight: 500;">{{
+            @if (isColumnVisible('decoder')) {
+            <td class="col-decoder text-center">
+              <span class="text-body font-monospace text-uppercase text-nowrap"
+                style="font-size: 0.85rem; font-weight: 500;">{{
                 camera.decoder }}</span>
             </td>
+            }
             <!-- Coordenadas -->
-            <td>
+            @if (isColumnVisible('coords')) {
+            <td class="col-coords text-center">
               <a [href]="'https://www.google.com/maps/search/?api=1&query=' + camera.location.lat + ',' + camera.location.lon"
-                target="_blank" rel="noopener noreferrer" class="coords-map-btn" (click)="$event.stopPropagation()"
-                title="Ver ubicación en Google Maps"
+                target="_blank" rel="noopener noreferrer" class="coords-map-btn text-nowrap"
+                (click)="$event.stopPropagation()" title="Ver ubicación en Google Maps"
                 style="font-size: 0.82rem; gap: 6px; padding: 6px 12px; border-radius: 6px;">
                 <span class="icon-svg icon-location-pin coords-pin-svg" style="width: 16px; height: 16px;"></span>
                 <span class="font-monospace">{{ camera.location.lat | number:'1.1-2' }}, {{ camera.location.lon |
                   number:'1.1-2' }}</span>
               </a>
             </td>
+            }
+            <!-- Columna '+' dinámica celda vacía para mantener alineación -->
+            @if (hasHiddenColumns()) {
+            <td class="col-add-column text-center p-0"></td>
+            }
             <!-- Analíticas de IA -->
-            <td class="pe-3" (click)="$event.stopPropagation()">
-              <div class="d-flex flex-wrap gap-1.5 align-items-center" style="gap:10px;">
+            <td class="col-analytics pe-3">
+              <div class="camera-analytics-marquee-container">
                 @if (getAnalyticsForCamera(camera.id); as cameraAnalytics) {
                 @if (cameraAnalytics.length > 0) {
-                @for (analytic of cameraAnalytics; track analytic.id) {
-                <span class="analytic-status-pill text-capitalize"
-                  [class.analytic-status-pill--active]="analytic.status === 'active' || analytic.status === 'online'"
-                  [class.analytic-status-pill--inactive]="analytic.status !== 'active' && analytic.status !== 'online'"
-                  [title]="getAnalyticLabel(analytic.type)">
-                  <span class="pill-dot"
-                    style="width: 5px; height: 5px; border-radius: 50%; display: inline-block; background-color: currentColor; margin-right: 6px;"></span>
-                  {{ getAnalyticLabel(analytic.type) }}@if (analytic.detectionClasses.length > 0) { ({{
-                  analytic.detectionClasses.slice(0, 3).join(', ') }}{{ analytic.detectionClasses.length > 3 ? '...' :
-                  '' }}) }
-                </span>
-                }
+                <div class="camera-analytics-track">
+                  @for (analytic of cameraAnalytics; track analytic.id) {
+                  <span class="analytic-status-pill text-capitalize text-nowrap flex-shrink-0"
+                    [class.analytic-status-pill--active]="analytic.status === 'active' || analytic.status === 'online'"
+                    [class.analytic-status-pill--inactive]="analytic.status !== 'active' && analytic.status !== 'online'"
+                    [title]="getAnalyticLabel(analytic.type) + (getAnalyticClassesLabel(analytic) ? ' (' + getAnalyticClassesLabel(analytic) + ')' : '')">
+                    <span class="pill-dot"></span>
+                    <span>{{ getAnalyticLabel(analytic.type) }}@if (getAnalyticClassesLabel(analytic); as classesLabel)
+                      { ({{ classesLabel }}) }</span>
+                  </span>
+                  }
+                </div>
                 } @else {
                 <span class="text-muted small font-monospace" style="font-size: 0.8rem; opacity: 0.6;">Ninguna</span>
                 }
@@ -533,8 +688,8 @@
   }
 
   <!-- Paginación (REUTILIZABLE DRY) -->
-  <app-pagination-controls [currentPage]="currentPage()" [totalPages]="totalPages()" [totalRecords]="totalRecords()" [visiblePages]="visiblePages()"
-    (pageChange)="setPage($event)">
+  <app-pagination-controls [currentPage]="currentPage()" [totalPages]="totalPages()" [totalRecords]="totalRecords()"
+    [visiblePages]="visiblePages()" (pageChange)="setPage($event)">
   </app-pagination-controls>
 
   <!-- Componente Compartido Reutilizable (DRY): Drawer Lateral de Configuración de Cámara -->
@@ -561,9 +716,6 @@
             <p class="text-muted small mb-0">Información del servidor y consumo de analíticas asignadas</p>
           </div>
         </div>
-        <button class="btn-ghost close-drawer-btn" (click)="showLicenseModal.set(false)" aria-label="Cerrar modal">
-          <span class="icon-svg icon-close text-muted" style="width: 20px; height: 20px;"></span>
-        </button>
       </div>
 
       @if (license(); as lic) {

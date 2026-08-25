@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, signal, HostListener, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, HostListener, OnChanges, OnDestroy, SimpleChanges, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -40,6 +40,8 @@ import { AnalyticActionsBuilderComponent } from './components/analytic-actions-b
   styleUrl: './camera-detail-drawer.component.css'
 })
 export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
+  @ViewChild(AnalyticParamsFormComponent) paramsFormComponent?: AnalyticParamsFormComponent;
+
   get resolvedHostFingerprint(): string {
     if (this.camera?.hostFingerprint) return this.camera.hostFingerprint;
     if (this.hostId) return this.hostId;
@@ -139,10 +141,10 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
   readonly isSubmittingAnalytic = signal<boolean>(false);
   readonly validationMessage = signal<string | null>(null);
   readonly validationMessageType = signal<'warning' | 'danger' | 'success'>('warning');
-  readonly activeErrorTarget = signal<'classes' | 'canvas' | null>(null);
+  readonly activeErrorTarget = signal<'classes' | 'canvas' | 'prueba_movimiento' | string | null>(null);
   private notificationTimeoutId: any = null;
 
-  triggerErrorHighlight(target: 'classes' | 'canvas'): void {
+  triggerErrorHighlight(target: 'classes' | 'canvas' | 'prueba_movimiento' | string): void {
     this.activeErrorTarget.set(target);
     setTimeout(() => {
       if (this.activeErrorTarget() === target) {
@@ -407,28 +409,18 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
     this.clearNotification();
 
     const formState = this.analyticFormState();
-
-    // 1. Validar Clases / Objetos a Monitorear (Excluyendo analíticas sin clases como Reconocimiento Facial y Placas LPR)
     const classes = formState?.detection_classes || [];
-    const rawType = (formState?.analytic_type || '').toLowerCase();
-    const isNoClassesAnalytic = rawType.includes('facial') ||
-      rawType.includes('face') ||
-      rawType.includes('placa') ||
-      rawType.includes('plate') ||
-      rawType === 'face_recognition' ||
-      rawType === 'license_plate_recognition';
 
-    if (!isNoClassesAnalytic) {
-      if (!Array.isArray(classes) || classes.length === 0) {
-        this.triggerErrorHighlight('classes');
-        this.showNotification('Por favor, selecciona al menos un objeto o clase a monitorear antes de guardar.', 'warning');
-        return;
-      }
-
-      const isProximity = rawType === 'cercania entre objetos' || rawType === 'object_proximity';
-      if (isProximity && classes.length < 2) {
-        this.triggerErrorHighlight('classes');
-        this.showNotification('Para la analítica "Cercanía entre objetos" debes seleccionar exactamente 2 objetos (1º Núcleo, 2º Órbita) antes de guardar.', 'warning');
+    // 1. Validar todos los parámetros y clases desde el componente del formulario
+    if (this.paramsFormComponent) {
+      const validation = this.paramsFormComponent.validateAllParams();
+      if (!validation.valid) {
+        if (validation.target) {
+          this.triggerErrorHighlight(validation.target);
+        }
+        if (validation.message) {
+          this.showNotification(validation.message, 'warning');
+        }
         return;
       }
     }
@@ -494,12 +486,22 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
       }) : []
     };
 
+    // Calcular estado inicial inteligente según horario
+    let calculatedStatus: 'active' | 'inactive';
+    if (selectedSchedObj) {
+      calculatedStatus = this.scheduleService.isScheduleActive(selectedSchedObj) ? 'active' : 'inactive';
+    } else if (editingAnalytic) {
+      calculatedStatus = editingAnalytic.status === 'active' ? 'active' : 'inactive';
+    } else {
+      calculatedStatus = 'active';
+    }
+
     const payload: any = {
       camera_id: this.camera?.id || '',
       fingerprint_host: hostFp,
       target_cameras: [{ camera_id: this.camera?.id || '', camera_name: this.camera?.name || '' }],
       analytic_type: formState?.analytic_type || 'Objeto en area',
-      analytic_status: editingAnalytic?.status || 'active',
+      analytic_status: calculatedStatus,
       detection_classes: classes,
       parameters: {
         Modelo: formState?.model || formState?.specific_params?.['Modelo'] || 'dependencias/weights/objetc_detection/yolo26m.pt',
@@ -583,12 +585,50 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
           if (typeof err.error === 'string') {
             backendMsg = err.error;
           } else if (err.error.detail) {
-            backendMsg = typeof err.error.detail === 'string' ? err.error.detail : JSON.stringify(err.error.detail);
+            if (Array.isArray(err.error.detail)) {
+              backendMsg = err.error.detail.map((d: any) => d?.msg || JSON.stringify(d)).join('. ');
+            } else {
+              backendMsg = typeof err.error.detail === 'string' ? err.error.detail : JSON.stringify(err.error.detail);
+            }
           } else if (err.error.message) {
             backendMsg = err.error.message;
           }
         } else if (err.message) {
           backendMsg = err.message;
+        }
+
+        const mapErrorToTarget = (msg: string): string | null => {
+          const lower = msg.toLowerCase();
+          if (lower.includes('prueba_movimiento')) return 'prueba_movimiento';
+          if (lower.includes('tiempo_permanencia') || (lower.includes('tiempo') && lower.includes('permanencia'))) return 'tiempo_permanencia';
+          if (lower.includes('validaciones') || lower.includes('n_validaciones')) return 'n_validaciones';
+          if (lower.includes('escala_orbita') || lower.includes('orbita')) return 'escala_orbita';
+          if (lower.includes('n_detecciones') || lower.includes('detecciones')) return 'n_detecciones';
+          if (lower.includes('humbral_maximo')) return 'humbral_maximo';
+          if (lower.includes('humbral_minmo') || lower.includes('humbral_minimo')) return 'humbral_minimo';
+          if (lower.includes('n_objetos') || lower.includes('objetos')) return 'n_objetos';
+          if (lower.includes('tiempo_descenso') || lower.includes('descenso')) return 'tiempo_descenso';
+          if (lower.includes('similitud')) return 'similitud';
+          if (lower.includes('embeding') || lower.includes('embedding')) return 'n_embeddings';
+          if (lower.includes('minimo_personas') || lower.includes('personas')) return 'minimo_personas';
+          if (lower.includes('densidad')) return 'densidad';
+          if (lower.includes('tiempo_abandono') || lower.includes('abandono')) return 'tiempo_abandono';
+          if (lower.includes('max_speed') || lower.includes('velocidad') || lower.includes('speed')) return 'max_speed';
+          if (lower.includes('distancia_a_b')) return 'distancia_a_b';
+          if (lower.includes('distancia_b_c')) return 'distancia_b_c';
+          if (lower.includes('min_points')) return 'min_points_for_speed';
+          if (lower.includes('postura') || lower.includes('confianza_postura')) return 'confianza_postura';
+          if (lower.includes('list_id') || lower.includes('lista')) return 'list_id';
+          if (lower.includes('confianza')) return 'confianza_rf';
+          if (lower.includes('aforo_maximo') || lower.includes('aforo')) return 'aforo_maximo';
+          if (lower.includes('clase') || lower.includes('class')) return 'classes';
+          if (lower.includes('geometric') || lower.includes('poligono') || lower.includes('linea') || lower.includes('area')) return 'canvas';
+          return null;
+        };
+
+        const targetField = mapErrorToTarget(backendMsg);
+        if (targetField) {
+          this.triggerErrorHighlight(targetField);
         }
 
         this.showNotification(`Error del Servidor: ${backendMsg}`, 'danger');
@@ -1127,32 +1167,31 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
       rawType === 'face_recognition' ||
       rawType === 'license_plate_recognition';
 
-    if (isNoClassesAnalytic) {
-      const params = analytic.parameters || {};
-      const listId = params['list_id'] || params['listId'] || params['id_lista'] || params['lista_id'];
-
-      if (listId) {
-        const allLists = this.listService.lists();
-        const foundList = allLists.find(l => String(l.list_id) === String(listId));
-        if (foundList && foundList.name) {
-          return foundList.name;
-        }
-      }
-
-      const directName = params['list_name'] || params['listName'] || params['nombre_lista'];
-      if (directName && String(directName).trim()) {
-        return String(directName).trim();
-      }
-
-      return null;
-    } else {
-      if (analytic.detectionClasses && analytic.detectionClasses.length > 0) {
-        const classesSlice = analytic.detectionClasses.slice(0, 3).join(', ');
-        const suffix = analytic.detectionClasses.length > 3 ? '...' : '';
-        return `${classesSlice}${suffix}`;
-      }
-      return null;
+    // Si la analítica tiene detectionClasses (ej. clases YOLO o nombre de lista de control), retornarlas
+    if (analytic.detectionClasses && analytic.detectionClasses.length > 0) {
+      const classesSlice = analytic.detectionClasses.slice(0, 3).join(', ');
+      const suffix = analytic.detectionClasses.length > 3 ? '...' : '';
+      return `${classesSlice}${suffix}`;
     }
+
+    // Fallback retrocompatible para analíticas antiguas con list_id en parameters
+    const params = analytic.parameters || {};
+    const listId = params['list_id'] || params['listId'] || params['id_lista'] || params['lista_id'];
+
+    if (listId) {
+      const allLists = this.listService.lists();
+      const foundList = allLists.find(l => String(l.list_id) === String(listId));
+      if (foundList && foundList.name) {
+        return foundList.name;
+      }
+    }
+
+    const directName = params['list_name'] || params['listName'] || params['nombre_lista'];
+    if (directName && String(directName).trim()) {
+      return String(directName).trim();
+    }
+
+    return null;
   }
 
   private findScheduleForAnalytic(analytic: Analytic | null, schedulesList: Schedule[]): Schedule | undefined {
@@ -1252,6 +1291,18 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
           analyticIds: newAnalyticIds
         };
         this.scheduleService.addOrUpdateScheduleLocal(updatedSchedule);
+
+        if (associate) {
+          const targetStatus: 'active' | 'inactive' = this.scheduleService.isScheduleActive(schedule) ? 'active' : 'inactive';
+          this.analyticService.updateAnalyticStatus(analyticId, targetStatus).subscribe({
+            next: () => {
+              this.analyticService.updateAnalyticStatusLocal(analyticId, targetStatus);
+            },
+            error: (err) => {
+              console.error('[CameraDetailDrawerComponent] updateAnalyticStatus on associate failed:', err);
+            }
+          });
+        }
       },
       error: (err) => {
         console.error('[CameraDetailDrawerComponent] toggleScheduleAssociation failed:', err);

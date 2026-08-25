@@ -72,14 +72,13 @@ export class WebsocketService {
       // Incrementar el contador global del índice reactivamente
       this.metadataService.incrementIndexCount(indexName);
 
-      // Si el índice del metadato coincide con el activo en pantalla y no hay KNN activo, recargar los detalles
+      // Si el índice del metadato coincide con el activo en pantalla, recargar los detalles
       const activeFilters = this.metadataService.filters();
-      const hasKnnActive = !!(activeFilters?.imageSearchUrl || activeFilters?.imageEmbedding);
-      if (this.metadataService.isViewActive() && this.metadataService.activeIndex() === indexName && !hasKnnActive) {
+      if (this.metadataService.isViewActive() && this.metadataService.activeIndex() === indexName) {
         console.log(`[WebSocket] Consultando OpenSearch para metadato en vivo del índice activo "${indexName}"`);
         this.metadataRepository.getById(indexName, docId).subscribe({
           next: (newRecord) => {
-            // Validar que el nuevo registro cumpla con TODOS los filtros activos en pantalla
+            // Validar que el nuevo registro cumpla con TODOS los filtros activos en pantalla (incluyendo coincidencia vectorial)
             if (!this.matchesMetadataFilters(newRecord, activeFilters)) {
               console.log(`[WebSocket] Nuevo metadato ${docId} descartado porque no coincide con los filtros activos.`);
               return;
@@ -697,32 +696,36 @@ export class WebsocketService {
       }
     }
 
-    // 3. Edad (Single-select)
-    if (filters.edad) {
+    // 3. Edad (Multi-select OR)
+    if (filters.edad && filters.edad.length > 0) {
       const recEdad = (record.edad || '').toLowerCase();
-      if (recEdad !== filters.edad.toLowerCase()) {
+      if (!filters.edad.some((e: string) => e.toLowerCase() === recEdad)) {
         return false;
       }
     }
 
-    // 4. Género (Single-select)
-    if (filters.genero) {
+    // 4. Género (Multi-select OR)
+    if (filters.genero && filters.genero.length > 0) {
       const recGenero = (record.genero || '').toLowerCase();
-      if (recGenero !== filters.genero.toLowerCase()) {
+      if (!filters.genero.some((g: string) => g.toLowerCase() === recGenero)) {
         return false;
       }
     }
 
-    // 5. Reconocimiento / Placa / Sujeto (Single-select / búsqueda parcial)
-    if (filters.reconocimiento && filters.reconocimiento.trim()) {
+    // 5. Reconocimiento / Placa / Sujeto (Multi-select OR / búsqueda parcial)
+    if (filters.reconocimiento && filters.reconocimiento.length > 0) {
       const recVal = (record.reconocimiento || '').toLowerCase().trim();
-      const filterVal = filters.reconocimiento.toLowerCase().trim();
       if (!recVal) return false;
-
       const recNorm = recVal.replace(/[^a-z0-9]/gi, '');
-      const filterNorm = filterVal.replace(/[^a-z0-9]/gi, '');
 
-      if (!recVal.includes(filterVal) && (filterNorm && !recNorm.includes(filterNorm))) {
+      const matchesAny = filters.reconocimiento.some((r: string) => {
+        const filterVal = (r || '').toLowerCase().trim();
+        if (!filterVal) return false;
+        const filterNorm = filterVal.replace(/[^a-z0-9]/gi, '');
+        return recVal.includes(filterVal) || (filterNorm && recNorm.includes(filterNorm));
+      });
+
+      if (!matchesAny) {
         return false;
       }
     }
@@ -756,12 +759,17 @@ export class WebsocketService {
     }
 
     // 10. coincidenciaFiltro (Rostros)
-    if (filters.coincidenciaFiltro === 'coincidencia') {
-      const recVal = (record.reconocimiento || '').trim();
-      if (!recVal) return false;
-    } else if (filters.coincidenciaFiltro === 'sin_coincidencia') {
-      const recVal = (record.reconocimiento || '').trim();
-      if (recVal) return false;
+    if (filters.coincidenciaFiltro && filters.coincidenciaFiltro !== 'all') {
+      const recVal = (record.reconocimiento || '').trim().toLowerCase();
+      const nonMatchPrefixes = ['desconocid', 'pendient', 'unknown', 'none', 'null', 'sin_coincidencia', 'sin coincidencia', 'no_match', 'no match', 'n/a', '-'];
+      const isNonMatch = !recVal || nonMatchPrefixes.some(prefix => recVal.startsWith(prefix) || recVal === prefix);
+
+      if (filters.coincidenciaFiltro === 'coincidencia' && isNonMatch) {
+        return false;
+      }
+      if (filters.coincidenciaFiltro === 'sin_coincidencia' && !isNonMatch) {
+        return false;
+      }
     }
 
     // 11. Search (Búsqueda unificada de texto)
@@ -775,6 +783,32 @@ export class WebsocketService {
       if (!matchesSearch) return false;
     }
 
+    // 12. imageEmbedding (Filtrar por coincidencia / Búsqueda por patrón de imagen)
+    if (filters.imageEmbedding && Array.isArray(filters.imageEmbedding) && filters.imageEmbedding.length > 0) {
+      if (!record.embedding || !Array.isArray(record.embedding) || record.embedding.length === 0) {
+        return false;
+      }
+      const similarity = this.calculateCosineSimilarity(filters.imageEmbedding, record.embedding);
+      if (similarity < 0.60) {
+        return false;
+      }
+    }
+
     return true;
+  }
+
+  private calculateCosineSimilarity(vecA: number[], vecB: number[]): number {
+    if (!vecA || !vecB || vecA.length === 0 || vecB.length === 0) return 0;
+    const len = Math.min(vecA.length, vecB.length);
+    let dot = 0;
+    let normA = 0;
+    let normB = 0;
+    for (let i = 0; i < len; i++) {
+      dot += vecA[i] * vecB[i];
+      normA += vecA[i] * vecA[i];
+      normB += vecB[i] * vecB[i];
+    }
+    if (normA === 0 || normB === 0) return 0;
+    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
   }
 }

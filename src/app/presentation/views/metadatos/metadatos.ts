@@ -76,68 +76,58 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
 
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
 
-  // ── Computed Filter Options (API + Selected + Fallbacks) ──────────────────────
+  // ── Computed Filter Options (100% Dinámicos desde OpenSearch + Selección activa) ──
   readonly tipoObjetoOptions = computed<string[]>(() => {
     const opts = this.filterOptions();
     const dynamic = opts ? opts.tipoObjeto || [] : [];
     const temp = this.tempFilters()?.tipoObjeto || [];
-    const idx = this.activeIndex();
-    let fallbacks: string[] = [];
-    if (idx === 'personas') fallbacks = ['persona', 'ciclista', 'peatón'];
-    else if (idx === 'vehiculos') fallbacks = ['auto', 'camioneta', 'motocicleta', 'camión', 'omnibús'];
-    else if (idx === 'otros') fallbacks = ['mochila', 'maleta', 'bolso'];
-    
-    return Array.from(new Set([...dynamic, ...temp, ...fallbacks])).filter(Boolean);
+    return Array.from(new Set([...dynamic, ...temp])).filter(Boolean).sort();
   });
 
   readonly coloresOptions = computed<string[]>(() => {
     const opts = this.filterOptions();
     const dynamic = opts ? opts.colores || [] : [];
     const temp = this.tempFilters()?.colores || [];
-    const fallbacks = ['negro', 'blanco', 'gris', 'rojo', 'azul', 'verde', 'amarillo', 'marrón'];
-    return Array.from(new Set([...dynamic, ...temp, ...fallbacks])).filter(Boolean);
+    return Array.from(new Set([...dynamic, ...temp])).filter(Boolean).sort();
   });
 
   readonly posturasOptions = computed<string[]>(() => {
     const opts = this.filterOptions();
     const dynamic = opts ? opts.posturas || [] : [];
     const temp = this.tempFilters()?.posturas || [];
-    const fallbacks = ['caminando', 'parado', 'sentado', 'corriendo'];
-    return Array.from(new Set([...dynamic, ...temp, ...fallbacks])).filter(Boolean);
+    return Array.from(new Set([...dynamic, ...temp])).filter(Boolean).sort();
   });
 
   readonly edadesOptions = computed<string[]>(() => {
     const opts = this.filterOptions();
     const dynamic = opts ? opts.edades || [] : [];
-    const temp = this.tempFilters()?.edad ? [this.tempFilters().edad!] : [];
-    const fallbacks = ['niño', 'joven', 'adulto', 'anciano'];
-    return Array.from(new Set([...dynamic, ...temp, ...fallbacks])).filter(Boolean);
+    const temp = this.tempFilters()?.edad || [];
+    return Array.from(new Set([...dynamic, ...temp])).filter(Boolean).sort();
   });
 
   readonly generosOptions = computed<string[]>(() => {
     const opts = this.filterOptions();
     const dynamic = opts ? opts.generos || [] : [];
-    const temp = this.tempFilters()?.genero ? [this.tempFilters().genero!] : [];
-    const fallbacks = ['masculino', 'femenino'];
-    return Array.from(new Set([...dynamic, ...temp, ...fallbacks])).filter(Boolean);
+    const temp = this.tempFilters()?.genero || [];
+    return Array.from(new Set([...dynamic, ...temp])).filter(Boolean).sort();
   });
 
   readonly camarasOptions = computed<string[]>(() => {
     const opts = this.filterOptions();
     const dynamic = opts ? opts.camaras || [] : [];
+    const systemCameras = this.cameraService.cameras().map((c: any) => c.name).filter(Boolean);
     const temp = this.tempFilters()?.camaras || [];
-    // Fallback: incluir todos los nombres de cámaras registradas en el sistema.
-    // Esto garantiza que el desplegable tenga opciones aunque OpenSearch aún no tenga
-    // documentos indexados para esas cámaras o si las agregaciones fallan.
-    const systemCameras = this.cameraService.cameras().map(c => c.name);
-    return Array.from(new Set([...dynamic, ...temp, ...systemCameras])).filter(Boolean);
+    return Array.from(new Set([...systemCameras, ...dynamic, ...temp])).filter(Boolean).sort();
   });
 
   readonly reconocimientosOptions = computed<string[]>(() => {
     const opts = this.filterOptions();
     const dynamic = opts ? opts.reconocimientos || [] : [];
-    const temp = this.tempFilters()?.reconocimiento ? [this.tempFilters().reconocimiento!] : [];
-    return Array.from(new Set([...dynamic, ...temp])).filter(Boolean);
+    const temp = this.tempFilters()?.reconocimiento || [];
+    const nonMatchTerms = ['desconocid', 'pendient', 'unknown', 'none', 'null', 'sin_coincidencia', 'sin coincidencia', 'no_match', 'no match', 'n/a', '-'];
+    return Array.from(new Set([...dynamic, ...temp]))
+      .filter(r => Boolean(r) && !nonMatchTerms.some(n => r.toLowerCase().trim().startsWith(n) || r.toLowerCase().trim() === n))
+      .sort();
   });
 
   // ── Pagination conscious of grid ──
@@ -198,6 +188,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   // Time strings for time picker (HH:MM)
   readonly timeDesdeStr = signal<string>('00:00');
   readonly timeHastaStr = signal<string>('23:59');
+  readonly activeDatePreset = signal<'today' | '24h' | '7d' | null>(null);
 
   readonly calendarGrid = computed(() => {
     const month = this.calendarViewMonth();
@@ -252,6 +243,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       this.dateHastaStr.set(dateStr);
       this._applyDateTimeToFilter('hasta');
     }
+    this.activeDatePreset.set(null);
     this.activeCalendarField.set(null);
   }
 
@@ -324,6 +316,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     const newTs = `${pad(h)}:${pad(parts.minute)}`;
     if (field === 'desde') { this.timeDesdeStr.set(newTs); this._applyDateTimeToFilter('desde'); }
     else { this.timeHastaStr.set(newTs); this._applyDateTimeToFilter('hasta'); }
+    this.activeDatePreset.set(null);
   }
 
   selectTimeMinute(m: number): void {
@@ -335,6 +328,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     const newTs = `${pad(parts.hour)}:${pad(m)}`;
     if (field === 'desde') { this.timeDesdeStr.set(newTs); this._applyDateTimeToFilter('desde'); }
     else { this.timeHastaStr.set(newTs); this._applyDateTimeToFilter('hasta'); }
+    this.activeDatePreset.set(null);
   }
 
   private syncDateTimePickerStrings(desde: Date | null, hasta: Date | null): void {
@@ -399,9 +393,9 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     const f = this.filters();
     return f.camaras.length > 0 ||
            f.tipoObjeto.length > 0 ||
-           f.edad !== null ||
-           f.genero !== null ||
-           f.reconocimiento !== null ||
+           f.edad.length > 0 ||
+           f.genero.length > 0 ||
+           f.reconocimiento.length > 0 ||
            f.colores.length > 0 ||
            f.posturas.length > 0 ||
            f.confiabilidadMin > 0 ||
@@ -418,9 +412,9 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     const f = this.tempFilters();
     return f.camaras.length > 0 ||
            f.tipoObjeto.length > 0 ||
-           f.edad !== null ||
-           f.genero !== null ||
-           f.reconocimiento !== null ||
+           f.edad.length > 0 ||
+           f.genero.length > 0 ||
+           f.reconocimiento.length > 0 ||
            f.colores.length > 0 ||
            f.posturas.length > 0 ||
            f.confiabilidadMin > 0 ||
@@ -449,9 +443,9 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
 
     return !arraysEqual([...t.camaras].sort(), [...a.camaras].sort()) ||
            !arraysEqual([...t.tipoObjeto].sort(), [...a.tipoObjeto].sort()) ||
-           t.edad !== a.edad ||
-           t.genero !== a.genero ||
-           t.reconocimiento !== a.reconocimiento ||
+           !arraysEqual([...t.edad].sort(), [...a.edad].sort()) ||
+           !arraysEqual([...t.genero].sort(), [...a.genero].sort()) ||
+           !arraysEqual([...t.reconocimiento].sort(), [...a.reconocimiento].sort()) ||
            !arraysEqual([...t.colores].sort(), [...a.colores].sort()) ||
            !arraysEqual([...t.posturas].sort(), [...a.posturas].sort()) ||
            t.confiabilidadMin !== a.confiabilidadMin ||
@@ -471,9 +465,9 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     return {
       camaras: [],
       tipoObjeto: [],
-      edad: null,
-      genero: null,
-      reconocimiento: null,
+      edad: [],
+      genero: [],
+      reconocimiento: [],
       colores: [],
       posturas: [],
       confiabilidadMin: 0,
@@ -496,9 +490,9 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       this.tempFilters.set({
         camaras: [...f.camaras],
         tipoObjeto: [...f.tipoObjeto],
-        edad: f.edad,
-        genero: f.genero,
-        reconocimiento: f.reconocimiento,
+        edad: [...f.edad],
+        genero: [...f.genero],
+        reconocimiento: [...f.reconocimiento],
         colores: [...f.colores],
         posturas: [...f.posturas],
         confiabilidadMin: f.confiabilidadMin,
@@ -652,9 +646,9 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   private parseFiltersFromParams(params: any): MetaFilterState {
     const camaras = params['camaras'] ? params['camaras'].split(',') : [];
     const tipoObjeto = params['tipoObjeto'] ? params['tipoObjeto'].split(',') : [];
-    const edad = params['edad'] || null;
-    const genero = params['genero'] || null;
-    const reconocimiento = params['reconocimiento'] || null;
+    const edad = params['edad'] ? params['edad'].split(',') : [];
+    const genero = params['genero'] ? params['genero'].split(',') : [];
+    const reconocimiento = params['reconocimiento'] ? params['reconocimiento'].split(',') : [];
     const colores = params['colores'] ? params['colores'].split(',') : [];
     const posturas = params['posturas'] ? params['posturas'].split(',') : [];
     const confiabilidadMin = params['confiabilidadMin'] ? parseFloat(params['confiabilidadMin']) : 0;
@@ -708,6 +702,10 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onResetFilters(): void {
+    this.activeDatePreset.set(null);
+    this.searchControl.setValue('', { emitEvent: false });
+    this.tempFilters.set(this.getInitialFilters());
+    this.syncDateTimePickerStrings(null, null);
     this.metadataService.resetFilters();
     this.metadataService.setPage(1);
   }
@@ -717,21 +715,14 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     this.metadataService.setPage(1);
   }
 
-  // Multi-select terms (e.g. tipoObjeto, colores, posturas, camaras)
-  toggleMultiSelectFilter(field: 'tipoObjeto' | 'colores' | 'posturas' | 'camaras', value: string): void {
-    const currentList = this.tempFilters()[field] as string[];
+  // Multi-select terms (e.g. tipoObjeto, colores, posturas, camaras, edad, genero, reconocimiento)
+  toggleMultiSelectFilter(field: 'tipoObjeto' | 'colores' | 'posturas' | 'camaras' | 'edad' | 'genero' | 'reconocimiento', value: string): void {
+    const currentList = (this.tempFilters()[field] as string[]) || [];
     const newList = currentList.includes(value)
       ? currentList.filter(item => item !== value)
       : [...currentList, value];
 
     this.tempFilters.update(f => ({ ...f, [field]: newList }));
-  }
-
-  selectSingleFilter(field: 'edad' | 'genero' | 'reconocimiento', value: string | null): void {
-    const currentValue = this.tempFilters()[field];
-    const newValue = currentValue === value ? null : value;
-    this.tempFilters.update(f => ({ ...f, [field]: newValue }));
-    this.activeDropdown.set(null);
   }
 
   selectCoincidenciaFilter(value: 'all' | 'coincidencia' | 'sin_coincidencia'): void {
@@ -753,14 +744,14 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     input.value = formatted;
 
     const val = formatted.trim();
-    this.tempFilters.update(f => ({ ...f, reconocimiento: val || null }));
+    this.tempFilters.update(f => ({ ...f, reconocimiento: val ? [val] : [] }));
     this.metadataService.updateFilters(this.tempFilters());
     this.metadataService.setPage(1);
   }
 
   clearPlateFilter(event?: Event): void {
     if (event) event.stopPropagation();
-    this.tempFilters.update(f => ({ ...f, reconocimiento: null }));
+    this.tempFilters.update(f => ({ ...f, reconocimiento: [] }));
     this.metadataService.updateFilters(this.tempFilters());
     this.metadataService.setPage(1);
     this.activeDropdown.set(null);
@@ -807,11 +798,13 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
 
     if (preset === 'today') {
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       this.dateDesdeStr.set(toDateStr(todayStart));
       this.timeDesdeStr.set('00:00');
-      this.dateHastaStr.set('');
+      this.dateHastaStr.set(toDateStr(todayEnd));
       this.timeHastaStr.set('23:59');
-      this.tempFilters.update(f => ({ ...f, timestampDesde: todayStart, timestampHasta: null }));
+      this.tempFilters.update(f => ({ ...f, timestampDesde: todayStart, timestampHasta: todayEnd }));
+      this.activeDatePreset.set('today');
     } else if (preset === '24h') {
       const past24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       this.dateDesdeStr.set(toDateStr(past24h));
@@ -819,6 +812,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       this.dateHastaStr.set(toDateStr(now));
       this.timeHastaStr.set(toTimeStr(now));
       this.tempFilters.update(f => ({ ...f, timestampDesde: past24h, timestampHasta: now }));
+      this.activeDatePreset.set('24h');
     } else if (preset === '7d') {
       const past7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       this.dateDesdeStr.set(toDateStr(past7d));
@@ -826,12 +820,14 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       this.dateHastaStr.set(toDateStr(now));
       this.timeHastaStr.set(toTimeStr(now));
       this.tempFilters.update(f => ({ ...f, timestampDesde: past7d, timestampHasta: now }));
+      this.activeDatePreset.set('7d');
     } else if (preset === 'clear') {
       this.dateDesdeStr.set('');
       this.timeDesdeStr.set('00:00');
       this.dateHastaStr.set('');
       this.timeHastaStr.set('23:59');
       this.tempFilters.update(f => ({ ...f, timestampDesde: null, timestampHasta: null }));
+      this.activeDatePreset.set(null);
     }
   }
 

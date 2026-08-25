@@ -28,23 +28,8 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
 import { CameraDetailDrawerComponent } from '../../shared/camera-detail-drawer/camera-detail-drawer.component';
 
-export interface GridSlot {
-  id: string;
-  camera: Camera | null;
-  col: number;
-  row: number;
-  spanX: number;
-  spanY: number;
-  isLocked?: boolean;
-}
-
-export interface CanvasStateSnapshot {
-  slots: GridSlot[];
-  cols: number;
-  rows: number;
-}
-
-
+import { MonitoringStateService, GridSlot, CanvasStateSnapshot } from '../../../core/services/monitoring-state.service';
+export type { GridSlot, CanvasStateSnapshot };
 
 @Component({
   selector: 'app-monitoreo',
@@ -54,6 +39,7 @@ export interface CanvasStateSnapshot {
   styleUrl: './monitoreo.css'
 })
 export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
+  public monitoringStateService = inject(MonitoringStateService);
   private cameraService = inject(CameraService);
   private hostService = inject(HostService);
   private analyticService = inject(AnalyticService);
@@ -81,18 +67,15 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.allCameras.update(cams => cams.map(c => c.id === updatedCamera.id ? updatedCamera : c));
   }
 
-  // WebRTC Live Video Connections & States
-  private activeWebRtcConnections = new Map<string, RTCPeerConnection>();
-  private activeGridCamerasMap = new Map<string, { cameraId: string; hostFingerprint: string }>();
-  readonly webRtcStates = signal<Record<string, 'connecting' | 'connected' | 'failed'>>({});
+  // WebRTC Live Video Connections & States vinculados al servicio singleton
+  private get activeWebRtcConnections() { return this.monitoringStateService.activeWebRtcConnections; }
+  private get activeGridCamerasMap() { return this.monitoringStateService.activeGridCamerasMap; }
+  readonly webRtcStates = this.monitoringStateService.webRtcStates;
 
-  // Layout Grid States (Coordinate slots) - Empieza en 1x1 reactivo
-  readonly rows = signal<number>(1);
-  readonly cols = signal<number>(1);
-
-  readonly gridSlots = signal<GridSlot[]>([
-    { id: 'slot-1-1', camera: null, col: 1, row: 1, spanX: 1, spanY: 1 }
-  ]);
+  // Layout Grid States (Coordinate slots) - Persistentes en MonitoringStateService
+  readonly rows = this.monitoringStateService.rows;
+  readonly cols = this.monitoringStateService.cols;
+  readonly gridSlots = this.monitoringStateService.gridSlots;
 
   readonly targetAddCol = signal<number | null>(null);
   readonly targetAddRow = signal<number | null>(null);
@@ -104,21 +87,25 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly activeHoveredExpander = signal<'column' | 'row' | null>(null);
 
   // Canvas Mode, Panning and Zooming Signals for Grid > 4x4
-  readonly canvasPanX = signal<number>(0);
-  readonly canvasPanY = signal<number>(0);
-  readonly canvasZoom = signal<number>(1.0);
+  readonly canvasPanX = this.monitoringStateService.canvasPanX;
+  readonly canvasPanY = this.monitoringStateService.canvasPanY;
+  readonly canvasZoom = this.monitoringStateService.canvasZoom;
   readonly showMinimap = signal<boolean>(true);
-  readonly isCanvasPinned = signal<boolean>(false);
+  readonly isCanvasPinned = this.monitoringStateService.isCanvasPinned;
   readonly isCanvasActive = signal<boolean>(true);
   readonly isCanvasMode = computed(() => this.gridSlots().some(s => s.camera !== null));
   readonly isRightPanelCollapsed = signal<boolean>(false);
   private canvasActivityTimer: any = null;
 
   // Box Selection (Recuadro de Selección por Clic + Arrastre) Signals & Sync State
-  readonly isSyncMode = signal<boolean>(true);
+  readonly isSyncMode = this.monitoringStateService.isSyncMode;
   readonly isBoxSelecting = signal<boolean>(false);
   readonly selectionBox = signal<{ x: number; y: number; width: number; height: number } | null>(null);
-  readonly selectedCanvasSlotIds = signal<Set<string>>(new Set());
+  readonly selectedCanvasSlotIds = this.monitoringStateService.selectedCanvasSlotIds;
+
+  // Pilas Undo / Redo
+  readonly undoStack = this.monitoringStateService.undoStack;
+  readonly redoStack = this.monitoringStateService.redoStack;
 
   // Camera Fullscreen Overlay Signal & Origin Animation
   readonly fullscreenSlot = signal<GridSlot | null>(null);
@@ -193,8 +180,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   });
 
   // Canvas History Stack Signals (Undo/Redo)
-  readonly undoStack = signal<CanvasStateSnapshot[]>([]);
-  readonly redoStack = signal<CanvasStateSnapshot[]>([]);
   readonly canUndo = computed(() => this.undoStack().length > 0);
   readonly canRedo = computed(() => this.redoStack().length > 0);
   readonly isGridFullyOccupied = computed(() => {
@@ -266,9 +251,9 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   // Collections
   readonly allCameras = signal<Camera[]>([]);
   readonly allHosts = signal<Host[]>([]);
-  readonly eventsList = signal<EventRecord[]>([]);
+  readonly eventsList = this.monitoringStateService.eventsList;
   readonly bufferedEvents = signal<EventRecord[]>([]);
-  readonly latestEventsMap = signal<Record<string, EventRecord>>({});
+  readonly latestEventsMap = this.monitoringStateService.latestEventsMap;
   readonly isLoadingEvents = signal<boolean>(false);
 
   // Individual feed configurations
@@ -577,13 +562,17 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       }
 
       // Actualizar mapa activo
-      this.activeGridCamerasMap = nextGridCamerasMap;
+      this.activeGridCamerasMap.clear();
+      for (const [k, v] of nextGridCamerasMap.entries()) {
+        this.activeGridCamerasMap.set(k, v);
+      }
     }, { allowSignalWrites: true });
   }
 
   readonly liveTickerClock = signal<Date>(new Date());
 
   ngOnInit(): void {
+    this.monitoringStateService.onEnterMonitoreo();
     this.cameraService.isViewActive.set(true);
     this.analyticService.isViewActive.set(true);
     this.scheduleService.isViewActive.set(true);
@@ -600,6 +589,19 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
     this.setupWebSocketSubscription();
     this.resetCanvasActivityTimer();
+
+    // Si ya existen conexiones previas con MediaStream, re-adjuntarlas a los elementos de video
+    setTimeout(() => {
+      for (const slot of this.gridSlots()) {
+        if (slot.camera) {
+          const videoId = `video-feed-${slot.id}`;
+          const videoEl = document.getElementById(videoId) as HTMLVideoElement;
+          if (videoEl) {
+            this.monitoringStateService.attachStreamToVideo(slot.id, videoEl);
+          }
+        }
+      }
+    }, 150);
   }
 
   // WebSocket en tiempo real
@@ -700,26 +702,13 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     if (this.canvasActivityTimer) {
       clearTimeout(this.canvasActivityTimer);
     }
-    // Emitir webrtc_stop por WebSocket para todas las cámaras presentes en la cuadrícula al abandonar Monitoreo
-    for (const [camId, info] of this.activeGridCamerasMap.entries()) {
-      console.log(`[Monitoreo WebSocket ngOnDestroy] Limpiando cámara de la cuadrícula: ${camId}. Emitiendo webrtc_stop`);
-      this.websocketService.sendWebRtcStop(info.cameraId, info.hostFingerprint);
-    }
-    this.activeGridCamerasMap.clear();
 
-    // Cerrar todas las conexiones activas de WebRTC al destruir la vista
-    for (const connKey of Array.from(this.activeWebRtcConnections.keys())) {
-      this.stopWebRtcStreamByKey(connKey);
-    }
+    // Delegar ciclo de vida de salida a MonitoringStateService
+    this.monitoringStateService.onLeaveMonitoreo();
   }
 
   async startWebRtcStreamByKey(slot: GridSlot, connKey: string): Promise<void> {
     if (!slot.camera) return;
-
-    // Si ya existe una conexión para esta clave, no duplicarla
-    if (this.activeWebRtcConnections.has(connKey)) {
-      return;
-    }
 
     const videoId = `video-feed-${slot.id}`;
     const videoEl = document.getElementById(videoId) as HTMLVideoElement;
@@ -735,53 +724,11 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    try {
-      this.webRtcStates.update(prev => ({ ...prev, [slot.id]: 'connecting' }));
-      const pc = await this.webRtcService.startStream(slot.camera.id, videoEl);
-
-      this.activeWebRtcConnections.set(connKey, pc);
-      this.webRtcStates.update(prev => ({ ...prev, [slot.id]: 'connected' }));
-
-      pc.oniceconnectionstatechange = () => {
-        if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
-          this.webRtcStates.update(prev => ({ ...prev, [slot.id]: 'failed' }));
-        }
-      };
-
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-          this.webRtcStates.update(prev => ({ ...prev, [slot.id]: 'failed' }));
-        }
-      };
-    } catch (error) {
-      console.error(`Error al iniciar stream WebRTC para la cámara ${slot.camera.id} (slot ${slot.id}):`, error);
-      this.webRtcStates.update(prev => ({ ...prev, [slot.id]: 'failed' }));
-    }
+    await this.monitoringStateService.startWebRtcStreamByKey(slot, connKey, videoEl);
   }
 
   stopWebRtcStreamByKey(connKey: string): void {
-    const pc = this.activeWebRtcConnections.get(connKey);
-    if (pc) {
-      try {
-        pc.close();
-      } catch (e) {
-        console.error(`Error al cerrar peer connection para llave ${connKey}:`, e);
-      }
-      this.activeWebRtcConnections.delete(connKey);
-    }
-
-    const slotId = connKey.split('_')[0];
-    const videoId = `video-feed-${slotId}`;
-    const videoEl = document.getElementById(videoId) as HTMLVideoElement;
-    if (videoEl) {
-      videoEl.srcObject = null;
-    }
-
-    this.webRtcStates.update(prev => {
-      const next = { ...prev };
-      delete next[slotId];
-      return next;
-    });
+    this.monitoringStateService.stopWebRtcStreamByKey(connKey);
   }
 
   // Notificaciones Toast Deshabilitadas
@@ -2549,31 +2496,14 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     if (!cameraName && !cameraId) return null;
     const map = this.latestEventsMap();
 
-    if (cameraName && map[cameraName]) return map[cameraName];
     if (cameraId && map[cameraId]) return map[cameraId];
+    if (cameraName && map[cameraName]) return map[cameraName];
 
     const nameLower = (cameraName || '').trim().toLowerCase();
     const idLower = (cameraId || '').trim().toLowerCase();
 
-    if (nameLower && map[nameLower]) return map[nameLower];
     if (idLower && map[idLower]) return map[idLower];
-
-    for (const key of Object.keys(map)) {
-      const kLower = key.trim().toLowerCase();
-      if ((nameLower && kLower === nameLower) || (idLower && kLower === idLower)) {
-        return map[key];
-      }
-    }
-
-    const allEvents = this.eventsList();
-    for (let i = 0; i < allEvents.length; i++) {
-      const e = allEvents[i];
-      const matchesName = e.nombreCamara && e.nombreCamara.trim().toLowerCase() === nameLower;
-      const matchesId = e.idCamara && e.idCamara.trim().toLowerCase() === idLower;
-      if (matchesName || matchesId) {
-        return e;
-      }
-    }
+    if (nameLower && map[nameLower]) return map[nameLower];
 
     return null;
   }

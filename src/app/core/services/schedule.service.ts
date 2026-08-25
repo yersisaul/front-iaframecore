@@ -141,4 +141,34 @@ export class ScheduleService {
       list.map(s => s.hostFingerprint === oldFingerprint ? { ...s, hostFingerprint: newFingerprint } : s)
     );
   }
+
+  /**
+   * Determina si un horario está actualmente vigente y en ejecución en el momento actual.
+   * Evalúa el estado del horario ('activo'), sus fechas límite y la frecuencia (diaria o única).
+   */
+  isScheduleActive(schedule: Schedule | null | undefined, now: Date = new Date()): boolean {
+    if (!schedule || schedule.status !== 'activo') {
+      return false;
+    }
+    if (!schedule.start || !schedule.end || isNaN(schedule.start.getTime()) || isNaN(schedule.end.getTime())) {
+      return false;
+    }
+
+    const freq = (schedule.frequency || '').toLowerCase().trim();
+
+    if (freq === 'diario') {
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const startMinutes = schedule.start.getHours() * 60 + schedule.start.getMinutes();
+      const endMinutes = schedule.end.getHours() * 60 + schedule.end.getMinutes();
+
+      if (startMinutes <= endMinutes) {
+        return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+      } else {
+        // Franja horaria que cruza la medianoche (ej. 22:00 a 06:00)
+        return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+      }
+    }
+
+    return now >= schedule.start && now <= schedule.end;
+  }
 }

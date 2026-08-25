@@ -34,9 +34,9 @@ export class MetadataService {
     if (!f) return false;
     return (f.camaras && f.camaras.length > 0) ||
            (f.tipoObjeto && f.tipoObjeto.length > 0) ||
-           !!f.edad ||
-           !!f.genero ||
-           !!(f.reconocimiento && f.reconocimiento.trim()) ||
+           (f.edad && f.edad.length > 0) ||
+           (f.genero && f.genero.length > 0) ||
+           (f.reconocimiento && f.reconocimiento.length > 0) ||
            (f.colores && f.colores.length > 0) ||
            (f.posturas && f.posturas.length > 0) ||
            (f.confiabilidadMin > 0) ||
@@ -49,7 +49,62 @@ export class MetadataService {
            !!f.imageEmbedding;
   }
 
+  incorporateRecordIntoFilterOptions(record: MetaRecord): void {
+    if (!record) return;
+    this.filterOptions.update(opts => {
+      const current = { ...opts };
+      let changed = false;
+
+      if (record.camara && !current.camaras.includes(record.camara)) {
+        current.camaras = [...current.camaras, record.camara].sort();
+        changed = true;
+      }
+
+      if ('tipoObjeto' in record && (record as any).tipoObjeto && !current.tipoObjeto.includes((record as any).tipoObjeto)) {
+        current.tipoObjeto = [...current.tipoObjeto, (record as any).tipoObjeto].sort();
+        changed = true;
+      }
+
+      if ('edad' in record && (record as any).edad && !current.edades.includes((record as any).edad)) {
+        current.edades = [...current.edades, (record as any).edad].sort();
+        changed = true;
+      }
+
+      if ('genero' in record && (record as any).genero && !current.generos.includes((record as any).genero)) {
+        current.generos = [...current.generos, (record as any).genero].sort();
+        changed = true;
+      }
+
+      if ('reconocimiento' in record && (record as any).reconocimiento && !current.reconocimientos.includes((record as any).reconocimiento)) {
+        current.reconocimientos = [...current.reconocimientos, (record as any).reconocimiento].sort();
+        changed = true;
+      }
+
+      if (record.colores && Array.isArray(record.colores)) {
+        record.colores.forEach(c => {
+          if (c.colorText && !current.colores.includes(c.colorText)) {
+            current.colores = [...current.colores, c.colorText].sort();
+            changed = true;
+          }
+        });
+      }
+
+      if ('posturas' in record && (record as any).posturas && Array.isArray((record as any).posturas)) {
+        (record as any).posturas.forEach((p: any) => {
+          if (p.postura && !current.posturas.includes(p.postura)) {
+            current.posturas = [...current.posturas, p.postura].sort();
+            changed = true;
+          }
+        });
+      }
+
+      return changed ? current : opts;
+    });
+  }
+
   addNewRecord(newRecord: MetaRecord): void {
+    this.incorporateRecordIntoFilterOptions(newRecord);
+
     const f = this.filters();
     const activeFiltersExist = this.hasActiveFilters(f);
     const isPaginating = this.currentPage() > 1;
@@ -324,9 +379,6 @@ export class MetadataService {
   }
 
   private areFiltersEqual(a: MetaFilterState, b: MetaFilterState): boolean {
-    if (a.edad !== b.edad) return false;
-    if (a.genero !== b.genero) return false;
-    if (a.reconocimiento !== b.reconocimiento) return false;
     if (a.confiabilidadMin !== b.confiabilidadMin) return false;
     if (a.confiabilidadMax !== b.confiabilidadMax) return false;
     if (a.search !== b.search) return false;
@@ -352,6 +404,9 @@ export class MetadataService {
     };
 
     if (!arraysEqual(a.tipoObjeto, b.tipoObjeto)) return false;
+    if (!arraysEqual(a.edad, b.edad)) return false;
+    if (!arraysEqual(a.genero, b.genero)) return false;
+    if (!arraysEqual(a.reconocimiento, b.reconocimiento)) return false;
     if (!arraysEqual(a.colores, b.colores)) return false;
     if (!arraysEqual(a.posturas, b.posturas)) return false;
     if (!arraysEqual(a.camaras, b.camaras)) return false;

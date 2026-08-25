@@ -524,6 +524,7 @@
             <app-analytic-params-form [availableModels]="availableModels()"
               [initialValues]="selectedAnalyticForConfig()"
               [highlightError]="activeErrorTarget() === 'classes'"
+              [highlightErrorTarget]="activeErrorTarget()"
               (formChanged)="onAnalyticFormChanged($event)"
               (geometryTypeChanged)="onGeometryTypeChanged($event)">
             </app-analytic-params-form>

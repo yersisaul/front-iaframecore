@@ -1,7 +1,8 @@
 <div class="analytic-canvas-container">
   <div class="canvas-wrapper position-relative rounded-3 overflow-hidden select-none" #canvasContainer
-    [style.aspect-ratio]="imageAspectRatio() ? imageAspectRatio() : '1.7778'"
-    [style.--aspect-ratio]="imageAspectRatio() ? imageAspectRatio() : '1.7778'"
+    [class.canvas-locked]="isCanvasLocked()"
+    [style.aspect-ratio]="imageAspectRatio() ? imageAspectRatio() : (naturalImageWidth() && naturalImageHeight() ? (naturalImageWidth() / naturalImageHeight()) : '1.7778')"
+    [style.--aspect-ratio]="imageAspectRatio() ? imageAspectRatio() : (naturalImageWidth() && naturalImageHeight() ? (naturalImageWidth() / naturalImageHeight()) : '1.7778')"
     [class.drawing-active]="activeOpenShape() !== null"
     [class.canvas-highlight-error]="highlightError"
     (mousedown)="onCanvasMouseDown($event)"
@@ -25,7 +26,7 @@
   </div>
   }
 
-  <!-- Imagen del Último Evento o Placeholder Sleek -->
+  <!-- Imagen del Último Evento o Placeholder Sleek Bloqueado -->
   @if (effectiveImageUrl() && !imageFailed()) {
   <img [src]="effectiveImageUrl()" alt="" class="camera-snapshot-img select-none"
     (load)="onImageLoad($event)" (error)="onImageError($event)" draggable="false" />
@@ -33,10 +34,23 @@
   <div
     class="camera-snapshot-placeholder d-flex flex-column align-items-center justify-content-center w-100 h-100 select-none">
     <div class="placeholder-icon-ring mb-3 d-flex align-items-center justify-content-center">
-      <span class="icon-svg icon-camara text-white opacity-40 placeholder-icon"></span>
+      <span class="icon-svg icon-lock text-white opacity-40 placeholder-icon"></span>
     </div>
-    <span class="placeholder-title text-uppercase font-monospace fw-bold text-white-50 mb-1">Captura no disponible</span>
-    <span class="placeholder-subtitle text-white-50 small opacity-50">No se pudo cargar la imagen o la cámara no contiene captura activa</span>
+    <span class="placeholder-title text-uppercase font-monospace fw-bold text-white-50 mb-1">Captura no disponible · Lienzo bloqueado</span>
+    <span class="placeholder-subtitle text-white-50 small opacity-60 text-center px-4 mb-3" style="max-width: 480px;">
+      No se detectó transmisión WebRTC en vivo ni eventos previos. La creación y edición de áreas sobre el lienzo ha sido deshabilitada para evitar inconsistencias de escala.
+    </span>
+    @if (shapes().length > 0) {
+    <div class="placeholder-tag readonly-tag d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill">
+      <span class="placeholder-tag-dot bg-success"></span>
+      <span class="placeholder-tag-text font-semibold">Geometría previa en modo solo lectura. Puedes editar parámetros en el panel derecho y guardar.</span>
+    </div>
+    } @else {
+    <div class="placeholder-tag warning-tag d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill">
+      <span class="placeholder-tag-dot bg-warning"></span>
+      <span class="placeholder-tag-text font-semibold">Para crear una nueva analítica se requiere una cámara con captura activa para trazar sus áreas.</span>
+    </div>
+    }
   </div>
   }
 
@@ -304,7 +318,7 @@
     <!-- Grupo: Preset Cuadrilátero A-B-C-D -->
     @if (isSpeedQuad()) {
     <div class="toolbar-group">
-      <button class="btn-canvas-tool btn-preset-tool" (click)="generateDefaultSpeedQuad()" (mousedown)="$event.stopPropagation()"
+      <button class="btn-canvas-tool btn-preset-tool" [disabled]="isCanvasLocked()" (click)="generateDefaultSpeedQuad()" (mousedown)="$event.stopPropagation()"
         title="Generar Cuadrilátero A-B-C-D Centrado por Defecto">
         <span class="icon-svg icon-grid toolbar-icon"></span>
         <span class="preset-tool-text">Preset A-B-C-D</span>
@@ -324,15 +338,15 @@
 
     <!-- Grupo: Limpiar Canvas -->
     <div class="toolbar-group">
-      <button class="btn-canvas-tool btn-danger-tool" [disabled]="totalPointsCount() === 0" (click)="clearCanvas()" (mousedown)="$event.stopPropagation()"
+      <button class="btn-canvas-tool btn-danger-tool" [disabled]="isCanvasLocked() || totalPointsCount() === 0" (click)="clearCanvas()" (mousedown)="$event.stopPropagation()"
         title="Limpiar todas las áreas trazadas">
         <span class="icon-svg icon-trash toolbar-icon"></span>
       </button>
     </div>
 
     <!-- Badge de Estado -->
-    <div class="toolbar-status-badge">
-      <span class="status-dot" [class.closed]="totalShapesCount() > 0" [class.empty]="totalShapesCount() === 0"></span>
+    <div class="toolbar-status-badge" [class.locked-badge]="isCanvasLocked()">
+      <span class="status-dot" [class.locked]="isCanvasLocked()" [class.closed]="!isCanvasLocked() && totalShapesCount() > 0" [class.empty]="!isCanvasLocked() && totalShapesCount() === 0"></span>
       <span class="status-text">{{ geometryStatusLabel() }}</span>
     </div>
   </div>
@@ -340,7 +354,14 @@
   <!-- Minibar Contextual Flotante de Atajos y Leyendas de Ayuda (Quick Help Bar) -->
   <div class="canvas-quick-help-bar d-inline-flex align-items-center select-none"
        (click)="$event.stopPropagation()" (mousedown)="$event.stopPropagation()">
-    @if (activeOpenShape(); as active) {
+    @if (isCanvasLocked()) {
+      <span class="help-drawing-pill help-locked-pill">Lienzo Bloqueado</span>
+      @if (shapes().length > 0) {
+        <span class="help-item">Áreas protegidas en solo lectura · Edita los parámetros en el panel derecho</span>
+      } @else {
+        <span class="help-item">Trazado deshabilitado · Se requiere una captura activa de la cámara</span>
+      }
+    } @else if (activeOpenShape(); as active) {
       <span class="help-drawing-pill">Trazando ({{ active.points.length }} pts)</span>
       <span class="help-item">Clic para añadir punto · Clic en el primer punto para cerrar</span>
     } @else if (selectedShapeIndexes().size > 0) {

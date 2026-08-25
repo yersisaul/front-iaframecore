@@ -94,7 +94,35 @@ export class EventService {
     return true;
   }
 
+  incorporateEventIntoFilterOptions(event: EventRecord): void {
+    if (!event) return;
+    this.filterOptions.update(opts => {
+      const current = { ...opts };
+      let changed = false;
+
+      const camName = event.nombreCamara || event.idCamara;
+      if (camName && !current.camaras.includes(camName)) {
+        current.camaras = [...current.camaras, camName].sort();
+        changed = true;
+      }
+
+      if (event.analitica && !current.analiticas.includes(event.analitica)) {
+        current.analiticas = [...current.analiticas, event.analitica].sort();
+        changed = true;
+      }
+
+      if (event.objeto && !current.objetos.includes(event.objeto)) {
+        current.objetos = [...current.objetos, event.objeto].sort();
+        changed = true;
+      }
+
+      return changed ? current : opts;
+    });
+  }
+
   addNewEvent(newEvent: EventRecord): void {
+    this.incorporateEventIntoFilterOptions(newEvent);
+
     const f = this.filters();
 
     // 1. Validar primero si el nuevo evento cumple con TODOS los filtros activos en pantalla

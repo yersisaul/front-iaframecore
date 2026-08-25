@@ -53,36 +53,44 @@
   box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.35);
 }
 
-/* --- 2. LIMPIAR FILTROS (Identical shape to filter pills with subtle red hover) --- */
+/* --- 2. LIMPIAR FILTROS (Danger Pill con identidad roja permanente) --- */
 .btn-filter-action.btn-filter-reset {
-  background-color: var(--bg-filter-dropdown-btn);
-  border-color: var(--border-filter-dropdown-btn);
-  color: var(--text-filter-dropdown-btn);
+  background-color: var(--bg-danger-light, rgba(239, 68, 68, 0.08)) !important;
+  border-color: var(--border-danger-light, rgba(239, 68, 68, 0.25)) !important;
+  color: var(--color-danger, #ef4444) !important;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.08);
+}
+
+.btn-filter-action.btn-filter-reset .icon-close {
+  background-color: currentColor !important;
 }
 
 .btn-filter-action.btn-filter-reset:hover {
-  background-color: rgba(239, 68, 68, 0.08) !important;
-  border-color: rgba(239, 68, 68, 0.3) !important;
-  color: var(--color-danger, #ef4444) !important;
+  background-color: var(--color-danger, #ef4444) !important;
+  border-color: var(--color-danger, #ef4444) !important;
+  color: #ffffff !important;
   transform: translateY(-1.5px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.12);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
 }
 
 .btn-filter-action.btn-filter-reset:hover .icon-close {
-  background-color: var(--color-danger, #ef4444) !important;
+  background-color: #ffffff !important;
 }
 
 /* Dark mode overrides */
 ::ng-deep .dark .btn-filter-action.btn-filter-reset,
 ::ng-deep [data-bs-theme="dark"] .btn-filter-action.btn-filter-reset {
-  background-color: var(--bg-filter-dropdown-btn);
-  border-color: var(--border-filter-dropdown-btn);
-  color: var(--text-filter-dropdown-btn);
+  background-color: var(--bg-danger-light, rgba(239, 68, 68, 0.15)) !important;
+  border-color: var(--border-danger-light, rgba(239, 68, 68, 0.35)) !important;
+  color: var(--color-danger, #f87171) !important;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.15);
 }
 
 ::ng-deep .dark .btn-filter-action.btn-filter-reset:hover,
 ::ng-deep [data-bs-theme="dark"] .btn-filter-action.btn-filter-reset:hover {
-  background-color: rgba(239, 68, 68, 0.15) !important;
-  border-color: rgba(239, 68, 68, 0.4) !important;
-  color: #f87171 !important;
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.45);
 }

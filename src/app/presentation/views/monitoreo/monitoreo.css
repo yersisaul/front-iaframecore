@@ -279,18 +279,47 @@ body.is-box-selecting * {
   cursor: default;
 }
 
-/* Nombre de la Cámara: adaptable fluido con clamp(), sin sombras cuadradas feas */
+.slot-camera-name-container {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+/* Nombre de la Cámara: adaptable fluido con clamp() y marquee dinámico en hover */
 .slot-camera-name {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1.25;
+  width: 100%;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
   font-size: clamp(0.72rem, 4.2cqb, 1.15rem) !important;
   font-weight: 700;
   color: #ffffff;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  flex: 1 1 auto;
-  line-height: 1.25;
+}
+
+.grid-slot-cell:hover .slot-camera-name {
+  width: max-content !important;
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  animation: slotCameraMarquee 3.5s linear infinite alternate;
+}
+
+@keyframes slotCameraMarquee {
+  0%, 15% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  85%, 100% {
+    transform: translate3d(min(0px, calc(-100% + 100cqw)), 0, 0);
+  }
 }
 
 /* Botón cerrar slot: 7cqb */
@@ -390,7 +419,24 @@ body.is-box-selecting * {
   user-select: none !important;
 }
 
-/* Fecha y Hora: limpia y elegante en la esquina superior derecha */
+/* Fecha y Hora: texto limpio flotante sin contenedor artificial */
+.canvas-slot-time-bottom-right {
+  position: absolute;
+  bottom: clamp(0.35rem, 2.2cqb, 0.65rem);
+  right: clamp(0.45rem, 2.5cqb, 0.85rem);
+  z-index: 10;
+  font-size: clamp(0.65rem, 3.6cqb, 0.95rem) !important;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
+  pointer-events: none;
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  white-space: nowrap;
+}
+
 .canvas-slot-time-top-right {
   position: relative;
   z-index: 6;

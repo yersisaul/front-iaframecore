@@ -58,14 +58,25 @@ export class AnalyticService {
 
   getAnalyticsByHost(hostFingerprint: string, animateNew = false): Observable<Analytic[]> {
     this.isLoading.set(true);
-    this.activeHostFingerprint.set(hostFingerprint);
+    const isHostMode = this.activeHostFingerprint() === hostFingerprint;
     const oldIds = new Set(this.analytics().map(a => a.id));
     return this.analyticRepository.getByHost(hostFingerprint).pipe(
-      tap(analytics => {
-        this.analytics.set(analytics);
+      tap(hostAnalytics => {
+        if (isHostMode) {
+          this.analytics.set(hostAnalytics);
+        } else if (this.activeHostFingerprint() === null) {
+          // Modo global: reemplazamos únicamente las analíticas de este host, manteniendo intactas las de los demás hosts
+          this.analytics.update(current => {
+            const otherHostsAnalytics = current.filter(a => a.hostFingerprint !== hostFingerprint);
+            return [...otherHostsAnalytics, ...hostAnalytics];
+          });
+        } else {
+          this.activeHostFingerprint.set(hostFingerprint);
+          this.analytics.set(hostAnalytics);
+        }
         this.isLoading.set(false);
         if (animateNew) {
-          analytics.forEach(a => {
+          hostAnalytics.forEach(a => {
             if (!oldIds.has(a.id)) {
               this.markAsNew(a.id);
             }
@@ -73,7 +84,9 @@ export class AnalyticService {
         }
       }),
       catchError(() => {
-        this.analytics.set([]);
+        if (isHostMode) {
+          this.analytics.set([]);
+        }
         this.isLoading.set(false);
         return of([]);
       })

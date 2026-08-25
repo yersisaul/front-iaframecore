@@ -1,8 +1,8 @@
 export interface MetaFilterState {
   tipoObjeto: string[];     // Multi-select OR
-  edad: string | null;      // Single-select
-  genero: string | null;    // Single-select
-  reconocimiento: string | null; // Single-select
+  edad: string[];           // Multi-select OR
+  genero: string[];         // Multi-select OR
+  reconocimiento: string[]; // Multi-select OR (sujetos / placas)
   colores: string[];        // Multi-select OR (nested)
   posturas: string[];       // Multi-select OR (nested)
   camaras: string[];        // Multi-select OR
@@ -31,9 +31,9 @@ export interface MetaFilterOptions {
 export function defaultFilterState(): MetaFilterState {
   return {
     tipoObjeto: [],
-    edad: null,
-    genero: null,
-    reconocimiento: null,
+    edad: [],
+    genero: [],
+    reconocimiento: [],
     colores: [],
     posturas: [],
     camaras: [],

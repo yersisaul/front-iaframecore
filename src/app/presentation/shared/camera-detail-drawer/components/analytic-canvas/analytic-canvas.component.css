@@ -952,3 +952,88 @@
   box-shadow: 0 0 16px rgba(245, 158, 11, 0.5), inset 0 0 16px rgba(245, 158, 11, 0.25) !important;
   transition: all 0.3s ease;
 }
+
+/* =========================================================================
+   ESTADO BLOQUEADO DEL LIENZO (PRIORIDAD 3 - SIN CAPTURA ACTIVA)
+   ========================================================================= */
+.canvas-wrapper.canvas-locked {
+  cursor: not-allowed !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+
+.canvas-wrapper.canvas-locked .canvas-svg-layer {
+  pointer-events: none !important;
+}
+
+.canvas-wrapper.canvas-locked .svg-polygon-fill,
+.canvas-wrapper.canvas-locked .svg-analysis-zone-polygon,
+.canvas-wrapper.canvas-locked .svg-line-stroke,
+.canvas-wrapper.canvas-locked .svg-control-point {
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+}
+
+.canvas-wrapper.canvas-locked .svg-point-halo {
+  display: none !important;
+}
+
+.canvas-wrapper.canvas-locked .svg-point-core {
+  opacity: 0.6 !important;
+}
+
+.canvas-wrapper.canvas-locked .svg-edge-split-btn {
+  display: none !important;
+}
+
+/* Badges y Tags Informativos del Placeholder Bloqueado */
+.placeholder-tag {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary, #cbd5e1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  max-width: 92%;
+  text-align: center;
+}
+
+.placeholder-tag.readonly-tag {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(6, 78, 59, 0.45);
+  color: #a7f3d0;
+}
+
+.placeholder-tag.warning-tag {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(120, 53, 15, 0.45);
+  color: #fde68a;
+}
+
+.placeholder-tag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.toolbar-status-badge.locked-badge {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  border-radius: 6px;
+}
+
+.toolbar-status-badge.locked-badge .status-text {
+  color: #fca5a5 !important;
+}
+
+.status-dot.locked {
+  background-color: #ef4444 !important;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6) !important;
+}
+
+.help-drawing-pill.help-locked-pill {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+}

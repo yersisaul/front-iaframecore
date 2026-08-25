@@ -34,7 +34,6 @@
     <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
       <!-- 1. FILTRO CÁMARAS -->
-      @if (filterOptions().camaras.length > 0) {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilters().camaras.length > 0" (click)="toggleDropdown('camaras', $event)">
@@ -67,22 +66,24 @@
             </div>
           </div>
           @if (filteredCamarasOptions().length === 0) {
-          <div class="text-muted small text-center py-2 opacity-60">Sin resultados</div>
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }
           @for (cam of filteredCamarasOptions(); track cam) {
-          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
-            <input type="checkbox" [checked]="tempFilters().camaras.includes(cam)"
-              (change)="toggleMultiSelectFilter('camaras', cam)" class="form-check-input flex-shrink-0" />
+          @let isSelected = tempFilters().camaras.includes(cam);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1 px-3 rounded"
+            [class.active]="isSelected"
+            (click)="toggleMultiSelectFilter('camaras', cam)">
             <span class="text-truncate" [title]="cam">{{ cam }}</span>
-          </label>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
+          </button>
           }
         </div>
         }
       </div>
-      }
 
       <!-- 2. FILTRO ANALÍTICAS -->
-      @if (filterOptions().analiticas.length > 0) {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilters().analiticas.length > 0" (click)="toggleDropdown('analiticas', $event)">
@@ -93,20 +94,25 @@
         </button>
         @if (activeDropdown() === 'analiticas') {
         <div class="filter-dropdown-menu dropdown-analiticas p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @if (filterOptions().analiticas.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
           @for (ana of filterOptions().analiticas; track ana) {
-          <label class="dropdown-item d-flex align-items-center gap-2 py-1.5 px-3 rounded select-none cursor-pointer">
-            <input type="checkbox" [checked]="tempFilters().analiticas.includes(ana)"
-              (change)="toggleMultiSelectFilter('analiticas', ana)" class="form-check-input flex-shrink-0" />
+          @let isSelected = tempFilters().analiticas.includes(ana);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded"
+            [class.active]="isSelected"
+            (click)="toggleMultiSelectFilter('analiticas', ana)">
             <span class="text-truncate text-capitalize">{{ ana }}</span>
-          </label>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
+          </button>
           }
         </div>
         }
       </div>
-      }
 
       <!-- 3. FILTRO OBJETOS -->
-      @if (filterOptions().objetos.length > 0) {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilters().objetos.length > 0" (click)="toggleDropdown('objetos', $event)">
@@ -117,17 +123,23 @@
         </button>
         @if (activeDropdown() === 'objetos') {
         <div class="filter-dropdown-menu dropdown-objetos p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @if (filterOptions().objetos.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
           @for (obj of filterOptions().objetos; track obj) {
-          <label class="dropdown-item d-flex align-items-center gap-2 py-1.5 px-3 rounded select-none cursor-pointer">
-            <input type="checkbox" [checked]="tempFilters().objetos.includes(obj)"
-              (change)="toggleMultiSelectFilter('objetos', obj)" class="form-check-input flex-shrink-0" />
+          @let isSelected = tempFilters().objetos.includes(obj);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded"
+            [class.active]="isSelected"
+            (click)="toggleMultiSelectFilter('objetos', obj)">
             <span class="text-truncate text-capitalize">{{ obj }}</span>
-          </label>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
+          </button>
           }
         </div>
         }
       </div>
-      }
 
       <!-- 4. RANGO DE FECHAS -->
       <div class="filter-dropdown-wrapper position-relative">
@@ -149,9 +161,12 @@
 
           <!-- Presets -->
           <div class="d-flex flex-wrap gap-2 mb-3 preset-buttons-row">
-            <button type="button" class="preset-btn" (click)="setDatePreset('24h')">24h</button>
-            <button type="button" class="preset-btn" (click)="setDatePreset('7d')">7 días</button>
-            <button type="button" class="preset-btn" (click)="setDatePreset('today')">Hoy</button>
+            <button type="button" class="preset-btn" [class.active]="activeDatePreset() === '24h'"
+              (click)="setDatePreset('24h')">24h</button>
+            <button type="button" class="preset-btn" [class.active]="activeDatePreset() === '7d'"
+              (click)="setDatePreset('7d')">7 días</button>
+            <button type="button" class="preset-btn" [class.active]="activeDatePreset() === 'today'"
+              (click)="setDatePreset('today')">Hoy</button>
             <button type="button" class="preset-btn text-danger-hover" (click)="setDatePreset('clear')">Limpiar</button>
           </div>
 
@@ -260,7 +275,7 @@
                     style="grid-template-columns: repeat(7, 1fr); font-size: 0.72rem; font-weight: 600;">
                     <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span>
                   </div>
-                  <div class="d-grid gap-1 text-center">
+                  <div class="d-grid gap-1 text-center" style="grid-template-columns: repeat(7, 1fr);">
                     @for (empty of calendarGrid().emptyDays; track empty) {
                     <div style="width: 28px; height: 28px;"></div>
                     }
@@ -344,7 +359,13 @@
         style="border-radius: 12px; font-size: 0.85rem; background-color: var(--primary-light); color: var(--primary); border: 1.5px solid rgba(var(--primary-rgb), 0.15) !important;">
         <div class="d-flex align-items-center gap-2">
           <span class="icon-svg icon-activity animate-pulse" style="width: 16px; height: 16px;"></span>
-          <span class="fw-semibold">Hay {{ bufferedEvents().length }} nuevo(s) evento(s) disponible(s).</span>
+          <span class="fw-semibold">
+            @if (hasActiveFilters()) {
+            Hay {{ bufferedEvents().length }} nuevo(s) evento(s) que coinciden con tus filtros activos.
+            } @else {
+            Hay {{ bufferedEvents().length }} nuevo(s) evento(s) disponible(s).
+            }
+          </span>
         </div>
         <button class="btn btn-sm btn-primary py-1 px-3 fw-bold rounded-pill shadow-sm"
           (click)="applyBufferedEvents()">Ver nuevos eventos</button>
@@ -412,6 +433,51 @@
               <p class="event-detail-text small mb-2 text-secondary text-truncate" [title]="record.detalleEvento">
                 {{ record.detalleEvento }}
               </p>
+
+              <!-- Indicador de Similitud o Confiabilidad (Estilo Metadatos) -->
+              @if (isMatchingAnalytic(record.analitica)) {
+                @if (record.porcentajeSimilitud !== null && record.porcentajeSimilitud !== undefined) {
+                <div class="reliability-indicator mb-1">
+                  <div class="d-flex justify-content-between small text-muted mb-1">
+                    <span>Similitud</span>
+                    <span class="fw-bold" [ngClass]="{
+                          'text-danger': record.porcentajeSimilitud < 65,
+                          'text-warning': record.porcentajeSimilitud >= 65 && record.porcentajeSimilitud < 80,
+                          'text-success': record.porcentajeSimilitud >= 80
+                        }">{{ record.porcentajeSimilitud }}%</span>
+                  </div>
+                  <div class="progress" style="height: 5px; background-color: var(--border-color);">
+                    <div class="progress-bar" role="progressbar" [style.width.%]="record.porcentajeSimilitud" [ngClass]="{
+                                'bg-danger': record.porcentajeSimilitud < 65,
+                                'bg-warning': record.porcentajeSimilitud >= 65 && record.porcentajeSimilitud < 80,
+                                'bg-success': record.porcentajeSimilitud >= 80
+                              }" [attr.aria-valuenow]="record.porcentajeSimilitud" aria-valuemin="0" aria-valuemax="100">
+                    </div>
+                  </div>
+                </div>
+                }
+              } @else {
+                @if (record.confiabilidad !== null && record.confiabilidad !== undefined) {
+                <div class="reliability-indicator mb-1">
+                  <div class="d-flex justify-content-between small text-muted mb-1">
+                    <span>Confiabilidad</span>
+                    <span class="fw-bold" [ngClass]="{
+                          'text-danger': record.confiabilidad < 0.5,
+                          'text-warning': record.confiabilidad >= 0.5 && record.confiabilidad < 0.8,
+                          'text-success': record.confiabilidad >= 0.8
+                        }">{{ (record.confiabilidad > 1 ? record.confiabilidad : record.confiabilidad * 100) | number:'1.0-0' }}%</span>
+                  </div>
+                  <div class="progress" style="height: 5px; background-color: var(--border-color);">
+                    <div class="progress-bar" role="progressbar" [style.width.%]="record.confiabilidad > 1 ? record.confiabilidad : record.confiabilidad * 100" [ngClass]="{
+                                'bg-danger': record.confiabilidad < 0.5,
+                                'bg-warning': record.confiabilidad >= 0.5 && record.confiabilidad < 0.8,
+                                'bg-success': record.confiabilidad >= 0.8
+                              }" [attr.aria-valuenow]="record.confiabilidad > 1 ? record.confiabilidad : record.confiabilidad * 100" aria-valuemin="0" aria-valuemax="100">
+                    </div>
+                  </div>
+                </div>
+                }
+              }
             </div>
           </div>
         </div>

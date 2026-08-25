@@ -20,6 +20,10 @@ export interface EventRecord {
   espaciosLibres: number | null;
   direccion: string | null;
   idReportType: string | null;
+  urlImgMatch?: string | null;
+  porcentajeSimilitud?: number | null;
+  grupoLista?: string | null;
+  confiabilidad?: number | null;
 }
 
 export interface EventFilters {

@@ -22,7 +22,11 @@ export class WebRtcService {
     );
   }
 
-  async startStream(cameraId: string, videoElement: HTMLVideoElement): Promise<RTCPeerConnection> {
+  async startStream(
+    cameraId: string,
+    videoElement?: HTMLVideoElement | null,
+    onStreamReceived?: (stream: MediaStream) => void
+  ): Promise<RTCPeerConnection> {
     // 1. Obtener la información del streaming desde el backend
     const streamInfo = await firstValueFrom(this.requestStreaming(cameraId));
     if (!streamInfo || !streamInfo.host || !streamInfo.port) {
@@ -41,10 +45,17 @@ export class WebRtcService {
     // 3. Asignar el stream cuando se reciba el track
     pc.ontrack = (event) => {
       if (event.streams && event.streams[0]) {
-        videoElement.srcObject = event.streams[0];
-        videoElement.play().catch(err => {
-          console.warn('[WebRtcService] Autoplay warning on videoElement:', err);
-        });
+        const stream = event.streams[0];
+        (pc as any)._remoteStream = stream;
+        if (videoElement) {
+          videoElement.srcObject = stream;
+          videoElement.play().catch(err => {
+            console.warn('[WebRtcService] Autoplay warning on videoElement:', err);
+          });
+        }
+        if (onStreamReceived) {
+          onStreamReceived(stream);
+        }
       }
     };
 
@@ -55,18 +66,33 @@ export class WebRtcService {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    // 6. Esperar a que el ICE gathering esté completo (igual que test.html)
-    while (pc.iceGatheringState !== 'complete') {
-      await new Promise(resolve => setTimeout(resolve, 100));
+    // 6. Esperar a que el ICE gathering esté completo de forma reactiva (sin polling con setTimeout)
+    if (pc.iceGatheringState !== 'complete') {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          pc.removeEventListener('icegatheringstatechange', checkState);
+          resolve(); // Continuar tras timeout de 1.2s para no congelar el hilo principal
+        }, 1200);
+
+        const checkState = () => {
+          if (pc.iceGatheringState === 'complete') {
+            clearTimeout(timer);
+            pc.removeEventListener('icegatheringstatechange', checkState);
+            resolve();
+          }
+        };
+        pc.addEventListener('icegatheringstatechange', checkState);
+      });
     }
 
-    // 7. Enviar la Offer al servidor de medios usando fetch nativo para evitar interceptores
+    // 7. Enviar la Offer al servidor de medios con timeout estricto de 3.5s
     const offerUrl = `http://${streamInfo.host}:${streamInfo.port}/offer`;
     const response = await window.fetch(offerUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
+      signal: AbortSignal.timeout(3500),
       body: JSON.stringify({
         sdp: pc.localDescription?.sdp,
         type: pc.localDescription?.type,

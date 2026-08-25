@@ -5,6 +5,7 @@ import { Host, HostMetrics } from '../domain/entities/host.models';
 import { IHostRepository } from '../domain/repositories/host.repository';
 
 export interface HostFilterOptions {
+  status: string[];
   os: string[];
   arch: string[];
   gpu: string[];
@@ -105,6 +106,7 @@ export class HostService {
    */
   buildFilterOptions(): HostFilterOptions {
     const items = this.allHosts();
+    const statusSet = new Set<string>();
     const osSet = new Set<string>();
     const archSet = new Set<string>();
     const gpuSet = new Set<string>();
@@ -112,6 +114,12 @@ export class HostService {
     const versionSet = new Set<string>();
 
     items.forEach(h => {
+      const isOnline = h.status === 'online' || h.status === 'active';
+      if (isOnline) {
+        statusSet.add('online');
+      } else {
+        statusSet.add('offline');
+      }
       if (h.hwInfo?.system) osSet.add(h.hwInfo.system);
       if (h.hwInfo?.arch) archSet.add(h.hwInfo.arch);
       if (h.gpuInfo?.model) gpuSet.add(h.gpuInfo.model);
@@ -119,7 +127,11 @@ export class HostService {
       if (h.version) versionSet.add(h.version);
     });
 
+    const statusOrder = ['online', 'offline'];
+    const sortedStatus = Array.from(statusSet).sort((a, b) => statusOrder.indexOf(a) - statusOrder.indexOf(b));
+
     return {
+      status: sortedStatus,
       os: Array.from(osSet).sort(),
       arch: Array.from(archSet).sort(),
       gpu: Array.from(gpuSet).sort(),

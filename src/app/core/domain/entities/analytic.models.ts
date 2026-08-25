@@ -6,6 +6,7 @@ export interface AnalyticTargetCamera {
 export interface AnalyticDetectionClass {
   class_index: number;
   class_name: string;
+  list_id?: string;
 }
 
 export interface AnalyticDTO {
@@ -42,7 +43,13 @@ export class AnalyticMapper {
       status: dto.analytic_status,
       targetCameraIds: (dto.target_cameras || []).map(c => c.camera_id),
       targetCameraNames: (dto.target_cameras || []).map(c => c.camera_name),
-      detectionClasses: (dto.detection_classes || []).map(d => d.class_name),
+      detectionClasses: (dto.detection_classes || []).map((d: any) => {
+        if (typeof d === 'string') return d.trim();
+        if (d && typeof d === 'object') {
+          return (d.class_name || d.className || d.name || (d.class_index !== undefined ? String(d.class_index) : '')).trim();
+        }
+        return String(d || '').trim();
+      }).filter(name => Boolean(name)),
       parameters: dto.parameters || {},
       geometricObjects: dto.geometric_objects || {},
       acciones: dto.acciones || {},

@@ -18,9 +18,12 @@
 
     <!-- Presets -->
     <div class="d-flex flex-wrap gap-2 mb-3 preset-buttons-row">
-      <button type="button" class="preset-btn" (click)="setDatePreset('24h')">24h</button>
-      <button type="button" class="preset-btn" (click)="setDatePreset('7d')">7 días</button>
-      <button type="button" class="preset-btn" (click)="setDatePreset('today')">Hoy</button>
+      <button type="button" class="preset-btn" [class.active]="activeDatePreset() === '24h'"
+        (click)="setDatePreset('24h')">24h</button>
+      <button type="button" class="preset-btn" [class.active]="activeDatePreset() === '7d'"
+        (click)="setDatePreset('7d')">7 días</button>
+      <button type="button" class="preset-btn" [class.active]="activeDatePreset() === 'today'"
+        (click)="setDatePreset('today')">Hoy</button>
       <button type="button" class="preset-btn text-danger-hover" (click)="setDatePreset('clear')">Limpiar</button>
     </div>
 

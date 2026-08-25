@@ -106,6 +106,10 @@ module.exports = {
         console.log('🔌 [Proxy WS Configure] Canal WebSocket abierto');
       });
       proxy.on('error', (err, req, res) => {
+        if (err && (err.code === 'ECONNRESET' || err.code === 'ECONNABORTED' || err.code === 'EPIPE')) {
+          // Desconexión habitual del cliente por recarga de pestaña o cambio de ruta
+          return;
+        }
         console.error('❌ [Proxy WS Configure Error]', err);
       });
     }

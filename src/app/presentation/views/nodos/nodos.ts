@@ -52,24 +52,31 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     return [cols * 10, cols * 20, cols * 30];
   });
 
-  // ── Search & filter state ────────────────────────────────────────────────────
+  // ── Search & filter state (Multi-select) ──
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly searchTerm = signal<string>('');
 
-  readonly filterStatus = signal<string>('all');
-  readonly filterOS = signal<string>('all');
-  readonly filterArch = signal<string>('all');
-  readonly filterGPU = signal<string>('all');
-  readonly filterVram = signal<string>('all');
-  readonly filterVersion = signal<string>('all');
+  readonly filterStatus = signal<string[]>([]);
+  readonly filterOS = signal<string[]>([]);
+  readonly filterArch = signal<string[]>([]);
+  readonly filterGPU = signal<string[]>([]);
+  readonly filterVram = signal<string[]>([]);
+  readonly filterVersion = signal<string[]>([]);
 
   // Temp copies shown in the drawer (committed on "Aplicar")
-  readonly tempFilterStatus = signal<string>('all');
-  readonly tempFilterOS = signal<string>('all');
-  readonly tempFilterArch = signal<string>('all');
-  readonly tempFilterGPU = signal<string>('all');
-  readonly tempFilterVram = signal<string>('all');
-  readonly tempFilterVersion = signal<string>('all');
+  readonly tempFilterStatus = signal<string[]>([]);
+  readonly tempFilterOS = signal<string[]>([]);
+  readonly tempFilterArch = signal<string[]>([]);
+  readonly tempFilterGPU = signal<string[]>([]);
+  readonly tempFilterVram = signal<string[]>([]);
+  readonly tempFilterVersion = signal<string[]>([]);
+
+  private _arraysEqual(a: string[], b: string[]): boolean {
+    if (a.length !== b.length) return false;
+    const sortedA = [...a].sort();
+    const sortedB = [...b].sort();
+    return sortedA.every((val, index) => val === sortedB[index]);
+  }
 
   readonly showFilterPanel = signal<boolean>(false);
   readonly activeDropdown = signal<string | null>(null);
@@ -77,6 +84,11 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
 
   readonly isLoading = signal<boolean>(false);
   readonly viewMode = signal<'cards' | 'list'>('cards');
+  readonly sortDirection = signal<'asc' | 'desc'>('asc');
+
+  toggleSortDirection(): void {
+    this.sortDirection.update(d => d === 'asc' ? 'desc' : 'asc');
+  }
 
   private copiedTimeout: any;
   readonly copiedRowId = signal<string | null>(null);
@@ -151,7 +163,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // ── Dynamic filter option lists (built from loaded data) ────────────────────
-  readonly filterOptions = signal<HostFilterOptions | null>(null);
+  readonly filterOptions = computed<HostFilterOptions>(() => this.hostService.buildFilterOptions());
 
   // ── Client-side filtered list ────────────────────────────────────────────────
   readonly filteredHosts = computed<Host[]>(() => {
@@ -173,30 +185,31 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
         if (!matchesHostname && !matchesIp && !matchesFp) return false;
       }
       // Status filter — backend uses 'online'/'offline' but also 'active'/'inactive'
-      if (st !== 'all') {
+      if (st.length > 0) {
         const isOnline = h.status === 'online' || h.status === 'active';
-        if (st === 'active' && !isOnline) return false;
-        if (st === 'inactive' && isOnline) return false;
+        const matchesStatus = st.some(s => {
+          if (s === 'active' || s === 'online') return isOnline;
+          if (s === 'inactive' || s === 'offline') return !isOnline;
+          return h.status === s;
+        });
+        if (!matchesStatus) return false;
       }
       // Hardware filters
-      if (os !== 'all' && h.hwInfo?.system !== os) return false;
-      if (arch !== 'all' && h.hwInfo?.arch !== arch) return false;
-      if (gpu !== 'all' && h.gpuInfo?.model !== gpu) return false;
-      if (vram !== 'all' && h.gpuInfo?.totalMemory !== vram) return false;
-      if (ver !== 'all' && h.version !== ver) return false;
+      if (os.length > 0 && (!h.hwInfo?.system || !os.includes(h.hwInfo.system))) return false;
+      if (arch.length > 0 && (!h.hwInfo?.arch || !arch.includes(h.hwInfo.arch))) return false;
+      if (gpu.length > 0 && (!h.gpuInfo?.model || !gpu.includes(h.gpuInfo.model))) return false;
+      if (vram.length > 0 && (!h.gpuInfo?.totalMemory || !vram.includes(h.gpuInfo.totalMemory))) return false;
+      if (ver.length > 0 && (!h.version || !ver.includes(h.version))) return false;
       return true;
     });
 
-    // Ordenar: activos (online/active) primero, luego por hostname alfabéticamente
+    const dir = this.sortDirection();
+
+    // Ordenamiento estricto por Hostname (ascendente o descendente)
+    // Se excluye la ordenación por estado para evitar que los nodos salten de posición al reconectarse/desconectarse
     return filtered.sort((a, b) => {
-      const aOnline = a.status === 'online' || a.status === 'active' ? 1 : 0;
-      const bOnline = b.status === 'online' || b.status === 'active' ? 1 : 0;
-
-      if (bOnline !== aOnline) {
-        return bOnline - aOnline;
-      }
-
-      return a.hostname.toLowerCase().localeCompare(b.hostname.toLowerCase());
+      const cmp = a.hostname.localeCompare(b.hostname, undefined, { numeric: true, sensitivity: 'base' });
+      return dir === 'asc' ? cmp : -cmp;
     });
   });
 
@@ -288,8 +301,6 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.isLoading.set(true);
     this.hostService.loadAllHosts().subscribe(() => {
       this.isLoading.set(false);
-      // Build filter options from the now-loaded data
-      this.filterOptions.set(this.hostService.buildFilterOptions());
       // Consultar el estado y métricas iniciales una única vez al iniciar
       this.fetchInitialHeartbeats();
     });
@@ -453,57 +464,57 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   // ── Filter panel ──────────────────────────────────────────────────────────────
   hasActiveFilters(): boolean {
     return this.searchTerm().trim() !== '' ||
-      this.filterStatus() !== 'all' ||
-      this.filterOS() !== 'all' ||
-      this.filterArch() !== 'all' ||
-      this.filterGPU() !== 'all' ||
-      this.filterVram() !== 'all' ||
-      this.filterVersion() !== 'all';
+      this.filterStatus().length > 0 ||
+      this.filterOS().length > 0 ||
+      this.filterArch().length > 0 ||
+      this.filterGPU().length > 0 ||
+      this.filterVram().length > 0 ||
+      this.filterVersion().length > 0;
   }
 
   toggleFilterPanel(): void {
     if (!this.showFilterPanel()) {
       // Sync temp copies to active values when opening
-      this.tempFilterStatus.set(this.filterStatus());
-      this.tempFilterOS.set(this.filterOS());
-      this.tempFilterArch.set(this.filterArch());
-      this.tempFilterGPU.set(this.filterGPU());
-      this.tempFilterVram.set(this.filterVram());
-      this.tempFilterVersion.set(this.filterVersion());
+      this.tempFilterStatus.set([...this.filterStatus()]);
+      this.tempFilterOS.set([...this.filterOS()]);
+      this.tempFilterArch.set([...this.filterArch()]);
+      this.tempFilterGPU.set([...this.filterGPU()]);
+      this.tempFilterVram.set([...this.filterVram()]);
+      this.tempFilterVersion.set([...this.filterVersion()]);
     }
     this.showFilterPanel.update(v => !v);
   }
 
   applyFilters(): void {
-    this.filterStatus.set(this.tempFilterStatus());
-    this.filterOS.set(this.tempFilterOS());
-    this.filterArch.set(this.tempFilterArch());
-    this.filterGPU.set(this.tempFilterGPU());
-    this.filterVram.set(this.tempFilterVram());
-    this.filterVersion.set(this.tempFilterVersion());
+    this.filterStatus.set([...this.tempFilterStatus()]);
+    this.filterOS.set([...this.tempFilterOS()]);
+    this.filterArch.set([...this.tempFilterArch()]);
+    this.filterGPU.set([...this.tempFilterGPU()]);
+    this.filterVram.set([...this.tempFilterVram()]);
+    this.filterVersion.set([...this.tempFilterVersion()]);
     this.currentPage.set(1);
   }
 
   resetFilters(): void {
     this.searchControl.setValue('');
     this.searchTerm.set('');
-    this.filterStatus.set('all'); this.tempFilterStatus.set('all');
-    this.filterOS.set('all'); this.tempFilterOS.set('all');
-    this.filterArch.set('all'); this.tempFilterArch.set('all');
-    this.filterGPU.set('all'); this.tempFilterGPU.set('all');
-    this.filterVram.set('all'); this.tempFilterVram.set('all');
-    this.filterVersion.set('all'); this.tempFilterVersion.set('all');
+    this.filterStatus.set([]); this.tempFilterStatus.set([]);
+    this.filterOS.set([]); this.tempFilterOS.set([]);
+    this.filterArch.set([]); this.tempFilterArch.set([]);
+    this.filterGPU.set([]); this.tempFilterGPU.set([]);
+    this.filterVram.set([]); this.tempFilterVram.set([]);
+    this.filterVersion.set([]); this.tempFilterVersion.set([]);
     this.currentPage.set(1);
     this.activeDropdown.set(null);
   }
 
   readonly hasPendingFilterChanges = computed<boolean>(() => {
-    return this.tempFilterStatus() !== this.filterStatus() ||
-      this.tempFilterOS() !== this.filterOS() ||
-      this.tempFilterArch() !== this.filterArch() ||
-      this.tempFilterGPU() !== this.filterGPU() ||
-      this.tempFilterVram() !== this.filterVram() ||
-      this.tempFilterVersion() !== this.filterVersion();
+    return !this._arraysEqual(this.tempFilterStatus(), this.filterStatus()) ||
+      !this._arraysEqual(this.tempFilterOS(), this.filterOS()) ||
+      !this._arraysEqual(this.tempFilterArch(), this.filterArch()) ||
+      !this._arraysEqual(this.tempFilterGPU(), this.filterGPU()) ||
+      !this._arraysEqual(this.tempFilterVram(), this.filterVram()) ||
+      !this._arraysEqual(this.tempFilterVersion(), this.filterVersion());
   });
 
   // Dropdown helpers
@@ -512,17 +523,25 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.activeDropdown.update(cur => cur === name ? null : name);
   }
 
-  selectFilterValue(filterName: string, value: string, event?: Event): void {
+  toggleFilterValue(filterName: string, value: string, event?: Event): void {
     if (event) event.stopPropagation();
+    const toggleInSig = (sig: import('@angular/core').WritableSignal<string[]>) => {
+      const current = sig();
+      if (current.includes(value)) {
+        sig.set(current.filter(v => v !== value));
+      } else {
+        sig.set([...current, value]);
+      }
+    };
+
     switch (filterName) {
-      case 'status': this.tempFilterStatus.set(value); break;
-      case 'os': this.tempFilterOS.set(value); break;
-      case 'arch': this.tempFilterArch.set(value); break;
-      case 'gpu': this.tempFilterGPU.set(value); break;
-      case 'vram': this.tempFilterVram.set(value); break;
-      case 'version': this.tempFilterVersion.set(value); break;
+      case 'status': toggleInSig(this.tempFilterStatus); break;
+      case 'os': toggleInSig(this.tempFilterOS); break;
+      case 'arch': toggleInSig(this.tempFilterArch); break;
+      case 'gpu': toggleInSig(this.tempFilterGPU); break;
+      case 'vram': toggleInSig(this.tempFilterVram); break;
+      case 'version': toggleInSig(this.tempFilterVersion); break;
     }
-    this.activeDropdown.set(null);
   }
 
   toggleExportDropdown(event: Event): void {

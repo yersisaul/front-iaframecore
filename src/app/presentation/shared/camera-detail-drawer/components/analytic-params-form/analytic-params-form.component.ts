@@ -42,6 +42,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
   @Input() availableModels: any = null;
   @Input() initialValues: any = null;
   @Input() highlightError: boolean = false;
+  @Input() highlightErrorTarget: string | null = null;
 
   @Output() formChanged = new EventEmitter<any>();
   @Output() geometryTypeChanged = new EventEmitter<'polygon' | 'speed_quad' | 'line'>();
@@ -82,6 +83,9 @@ export class AnalyticParamsFormComponent implements OnChanges {
   // Desplegable de selección múltiple de clases
   readonly isClassesDropdownOpen = signal<boolean>(false);
   readonly classSearchQuery = signal<string>('');
+
+  // Desplegable de selección múltiple de listas de control
+  readonly isListsDropdownOpen = signal<boolean>(false);
 
   // Sliders Fluidos & Parámetros Generales
   readonly confThres = signal<number>(0.5);
@@ -124,7 +128,8 @@ export class AnalyticParamsFormComponent implements OnChanges {
   readonly aforoMaximo = signal<number>(20);
   readonly aforoActual = signal<number>(0);
   readonly strDirection = signal<string>('Bidireccional');
-  readonly selectedListId = signal<string>('');
+  readonly selectedListIds = signal<string[]>([]);
+  readonly selectedListId = computed<string>(() => this.selectedListIds()[0] || '');
   readonly isFixedModelAnalytic = computed<boolean>(() => {
     const selId = this.selectedType();
     return selId === 'face_recognition' || selId === 'license_plate_recognition';
@@ -277,6 +282,35 @@ export class AnalyticParamsFormComponent implements OnChanges {
   }
 
   readonly watchlists = computed(() => this.listService.lists());
+
+  getListsForType(type: 'RF' | 'LPR'): any[] {
+    const all = this.watchlists();
+    if (type === 'RF') {
+      return all.filter(l => {
+        const t = (l.list_type || '').toLowerCase();
+        return t === 'rf' || t === 'face_recognition' || t === 'rostros' || t === 'faces';
+      });
+    } else {
+      return all.filter(l => {
+        const t = (l.list_type || '').toLowerCase();
+        return t === 'lpr' || t === 'license_plate_recognition' || t === 'plate_recognition' || t === 'vehiculos' || t === 'placas';
+      });
+    }
+  }
+
+  isListSelected(listId: string): boolean {
+    return this.selectedListIds().includes(listId);
+  }
+
+  toggleListSelection(listId: string): void {
+    this.selectedListIds.update(ids => {
+      if (ids.includes(listId)) {
+        return ids.filter(id => id !== listId);
+      } else {
+        return [...ids, listId];
+      }
+    });
+  }
 
   // Catálogo Estructurado de Modelos y Clases del Nodo
   readonly nodeModelCatalog = computed<NodeModelItem[]>(() => {
@@ -457,6 +491,213 @@ export class AnalyticParamsFormComponent implements OnChanges {
     return count >= 1;
   }
 
+  isParamInvalid(paramKey: string): boolean {
+    const sel = this.selectedType();
+    switch (paramKey) {
+      case 'conf_thres':
+        return this.confThres() < 0.15 || this.confThres() > 1.0;
+      case 'iou_thres':
+        return this.iouThres() < 0.3 || this.iouThres() > 1.0;
+      case 'max_age':
+        return this.maxAge() < 15 || this.maxAge() > 120;
+      case 'min_hits':
+        return this.minHits() < 2 || this.minHits() > 10;
+      case 'iou_threshold':
+        return this.iouTrackerThreshold() < 0.1 || this.iouTrackerThreshold() > 1.0;
+      case 'tiempo_reactivacion':
+        return this.tiempoReactivacion() < 5.0 || this.tiempoReactivacion() > 200.0;
+      case 'scale_factor':
+        return this.scaleFactor() < 1.1 || this.scaleFactor() > 1.9;
+      case 'zona_linea':
+        return this.zonaLinea() < 5 || this.zonaLinea() > 200;
+
+      // Específicos
+      case 'tiempo_permanencia':
+        return sel === 'object_in_area' && (this.tiempoPermanencia() < 0.01 || this.tiempoPermanencia() > 72000);
+      case 'prueba_movimiento':
+        return (sel === 'object_in_area' || sel === 'object_surveillance') && (this.pruebaMovimiento() < 2 || this.pruebaMovimiento() > 300);
+      case 'n_validaciones':
+        return sel === 'parking_management' && (this.nValidacionesEstacionamiento() < 30 || this.nValidacionesEstacionamiento() > 600);
+      case 'escala_orbita':
+        if (sel === 'persons_with_objects') return this.escalaOrbita() < 0.1 || this.escalaOrbita() > 0.9;
+        if (sel === 'object_proximity') return this.escalaOrbita() < 1.0 || this.escalaOrbita() > 1.9;
+        return false;
+      case 'n_detecciones':
+        return sel === 'persons_with_objects' && (this.nDeteccionesPersonasObjetos() < 5 || this.nDeteccionesPersonasObjetos() > 300);
+      case 'humbral_maximo':
+        return sel === 'object_permanence' && (this.humbralMaximo() < 60 || this.humbralMaximo() > 72000);
+      case 'humbral_minimo':
+        return sel === 'object_permanence' && (this.humbralMinimo() < 3 || this.humbralMinimo() > 600 || this.humbralMinimo() > this.humbralMaximo());
+      case 'n_objetos':
+        return sel === 'object_proximity' && (this.nObjetosCercanos() < 1 || this.nObjetosCercanos() > 10);
+      case 'tiempo_vigilancia':
+        return sel === 'vehicle_surveillance' && (this.tiempoVigilanciaVehicular() < 5 || this.tiempoVigilanciaVehicular() > 60);
+      case 'tiempo_descenso':
+        return sel === 'vehicle_surveillance' && (this.tiempoDescenso() < 45 || this.tiempoDescenso() > 300);
+      case 'similitud':
+        return sel === 'vehicle_surveillance' && (this.similitudProp() < 60 || this.similitudProp() > 100);
+      case 'n_embeddings':
+        return sel === 'vehicle_surveillance' && (this.nEmbeddings() < 2 || this.nEmbeddings() > 30);
+      case 'minimo_personas':
+        return sel === 'crowd_gathering' && (this.minimoPersonas() < 3 || this.minimoPersonas() > 20);
+      case 'densidad':
+        return sel === 'crowd_gathering' && (this.densidadAglomeracion() < 0.0015 || this.densidadAglomeracion() > 0.0065);
+      case 'tiempo_abandono':
+        return sel === 'object_out_of_area' && (this.tiempoAbandono() < 30 || this.tiempoAbandono() > 600);
+      case 'max_speed':
+        return sel === 'speed_measurement' && (this.maxSpeed() < 3 || this.maxSpeed() > 200);
+      case 'min_points_for_speed':
+        return sel === 'speed_measurement' && (this.minPointsForSpeed() < 3 || this.minPointsForSpeed() > 60);
+      case 'distancia_a_b':
+        return sel === 'speed_measurement' && (this.distanciaAB() < 1 || this.distanciaAB() > 200);
+      case 'distancia_b_c':
+        return sel === 'speed_measurement' && (this.distanciaBC() < 1 || this.distanciaBC() > 400);
+      case 'tiempo_comportamiento':
+        return sel === 'human_behavior' && (this.tiempoComportamiento() < 1 || this.tiempoComportamiento() > 300);
+      case 'confianza_postura':
+        return sel === 'human_behavior' && (this.confianzaPostura() < 0.25 || this.confianzaPostura() > 0.99);
+      case 'list_id':
+        return (sel === 'face_recognition' || sel === 'license_plate_recognition') && this.selectedListIds().length === 0;
+      case 'confianza_rf':
+        return sel === 'face_recognition' && (this.confianzaRF() < 0.25 || this.confianzaRF() > 0.85);
+      case 'n_detecciones_rf':
+        return sel === 'face_recognition' && (this.nDeteccionesRF() < 1 || this.nDeteccionesRF() > 5);
+      case 'n_reconocimientos_rf':
+        return sel === 'face_recognition' && (this.nReconocimientosRF() < 1 || this.nReconocimientosRF() > 5);
+      case 'aforo_maximo':
+        return sel === 'capacity_control' && (this.aforoMaximo() < 1 || this.aforoMaximo() > 10000);
+      case 'aforo_actual':
+        return sel === 'capacity_control' && (this.aforoActual() < 0 || this.aforoActual() > 10000);
+      default:
+        return false;
+    }
+  }
+
+  validateAllParams(): { valid: boolean; target?: string; message?: string } {
+    if (!this.isClassSelectionValid()) {
+      return {
+        valid: false,
+        target: 'classes',
+        message: this.selectedType() === 'object_proximity'
+          ? 'Para la analítica "Cercanía entre objetos" debes seleccionar exactamente 2 objetos (1º Núcleo, 2º Órbita) antes de guardar.'
+          : 'Por favor, selecciona al menos un objeto o clase a monitorear antes de guardar.'
+      };
+    }
+
+    const sel = this.selectedType();
+
+    if (sel === 'object_in_area') {
+      if (this.tiempoPermanencia() < 0.01 || this.tiempoPermanencia() > 72000) {
+        return { valid: false, target: 'tiempo_permanencia', message: 'Tiempo de Permanencia debe estar entre 0.01 y 72000 segundos.' };
+      }
+      if (this.pruebaMovimiento() < 2 || this.pruebaMovimiento() > 300) {
+        return { valid: false, target: 'prueba_movimiento', message: 'Sensibilidad de Movimiento debe estar entre 2 y 300 píxeles.' };
+      }
+    } else if (sel === 'parking_management') {
+      if (this.nValidacionesEstacionamiento() < 30 || this.nValidacionesEstacionamiento() > 600) {
+        return { valid: false, target: 'n_validaciones', message: 'Fotogramas de Validación debe estar entre 30 y 600 frames.' };
+      }
+    } else if (sel === 'object_surveillance') {
+      if (this.pruebaMovimiento() < 2 || this.pruebaMovimiento() > 300) {
+        return { valid: false, target: 'prueba_movimiento', message: 'Sensibilidad de Movimiento debe estar entre 2 y 300 píxeles.' };
+      }
+    } else if (sel === 'persons_with_objects') {
+      if (this.escalaOrbita() < 0.1 || this.escalaOrbita() > 0.9) {
+        return { valid: false, target: 'escala_orbita', message: 'Radio de Órbita de Proximidad debe estar entre 0.1 y 0.9.' };
+      }
+      if (this.nDeteccionesPersonasObjetos() < 5 || this.nDeteccionesPersonasObjetos() > 300) {
+        return { valid: false, target: 'n_detecciones', message: 'Detecciones Continuas debe estar entre 5 y 300 hits.' };
+      }
+    } else if (sel === 'object_permanence') {
+      if (this.humbralMaximo() < 60 || this.humbralMaximo() > 72000) {
+        return { valid: false, target: 'humbral_maximo', message: 'Tiempo Máximo de Permanencia debe estar entre 60 y 72000 segundos.' };
+      }
+      if (this.humbralMinimo() < 3 || this.humbralMinimo() > 600) {
+        return { valid: false, target: 'humbral_minimo', message: 'Tiempo Mínimo para Métricas debe estar entre 3 y 600 segundos.' };
+      }
+      if (this.humbralMinimo() > this.humbralMaximo()) {
+        return { valid: false, target: 'humbral_minimo', message: 'El Tiempo Mínimo no puede ser superior al Tiempo Máximo.' };
+      }
+    } else if (sel === 'object_proximity') {
+      if (this.nObjetosCercanos() < 1 || this.nObjetosCercanos() > 10) {
+        return { valid: false, target: 'n_objetos', message: 'Cantidad Mínima de Objetos debe estar entre 1 y 10.' };
+      }
+      if (this.escalaOrbita() < 1.0 || this.escalaOrbita() > 1.9) {
+        return { valid: false, target: 'escala_orbita', message: 'Radio de Órbita de Proximidad debe estar entre 1.0 y 1.9.' };
+      }
+    } else if (sel === 'vehicle_surveillance') {
+      if (this.tiempoVigilanciaVehicular() < 5 || this.tiempoVigilanciaVehicular() > 60) {
+        return { valid: false, target: 'tiempo_vigilancia', message: 'Tiempo Cercano a Vehículo debe estar entre 5 y 60 segundos.' };
+      }
+      if (this.tiempoDescenso() < 45 || this.tiempoDescenso() > 300) {
+        return { valid: false, target: 'tiempo_descenso', message: 'Tiempo Máximo de Descenso debe estar entre 45 y 300 segundos.' };
+      }
+      if (this.similitudProp() < 60 || this.similitudProp() > 100) {
+        return { valid: false, target: 'similitud', message: 'Porcentaje de Similitud debe estar entre 60% y 100%.' };
+      }
+      if (this.nEmbeddings() < 2 || this.nEmbeddings() > 30) {
+        return { valid: false, target: 'n_embeddings', message: 'Muestras de Silueta debe estar entre 2 y 30.' };
+      }
+    } else if (sel === 'crowd_gathering') {
+      if (this.minimoPersonas() < 3 || this.minimoPersonas() > 20) {
+        return { valid: false, target: 'minimo_personas', message: 'Mínimo de Personas debe estar entre 3 y 20.' };
+      }
+      if (this.densidadAglomeracion() < 0.0015 || this.densidadAglomeracion() > 0.0065) {
+        return { valid: false, target: 'densidad', message: 'Densidad Poblacional debe estar entre 0.0015 y 0.0065 m.' };
+      }
+    } else if (sel === 'object_out_of_area') {
+      if (this.tiempoAbandono() < 30 || this.tiempoAbandono() > 600) {
+        return { valid: false, target: 'tiempo_abandono', message: 'Tiempo de Abandono debe estar entre 30 y 600 segundos.' };
+      }
+    } else if (sel === 'speed_measurement') {
+      if (this.maxSpeed() < 3 || this.maxSpeed() > 200) {
+        return { valid: false, target: 'max_speed', message: 'Velocidad Máxima Permitida debe estar entre 3 y 200 km/h.' };
+      }
+      if (this.minPointsForSpeed() < 3 || this.minPointsForSpeed() > 60) {
+        return { valid: false, target: 'min_points_for_speed', message: 'Puntos Mínimos de Calibración debe estar entre 3 y 60.' };
+      }
+      if (this.distanciaAB() < 1 || this.distanciaAB() > 200) {
+        return { valid: false, target: 'distancia_a_b', message: 'Distancia Superior (A -> B) debe estar entre 1 y 200 metros.' };
+      }
+      if (this.distanciaBC() < 1 || this.distanciaBC() > 400) {
+        return { valid: false, target: 'distancia_b_c', message: 'Distancia Lateral (B -> C) debe estar entre 1 y 400 metros.' };
+      }
+    } else if (sel === 'human_behavior') {
+      if (this.tiempoComportamiento() < 1 || this.tiempoComportamiento() > 300) {
+        return { valid: false, target: 'tiempo_comportamiento', message: 'Tiempo de Secuencia debe estar entre 1 y 300 segundos.' };
+      }
+      if (this.confianzaPostura() < 0.25 || this.confianzaPostura() > 0.99) {
+        return { valid: false, target: 'confianza_postura', message: 'Confianza Mínima de Postura debe estar entre 0.25 y 0.99.' };
+      }
+    } else if (sel === 'face_recognition') {
+      if (this.selectedListIds().length === 0) {
+        return { valid: false, target: 'list_id', message: 'Debes seleccionar al menos una Lista de Control Facial para continuar.' };
+      }
+      if (this.confianzaRF() < 0.25 || this.confianzaRF() > 0.85) {
+        return { valid: false, target: 'confianza_rf', message: 'Umbral de Similitud Facial debe estar entre 0.25 y 0.85.' };
+      }
+      if (this.nDeteccionesRF() < 1 || this.nDeteccionesRF() > 5) {
+        return { valid: false, target: 'n_detecciones_rf', message: 'Filtro de Detecciones Previas debe estar entre 1 y 5.' };
+      }
+      if (this.nReconocimientosRF() < 1 || this.nReconocimientosRF() > 5) {
+        return { valid: false, target: 'n_reconocimientos_rf', message: 'Confirmaciones de Coincidencia debe estar entre 1 y 5.' };
+      }
+    } else if (sel === 'license_plate_recognition') {
+      if (this.selectedListIds().length === 0) {
+        return { valid: false, target: 'list_id', message: 'Debes seleccionar al menos una Lista de Control LPR para continuar.' };
+      }
+    } else if (sel === 'capacity_control') {
+      if (this.aforoMaximo() < 1 || this.aforoMaximo() > 10000) {
+        return { valid: false, target: 'aforo_maximo', message: 'Aforo Máximo Permitido debe estar entre 1 y 10000 personas.' };
+      }
+      if (this.aforoActual() < 0 || this.aforoActual() > 10000) {
+        return { valid: false, target: 'aforo_actual', message: 'Conteo de Aforo Inicial debe estar entre 0 y 10000 personas.' };
+      }
+    }
+
+    return { valid: true };
+  }
+
   getSelectedClassNames(): string {
     const selectedIndexes = this.selectedClassIndexes();
     const currentClasses = this.currentModelClasses();
@@ -562,6 +803,31 @@ export class AnalyticParamsFormComponent implements OnChanges {
     this.isClassesDropdownOpen.set(false);
   }
 
+  toggleListsDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isListsDropdownOpen.update(open => !open);
+    this.isTypeDropdownOpen.set(false);
+    this.isClassesDropdownOpen.set(false);
+    this.isModelDropdownOpen.set(false);
+  }
+
+  isListSelectionValid(): boolean {
+    return this.selectedListIds().length > 0;
+  }
+
+  getSelectedListNames(type: 'RF' | 'LPR'): string {
+    const selectedIds = this.selectedListIds();
+    if (selectedIds.length === 0) {
+      return type === 'RF' ? '-- Seleccionar Listas RF --' : '-- Seleccionar Listas LPR --';
+    }
+    const allLists = this.watchlists();
+    const names = selectedIds.map(id => {
+      const found = allLists.find(l => l.list_id === id);
+      return found ? found.name : id;
+    });
+    return names.join(', ');
+  }
+
   selectAnalyticTypeAndClose(typeId: string, event?: Event): void {
     if (event) event.stopPropagation();
     this.selectAnalyticType(typeId);
@@ -587,6 +853,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
     this.isClassesDropdownOpen.set(false);
     this.isTypeDropdownOpen.set(false);
     this.isModelDropdownOpen.set(false);
+    this.isListsDropdownOpen.set(false);
   }
 
   getSelectedAnalyticTypeLabel(): string {
@@ -765,10 +1032,54 @@ export class AnalyticParamsFormComponent implements OnChanges {
       this.aforoMaximo();
       this.aforoActual();
       this.strDirection();
-      this.selectedListId();
+      this.selectedListIds();
 
       this.emitFormValues();
     });
+
+    // Auto-resolución reactiva de selectedListIds si watchlists cargan después de initialValues
+    effect(() => {
+      const lists = this.watchlists();
+      const selType = this.selectedType();
+      const currentListIds = this.selectedListIds();
+
+      if (currentListIds.length === 0 && (selType === 'face_recognition' || selType === 'license_plate_recognition') && this.initialValues && lists.length > 0) {
+        const rawClasses = this.initialValues.detection_classes || this.initialValues.detectionClasses;
+        const restoredIds: string[] = [];
+
+        if (Array.isArray(rawClasses) && rawClasses.length > 0) {
+          rawClasses.forEach((item: any) => {
+            if (item && typeof item === 'object') {
+              if (item.list_id || item.listId) {
+                const lid = String(item.list_id || item.listId);
+                if (!restoredIds.includes(lid)) restoredIds.push(lid);
+              } else {
+                const name = String(item.class_name || item.className || '').trim().toLowerCase();
+                if (name) {
+                  const found = lists.find(l => l.name.toLowerCase() === name);
+                  if (found && !restoredIds.includes(found.list_id)) restoredIds.push(found.list_id);
+                }
+              }
+            } else if (typeof item === 'string') {
+              const name = item.trim().toLowerCase();
+              const found = lists.find(l => l.name.toLowerCase() === name);
+              if (found && !restoredIds.includes(found.list_id)) restoredIds.push(found.list_id);
+            }
+          });
+        }
+
+        if (restoredIds.length === 0) {
+          const params = this.initialValues.parameters || {};
+          if (params['list_id']) {
+            restoredIds.push(String(params['list_id']));
+          }
+        }
+
+        if (restoredIds.length > 0) {
+          this.selectedListIds.set(restoredIds);
+        }
+      }
+    }, { allowSignalWrites: true });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -903,7 +1214,40 @@ export class AnalyticParamsFormComponent implements OnChanges {
     }
     if (params['str_direction'] !== undefined) this.strDirection.set(params['str_direction']);
 
-    if (params['list_id'] !== undefined) this.selectedListId.set(params['list_id']);
+    // Para Reconocimiento Facial y de Placas:
+    // Se extraen todos los list_id o se resuelven por class_name
+    if (typeObj.id === 'face_recognition' || typeObj.id === 'license_plate_recognition') {
+      const restoredListIds: string[] = [];
+      const allLists = this.watchlists();
+
+      if (Array.isArray(rawClasses) && rawClasses.length > 0) {
+        rawClasses.forEach((item: any) => {
+          if (item && typeof item === 'object') {
+            if (item.list_id || item.listId) {
+              const lid = String(item.list_id || item.listId);
+              if (!restoredListIds.includes(lid)) restoredListIds.push(lid);
+            } else {
+              const name = String(item.class_name || item.className || '').trim().toLowerCase();
+              if (name) {
+                const found = allLists.find(l => l.name.toLowerCase() === name);
+                if (found && !restoredListIds.includes(found.list_id)) restoredListIds.push(found.list_id);
+              }
+            }
+          } else if (typeof item === 'string') {
+            const name = item.trim().toLowerCase();
+            const found = allLists.find(l => l.name.toLowerCase() === name);
+            if (found && !restoredListIds.includes(found.list_id)) restoredListIds.push(found.list_id);
+          }
+        });
+      }
+
+      // Fallback para analíticas legacy con list_id en parameters
+      if (restoredListIds.length === 0 && params['list_id']) {
+        restoredListIds.push(String(params['list_id']));
+      }
+
+      this.selectedListIds.set(restoredListIds);
+    }
 
     if (params['Tiempo'] !== undefined) {
       const val = Number(params['Tiempo']);
@@ -911,7 +1255,10 @@ export class AnalyticParamsFormComponent implements OnChanges {
       this.tiempoVigilanciaVehicular.set(val);
       this.tiempoComportamiento.set(val);
     }
-    if (params['prueba_movimiento'] !== undefined) this.pruebaMovimiento.set(Number(params['prueba_movimiento']));
+    if (params['prueba_movimiento'] !== undefined) {
+      const pm = Number(params['prueba_movimiento']);
+      this.pruebaMovimiento.set(Math.max(2, Math.min(300, isNaN(pm) ? 5 : pm)));
+    }
     if (params['Color'] !== undefined || params['color'] !== undefined) this.colorFiltro.set(params['Color'] ?? params['color']);
     if (params['N_validaciones'] !== undefined) this.nValidacionesEstacionamiento.set(Number(params['N_validaciones']));
     if (params['ParteDeCuerpo'] !== undefined) this.parteDeCuerpo.set(params['ParteDeCuerpo']);
@@ -1056,10 +1403,21 @@ export class AnalyticParamsFormComponent implements OnChanges {
     const selectedIndexes = this.selectedClassIndexes();
     const selType = this.selectedType();
 
-    let activeClasses: { class_index: number; class_name: string }[] = [];
+    let activeClasses: { class_index: number; class_name: string; list_id?: string; tiempo?: number }[] = [];
 
     if (this.isFixedModelAnalytic()) {
-      activeClasses = [];
+      // Para Reconocimiento Facial y Reconocimiento de Placas:
+      // Se envía class_index, list_id y class_name de cada lista de control seleccionada
+      const currentListIds = this.selectedListIds();
+      const allLists = this.watchlists();
+      activeClasses = currentListIds.map((listId, seqIdx) => {
+        const foundList = allLists.find(l => l.list_id === listId);
+        return {
+          class_index: seqIdx,
+          list_id: listId,
+          class_name: foundList ? foundList.name : ''
+        };
+      });
     } else if (selType === 'object_proximity') {
       // Para Cercanía entre Objetos: Núcleo es siempre class_index: 0 y Órbita es class_index: 1
       activeClasses = selectedIndexes.map((idx, seqIdx) => {
@@ -1098,12 +1456,12 @@ export class AnalyticParamsFormComponent implements OnChanges {
 
     if (selType === 'object_in_area') {
       specificParams['Tiempo'] = this.tiempoPermanencia();
-      specificParams['prueba_movimiento'] = this.pruebaMovimiento();
+      specificParams['prueba_movimiento'] = Number(this.pruebaMovimiento());
       specificParams['Color'] = this.colorFiltro();
     } else if (selType === 'parking_management') {
-      specificParams['N_validaciones'] = this.nValidacionesEstacionamiento();
+      specificParams['N_validaciones'] = Number(this.nValidacionesEstacionamiento());
     } else if (selType === 'object_surveillance') {
-      specificParams['prueba_movimiento'] = this.pruebaMovimiento();
+      specificParams['prueba_movimiento'] = Number(this.pruebaMovimiento());
     } else if (selType === 'persons_with_objects') {
       specificParams['escala_orbita'] = this.escalaOrbita();
       specificParams['ParteDeCuerpo'] = this.parteDeCuerpo();
@@ -1141,10 +1499,8 @@ export class AnalyticParamsFormComponent implements OnChanges {
       specificParams['confianza'] = this.confianzaRF();
       specificParams['N_Detecciones'] = this.nDeteccionesRF();
       specificParams['n_reconocimientos'] = this.nReconocimientosRF();
-      specificParams['list_id'] = this.selectedListId();
     } else if (selType === 'license_plate_recognition') {
       specificParams['Modelo'] = 'dependencias/weights/licence_detector/placas.pt';
-      specificParams['list_id'] = this.selectedListId();
     } else if (selType === 'line_crossing') {
       specificParams['Color'] = this.colorFiltro();
       specificParams['str_direction'] = this.strDirection();

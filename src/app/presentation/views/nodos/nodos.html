@@ -1,4 +1,4 @@
-<div #nodosContainer class="nodos-container container-fluid py-4 position-relative">
+<div #nodosContainer class="nodos-view-container nodos-container container-fluid py-4 position-relative">
 
   <!-- ══════════════════════════════════════════════════════
        CABECERA REFACTORIZADA — 2 FILAS
@@ -46,7 +46,7 @@
     <div header-bottom class="header-row-bottom d-flex align-items-center gap-3 mt-4">
       <!-- Barra de Búsqueda + Botón de Filtros -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
-        <app-search-input [control]="searchControl" placeholder="Buscar por hostname o IP..."></app-search-input>
+        <app-search-input [control]="searchControl" placeholder="Buscar nodo..."></app-search-input>
         <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
           (click)="toggleFilterPanel()" [class.active]="hasActiveFilters()" [class.open]="showFilterPanel()"
           title="Filtros avanzados" aria-label="Filtros avanzados">
@@ -56,6 +56,17 @@
           }
         </button>
       </div>
+
+      <!-- Botón de Alternancia de Ordenamiento A-Z / Z-A (Válido para Tarjetas y Tabla) -->
+      <button type="button"
+        class="btn btn-sort-toggle d-flex align-items-center gap-2 shadow-sm rounded-pill border px-3 py-1.5"
+        (click)="toggleSortDirection()"
+        [title]="sortDirection() === 'asc' ? 'Orden actual: Hostname (A → Z) · Clic para cambiar a (Z → A)' : 'Orden actual: Hostname (Z → A) · Clic para cambiar a (A → Z)'"
+        aria-label="Alternar orden alfabético">
+        <span class="sort-icon-letters font-monospace fw-bold">{{ sortDirection() === 'asc' ? 'A→Z' : 'Z→A' }}</span>
+        <span class="icon-svg sort-arrow-icon" [class.icon-arrow-up]="sortDirection() === 'asc'"
+          [class.icon-arrow-down]="sortDirection() === 'desc'"></span>
+      </button>
 
       <!-- Espaciador flexible -->
       <div class="flex-grow-1"></div>
@@ -76,34 +87,33 @@
   <div class="horizontal-filters-bar mb-4">
     <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
-      <!-- 1. ESTADO DE ACTIVIDAD -->
+      <!-- 1. ESTADO -->
       <div class="filter-dropdown-wrapper position-relative">
-        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-          [class.active]="tempFilterStatus() !== 'all'" (click)="toggleDropdown('status', $event)">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
+          [class.active]="tempFilterStatus().length > 0" (click)="toggleDropdown('status', $event)">
           <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
           <span>
-            Estado: {{ tempFilterStatus() === 'all' ? 'Todos' : (tempFilterStatus() === 'active' || tempFilterStatus()
-            === 'online' ? 'Online' : 'Offline') }}
+            Estado ({{ tempFilterStatus().length || 'Todos' }})
           </span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'status'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'status') {
         <div class="filter-dropdown-menu dropdown-status p-2" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterStatus() === 'all'"
-            (click)="selectFilterValue('status', 'all', $event)">
-            Todos los Estados
+          @if (filterOptions().status.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
+          @for (st of filterOptions().status; track st) {
+          @let isSelected = tempFilterStatus().includes(st);
+          <button type="button"
+            class="dropdown-item py-1.5 px-3 rounded text-capitalize d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="toggleFilterValue('status', st, $event)">
+            <span>{{ st }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
-            [class.active]="tempFilterStatus() === 'active' || tempFilterStatus() === 'online'"
-            (click)="selectFilterValue('status', 'active', $event)">
-            Online
-          </button>
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded"
-            [class.active]="tempFilterStatus() === 'inactive' || tempFilterStatus() === 'offline'"
-            (click)="selectFilterValue('status', 'inactive', $event)">
-            Offline
-          </button>
+          }
         </div>
         }
       </div>
@@ -111,22 +121,26 @@
       <!-- 2. SISTEMA OPERATIVO -->
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-          [class.active]="tempFilterOS() !== 'all'" (click)="toggleDropdown('os', $event)">
+          [class.active]="tempFilterOS().length > 0" (click)="toggleDropdown('os', $event)">
           <span class="icon-svg icon-nodos filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Sistema: {{ tempFilterOS() === 'all' ? 'Todos' : tempFilterOS() }}</span>
+          <span>Sistema ({{ tempFilterOS().length || 'Todos' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'os'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'os') {
         <div class="filter-dropdown-menu dropdown-os p-2" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterOS() === 'all'"
-            (click)="selectFilterValue('os', 'all', $event)">
-            Todos los Sistemas
-          </button>
-          @for (os of filterOptions()?.os || []; track os) {
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded text-capitalize"
-            [class.active]="tempFilterOS() === os" (click)="selectFilterValue('os', os, $event)">
-            {{ os }}
+          @if (filterOptions().os.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
+          @for (os of filterOptions().os; track os) {
+          @let isSelected = tempFilterOS().includes(os);
+          <button type="button"
+            class="dropdown-item py-1.5 px-3 rounded text-capitalize d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="toggleFilterValue('os', os, $event)">
+            <span>{{ os }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
           }
         </div>
@@ -136,22 +150,26 @@
       <!-- 3. ARQUITECTURA -->
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-          [class.active]="tempFilterArch() !== 'all'" (click)="toggleDropdown('arch', $event)">
+          [class.active]="tempFilterArch().length > 0" (click)="toggleDropdown('arch', $event)">
           <span class="icon-svg icon-cpu filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Arquitectura: {{ tempFilterArch() === 'all' ? 'Todas' : tempFilterArch() }}</span>
+          <span>Arquitectura ({{ tempFilterArch().length || 'Todas' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'arch'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'arch') {
         <div class="filter-dropdown-menu dropdown-arch p-2" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterArch() === 'all'"
-            (click)="selectFilterValue('arch', 'all', $event)">
-            Todas las Arquitecturas
-          </button>
-          @for (arch of filterOptions()?.arch || []; track arch) {
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterArch() === arch"
-            (click)="selectFilterValue('arch', arch, $event)">
-            {{ arch }}
+          @if (filterOptions().arch.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
+          @for (arch of filterOptions().arch; track arch) {
+          @let isSelected = tempFilterArch().includes(arch);
+          <button type="button"
+            class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="toggleFilterValue('arch', arch, $event)">
+            <span>{{ arch }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
           }
         </div>
@@ -161,22 +179,26 @@
       <!-- 4. GPU -->
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-          [class.active]="tempFilterGPU() !== 'all'" (click)="toggleDropdown('gpu', $event)">
+          [class.active]="tempFilterGPU().length > 0" (click)="toggleDropdown('gpu', $event)">
           <span class="icon-svg icon-gpu filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>GPU: {{ tempFilterGPU() === 'all' ? 'Todas' : tempFilterGPU() }}</span>
+          <span>GPU ({{ tempFilterGPU().length || 'Todas' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'gpu'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'gpu') {
         <div class="filter-dropdown-menu dropdown-gpu p-2" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterGPU() === 'all'"
-            (click)="selectFilterValue('gpu', 'all', $event)">
-            Todas las GPUs
-          </button>
-          @for (gpu of filterOptions()?.gpu || []; track gpu) {
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterGPU() === gpu"
-            (click)="selectFilterValue('gpu', gpu, $event)">
-            {{ gpu }}
+          @if (filterOptions().gpu.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
+          @for (gpu of filterOptions().gpu; track gpu) {
+          @let isSelected = tempFilterGPU().includes(gpu);
+          <button type="button"
+            class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="toggleFilterValue('gpu', gpu, $event)">
+            <span>{{ gpu }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
           }
         </div>
@@ -186,22 +208,26 @@
       <!-- 5. MEMORIA VRAM -->
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-          [class.active]="tempFilterVram() !== 'all'" (click)="toggleDropdown('vram', $event)">
+          [class.active]="tempFilterVram().length > 0" (click)="toggleDropdown('vram', $event)">
           <span class="icon-svg icon-gpu filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>VRAM: {{ tempFilterVram() === 'all' ? 'Todas' : tempFilterVram() }}</span>
+          <span>VRAM ({{ tempFilterVram().length || 'Todas' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'vram'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'vram') {
         <div class="filter-dropdown-menu dropdown-vram p-2" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterVram() === 'all'"
-            (click)="selectFilterValue('vram', 'all', $event)">
-            Todas las Capacidades
-          </button>
-          @for (vram of filterOptions()?.vram || []; track vram) {
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterVram() === vram"
-            (click)="selectFilterValue('vram', vram, $event)">
-            {{ vram }}
+          @if (filterOptions().vram.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
+          @for (vram of filterOptions().vram; track vram) {
+          @let isSelected = tempFilterVram().includes(vram);
+          <button type="button"
+            class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="toggleFilterValue('vram', vram, $event)">
+            <span>{{ vram }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
           }
         </div>
@@ -211,22 +237,26 @@
       <!-- 6. VERSIÓN -->
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-          [class.active]="tempFilterVersion() !== 'all'" (click)="toggleDropdown('version', $event)">
+          [class.active]="tempFilterVersion().length > 0" (click)="toggleDropdown('version', $event)">
           <span class="icon-svg icon-info-circle filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Versión: {{ tempFilterVersion() === 'all' ? 'Todas' : 'v' + tempFilterVersion() }}</span>
+          <span>Versión ({{ tempFilterVersion().length || 'Todas' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'version'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'version') {
         <div class="filter-dropdown-menu dropdown-version p-2" (click)="$event.stopPropagation()">
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterVersion() === 'all'"
-            (click)="selectFilterValue('version', 'all', $event)">
-            Todas las Versiones
-          </button>
-          @for (ver of filterOptions()?.version || []; track ver) {
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilterVersion() === ver"
-            (click)="selectFilterValue('version', ver, $event)">
-            v{{ ver }}
+          @if (filterOptions().version.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
+          @for (ver of filterOptions().version; track ver) {
+          @let isSelected = tempFilterVersion().includes(ver);
+          <button type="button"
+            class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="toggleFilterValue('version', ver, $event)">
+            <span>v{{ ver }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
           }
         </div>
@@ -493,17 +523,35 @@
   <div class="border shadow-sm rounded-4 bg-card overflow-hidden">
     <div class="nm-table-container">
       <table class="table nm-table align-middle mb-0">
+        <colgroup>
+          <col class="col-status">
+          <col class="col-hostname">
+          <col class="col-cameras">
+          <col class="col-version">
+          <col class="col-ip">
+          <col class="col-os">
+          <col class="col-resources">
+          <col class="col-gpu">
+          <col class="col-last-seen">
+        </colgroup>
         <thead>
           <tr>
-            <th scope="col" class="text-muted small fw-bold">ESTADO</th>
-            <th scope="col" class="text-muted small fw-bold">HOSTNAME</th>
-            <th scope="col" class="text-muted small fw-bold text-center">CÁMARAS</th>
-            <th scope="col" class="text-muted small fw-bold text-center">VERSIÓN</th>
-            <th scope="col" class="text-muted small fw-bold">DIRECCIÓN IP</th>
-            <th scope="col" class="text-muted small fw-bold text-center">SO</th>
-            <th scope="col" class="text-muted small fw-bold text-center">CPU / RAM</th>
-            <th scope="col" class="text-muted small fw-bold text-center">GPU</th>
-            <th scope="col" class="text-muted small fw-bold text-center">ÚLT. VEZ</th>
+            <th scope="col" class="col-status text-muted small fw-bold text-center">ESTADO</th>
+            <th scope="col" class="col-hostname text-muted small fw-bold cursor-pointer user-select-none"
+              (click)="toggleSortDirection()"
+              [title]="sortDirection() === 'asc' ? 'Orden actual: A→Z · Clic para ordenar Z→A' : 'Orden actual: Z→A · Clic para ordenar A→Z'">
+              <div class="d-inline-flex align-items-center gap-2">
+                <span>HOSTNAME</span>
+                <span class="sort-indicator-arrow font-monospace">{{ sortDirection() === 'asc' ? '▲' : '▼' }}</span>
+              </div>
+            </th>
+            <th scope="col" class="col-cameras text-muted small fw-bold text-center">CÁMARAS</th>
+            <th scope="col" class="col-version text-muted small fw-bold text-center">VERSIÓN</th>
+            <th scope="col" class="col-ip text-muted small fw-bold text-center">DIRECCIÓN IP</th>
+            <th scope="col" class="col-os text-muted small fw-bold text-center">SO</th>
+            <th scope="col" class="col-resources text-muted small fw-bold text-center">CPU / RAM</th>
+            <th scope="col" class="col-gpu text-muted small fw-bold text-center">GPU</th>
+            <th scope="col" class="col-last-seen text-muted small fw-bold text-center">ÚLT. VEZ</th>
           </tr>
         </thead>
         <tbody>
@@ -516,8 +564,8 @@
             [class.host-card--deleting]="hostService.deletingHostIds().has(host.fingerprint)"
             (click)="goToCameras(host.fingerprint)">
             <!-- Estado -->
-            <td class="ps-3">
-              <span class="d-inline-flex align-items-center gap-2">
+            <td class="col-status text-center">
+              <span class="d-inline-flex align-items-center justify-content-center gap-2">
                 <span class="status-dot" [class.online]="host.status === 'active' || host.status === 'online'"></span>
                 <span class="fw-semibold" [class.text-success]="host.status === 'active' || host.status === 'online'"
                   [class.text-danger]="host.status !== 'active' && host.status !== 'online'"
@@ -527,14 +575,16 @@
               </span>
             </td>
             <!-- Hostname -->
-            <td>
-              <div class="d-flex align-items-center gap-2">
-                <span class="fw-bold text-body text-truncate d-block" style="font-size: 0.88rem;"
-                  [title]="host.hostname">{{ host.hostname }}</span>
+            <td class="col-hostname">
+              <div class="d-flex align-items-center gap-2" style="min-width: 0; width: 100%;">
+                <div class="host-table-name-container min-w-0">
+                  <span class="host-table-name-text fw-bold text-body" style="font-size: 0.88rem;"
+                    [title]="host.hostname">{{ host.hostname }}</span>
+                </div>
               </div>
             </td>
             <!-- Cámaras -->
-            <td class="text-center">
+            <td class="col-cameras text-center">
               <span class="camera-count-badge" [class.has-cameras]="getCameraCount(host.fingerprint) > 0"
                 [title]="getCameraCount(host.fingerprint) + ' cámara(s) asignada(s)'">
                 <span class="icon-svg icon-camara camera-badge-icon"></span>
@@ -542,16 +592,16 @@
               </span>
             </td>
             <!-- Versión -->
-            <td class="text-center">
+            <td class="col-version text-center">
               <span class="version-tag">v{{ host.version }}</span>
             </td>
             <!-- IP -->
-            <td>
+            <td class="col-ip">
               <code class="font-monospace text-muted" style="font-size: 0.88rem;">{{ host.ipAddress }}</code>
             </td>
             <!-- SO -->
-            <td>
-              <div class="d-flex align-items-center" style="min-width: 0;">
+            <td class="col-os">
+              <div class="d-flex align-items-center" style="min-width: 0; width: 100%;">
                 <span class="icon-svg os-avatar-icon table-os-icon flex-shrink-0 me-2"
                   style="width: 24px; height: 24px;"
                   [class.icon-ubuntu]="!!host.hwInfo?.system?.toLowerCase()?.includes('linux')"
@@ -566,7 +616,7 @@
               </div>
             </td>
             <!-- CPU / RAM -->
-            <td>
+            <td class="col-resources">
               <div class="d-flex flex-column gap-1" style="width: 100%;">
                 <!-- Fila Superior: Arquitectura + % Uso CPU -->
                 <div class="d-flex justify-content-between align-items-center gap-2">
@@ -605,7 +655,7 @@
               </div>
             </td>
             <!-- GPU -->
-            <td>
+            <td class="col-gpu">
               @if (host.gpuInfo; as gpu) {
               <div class="d-flex flex-column gap-1" style="width: 100%;">
                 <!-- Fila Superior: Modelo + % Uso -->
@@ -649,7 +699,7 @@
               }
             </td>
             <!-- Última Vez -->
-            <td class="text-center">
+            <td class="col-last-seen text-center">
               @if (host.metrics?.lastSeen) {
               <div class="d-flex flex-column align-items-center justify-content-center" style="gap: 2px;">
                 <span class="text-body fw-medium font-monospace text-nowrap" style="font-size: 0.82rem;">
@@ -680,8 +730,8 @@
   }
 
   <!-- Paginación con Ghost Buttons y Chevrons SVG (REUTILIZABLE DRY) -->
-  <app-pagination-controls [currentPage]="currentPage()" [totalPages]="totalPages()" [totalRecords]="totalRecords()" [visiblePages]="visiblePages()"
-    (pageChange)="setPage($event)">
+  <app-pagination-controls [currentPage]="currentPage()" [totalPages]="totalPages()" [totalRecords]="totalRecords()"
+    [visiblePages]="visiblePages()" (pageChange)="setPage($event)">
   </app-pagination-controls>
 
   <!-- Modal de Migración de Configuración -->
@@ -691,7 +741,7 @@
     <div class="modal-card-custom modal-card-custom--large p-4 rounded-4 shadow-lg border"
       (click)="$event.stopPropagation()">
       <!-- Modal Header -->
-      <div class="d-flex justify-content-between align-items-start mb-3">
+      <div class="d-flex justify-content-between align-items-start">
         <div>
           <div class="d-flex align-items-center gap-2">
             <span class="icon-svg icon-migrate-arrows"
@@ -702,15 +752,12 @@
             Transfiere configuraciones y cámaras desde un nodo emisor (Origen) a un receptor compatible (Destino).
           </p>
         </div>
-        <button class="btn-ghost p-1.5" (click)="closeMigrateModal()" aria-label="Cerrar modal">
-          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
-        </button>
       </div>
 
       <!-- Modal Body -->
       <div class="modal-body-custom">
         <!-- Layout bicolumna con conector de flecha central para selección -->
-        <div class="nm-columns-wrapper mt-4 pt-2">
+        <div class="nm-columns-wrapper mt-4">
           <!-- Columna Origen (Izquierda) -->
           <div class="nm-column nm-column-origin">
             <div class="nm-column-header d-flex align-items-center justify-content-between mb-3">
@@ -835,7 +882,7 @@
         </div>
 
         <!-- Modal Footer Actions -->
-        <div class="nm-footer-actions mt-4 pt-3">
+        <div class="nm-footer-actions mt-4">
           <button class="btn btn-outline-secondary btn-flat-cancel" (click)="closeMigrateModal()"
             [disabled]="isMigrating()">
             Cancelar

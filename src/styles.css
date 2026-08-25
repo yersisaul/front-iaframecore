@@ -1074,6 +1074,97 @@ body:not(.dark) .form-select option {
   border-color: transparent !important;
 }
 
+/* ── Global Filter Toggle Button (Standard across all views: Camaras, Nodos, Usuarios, Metadatos, Eventos, Listas, etc.) ── */
+.filter-toggle-btn {
+  width: 38px !important;
+  height: 38px !important;
+  position: relative !important;
+  border-radius: 50% !important;
+  border: 1px solid transparent !important;
+  background-color: transparent !important;
+  color: var(--text-secondary) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.filter-toggle-btn:hover {
+  background-color: var(--bg-filter-dropdown-item-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.filter-toggle-btn.open {
+  background-color: var(--primary) !important;
+  color: var(--text-on-primary-btn) !important;
+  box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35) !important;
+}
+
+.filter-toggle-btn.open:hover {
+  background-color: var(--primary-hover) !important;
+}
+
+.filter-toggle-btn.open .icon-svg {
+  background-color: var(--text-on-primary-btn) !important;
+}
+
+.filter-toggle-btn.active:not(.open) {
+  background-color: var(--primary-light) !important;
+  color: var(--primary) !important;
+  border-color: var(--border-version-tag) !important;
+}
+
+.filter-toggle-btn.active:not(.open):hover {
+  background-color: var(--primary-light) !important;
+}
+
+.filter-toggle-btn.active:not(.open) .icon-svg {
+  background-color: var(--primary) !important;
+}
+
+.filter-toggle-btn .active-badge-dot {
+  position: absolute !important;
+  top: 5px !important;
+  right: 5px !important;
+  width: 8px !important;
+  height: 8px !important;
+  background-color: var(--color-danger) !important;
+  border: 1.5px solid var(--bg-primary) !important;
+  border-radius: 50% !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.filter-toggle-btn.open .active-badge-dot {
+  background-color: var(--text-on-primary-btn) !important;
+  border-color: var(--primary) !important;
+}
+
+.dark .filter-toggle-btn:hover,
+[data-bs-theme="dark"] .filter-toggle-btn:hover {
+  background-color: var(--bg-filter-dropdown-item-hover) !important;
+  color: var(--text-custom-checkbox-label-checked) !important;
+}
+
+.dark .filter-toggle-btn.open,
+[data-bs-theme="dark"] .filter-toggle-btn.open {
+  background-color: var(--primary) !important;
+  color: var(--text-on-primary-btn) !important;
+  box-shadow: 0 4px 16px rgba(var(--primary-rgb), 0.5) !important;
+}
+
+.dark .filter-toggle-btn.open .icon-svg,
+[data-bs-theme="dark"] .filter-toggle-btn.open .icon-svg {
+  background-color: var(--text-on-primary-btn) !important;
+}
+
+.dark .filter-toggle-btn.active:not(.open),
+[data-bs-theme="dark"] .filter-toggle-btn.active:not(.open) {
+  background-color: var(--primary-light) !important;
+  color: var(--text-preset-btn-hover) !important;
+  border-color: rgba(var(--primary-rgb), 0.3) !important;
+}
+
 .form-control::placeholder {
   color: var(--text-muted) !important;
 }
@@ -1133,6 +1224,15 @@ body:not(.dark) .form-select option {
 /* Badges & Pills */
 .badge {
   opacity: 0.95;
+}
+
+[data-bs-theme="dark"] .badge.bg-light,
+[data-bs-theme="dark"] .badge.bg-light-translucent,
+[data-bs-theme="dark"] .badge.border.bg-light,
+[data-bs-theme="dark"] .badge.bg-light.text-muted {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-muted, #94a3b8) !important;
+  border-color: var(--border, rgba(255, 255, 255, 0.12)) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1258,6 +1358,26 @@ body:not(.dark) .form-select option {
 .icon-refresh {
   -webkit-mask-image: url('/assets/icons/global/refresh.svg');
   mask-image: url('/assets/icons/global/refresh.svg');
+}
+
+.icon-play-simple {
+  -webkit-mask-image: url('/assets/icons/global/play-simple.svg');
+  mask-image: url('/assets/icons/global/play-simple.svg');
+}
+
+.icon-pause-simple {
+  -webkit-mask-image: url('/assets/icons/global/pause-simple.svg');
+  mask-image: url('/assets/icons/global/pause-simple.svg');
+}
+
+.icon-close-simple {
+  -webkit-mask-image: url('/assets/icons/global/close-simple.svg');
+  mask-image: url('/assets/icons/global/close-simple.svg');
+}
+
+.icon-center-simple {
+  -webkit-mask-image: url('/assets/icons/global/center-simple.svg');
+  mask-image: url('/assets/icons/global/center-simple.svg');
 }
 
 .icon-zoom-in {

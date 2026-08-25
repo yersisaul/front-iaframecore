@@ -55,8 +55,9 @@
   position: relative;
   overflow: hidden !important;
   border-radius: 1rem !important;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 1.5rem 3.5rem rgba(0, 0, 0, 0.55);
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
   cursor: zoom-in;
   display: flex;
   align-items: center;
@@ -66,6 +67,19 @@
   max-width: calc(100cqh * var(--aspect-ratio, 9999));
   max-height: 100%;
   margin: auto;
+  animation: mediaViewTransition 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes mediaViewTransition {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .event-capture-img {
@@ -94,7 +108,7 @@
   justify-content: center;
   text-align: center;
   user-select: none;
-  padding: 2rem 1.5rem;
+  padding: 2.5rem 2rem;
 }
 
 .no-image-icon {
@@ -189,6 +203,15 @@
   to {
     transform: translateX(0);
   }
+}
+
+.drawer-content {
+  padding: 1.75rem 1.6rem !important;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
 }
 
 .scroll-details-content {
@@ -446,6 +469,35 @@
   font-weight: 600;
 }
 
+/* Descripción del Evento (Estilo Premium Minimalista) */
+.event-description-box {
+  background: var(--bg-card, rgba(0, 0, 0, 0.02));
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  border-radius: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  transition: border-color 0.2s ease;
+}
+
+[data-bs-theme="dark"] .event-description-box,
+:host-context([data-bs-theme="dark"]) .event-description-box {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-bs-theme="light"] .event-description-box,
+:host-context([data-bs-theme="light"]) .event-description-box {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.event-description-text {
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--text-secondary, #475569);
+  word-break: break-word;
+  font-weight: 500;
+}
+
 /* Attributes Popover & Pills */
 .popover-section-title {
   font-size: 0.65rem;
@@ -577,7 +629,682 @@
   transform: scale(1.08);
 }
 
+.btn-media-toggle.btn-media-comparison.active {
+  background: linear-gradient(135deg, #9333ea 0%, #6366f1 100%) !important;
+  box-shadow: 0 4px 14px rgba(147, 51, 234, 0.42) !important;
+}
 
+/* ═══════════════════════════════════════════════════════════
+   UNIFIED MEDIA STAGE (TRANSICIONES FLUIDAS DE REDIMENSIONAMIENTO)
+   ═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   UNIFIED MEDIA STAGE (ESCENARIO ÚNICO UNIFICADO)
+   ═══════════════════════════════════════════════════════════ */
+.unified-media-stage {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.stage-dual-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  gap: 0;
+  transition: gap 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* En Modo Comparativa sin foco: Se activa el gap entre tarjetas */
+.unified-media-stage.mode-comparison:not(.focus-detection):not(.focus-reference) .stage-dual-container {
+  gap: 1.75rem;
+}
+
+/* ── Tarjetas de Medios (Primary y Reference) ── */
+.stage-media-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  border-radius: 1rem !important;
+  overflow: hidden !important;
+  margin: 0;
+  transition: flex 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    height 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s ease,
+    box-shadow 0.4s ease,
+    background-color 0.4s ease;
+}
+
+/* 1. PRIMARY MEDIA CARD (Detección / Imagen / Video) */
+/* Estado Base (Modo Imagen, Modo Video, o Comparativa con foco en Detección): 100% */
+.stage-media-card.primary-media-card {
+  flex: 0 0 100%;
+  width: 100%;
+  height: auto;
+  max-width: calc(100cqh * var(--media-aspect-ratio, 1.7778));
+  max-height: 100%;
+  aspect-ratio: var(--media-aspect-ratio, 16 / 9);
+  margin: 0;
+  z-index: 10;
+  background: transparent;
+}
+
+.unified-media-stage.mode-image .stage-media-card.primary-media-card,
+.unified-media-stage.mode-video .stage-media-card.primary-media-card {
+  margin: auto;
+}
+
+/* Modo Comparativa normal (Dividida): Pasa fluidamente al 80% */
+.unified-media-stage.mode-comparison:not(.focus-detection):not(.focus-reference) .stage-media-card.primary-media-card {
+  flex: 0 0 calc(80% - 0.875rem);
+  width: calc(80% - 0.875rem);
+  max-width: 100%;
+  margin: 0;
+  cursor: pointer;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Modo Comparativa con foco en Detección: 100% con borde resaltado */
+.unified-media-stage.mode-comparison.focus-detection .stage-media-card.primary-media-card {
+  margin: 0;
+  z-index: 20;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+/* Modo Comparativa con foco en Referencia: Se contrae a 0 */
+.unified-media-stage.mode-comparison.focus-reference .stage-media-card.primary-media-card {
+  flex: 0 0 0% !important;
+  width: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: scale(0.85);
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  overflow: hidden !important;
+}
+
+/* 2. REFERENCE MEDIA CARD (Foto en Lista de Control) */
+/* Estado Base (Modo Imagen, Modo Video, o Comparativa con foco en Detección): Colapsada en 0% */
+.stage-media-card.reference-media-card {
+  flex: 0 0 0%;
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.85);
+  margin: 0;
+  padding: 0;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  overflow: hidden;
+  height: auto;
+  max-height: 100%;
+  aspect-ratio: 3 / 4;
+}
+
+/* Modo Comparativa normal (Dividida): Se expande al 20% */
+.unified-media-stage.mode-comparison:not(.focus-detection):not(.focus-reference) .stage-media-card.reference-media-card {
+  flex: 0 0 calc(20% - 0.875rem);
+  width: calc(20% - 0.875rem);
+  max-width: calc(100cqh * 0.75);
+  height: auto;
+  max-height: 100%;
+  margin: 0;
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+/* Modo Comparativa con foco en Referencia: Se expande a 50% de altura de contenedor */
+.unified-media-stage.mode-comparison.focus-reference .stage-media-card.reference-media-card {
+  flex: 0 0 calc(50cqh * 0.75) !important;
+  width: calc(50cqh * 0.75) !important;
+  max-width: calc(50cqh * 0.75) !important;
+  height: 50cqh !important;
+  max-height: 50cqh !important;
+  margin: 0 !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: scale(1) !important;
+  z-index: 20;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+/* Comparativa enfocada en Detección: Se contrae a 0 */
+.unified-media-stage.mode-comparison.focus-detection .stage-media-card.reference-media-card {
+  flex: 0 0 0% !important;
+  width: 0 !important;
+  margin: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: scale(0.85) !important;
+  padding: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+/* ── Badges de Comparativa ── */
+.stage-media-card .comparison-card-badge {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  backdrop-filter: blur(0.75rem);
+  -webkit-backdrop-filter: blur(0.75rem);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: translateY(-0.5rem);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  pointer-events: none;
+}
+
+.unified-media-stage.mode-comparison .stage-media-card .comparison-card-badge {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card-badge-icon {
+  width: 13px;
+  height: 13px;
+  background-color: currentColor !important;
+}
+
+.detection-badge {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  color: #93c5fd;
+}
+
+.reference-badge {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  color: #d8b4fe;
+}
+
+/* ── Contenedor Interno de Imagen / Video ── */
+.stage-img-box {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  overflow: hidden;
+}
+
+.unified-media-stage.mode-comparison .stage-img-box {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Modo Imagen: Cursor de Lupa activo */
+.unified-media-stage.mode-image .stage-img-box {
+  cursor: zoom-in;
+}
+
+.unified-media-stage.mode-image .stage-img-box.zoom-active-cursor,
+.unified-media-stage.mode-image .stage-img-box.zoom-active-cursor * {
+  cursor: none !important;
+}
+
+/* Modo Video: Cursor normal */
+.unified-media-stage.mode-video .stage-img-box {
+  cursor: default;
+}
+
+.stage-media-element {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.unified-media-stage.mode-image .stage-media-element.img-element {
+  object-fit: fill;
+}
+
+.stage-media-element.video-element {
+  object-fit: contain;
+}
+
+.unified-media-stage.mode-comparison .stage-media-element {
+  object-fit: cover;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Hover Scale: EXCLUSIVAMENTE en modo comparativa */
+.unified-media-stage.mode-comparison .stage-media-card:hover .stage-media-element {
+  transform: scale(1.02);
+}
+
+.unified-media-stage.mode-image .stage-media-card:hover .stage-media-element,
+.unified-media-stage.mode-video .stage-media-card:hover .stage-media-element {
+  transform: none !important;
+}
+
+.comparison-img-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.fallback-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CONSOLA HUD DE PRECISIÓN BIOMÉTRICA (ESTILO DARK PERSISTENTE)
+   ═══════════════════════════════════════════════════════════ */
+.biometric-hud-console {
+  width: 100%;
+  max-width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.75rem;
+  padding: 0;
+  margin-top: 0;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(3rem);
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(10, 15, 29, 0.96) 100%) !important;
+  backdrop-filter: blur(1.5rem);
+  -webkit-backdrop-filter: blur(1.5rem);
+  border: 0 solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 1rem;
+  box-shadow: none !important;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    margin-top 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    padding 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    border-width 0.3s ease;
+}
+
+/* Visible únicamente en modo comparativa normal (vista dividida) */
+.unified-media-stage.mode-comparison:not(.focus-detection):not(.focus-reference) .biometric-hud-console {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  max-height: 7.5rem;
+  margin-top: 1.25rem;
+  padding: 1.1rem 1.75rem;
+  border-width: 1px !important;
+}
+
+/* Columna 1: Sujeto Reconocido & Scanner Orb */
+.hud-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex: 0 1 auto;
+  min-width: 220px;
+  max-width: 380px;
+}
+
+.biometric-scanner-orb {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.95) !important;
+  border: 1.5px solid var(--accent-color, #10b981) !important;
+  box-shadow: none !important;
+  flex-shrink: 0;
+}
+
+.orb-scan-wave {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent-color, #10b981);
+  opacity: 0.4;
+  animation: orbPulse 2.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes orbPulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
+
+.orb-icon {
+  width: 20px;
+  height: 20px;
+  background-color: var(--accent-color, #10b981) !important;
+  z-index: 2;
+}
+
+.hud-identity-meta {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.hud-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.hud-subject-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff !important;
+  letter-spacing: -0.01em;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+/* Columna 2: Calibrador & Gauge */
+.hud-gauge {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+}
+
+.gauge-header {
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-weight: 600;
+}
+
+.gauge-track-wrapper {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08) !important;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.gauge-track-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 99px;
+  background-color: var(--fill-color, #10b981) !important;
+  box-shadow: none !important;
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gauge-scale-labels {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35) !important;
+  letter-spacing: 0.04em;
+}
+
+/* Columna 3: Score Hero */
+.hud-score-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+.hud-score-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.45) !important;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+  text-align: center;
+}
+
+.hud-score-display {
+  line-height: 1;
+  text-align: center;
+}
+
+.hud-score-number {
+  font-size: 1.75rem;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.hud-score-percent {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-left: 1px;
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.similarity-high {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+.similarity-mid {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #f59e0b;
+}
+
+.similarity-low {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FICHA DE IDENTIFICACIÓN FACIAL (2 COLUMNAS PREMIUM)
+   ═══════════════════════════════════════════════════════════ */
+.facial-identity-card {
+  /* Offset vertical editable para encuadre del rostro (ej: 0% = arriba del todo, 8% = levemente abajo, 15% = centro superior) */
+  --identity-photo-y-offset: 20%;
+
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  border-radius: 0.85rem;
+  box-shadow: none !important;
+  transition: border-color 0.2s ease;
+}
+
+[data-bs-theme="dark"] .facial-identity-card,
+:host-context([data-bs-theme="dark"]) .facial-identity-card {
+  background: rgba(255, 255, 255, 0.025);
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+[data-bs-theme="light"] .facial-identity-card,
+:host-context([data-bs-theme="light"]) .facial-identity-card {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.facial-identity-card:hover {
+  border-color: var(--border-color-hover, var(--border-color));
+  box-shadow: none !important;
+}
+
+/* Columna 1: Fotografía Cuadrada Estética (Enfocada al Rostro) */
+.identity-photo-col {
+  width: 76px;
+  height: 76px;
+  min-height: 76px;
+  aspect-ratio: 1 / 1;
+  border-radius: 0.65rem;
+  border: 2px solid var(--border-color, rgba(0, 0, 0, 0.1));
+  background: var(--bg-surface, rgba(0, 0, 0, 0.04));
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] .identity-photo-col,
+:host-context([data-bs-theme="dark"]) .identity-photo-col {
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.identity-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center var(--identity-photo-y-offset, 8%);
+  display: block;
+}
+
+.identity-photo-placeholder {
+  padding: 0.5rem;
+  text-align: center;
+}
+
+.identity-photo-placeholder-icon {
+  width: 28px;
+  height: 28px;
+  background-color: currentColor !important;
+}
+
+/* Columna 2: Datos e Información */
+.identity-info-col {
+  min-width: 0;
+}
+
+.identity-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.identity-card-group {
+  font-size: 0.76rem;
+  color: var(--text-muted, #64748b);
+  line-height: 1.3;
+}
+
+.identity-similarity-block {
+  margin-top: 0.5rem;
+}
+
+.identity-stat-label {
+  color: var(--text-muted, #64748b);
+  font-weight: 700;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+}
+
+.identity-stat-val {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.identity-progress-track {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-progress-track, rgba(0, 0, 0, 0.06));
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+}
+
+[data-bs-theme="dark"] .identity-progress-track,
+:host-context([data-bs-theme="dark"]) .identity-progress-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.identity-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
 /* Responsividad Móvil (<768px) */
 @media (max-width: 768px) {
@@ -593,6 +1320,31 @@
 
   .modal-img-wrapper {
     max-width: calc((50vh - 2rem) * var(--aspect-ratio, 9999));
+  }
+
+  .comparison-dual-container {
+    gap: 0.5rem;
+    max-height: calc(50vh - 6.5rem);
+  }
+
+  .comparison-card.detection-card {
+    flex: 0 0 calc(70% - 0.25rem);
+    width: calc(70% - 0.25rem);
+  }
+
+  .comparison-card.reference-card {
+    flex: 0 0 calc(30% - 0.25rem);
+    width: calc(30% - 0.25rem);
+  }
+
+  .biometric-hud-console {
+    padding: 0.4rem 0.75rem !important;
+    margin-top: 0.5rem !important;
+    gap: 0.5rem;
+  }
+
+  .hud-gauge {
+    display: none;
   }
 
   .event-detail-drawer {

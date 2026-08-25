@@ -119,15 +119,33 @@
       </ul>
     </li>
 
-    <!-- 5.5. Monitoreo -->
+    <!-- 5.5. Monitoreo / Visor Táctico -->
     <li class="nav-item mb-2">
       <a routerLink="/dashboard/monitoreo" routerLinkActive="active"
-        class="nav-link text-body fw-500 d-flex align-items-center rounded"
-        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Monitoreo' : ''">
-        <div class="active-indicator"></div>
-        <span class="icon-svg icon-grid nav-icon" [class.me-3]="!isCollapsed()"
-          style="width: 18px; height: 18px;"></span>
-        <span [class.d-none]="isCollapsed()">Visor Táctico</span>
+        class="nav-link text-body fw-500 d-flex align-items-center rounded justify-content-between"
+        [class.justify-content-center]="isCollapsed()"
+        [title]="isCollapsed() ? (unseenMonitoringEventsCount() > 0 ? 'Visor Táctico (' + unseenMonitoringEventsCount() + ')' : 'Visor Táctico') : ''">
+        <div class="d-flex align-items-center min-w-0">
+          <div class="active-indicator"></div>
+          <div class="position-relative d-inline-flex align-items-center justify-content-center">
+            <span class="icon-svg icon-grid nav-icon" [class.me-3]="!isCollapsed()"
+              style="width: 18px; height: 18px;"></span>
+            @if (unseenMonitoringEventsCount() > 0 && isCollapsed()) {
+              <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
+                style="margin-top: 2px; margin-left: -2px;">
+                <span class="visually-hidden">Nuevos eventos</span>
+              </span>
+            }
+          </div>
+          <span [class.d-none]="isCollapsed()" class="text-truncate">Visor Táctico</span>
+        </div>
+
+        @if (unseenMonitoringEventsCount() > 0 && !isCollapsed()) {
+          <span class="badge rounded-pill bg-danger text-white fw-bold ms-auto px-2 py-0.5"
+            style="font-size: 0.7rem; letter-spacing: -0.02em; box-shadow: 0 0 10px rgba(239, 68, 68, 0.45);">
+            {{ unseenMonitoringEventsCount() > 99 ? '99+' : unseenMonitoringEventsCount() }}
+          </span>
+        }
       </a>
     </li>
 

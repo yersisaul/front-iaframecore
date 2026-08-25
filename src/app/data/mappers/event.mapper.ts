@@ -14,6 +14,32 @@ export class EventMapper {
       lon = typeof src.location.lon === 'string' ? parseFloat(src.location.lon) : src.location.lon;
     }
     
+    const analitica = src.analitica || '';
+    const lowerAnalitica = analitica.toLowerCase();
+    const isMatch = lowerAnalitica.includes('facial') ||
+                    lowerAnalitica.includes('rostro') ||
+                    lowerAnalitica.includes('face') ||
+                    lowerAnalitica.includes('placa') ||
+                    lowerAnalitica.includes('plate') ||
+                    lowerAnalitica.includes('lpr');
+
+    let porcentajeSimilitud: number | null = null;
+    let confiabilidad: number | null = null;
+
+    if (typeof src.porcentaje_similitud === 'number') {
+      porcentajeSimilitud = src.porcentaje_similitud;
+    }
+
+    if (typeof src.confiabilidad === 'number') {
+      confiabilidad = src.confiabilidad;
+    } else if (typeof hit._score === 'number' && hit._score > 0 && hit._score <= 1) {
+      confiabilidad = hit._score;
+    }
+
+    if (isMatch && porcentajeSimilitud === null && confiabilidad !== null) {
+      porcentajeSimilitud = Math.round(confiabilidad > 1 ? confiabilidad : confiabilidad * 100);
+    }
+
     return {
       id: hit._id,
       timestamp: parseUtcDate(src.timestamp),
@@ -23,7 +49,7 @@ export class EventMapper {
       mes: src.mes || '',
       nombreCamara: src.nombre_camara || '',
       idCamara: src.id_camara || '',
-      analitica: src.analitica || '',
+      analitica,
       location: lat !== null && lon !== null ? { lat, lon } : null,
       objeto: src.objeto || '',
       detalleEvento: src.detalle_evento || '',
@@ -34,7 +60,11 @@ export class EventMapper {
       objetosEnArea: typeof src.objetos_en_area === 'number' ? src.objetos_en_area : null,
       espaciosLibres: typeof src.espacios_libres === 'number' ? src.espacios_libres : null,
       direccion: src.direccion || null,
-      idReportType: src.id_report_type || null
+      idReportType: src.id_report_type || null,
+      urlImgMatch: src.url_img_match || src.url_img_referencia ? MetadataMapper.sanitizeImageUrl(src.url_img_match || src.url_img_referencia) : null,
+      porcentajeSimilitud,
+      grupoLista: src.grupo_lista || src.lista_nombre || null,
+      confiabilidad
     };
   }
 }
