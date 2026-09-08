@@ -8,6 +8,20 @@
   </div>
 
   <ul class="nav flex-column flex-grow-1">
+    <!-- 0. Dashboard -->
+    @if (permissionsService.hasPermission('Dashboard', 'ver')) {
+    <li class="nav-item mb-2">
+      <a routerLink="/dashboard/dashboards" routerLinkActive="active"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
+        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Dashboard' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-dashboard nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()">Dashboard</span>
+      </a>
+    </li>
+    }
+
     <!-- 1. Nodos -->
     @if (permissionsService.hasPermission('Hosts', 'ver')) {
     <li class="nav-item mb-2">
@@ -122,23 +136,21 @@
     <!-- 5.5. Monitoreo / Visor Táctico -->
     <li class="nav-item mb-2">
       <a routerLink="/dashboard/monitoreo" routerLinkActive="active"
-        class="nav-link text-body fw-500 d-flex align-items-center rounded justify-content-between"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
         [class.justify-content-center]="isCollapsed()"
         [title]="isCollapsed() ? (unseenMonitoringEventsCount() > 0 ? 'Visor Táctico (' + unseenMonitoringEventsCount() + ')' : 'Visor Táctico') : ''">
-        <div class="d-flex align-items-center min-w-0">
-          <div class="active-indicator"></div>
-          <div class="position-relative d-inline-flex align-items-center justify-content-center">
-            <span class="icon-svg icon-grid nav-icon" [class.me-3]="!isCollapsed()"
-              style="width: 18px; height: 18px;"></span>
-            @if (unseenMonitoringEventsCount() > 0 && isCollapsed()) {
-              <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
-                style="margin-top: 2px; margin-left: -2px;">
-                <span class="visually-hidden">Nuevos eventos</span>
-              </span>
-            }
-          </div>
-          <span [class.d-none]="isCollapsed()" class="text-truncate">Visor Táctico</span>
+        <div class="active-indicator"></div>
+        <div class="position-relative d-inline-flex align-items-center justify-content-center flex-shrink-0"
+          [class.me-3]="!isCollapsed()">
+          <span class="icon-svg icon-grid nav-icon" style="width: 18px; height: 18px;"></span>
+          @if (unseenMonitoringEventsCount() > 0 && isCollapsed()) {
+            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
+              style="margin-top: 2px; margin-left: -2px;">
+              <span class="visually-hidden">Nuevos eventos</span>
+            </span>
+          }
         </div>
+        <span [class.d-none]="isCollapsed()" class="text-truncate flex-grow-1">Visor Táctico</span>
 
         @if (unseenMonitoringEventsCount() > 0 && !isCollapsed()) {
           <span class="badge rounded-pill bg-danger text-white fw-bold ms-auto px-2 py-0.5"

@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { authInterceptor } from './auth.interceptor';
-import { ApiKeyConfig } from '../config/api-key.config';
+import { AppEnvironment } from '../config/app-environment';
 
 describe('authInterceptor', () => {
   let httpClient: HttpClient;
@@ -19,8 +19,8 @@ describe('authInterceptor', () => {
     httpClient = TestBed.inject(HttpClient);
     httpTestingController = TestBed.inject(HttpTestingController);
     sessionStorage.clear();
-    // Reset ApiKeyConfig to ensure test isolation
-    ApiKeyConfig.apiKey = 'REPLACE_WITH_YOUR_JWT_API_KEY';
+    // Reset AppEnvironment.apiKey to ensure test isolation
+    AppEnvironment.apiKey = 'REPLACE_WITH_YOUR_JWT_API_KEY';
   });
 
   afterEach(() => {
@@ -55,8 +55,8 @@ describe('authInterceptor', () => {
     req.flush({});
   });
 
-  it('should prioritize token from localStorage over ApiKeyConfig', () => {
-    ApiKeyConfig.apiKey = 'config-jwt-token';
+  it('should prioritize token from localStorage over AppEnvironment.apiKey', () => {
+    AppEnvironment.apiKey = 'config-jwt-token';
     sessionStorage.setItem('auth_token', 'local-token');
     httpClient.get('/api/users').subscribe();
 

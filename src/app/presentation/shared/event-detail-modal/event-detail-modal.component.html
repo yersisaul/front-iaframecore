@@ -42,7 +42,7 @@
               loop></video>
             } @else {
             <div class="no-image-text-container select-none">
-              <span class="icon-svg icon-warning no-image-icon" style="background-color: #f59e0b;"></span>
+              <span class="icon-svg icon-warning no-image-icon"></span>
               <span class="no-image-title text-uppercase">
                 {{ hasVideoError() ? 'NO SE PUDO CARGAR EL VIDEO' : 'SIN VIDEO DISPONIBLE' }}
               </span>
@@ -111,14 +111,13 @@
       <div class="biometric-hud-console" (click)="$event.stopPropagation()">
         <!-- Columna 1: Sujeto Reconocido con Icono de Persona y Nombre Completo -->
         <div class="hud-col hud-identity">
-          <div class="biometric-scanner-orb" [style.--accent-color]="getSimilarityColor(matchData()?.similarity || 85)">
+          <div class="biometric-scanner-orb" [style.--accent-color]="getSimilarityColor(getDisplaySimilarity())">
             <div class="orb-scan-wave"></div>
             <span class="icon-svg icon-user orb-icon"></span>
           </div>
           <div class="hud-identity-meta">
             <div class="hud-eyebrow">
-              <span class="eyebrow-dot"
-                [style.background-color]="getSimilarityColor(matchData()?.similarity || 85)"></span>
+              <span class="eyebrow-dot" [style.background-color]="getSimilarityColor(getDisplaySimilarity())"></span>
               <span>Sujeto reconocido</span>
             </div>
             <div class="hud-subject-name" [title]="matchData()?.personName || selectedEvent.objeto">
@@ -134,8 +133,8 @@
           </div>
           <div class="gauge-track-wrapper position-relative">
             <div class="gauge-track-bg"></div>
-            <div class="gauge-track-fill" [style.width.%]="matchData()?.similarity || 85"
-              [style.--fill-color]="getSimilarityColor(matchData()?.similarity || 85)">
+            <div class="gauge-track-fill" [style.width.%]="getDisplaySimilarity()"
+              [style.--fill-color]="getSimilarityColor(getDisplaySimilarity())">
               <div class="gauge-track-glow"></div>
             </div>
           </div>
@@ -153,8 +152,8 @@
           <span class="hud-score-label text-uppercase text-center">Nivel de Similitud</span>
           <div class="hud-score-display text-center">
             <span class="hud-score-number font-monospace fw-black"
-              [style.color]="getSimilarityColor(matchData()?.similarity || 85)">
-              {{ matchData()?.similarity || 85 }}<span class="hud-score-percent">%</span>
+              [style.color]="getSimilarityColor(getDisplaySimilarity())">
+              {{ getDisplaySimilarity() }}<span class="hud-score-percent">%</span>
             </span>
           </div>
         </div>
@@ -162,7 +161,6 @@
 
     </div>
     } @else {
-    <!-- Texto centrado sin ningún contenedor ni borde con alta legibilidad en tema claro y oscuro -->
     <div class="no-image-text-container select-none">
       <span class="icon-svg icon-warning no-image-icon"></span>
       <span class="no-image-title text-uppercase">SIN VISTA PREVIA DE IMAGEN</span>
@@ -351,27 +349,30 @@
       }
 
       <!-- Atributos / Ficha de Identificación Section -->
-      @if (isFacialEvent(selectedEvent)) {
-      <!-- Componente Unificado: Ficha de Identificación Facial -->
+      @if (isMatchEvent(selectedEvent)) {
+      <!-- Componente Unificado: Ficha de Identificación (Facial o Placa) -->
       <div class="popover-section mb-4">
         <div class="popover-section-title text-uppercase fw-bold mb-3"
           style="font-size: 0.68rem; letter-spacing: 0.08em; color: var(--text-muted);">
-          Identificación Facial
+          {{ isPlateEvent(selectedEvent) ? 'Identificación de Placa Vehicular' : 'Identificación Facial' }}
         </div>
 
         <div class="facial-identity-card p-3 rounded-3">
           <div class="d-flex gap-3 align-items-center">
-            <!-- Columna Izquierda: Fotografía Cuadrada (Enfocada al Rostro) -->
+            <!-- Columna Izquierda: Fotografía o Icono -->
             <div class="identity-photo-col flex-shrink-0"
-              [style.border-color]="getSimilarityColor(matchData()?.similarity || selectedEvent.porcentajeSimilitud || 0)">
+              [style.border-color]="getSimilarityColor(getDisplaySimilarity())">
               @if (matchData()?.matchImgUrl && !hasMatchImageError()) {
               <img [src]="matchData()?.matchImgUrl" class="identity-photo-img" alt="Foto en Lista de Control" />
               } @else {
               <div
                 class="identity-photo-placeholder d-flex flex-column align-items-center justify-content-center h-100">
-                <span class="icon-svg icon-user identity-photo-placeholder-icon"
-                  [style.color]="getSimilarityColor(matchData()?.similarity || selectedEvent.porcentajeSimilitud || 0)"></span>
-                <span class="text-muted small mt-1" style="font-size: 0.65rem;">Sin foto</span>
+                <span class="icon-svg identity-photo-placeholder-icon" [class.icon-user]="!isPlateEvent(selectedEvent)"
+                  [class.icon-box]="isPlateEvent(selectedEvent)"
+                  [style.color]="getSimilarityColor(getDisplaySimilarity())"></span>
+                <span class="text-muted small mt-1" style="font-size: 0.65rem;">
+                  {{ isPlateEvent(selectedEvent) ? 'Placa' : 'Sin foto' }}
+                </span>
               </div>
               }
             </div>
@@ -379,12 +380,13 @@
             <!-- Columna Derecha: Datos de Identificación y Barra de Similitud -->
             <div class="identity-info-col d-flex flex-column justify-content-between flex-fill min-w-0">
               <div class="d-flex flex-column gap-1">
-                <span class="identity-card-name fw-bold text-break"
-                  [title]="matchData()?.personName || selectedEvent.objeto">
-                  {{ matchData()?.personName || selectedEvent.objeto }}
+                <span class="identity-card-name fw-bold text-break font-monospace"
+                  [title]="selectedEvent.sujeto || matchData()?.personName || selectedEvent.objeto">
+                  {{ selectedEvent.sujeto || matchData()?.personName || selectedEvent.objeto }}
                 </span>
                 <span class="identity-card-group text-muted">
-                  {{ matchData()?.groupName || selectedEvent.grupoLista || 'Lista de Control Facial' }}
+                  {{ matchData()?.groupName || selectedEvent.matchDetail?.listName || selectedEvent.grupoLista || 'Lista
+                  de Control' }}
                 </span>
                 @if (selectedEvent.direccion) {
                 <div class="mt-0.5">
@@ -396,21 +398,22 @@
                 }
               </div>
 
-              <!-- Barra de Similitud Biométrica Integrada -->
-              @if ((matchData()?.similarity || selectedEvent.porcentajeSimilitud); as sim) {
+              <!-- Barra de Similitud / Coincidencia Integrada -->
+              @if (getDisplaySimilarity(); as sim) {
               <div class="identity-similarity-block d-flex flex-column gap-1.5 mt-2">
-                <div class="d-flex justify-content-between align-items-center pb-1">
-                  <span class="identity-stat-label text-uppercase">Similitud Biométrica</span>
-                  <span class="font-monospace fw-bold identity-stat-val"
-                    [style.color]="getSimilarityColor(sim)">
+                <div class="d-flex justify-content-between align-items-center pb-2">
+                  <span class="identity-stat-label text-uppercase">
+                    {{ isPlateEvent(selectedEvent) ? 'Nivel de Coincidencia' : 'Similitud Biométrica' }}
+                  </span>
+                  <span class="font-monospace fw-bold identity-stat-val" [style.color]="getSimilarityColor(sim)">
                     {{ sim }}%
                   </span>
                 </div>
-                <div class="progress" style="height: 6px; background-color: var(--border-color, #e2e8f0); border-radius: 99px;">
-                  <div class="progress-bar" role="progressbar"
-                    [style.width.%]="sim"
-                    [style.background-color]="getSimilarityColor(sim)"
-                    [attr.aria-valuenow]="sim" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress"
+                  style="height: 6px; background-color: var(--border-color, #e2e8f0); border-radius: 99px;">
+                  <div class="progress-bar" role="progressbar" [style.width.%]="sim"
+                    [style.background-color]="getSimilarityColor(sim)" [attr.aria-valuenow]="sim" aria-valuemin="0"
+                    aria-valuemax="100">
                   </div>
                 </div>
               </div>
@@ -420,7 +423,7 @@
         </div>
       </div>
       } @else {
-      <!-- Atributos Detectados Estándar (No Faciales) -->
+      <!-- Atributos Detectados Estándar (No Faciales ni Placas) -->
       <div class="popover-section mb-4">
         <div class="popover-section-title text-uppercase fw-bold mb-3"
           style="font-size: 0.68rem; letter-spacing: 0.08em; color: var(--text-muted);">Atributos Detectados</div>

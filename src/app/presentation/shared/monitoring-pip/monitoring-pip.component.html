@@ -41,10 +41,13 @@
          ========================================================================= -->
 <div class="monitoring-pip-window position-fixed overflow-hidden select-none" [class.is-dragging]="isDragging()"
   [class.is-panning]="isPanning()" [class.is-resizing]="isResizing()" [class.controls-revealed]="showControls()"
-  [class.has-event-pulse]="isEventPulsing()"
-  [style.left.px]="stateService.pipPosition()?.x" [style.top.px]="stateService.pipPosition()?.y"
-  [style.width.px]="stateService.pipSize().width" [style.height.px]="stateService.pipSize().height"
+  [class.has-event-pulse]="isEventPulsing()" [class.is-expanding-fullscreen]="isExpanding()"
+  [style.left.px]="isExpanding() && expandingLeft() !== null ? expandingLeft() : stateService.pipPosition()?.x"
+  [style.top.px]="isExpanding() && expandingTop() !== null ? expandingTop() : stateService.pipPosition()?.y"
+  [style.width.px]="isExpanding() && expandingWidth() !== null ? expandingWidth() : stateService.pipSize().width"
+  [style.height.px]="isExpanding() && expandingHeight() !== null ? expandingHeight() : stateService.pipSize().height"
   (wheel)="onCanvasWheel($event)" (contextmenu)="$event.preventDefault(); $event.stopPropagation()"
+  (dblclick)="expandToMonitoring($event)"
   (mouseleave)="onMouseLeavePip()">
 
   <!-- 1. LIENZO Y CELDAS DE CÁMARAS IDÉNTICAS A MONITOREO -->
@@ -53,8 +56,8 @@
       [style.transform]="'translate(' + pipPanX() + 'px, ' + pipPanY() + 'px) scale(' + pipZoom() + ')'"
       [style.transformOrigin]="'0 0'" [style.width.px]="getCanvasDimensions().width"
       [style.height.px]="getCanvasDimensions().height"
-      [style.gridTemplateColumns]="'repeat(' + cols() + ', ' + getSlotDimensions().cellW + 'px)'"
-      [style.gridTemplateRows]="'repeat(' + rows() + ', ' + getSlotDimensions().cellH + 'px)'">
+      [style.gridTemplateColumns]="'repeat(' + cols() + ', ' + getSlotDimensions().cellW + 'px)' + (isExpanding() ? (' ' + getExtenderDimensions().width + 'px') : '')"
+      [style.gridTemplateRows]="'repeat(' + rows() + ', ' + getSlotDimensions().cellH + 'px)' + (isExpanding() ? (' ' + getExtenderDimensions().height + 'px') : '')">
 
       @for (slot of visibleGridSlots(); track slot.id) {
       <!-- Celda idéntica a Monitoreo: grid-slot-cell con slot-occupied o slot-empty -->
@@ -140,7 +143,7 @@
   <!-- 2. CONTROLES FLOTANTES OVERLAY EN LA PARTE SUPERIOR -->
   <div
     class="pip-youtube-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-between p-3"
-    (mousedown)="onOverlayMouseDown($event)" (click)="onOverlayClick($event)" (wheel)="onCanvasWheel($event)">
+    (mousedown)="onOverlayMouseDown($event)" (click)="onOverlayClick($event)" (dblclick)="expandToMonitoring($event)" (wheel)="onCanvasWheel($event)">
 
     <!-- Barra Superior: Info en vivo y Botones de Acción Agrupados -->
     <div class="pip-yt-top-bar d-flex align-items-center justify-content-between w-100">

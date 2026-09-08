@@ -71,13 +71,15 @@
       <!-- Espaciador flexible -->
       <div class="flex-grow-1"></div>
 
-      <!-- Selector de Nodos por Página -->
+      <!-- Selector de Nodos por Página (Solo en modo tarjetas) -->
+      @if (viewMode() === 'cards') {
       <div class="d-flex align-items-center gap-2">
         <label for="limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Nodos por página:</label>
         <app-custom-select [options]="limitOptions()" [value]="limit()" size="sm"
           (valueChange)="onLimitValueChange($event)">
         </app-custom-select>
       </div>
+      }
     </div>
   </app-page-header>
   <!-- /view-header -->
@@ -89,11 +91,14 @@
 
       <!-- 1. ESTADO -->
       <div class="filter-dropdown-wrapper position-relative">
-        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilterStatus().length > 0" (click)="toggleDropdown('status', $event)">
-          <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
+          <span class="status-dot" [class]="tempFilterStatus().length === 1 ? getStatusCssClass(tempFilterStatus()[0]) : 'all'"></span>
           <span>
             Estado ({{ tempFilterStatus().length || 'Todos' }})
+          </span>
+          <span class="filter-dropdown-count-pill" [class.active-pill]="tempFilterStatus().length > 0">
+            {{ getStatusCountSummary() }}
           </span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'status'" style="width: 10px; height: 10px;"></span>
@@ -105,13 +110,20 @@
           }
           @for (st of filterOptions().status; track st) {
           @let isSelected = tempFilterStatus().includes(st);
-          <button type="button"
-            class="dropdown-item py-1.5 px-3 rounded text-capitalize d-flex align-items-center justify-content-between"
+          <button type="button" class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center justify-content-between"
             [class.active]="isSelected" (click)="toggleFilterValue('status', st, $event)">
-            <span>{{ st }}</span>
-            @if (isSelected) {
-            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
-            }
+            <div class="d-flex align-items-center gap-2">
+              <span class="status-dot" [class]="getStatusCssClass(st)"></span>
+              <span>{{ getStatusFilterLabel(st) }}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="filter-item-badge" [class]="'badge-status-' + getStatusCssClass(st)">
+                {{ getStatusCount(st) }}
+              </span>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </div>
           </button>
           }
         </div>

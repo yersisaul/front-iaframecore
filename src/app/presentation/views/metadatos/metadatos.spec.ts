@@ -73,7 +73,6 @@ describe('Metadatos', () => {
     expect(component.limitOptions()).toEqual([50, 100, 150]);
 
     const spySetPageSize = vi.spyOn((component as any).metadataService, 'setPageSize');
-    const spySetPage = vi.spyOn((component as any).metadataService, 'setPage');
 
     // Trigger adjustment. We call it with a width that fits 4 columns (base cols = 4)
     // 4 * (335 + 24) - 24 = 1412px
@@ -81,7 +80,6 @@ describe('Metadatos', () => {
 
     expect(component.columns()).toBe(4);
     expect(spySetPageSize).toHaveBeenCalledWith(40);
-    expect(spySetPage).toHaveBeenCalledWith(1);
   });
 });
 

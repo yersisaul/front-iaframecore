@@ -367,9 +367,12 @@
 }
 
 @keyframes pulseFirstPoint {
-  0%, 100% {
+
+  0%,
+  100% {
     filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.4));
   }
+
   50% {
     filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.7));
   }
@@ -921,6 +924,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -931,6 +935,7 @@
     opacity: 0;
     transform: scale(0.92);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -938,13 +943,33 @@
 }
 
 @keyframes cautionIconPulse {
-  0% { transform: scale(0.65); }
-  15% { transform: scale(1.28); }
-  30% { transform: scale(1); }
-  45% { transform: scale(1.2); }
-  60% { transform: scale(1); }
-  75% { transform: scale(1.14); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.65);
+  }
+
+  15% {
+    transform: scale(1.28);
+  }
+
+  30% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.2);
+  }
+
+  60% {
+    transform: scale(1);
+  }
+
+  75% {
+    transform: scale(1.14);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .canvas-wrapper.canvas-highlight-error {
@@ -985,55 +1010,7 @@
   display: none !important;
 }
 
-/* Badges y Tags Informativos del Placeholder Bloqueado */
-.placeholder-tag {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 0.72rem;
-  letter-spacing: 0.02em;
-  color: var(--text-secondary, #cbd5e1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  max-width: 92%;
-  text-align: center;
-}
-
-.placeholder-tag.readonly-tag {
-  border-color: rgba(16, 185, 129, 0.4);
-  background: rgba(6, 78, 59, 0.45);
-  color: #a7f3d0;
-}
-
-.placeholder-tag.warning-tag {
-  border-color: rgba(245, 158, 11, 0.4);
-  background: rgba(120, 53, 15, 0.45);
-  color: #fde68a;
-}
-
-.placeholder-tag-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.toolbar-status-badge.locked-badge {
-  background: rgba(239, 68, 68, 0.12) !important;
-  border: 1px solid rgba(239, 68, 68, 0.3) !important;
-  border-radius: 6px;
-}
-
-.toolbar-status-badge.locked-badge .status-text {
-  color: #fca5a5 !important;
-}
-
 .status-dot.locked {
-  background-color: #ef4444 !important;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6) !important;
-}
-
-.help-drawing-pill.help-locked-pill {
-  background: rgba(239, 68, 68, 0.2) !important;
-  color: #fca5a5 !important;
-  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  box-shadow: none !important;
 }

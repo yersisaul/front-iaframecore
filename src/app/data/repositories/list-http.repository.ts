@@ -389,79 +389,154 @@ export class ListHttpRepository implements IListRepository {
     );
   }
 
-  querySubjectDetections(subjectName: string, type: 'face' | 'plate', documentId?: string): Observable<any[]> {
-    const trimmedName = subjectName ? subjectName.trim() : '';
-    if (!trimmedName && !documentId) {
+  /**
+   * Consulta agregada masiva al índice `eventos` estrictamente por `match_detail.list_id`
+   * para obtener el conteo de avistamientos y el evento más reciente de cada sujeto por `match_detail.detail_id`.
+   */
+  queryListEventSummaries(listId: string): Observable<Record<string, { count: number; latestHit?: any }>> {
+    if (!listId) return of({});
+
+    const queryBody = {
+      size: 0,
+      query: {
+        term: { 'match_detail.list_id': listId }
+      },
+      aggs: {
+        by_detail_id: {
+          terms: {
+            field: 'match_detail.detail_id',
+            size: 1000
+          },
+          aggs: {
+            latest_event: {
+              top_hits: {
+                size: 1,
+                sort: [{ 'timestamp': { order: 'desc' } }]
+              }
+            }
+          }
+        }
+      }
+    };
+
+    return this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/eventos/_search`, queryBody).pipe(
+      map(res => {
+        const result: Record<string, { count: number; latestHit?: any }> = {};
+        const detailBuckets = res.aggregations?.by_detail_id?.buckets || [];
+
+        const extractEventId = (src: any, fallbackId: string): string => {
+          if (src.event_id && typeof src.event_id === 'string' && src.event_id.trim()) {
+            return src.event_id.trim();
+          }
+          const url = src.url_img || src.url_video;
+          if (url && typeof url === 'string') {
+            const filename = url.split('/').pop()?.split('?')[0] || '';
+            const lastDot = filename.lastIndexOf('.');
+            const cleanId = lastDot > 0 ? filename.substring(0, lastDot) : filename;
+            if (cleanId) return cleanId;
+          }
+          return fallbackId;
+        };
+
+        for (const bucket of detailBuckets) {
+          const detailId = bucket.key;
+          const count = bucket.doc_count || 0;
+          const topHit = bucket.latest_event?.hits?.hits?.[0];
+          let latestHit: any = undefined;
+
+          if (topHit) {
+            const src = topHit._source || {};
+            const conf = src.match_detail?.confianza ?? src.confiabilidad ?? 1.0;
+            latestHit = {
+              id: topHit._id,
+              eventId: extractEventId(src, topHit._id),
+              camara: src.nombre_camara || 'Cámara',
+              timestamp: parseUtcDate(src.timestamp),
+              confiabilidad: typeof conf === 'number' ? (conf > 1 ? conf / 100 : conf) : 1.0,
+              imagen: MetadataMapper.sanitizeImageUrl(src.url_img),
+              urlVideo: src.url_video ? MetadataMapper.sanitizeImageUrl(src.url_video) : null,
+              tipoObjeto: src.objeto || '',
+              reconocimiento: src.match_detail?.list_name || src.objeto || '',
+              detalleEvento: src.detalle_evento || '',
+              posturas: [],
+              colores: []
+            };
+          }
+
+          result[detailId] = { count, latestHit };
+        }
+
+        return result;
+      }),
+      catchError(err => {
+        console.warn('[ListRepo] Error en agregación batch de eventos para la lista:', err);
+        return of({});
+      })
+    );
+  }
+
+  /**
+   * Consulta directa al índice `eventos` estrictamente por el identificador formal del sujeto (`match_detail.detail_id`).
+   */
+  querySubjectDetections(detailId: string): Observable<any[]> {
+    if (!detailId) {
       return of([]);
     }
 
-    const index = type === 'face' ? 'rostros' : 'vehiculos';
-    const shouldClauses: any[] = [];
-
-    if (trimmedName) {
-      const cleanName = trimmedName.replace(/[^A-Za-z0-9]/g, '');
-      const variants = Array.from(new Set([
-        trimmedName,
-        trimmedName.toLowerCase(),
-        trimmedName.toUpperCase(),
-        cleanName,
-        cleanName.toLowerCase(),
-        cleanName.toUpperCase()
-      ].filter(Boolean)));
-
-      shouldClauses.push(
-        { terms: { 'reconocimiento.keyword': variants } },
-        { terms: { 'reconocimiento': variants } },
-        { match_phrase: { 'reconocimiento': trimmedName } },
-        { match: { 'reconocimiento': trimmedName } },
-        { wildcard: { 'reconocimiento.keyword': { value: `*${trimmedName}*`, case_insensitive: true } } },
-        { wildcard: { 'reconocimiento': { value: `*${trimmedName}*`, case_insensitive: true } } }
-      );
-    }
-
-    if (documentId) {
-      shouldClauses.push(
-        { ids: { values: [documentId] } },
-        { term: { '_id': documentId } },
-        { term: { '_id.keyword': documentId } }
-      );
-    }
-
     const query = {
-      size: 500,
+      size: 200,
       query: {
         bool: {
-          should: shouldClauses,
+          should: [
+            { term: { 'match_detail.detail_id': detailId } },
+            { term: { 'match_detail.detail_id.keyword': detailId } }
+          ],
           minimum_should_match: 1
         }
       },
       sort: [
-        { "timestamp": { "order": "desc" } }
+        { 'timestamp': { 'order': 'desc' } }
       ]
     };
 
-    return this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/${index}/_search`, query).pipe(
+    return this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/eventos/_search`, query).pipe(
       map(res => {
+        const extractEventId = (src: any, fallbackId: string): string => {
+          if (src.event_id && typeof src.event_id === 'string' && src.event_id.trim()) {
+            return src.event_id.trim();
+          }
+          const url = src.url_img || src.url_video;
+          if (url && typeof url === 'string') {
+            const filename = url.split('/').pop()?.split('?')[0] || '';
+            const lastDot = filename.lastIndexOf('.');
+            const cleanId = lastDot > 0 ? filename.substring(0, lastDot) : filename;
+            if (cleanId) return cleanId;
+          }
+          return fallbackId;
+        };
+
         const hits = res.hits?.hits || [];
         return hits.map((h: any) => {
           const src = h._source || {};
+          const conf = src.match_detail?.confianza ?? src.confiabilidad ?? 1.0;
           return {
             id: h._id,
-            camara: src.camara || src.camera_name || src.camera || 'Cámara',
+            eventId: extractEventId(src, h._id),
+            camara: src.nombre_camara || 'Cámara',
             timestamp: parseUtcDate(src.timestamp),
-            confiabilidad: typeof src.confiabilidad === 'number' ? src.confiabilidad : (typeof h._score === 'number' ? h._score : 1.0),
-            imagen: MetadataMapper.sanitizeImageUrl(src.ruta_imagen_remota || src.url_img || src.imagen),
-            tipoObjeto: src.tipoObjeto || src.tipo_objeto || '',
-            edad: src.edad || '',
-            genero: src.genero || '',
-            reconocimiento: src.reconocimiento || trimmedName,
-            posturas: src.posturas || [],
-            colores: src.colores || []
+            confiabilidad: typeof conf === 'number' ? (conf > 1 ? conf / 100 : conf) : 1.0,
+            imagen: MetadataMapper.sanitizeImageUrl(src.url_img),
+            urlVideo: src.url_video ? MetadataMapper.sanitizeImageUrl(src.url_video) : null,
+            tipoObjeto: src.objeto || '',
+            reconocimiento: src.match_detail?.list_name || src.objeto || '',
+            detalleEvento: src.detalle_evento || '',
+            posturas: [],
+            colores: []
           };
         });
       }),
       catchError(err => {
-        console.error(`[ListRepo] Error fetching past ${type} detections from OpenSearch:`, err);
+        console.error('[ListRepo] Error consultando eventos del sujeto en OpenSearch:', err);
         return of([]);
       })
     );

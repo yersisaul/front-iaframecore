@@ -15,12 +15,11 @@ import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/c
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
-import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 
 @Component({
   selector: 'app-usuarios',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent, EmptyStateComponent, SearchInputComponent, FilterActionsComponent],
+  imports: [CommonModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent, EmptyStateComponent, SearchInputComponent],
   templateUrl: './usuarios.html',
   styleUrl: './usuarios.css',
   host: {
@@ -48,22 +47,18 @@ export class Usuarios implements OnInit, OnDestroy {
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
   readonly searchControl = new FormControl('');
   readonly searchQuery = signal<string>('');
-  readonly tempSelectedRoleFilter = signal<string[]>([]);
-  readonly appliedRoleFilter = signal<string[]>([]);
-  readonly showFilters = signal<boolean>(false);
+  readonly tempSelectedRoleFilter = signal<string | null>(null);
+  readonly appliedRoleFilter = signal<string | null>(null);
+  readonly selectedRoleFilter = this.appliedRoleFilter;
+  readonly showFilters = signal<boolean>(true);
   readonly activeDropdown = signal<string | null>(null);
 
   readonly hasActiveFilters = computed<boolean>(() => {
-    return this.searchQuery().trim().length > 0 || this.appliedRoleFilter().length > 0;
+    return this.searchQuery().trim().length > 0 || !!this.appliedRoleFilter();
   });
 
   readonly hasPendingFilterChanges = computed<boolean>(() => {
-    const temp = this.tempSelectedRoleFilter();
-    const applied = this.appliedRoleFilter();
-    if (temp.length !== applied.length) return true;
-    const sortedT = [...temp].sort();
-    const sortedA = [...applied].sort();
-    return !sortedT.every((val, i) => val === sortedA[i]);
+    return this.tempSelectedRoleFilter() !== this.appliedRoleFilter();
   });
 
   // Roles disponibles cargados dinámicamente desde el backend
@@ -78,6 +73,7 @@ export class Usuarios implements OnInit, OnDestroy {
   readonly expandedGroups = signal<Set<string>>(new Set());
 
   private readonly resourceNames: Record<string, string> = {
+    'dashboard': 'Gestión de Dashboards',
     'users': 'Gestión de Usuarios',
     'roles': 'Gestión de Roles',
     'hosts': 'Gestión de Nodos / Servidores',
@@ -126,7 +122,7 @@ export class Usuarios implements OnInit, OnDestroy {
         others: group.others
       };
     }).sort((a, b) => {
-      const resourceOrder = ['hosts', 'cameras', 'analytics', 'schedules', 'lists', 'list_details', 'users', 'roles'];
+      const resourceOrder = ['dashboard', 'hosts', 'cameras', 'analytics', 'schedules', 'lists', 'list_details', 'users', 'roles'];
       const idxA = resourceOrder.indexOf(a.resource);
       const idxB = resourceOrder.indexOf(b.resource);
       return idxA - idxB;
@@ -209,7 +205,7 @@ export class Usuarios implements OnInit, OnDestroy {
       event.stopPropagation();
     }
     if (!this.showFilters()) {
-      this.tempSelectedRoleFilter.set([...this.appliedRoleFilter()]);
+      this.tempSelectedRoleFilter.set(this.appliedRoleFilter());
     }
     this.showFilters.update(v => !v);
   }
@@ -250,25 +246,40 @@ export class Usuarios implements OnInit, OnDestroy {
     this.activeDropdown.set(null);
   }
 
-  toggleRoleFilter(role: string, event?: Event): void {
+  selectRoleFilter(role: string | null, event?: Event): void {
     if (event) event.stopPropagation();
-    const current = this.tempSelectedRoleFilter();
-    if (current.includes(role)) {
-      this.tempSelectedRoleFilter.set(current.filter(r => r !== role));
-    } else {
-      this.tempSelectedRoleFilter.set([...current, role]);
-    }
+    const nextVal = this.appliedRoleFilter() === role ? null : role;
+    this.tempSelectedRoleFilter.set(nextVal);
+    this.appliedRoleFilter.set(nextVal);
+    this.activeDropdown.set(null);
+  }
+
+  setRoleFilter(role: string | null): void {
+    const val = role === 'TODOS' ? null : role;
+    this.tempSelectedRoleFilter.set(val);
+    this.appliedRoleFilter.set(val);
+    this.activeDropdown.set(null);
   }
 
   onApplyFilters(): void {
-    this.appliedRoleFilter.set([...this.tempSelectedRoleFilter()]);
+    this.appliedRoleFilter.set(this.tempSelectedRoleFilter());
   }
 
   onResetFilters(): void {
     this.searchControl.setValue('', { emitEvent: true });
     this.searchQuery.set('');
-    this.tempSelectedRoleFilter.set([]);
-    this.appliedRoleFilter.set([]);
+    this.tempSelectedRoleFilter.set(null);
+    this.appliedRoleFilter.set(null);
+    this.activeDropdown.set(null);
+  }
+
+  getRoleCount(role: string): number {
+    return this.enrichedUsers().filter(u => (u.role || '').toUpperCase() === role.toUpperCase()).length;
+  }
+
+  getRoleDotColor(role: string | null): string {
+    if (!role) return '#94a3b8';
+    return this.getRoleStyle(role)['--role-color'] || '#94a3b8';
   }
 
   setTab(tab: 'usuarios' | 'roles'): void {
@@ -307,14 +318,14 @@ export class Usuarios implements OnInit, OnDestroy {
 
   readonly filteredUsers = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
-    const roles = this.appliedRoleFilter();
+    const role = this.appliedRoleFilter();
     const filtered = this.enrichedUsers().filter(u => {
       const matchesQuery = !query ||
         (u.name || '').toLowerCase().includes(query) ||
         (u.firstName || '').toLowerCase().includes(query) ||
         (u.lastName || '').toLowerCase().includes(query) ||
         (u.email || '').toLowerCase().includes(query);
-      const matchesRole = roles.length === 0 || roles.some(r => r.toUpperCase() === (u.role || '').toUpperCase());
+      const matchesRole = !role || role.toUpperCase() === 'TODOS' || (u.role || '').toUpperCase() === role.toUpperCase();
       return matchesQuery && matchesRole;
     });
     return [...filtered].sort((a, b) => {
@@ -521,6 +532,7 @@ export class Usuarios implements OnInit, OnDestroy {
         this.showToast('Usuario registrado con éxito', 'success');
         this.closeRegisterModal();
         this.isSaving.set(false);
+        this.loadUsers();
       },
       error: (err) => {
         console.error('Error registering user:', err);
@@ -568,6 +580,7 @@ export class Usuarios implements OnInit, OnDestroy {
         this.showToast('Usuario actualizado con éxito', 'success');
         this.closeEditModal();
         this.isSaving.set(false);
+        this.loadUsers();
       },
       error: (err) => {
         console.error('Error updating user:', err);
@@ -638,6 +651,7 @@ export class Usuarios implements OnInit, OnDestroy {
         this.showToast('Usuario eliminado con éxito', 'success');
         this.closeDeleteModal();
         this.isSaving.set(false);
+        this.loadUsers();
       },
       error: (err) => {
         console.error('Error deleting user:', err);
@@ -909,6 +923,7 @@ export class Usuarios implements OnInit, OnDestroy {
 
   getResourceIcon(resource: string): string {
     const icons: Record<string, string> = {
+      'dashboard': 'icon-dashboard',
       'users': 'icon-usuarios',
       'roles': 'icon-usuarios',
       'hosts': 'icon-nodos',
@@ -923,6 +938,7 @@ export class Usuarios implements OnInit, OnDestroy {
 
   getResourceColor(resource: string): string {
     const colors: Record<string, string> = {
+      'dashboard': '#0ea5e9',
       'users': '#0d6efd',
       'roles': '#4f46e5',
       'hosts': '#10b981',

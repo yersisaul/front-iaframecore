@@ -10,12 +10,14 @@ import { ScheduleService } from './schedule.service';
 import { ListService } from './list.service';
 import { UserService } from './user.service';
 import { HostService } from './host.service';
+import { DashboardService } from './dashboard.service';
 import { PermissionsService } from './permissions.service';
 import { IMetadataRepository } from '../domain/repositories/metadata.repository';
 import { IEventRepository } from '../domain/repositories/event.repository';
 import { IUserRepository } from '../domain/repositories/user.repository';
 import { IScheduleRepository } from '../domain/repositories/schedule.repository';
 import { IListRepository } from '../domain/repositories/list.repository';
+import { IDashboardRepository } from '../domain/repositories/dashboard.repository';
 import { WebsocketConnectionService } from './websocket-connection.service';
 import { HostMetrics } from '../domain/entities/host.models';
 
@@ -33,6 +35,7 @@ export class WebsocketService {
   private listService = inject(ListService);
   private userService = inject(UserService);
   private hostService = inject(HostService);
+  private dashboardService = inject(DashboardService);
   private permissionsService = inject(PermissionsService);
 
   private metadataRepository = inject(IMetadataRepository);
@@ -40,6 +43,7 @@ export class WebsocketService {
   private userRepository = inject(IUserRepository);
   private scheduleRepository = inject(IScheduleRepository);
   private listRepository = inject(IListRepository);
+  private dashboardRepository = inject(IDashboardRepository);
 
   private connectionService = inject(WebsocketConnectionService);
   private subscription: Subscription | null = null;
@@ -74,7 +78,8 @@ export class WebsocketService {
 
       // Si el índice del metadato coincide con el activo en pantalla, recargar los detalles
       const activeFilters = this.metadataService.filters();
-      if (this.metadataService.isViewActive() && this.metadataService.activeIndex() === indexName) {
+      const isKnnActive = !!(activeFilters?.imageSearchUrl || (activeFilters?.imageEmbedding && activeFilters.imageEmbedding.length > 0));
+      if (this.metadataService.isViewActive() && this.metadataService.activeIndex() === indexName && !isKnnActive) {
         console.log(`[WebSocket] Consultando OpenSearch para metadato en vivo del índice activo "${indexName}"`);
         this.metadataRepository.getById(indexName, docId).subscribe({
           next: (newRecord) => {
@@ -604,6 +609,42 @@ export class WebsocketService {
       console.log(`[WebSocket] Métricas en tiempo real recibidas para nodo: ${fingerprint}`);
       // Actualizar métricas y marcar estado como 'online'
       this.hostService.updateHostMetrics(fingerprint, newMetrics, 'online');
+
+    } else if (action === 'dashboard_created' || action === 'dashboard_updated') {
+      const dashboardId = body.dashboard_id || msg.dashboard_id || body.id || msg.id;
+      if (!dashboardId) return;
+      console.log(`[WebSocket] Dashboard creado/actualizado recibido: ${dashboardId}`);
+
+      const isUpdate = this.dashboardService.dashboards().some(d => d.id === dashboardId);
+      this.dashboardRepository.getById(dashboardId).subscribe({
+        next: (dashboard) => {
+          this.dashboardService.addOrUpdateDashboardLocal(dashboard);
+          if (this.dashboardService.isViewActive()) {
+            if (isUpdate) {
+              this.dashboardService.markAsUpdated(dashboardId);
+            } else {
+              this.dashboardService.markAsNew(dashboardId);
+            }
+          }
+        },
+        error: (err) => {
+          console.error('[WebSocket] Error al cargar dashboard individual desde API:', err);
+          this.dashboardService.loadDashboards().subscribe();
+        }
+      });
+
+    } else if (action === 'dashboard_deleted') {
+      const dashboardId = body.dashboard_id || msg.dashboard_id || body.id || msg.id;
+      if (!dashboardId) return;
+      console.log(`[WebSocket] Dashboard eliminado recibido: ${dashboardId}`);
+      if (this.dashboardService.isViewActive()) {
+        this.dashboardService.markAsDeleting(dashboardId);
+        setTimeout(() => {
+          this.dashboardService.deleteDashboardLocal(dashboardId);
+        }, 450);
+      } else {
+        this.dashboardService.deleteDashboardLocal(dashboardId);
+      }
     }
   }
 

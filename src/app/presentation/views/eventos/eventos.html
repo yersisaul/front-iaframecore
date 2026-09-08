@@ -1,12 +1,12 @@
 <div #eventosContainer class="eventos-view-container container-fluid py-4 position-relative">
   <!-- Header Section REFACTORIZADO DRY -->
-  <app-page-header
-    title="Eventos y Alertas"
+  <app-page-header title="Eventos y Alertas"
     [subtitle]="'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + formatTotalRecords(totalRecords()) + '</span> eventos registrados en el sistema.'">
     <ng-container header-actions>
       <!-- Search and Page Size Selector -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
-        <app-search-input [control]="searchControl" placeholder="Buscar eventos..." inputWidth="180px"></app-search-input>
+        <app-search-input [control]="searchControl" placeholder="Buscar eventos..."
+          inputWidth="180px"></app-search-input>
 
         <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
           (click)="toggleFiltersVisibility()" [class.active]="hasActiveFilters()" [class.open]="showFilters()"
@@ -43,42 +43,42 @@
             [class.rotated]="activeDropdown() === 'camaras'"></span>
         </button>
         @if (activeDropdown() === 'camaras') {
-        <div class="filter-dropdown-menu dropdown-camaras p-2 scrollable-menu" (click)="$event.stopPropagation()">
-          <!-- Searchbar interno de cámaras -->
-          <div class="camera-search-wrapper px-1 pb-2">
-            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1" style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
+        <div class="filter-dropdown-menu dropdown-camaras p-0" (click)="$event.stopPropagation()">
+          <!-- Searchbar interno de cámaras fijo arriba -->
+          <div class="dropdown-search-header p-2">
+            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
+              style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
-              <input
-                #cameraSearchInput
-                type="text"
-                class="camera-search-input border-0 bg-transparent w-100"
-                placeholder="Buscar cámara..."
-                (input)="cameraSearch.set(cameraSearchInput.value)"
-                (click)="$event.stopPropagation()"
-                autocomplete="off"
+              <input #cameraSearchInput type="text" class="camera-search-input border-0 bg-transparent w-100"
+                placeholder="Buscar cámara..." (input)="cameraSearch.set(cameraSearchInput.value)"
+                (click)="$event.stopPropagation()" autocomplete="off"
                 style="font-size: 0.8rem; outline: none; min-width: 0;" />
               @if (cameraSearch()) {
               <button type="button" class="btn-ghost p-0 d-flex" style="opacity: 0.5; line-height: 1;"
-                (click)="cameraSearchInput.value = ''; cameraSearch.set(''); $event.stopPropagation()" title="Limpiar búsqueda">
+                (click)="cameraSearchInput.value = ''; cameraSearch.set(''); $event.stopPropagation()"
+                title="Limpiar búsqueda">
                 <span style="font-size: 0.75rem;">✕</span>
               </button>
               }
             </div>
           </div>
-          @if (filteredCamarasOptions().length === 0) {
-          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
-          }
-          @for (cam of filteredCamarasOptions(); track cam) {
-          @let isSelected = tempFilters().camaras.includes(cam);
-          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1 px-3 rounded"
-            [class.active]="isSelected"
-            (click)="toggleMultiSelectFilter('camaras', cam)">
-            <span class="text-truncate" [title]="cam">{{ cam }}</span>
-            @if (isSelected) {
-            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+          <!-- Opciones scrolleables -->
+          <div class="dropdown-items-scroll scrollable-menu p-2 pt-1">
+            @if (filteredCamarasOptions().length === 0) {
+            <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
             }
-          </button>
-          }
+            @for (cam of filteredCamarasOptions(); track cam) {
+            @let isSelected = tempFilters().camaras.includes(cam);
+            <button type="button"
+              class="dropdown-item d-flex align-items-center justify-content-between gap-2 py-1 px-3 rounded"
+              [class.active]="isSelected" (click)="toggleMultiSelectFilter('camaras', cam)">
+              <span class="text-truncate" [title]="cam">{{ cam }}</span>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </button>
+            }
+          </div>
         </div>
         }
       </div>
@@ -99,9 +99,9 @@
           }
           @for (ana of filterOptions().analiticas; track ana) {
           @let isSelected = tempFilters().analiticas.includes(ana);
-          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded"
-            [class.active]="isSelected"
-            (click)="toggleMultiSelectFilter('analiticas', ana)">
+          <button type="button"
+            class="dropdown-item d-flex align-items-center justify-content-between gap-2 py-1.5 px-3 rounded"
+            [class.active]="isSelected" (click)="toggleMultiSelectFilter('analiticas', ana)">
             <span class="text-truncate text-capitalize">{{ ana }}</span>
             @if (isSelected) {
             <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
@@ -123,14 +123,14 @@
         </button>
         @if (activeDropdown() === 'objetos') {
         <div class="filter-dropdown-menu dropdown-objetos p-2 scrollable-menu" (click)="$event.stopPropagation()">
-          @if (filterOptions().objetos.length === 0) {
+          @if (filteredObjetosOptions().length === 0) {
           <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }
-          @for (obj of filterOptions().objetos; track obj) {
+          @for (obj of filteredObjetosOptions(); track obj) {
           @let isSelected = tempFilters().objetos.includes(obj);
-          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded"
-            [class.active]="isSelected"
-            (click)="toggleMultiSelectFilter('objetos', obj)">
+          <button type="button"
+            class="dropdown-item d-flex align-items-center justify-content-between gap-2 py-1.5 px-3 rounded"
+            [class.active]="isSelected" (click)="toggleMultiSelectFilter('objetos', obj)">
             <span class="text-truncate text-capitalize">{{ obj }}</span>
             @if (isSelected) {
             <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
@@ -141,7 +141,105 @@
         }
       </div>
 
-      <!-- 4. RANGO DE FECHAS -->
+      <!-- 4. FILTRO LISTAS DE CONTROL -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="(tempFilters().listas?.length || 0) > 0" (click)="toggleDropdown('listas', $event)">
+          <span class="icon-svg icon-listas" style="width: 14px; height: 14px;"></span>
+          <span>Lista de Control ({{ tempFilters().listas?.length || 'Todas' }})</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all" style="width: 10px; height: 10px;"
+            [class.rotated]="activeDropdown() === 'listas'"></span>
+        </button>
+        @if (activeDropdown() === 'listas') {
+        <div class="filter-dropdown-menu dropdown-listas p-0" (click)="$event.stopPropagation()">
+          <!-- Searchbar interno de listas fijo arriba -->
+          <div class="dropdown-search-header p-2">
+            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
+              style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
+              <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
+              <input #listaSearchInput type="text" class="camera-search-input border-0 bg-transparent w-100"
+                placeholder="Buscar lista..." [value]="listaSearch()"
+                (input)="listaSearch.set($any($event.target).value)" (click)="$event.stopPropagation()"
+                autocomplete="off" style="font-size: 0.8rem; outline: none; min-width: 0;" />
+              @if (listaSearch()) {
+              <button type="button" class="btn-ghost p-0 d-flex" style="opacity: 0.5; line-height: 1;"
+                (click)="listaSearch.set(''); $event.stopPropagation()" title="Limpiar búsqueda">
+                <span style="font-size: 0.75rem;">✕</span>
+              </button>
+              }
+            </div>
+          </div>
+          <!-- Opciones scrolleables -->
+          <div class="dropdown-items-scroll scrollable-menu p-2 pt-1">
+            @if (filteredListasOptions().length === 0) {
+            <div class="text-muted small text-center py-2 opacity-60">Sin listas registradas</div>
+            }
+            @for (lst of filteredListasOptions(); track lst) {
+            @let isSelected = (tempFilters().listas || []).includes(lst);
+            <button type="button"
+              class="dropdown-item d-flex align-items-center justify-content-between gap-2 py-1.5 px-3 rounded"
+              [class.active]="isSelected" (click)="toggleMultiSelectFilter('listas', lst)">
+              <span class="text-truncate">{{ lst }}</span>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </button>
+            }
+          </div>
+        </div>
+        }
+      </div>
+
+      <!-- 5. FILTRO SUJETOS (LISTAS DETALLE) -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="(tempFilters().sujetos?.length || 0) > 0" (click)="toggleDropdown('sujetos', $event)">
+          <span class="icon-svg icon-usuarios" style="width: 14px; height: 14px;"></span>
+          <span>Sujeto ({{ tempFilters().sujetos?.length || 'Todos' }})</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all" style="width: 10px; height: 10px;"
+            [class.rotated]="activeDropdown() === 'sujetos'"></span>
+        </button>
+        @if (activeDropdown() === 'sujetos') {
+        <div class="filter-dropdown-menu dropdown-sujetos p-0" (click)="$event.stopPropagation()">
+          <!-- Searchbar interno de sujetos fijo arriba -->
+          <div class="dropdown-search-header p-2">
+            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
+              style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
+              <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
+              <input #sujetoSearchInput type="text" class="camera-search-input border-0 bg-transparent w-100"
+                placeholder="Buscar sujeto..." [value]="sujetoSearch()"
+                (input)="sujetoSearch.set($any($event.target).value)" (click)="$event.stopPropagation()"
+                autocomplete="off" style="font-size: 0.8rem; outline: none; min-width: 0;" />
+              @if (sujetoSearch()) {
+              <button type="button" class="btn-ghost p-0 d-flex" style="opacity: 0.5; line-height: 1;"
+                (click)="sujetoSearch.set(''); $event.stopPropagation()" title="Limpiar búsqueda">
+                <span style="font-size: 0.75rem;">✕</span>
+              </button>
+              }
+            </div>
+          </div>
+          <!-- Opciones scrolleables -->
+          <div class="dropdown-items-scroll scrollable-menu p-2 pt-1">
+            @if (filteredSujetosOptions().length === 0) {
+            <div class="text-muted small text-center py-2 opacity-60">Sin sujetos registrados</div>
+            }
+            @for (sujeto of filteredSujetosOptions(); track sujeto) {
+            @let isSelected = (tempFilters().sujetos || []).includes(sujeto);
+            <button type="button"
+              class="dropdown-item d-flex align-items-center justify-content-between gap-2 py-1.5 px-3 rounded"
+              [class.active]="isSelected" (click)="toggleMultiSelectFilter('sujetos', sujeto)">
+              <span class="text-truncate">{{ sujeto }}</span>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </button>
+            }
+          </div>
+        </div>
+        }
+      </div>
+
+      <!-- 6. RANGO DE FECHAS -->
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilters().timestampDesde || tempFilters().timestampHasta"
@@ -374,12 +472,9 @@
 
       <!-- Empty State (REUTILIZABLE DRY) -->
       @if (!isLoading() && records().length === 0) {
-      <app-empty-state
-        title="Sin Eventos"
-        description="No se encontraron registros de eventos para los filtros seleccionados."
-        iconClass="icon-warning"
-        actionText="Restablecer Filtros"
-        (action)="onResetFilters()">
+      <app-empty-state title="Sin Eventos"
+        description="No se encontraron registros de eventos para los filtros seleccionados." iconClass="icon-warning"
+        actionText="Restablecer Filtros" (action)="onResetFilters()">
       </app-empty-state>
       }
 
@@ -407,7 +502,8 @@
 
             @if (record.urlImg) {
             <img [src]="record.urlImg" (error)="onImageError($event)"
-              class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;" alt="Event Thumbnail" />
+              class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
+              alt="Event Thumbnail" />
             }
 
             <!-- Floating Analytic Type Badge -->
@@ -436,48 +532,108 @@
 
               <!-- Indicador de Similitud o Confiabilidad (Estilo Metadatos) -->
               @if (isMatchingAnalytic(record.analitica)) {
-                @if (record.porcentajeSimilitud !== null && record.porcentajeSimilitud !== undefined) {
-                <div class="reliability-indicator mb-1">
-                  <div class="d-flex justify-content-between small text-muted mb-1">
-                    <span>Similitud</span>
-                    <span class="fw-bold" [ngClass]="{
-                          'text-danger': record.porcentajeSimilitud < 65,
-                          'text-warning': record.porcentajeSimilitud >= 65 && record.porcentajeSimilitud < 80,
-                          'text-success': record.porcentajeSimilitud >= 80
+              @if (record.porcentajeSimilitud !== null && record.porcentajeSimilitud !== undefined) {
+              <div class="reliability-indicator mb-1">
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                  <span>Similitud</span>
+                  <span class="fw-bold font-monospace" [ngClass]="{
+                          'reliability-val--low': record.porcentajeSimilitud < 65,
+                          'reliability-val--mid': record.porcentajeSimilitud >= 65 && record.porcentajeSimilitud < 80,
+                          'reliability-val--high': record.porcentajeSimilitud >= 80
                         }">{{ record.porcentajeSimilitud }}%</span>
-                  </div>
-                  <div class="progress" style="height: 5px; background-color: var(--border-color);">
-                    <div class="progress-bar" role="progressbar" [style.width.%]="record.porcentajeSimilitud" [ngClass]="{
-                                'bg-danger': record.porcentajeSimilitud < 65,
-                                'bg-warning': record.porcentajeSimilitud >= 65 && record.porcentajeSimilitud < 80,
-                                'bg-success': record.porcentajeSimilitud >= 80
-                              }" [attr.aria-valuenow]="record.porcentajeSimilitud" aria-valuemin="0" aria-valuemax="100">
-                    </div>
+                </div>
+                <div class="progress" style="height: 5px; background-color: var(--border-color);">
+                  <div class="progress-bar" role="progressbar" [style.width.%]="record.porcentajeSimilitud" [ngClass]="{
+                                'progress-bar--low': record.porcentajeSimilitud < 65,
+                                'progress-bar--mid': record.porcentajeSimilitud >= 65 && record.porcentajeSimilitud < 80,
+                                'progress-bar--high': record.porcentajeSimilitud >= 80
+                              }" [attr.aria-valuenow]="record.porcentajeSimilitud" aria-valuemin="0"
+                    aria-valuemax="100">
                   </div>
                 </div>
-                }
-              } @else {
-                @if (record.confiabilidad !== null && record.confiabilidad !== undefined) {
-                <div class="reliability-indicator mb-1">
-                  <div class="d-flex justify-content-between small text-muted mb-1">
-                    <span>Confiabilidad</span>
-                    <span class="fw-bold" [ngClass]="{
-                          'text-danger': record.confiabilidad < 0.5,
-                          'text-warning': record.confiabilidad >= 0.5 && record.confiabilidad < 0.8,
-                          'text-success': record.confiabilidad >= 0.8
-                        }">{{ (record.confiabilidad > 1 ? record.confiabilidad : record.confiabilidad * 100) | number:'1.0-0' }}%</span>
-                  </div>
-                  <div class="progress" style="height: 5px; background-color: var(--border-color);">
-                    <div class="progress-bar" role="progressbar" [style.width.%]="record.confiabilidad > 1 ? record.confiabilidad : record.confiabilidad * 100" [ngClass]="{
-                                'bg-danger': record.confiabilidad < 0.5,
-                                'bg-warning': record.confiabilidad >= 0.5 && record.confiabilidad < 0.8,
-                                'bg-success': record.confiabilidad >= 0.8
-                              }" [attr.aria-valuenow]="record.confiabilidad > 1 ? record.confiabilidad : record.confiabilidad * 100" aria-valuemin="0" aria-valuemax="100">
-                    </div>
-                  </div>
-                </div>
-                }
+              </div>
               }
+              } @else {
+              @if (record.confiabilidad !== null && record.confiabilidad !== undefined) {
+              @let confPct = (record.confiabilidad > 1 ? record.confiabilidad : record.confiabilidad * 100);
+              <div class="reliability-indicator mb-1">
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                  <span>Confiabilidad</span>
+                  <span class="fw-bold font-monospace" [ngClass]="{
+                          'reliability-val--low': record.confiabilidad < 0.5,
+                          'reliability-val--mid': record.confiabilidad >= 0.5 && record.confiabilidad < 0.8,
+                          'reliability-val--high': record.confiabilidad >= 0.8
+                        }">{{ confPct | number:'1.0-0' }}%</span>
+                </div>
+                <div class="progress" style="height: 5px; background-color: var(--border-color);">
+                  <div class="progress-bar" role="progressbar" [style.width.%]="confPct" [ngClass]="{
+                                'progress-bar--low': record.confiabilidad < 0.5,
+                                'progress-bar--mid': record.confiabilidad >= 0.5 && record.confiabilidad < 0.8,
+                                'progress-bar--high': record.confiabilidad >= 0.8
+                              }" [attr.aria-valuenow]="confPct" aria-valuemin="0" aria-valuemax="100">
+                  </div>
+                </div>
+              </div>
+              }
+              }
+
+              <!-- Badges de Métricas Contextuales por Analítica (Diseño equilibrado con alto contraste y sin estridencia) -->
+              <div class="d-flex flex-wrap gap-2 mt-3 align-items-center">
+                <!-- Sentido de Cruce de Línea -->
+                @if (record.direccion) {
+                @let isEntrada = record.direccion.toLowerCase().includes('entrada');
+                <span class="event-meta-badge text-capitalize" [class.event-meta-badge--entrada]="isEntrada"
+                  [class.event-meta-badge--salida]="!isEntrada">
+                  <span class="icon-svg flex-shrink-0" [class.icon-chevron-right]="isEntrada"
+                    [class.icon-chevron-left]="!isEntrada" style="width: 9px; height: 9px;"></span>
+                  {{ record.direccion }}
+                </span>
+                }
+
+                <!-- Control de Aforo -->
+                @if (record.conteoAforo !== null) {
+                <span class="event-meta-badge event-meta-badge--neutral">
+                  Aforo: {{ record.conteoAforo }}
+                </span>
+                }
+
+                <!-- Tiempo de Permanencia -->
+                @if (record.tiempoPermanencia !== null) {
+                <span class="event-meta-badge event-meta-badge--neutral">
+                  Permanencia: {{ record.tiempoPermanencia | number:'1.0-1' }}s
+                </span>
+                }
+
+                <!-- Objetos en Área (Ocupancia) -->
+                @if (record.objetosEnArea !== null) {
+                <span class="event-meta-badge event-meta-badge--neutral">
+                  En área: {{ record.objetosEnArea }}
+                </span>
+                }
+
+                <!-- Espacios Libres (Estacionamiento) -->
+                @if (record.espaciosLibres !== null) {
+                <span class="event-meta-badge event-meta-badge--neutral">
+                  Libres: {{ record.espaciosLibres }}
+                </span>
+                }
+
+                <!-- Lista de Control Oficial -->
+                @if (record.matchDetail?.listName || record.grupoLista; as listName) {
+                <span class="event-meta-badge event-meta-badge--lista text-truncate" [title]="listName">
+                  <span class="icon-svg icon-listas flex-shrink-0" style="width: 10px; height: 10px;"></span>
+                  {{ listName }}
+                </span>
+                }
+
+                <!-- Sujeto Identificado (Persona o Placa) -->
+                @if (record.sujeto; as sujeto) {
+                <span class="event-meta-badge event-meta-badge--sujeto text-truncate" [title]="'Sujeto: ' + sujeto">
+                  <span class="icon-svg icon-usuarios flex-shrink-0" style="width: 10px; height: 10px;"></span>
+                  {{ sujeto }}
+                </span>
+                }
+              </div>
             </div>
           </div>
         </div>
@@ -489,8 +645,7 @@
       <div class="metadata-card-popover" [style.left.px]="mouseX()" [style.top.px]="mouseY()">
         <div class="popover-header d-flex align-items-center justify-content-between">
           <div class="d-flex align-items-center gap-1.5">
-            <span class="icon-svg icon-box text-primary popover-header-icon"
-              style="width: 12px; height: 12px;"></span>
+            <span class="icon-svg icon-box text-primary popover-header-icon" style="width: 12px; height: 12px;"></span>
             <span class="popover-header-title text-muted text-uppercase fw-bold">Atributos</span>
           </div>
           <span class="badge bg-secondary-light text-secondary text-capitalize"
@@ -514,6 +669,30 @@
             }
           </div>
         </div>
+
+        <!-- Sección Lista de Control -->
+        @if (record.matchDetail || record.grupoLista) {
+        <div class="popover-section">
+          <div class="popover-section-title text-muted text-uppercase fw-bold">Lista de Control</div>
+          <div class="attributes-grid">
+            <span class="attribute-pill recognition-pill text-truncate"
+              [title]="record.matchDetail?.listName || record.grupoLista">
+              Lista: {{ record.matchDetail?.listName || record.grupoLista }}
+            </span>
+            @if (record.sujeto || record.matchDetail?.detailId; as sujetoName) {
+            <span class="attribute-pill gender-pill text-truncate font-semibold" style="font-size: 0.7rem;"
+              [title]="sujetoName">
+              Sujeto: {{ sujetoName }}
+            </span>
+            }
+            @if (record.idReportType) {
+            <span class="attribute-pill posture-pill text-capitalize">
+              Reporte: {{ record.idReportType }}
+            </span>
+            }
+          </div>
+        </div>
+        }
 
         <!-- Sección Métricas -->
         @if (record.conteoAforo !== null || record.tiempoPermanencia !== null || record.objetosEnArea !== null ||
@@ -561,12 +740,8 @@
       }
 
       <!-- Pagination (REUTILIZABLE DRY) -->
-      <app-pagination-controls
-        [currentPage]="currentPage()"
-        [totalPages]="totalPages()"
-        [totalRecords]="totalRecords()"
-        [visiblePages]="visiblePages()"
-        (pageChange)="setPage($event)">
+      <app-pagination-controls [currentPage]="currentPage()" [totalPages]="totalPages()" [totalRecords]="totalRecords()"
+        [visiblePages]="visiblePages()" (pageChange)="setPage($event)">
       </app-pagination-controls>
 
     </div>
@@ -574,7 +749,5 @@
 </div>
 
 <!-- Modal Reutilizable de Detalle del Evento (DRY) -->
-<app-event-detail-modal
-  [event]="selectedEventForModal()"
-  (close)="closeImageDetailsModal()">
+<app-event-detail-modal [event]="selectedEventForModal()" (close)="closeImageDetailsModal()">
 </app-event-detail-modal>

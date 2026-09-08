@@ -63,7 +63,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
     { id: 'speed_measurement', name: 'Medición de velocidad', backendType: 'Medicion de velocidad', geometryType: 'speed_quad', icon: 'icon-speed', defaultModel: 'yolo26m.pt', category: 'object_detection_models', maxAreas: 1 },
     { id: 'human_behavior', name: 'Comportamiento humano', backendType: 'Comportamiento humano', geometryType: 'polygon', icon: 'icon-users', defaultModel: 'generic_stgcn_model.pth', category: 'pose_estimation_models', maxAreas: 1 },
     { id: 'face_recognition', name: 'Reconocimiento facial', backendType: 'Reconocimiento facial', geometryType: 'polygon', icon: 'icon-user', defaultModel: 'dependencias/weights/face_detection/yolov8n-face-5keypoints.pt', fixedModel: 'dependencias/weights/face_detection/yolov8n-face-5keypoints.pt', category: 'face_recognition_models', maxAreas: 1 },
-    { id: 'license_plate_recognition', name: 'Reconocimiento de placas', backendType: 'Reconocimiento de placas', geometryType: 'polygon', icon: 'icon-card', defaultModel: 'dependencias/weights/licence_detector/placas.pt', fixedModel: 'dependencias/weights/licence_detector/placas.pt', category: 'license_plate_models', maxAreas: 1 },
+    { id: 'license_plate_recognition', name: 'Reconocimiento de placas', backendType: 'Reconocimiento de placas', geometryType: 'polygon', icon: 'icon-car', defaultModel: 'dependencias/weights/licence_detector/placas.pt', fixedModel: 'dependencias/weights/licence_detector/placas.pt', category: 'license_plate_models', maxAreas: 1 },
     { id: 'line_crossing', name: 'Cruce de Línea', backendType: 'Cruce de Linea', geometryType: 'line', icon: 'icon-chevron-right', defaultModel: 'yolo26m.pt', category: 'object_detection_models', maxAreas: 10 },
     { id: 'capacity_control', name: 'Control de aforo', backendType: 'Control de aforo', geometryType: 'line', icon: 'icon-users', defaultModel: 'yolo26m.pt', category: 'object_detection_models', maxAreas: 10 },
     { id: 'traffic_analysis', name: 'Análisis de tráfico', backendType: 'Analisis de trafico', geometryType: 'line', icon: 'icon-camara', defaultModel: 'yolo26m.pt', category: 'object_detection_models', maxAreas: 10 }
@@ -94,6 +94,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
   readonly minHits = signal<number>(2);
   readonly iouTrackerThreshold = signal<number>(0.15);
   readonly tiempoReactivacion = signal<number>(5.0);
+  readonly metadatos = signal<boolean>(false);
   readonly scaleFactor = signal<number>(1.2);
   readonly zonaLinea = signal<number>(20);
 
@@ -1000,6 +1001,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
       this.minHits();
       this.iouTrackerThreshold();
       this.tiempoReactivacion();
+      this.metadatos();
       this.scaleFactor();
       this.zonaLinea();
       this.tiempoPermanencia();
@@ -1094,6 +1096,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
       } else {
         this.selectedType.set('object_in_area');
         this.selectedClassIndexes.set([]);
+        this.metadatos.set(false);
         this.geometryTypeChanged.emit('polygon');
       }
     }
@@ -1206,6 +1209,12 @@ export class AnalyticParamsFormComponent implements OnChanges {
     if (params['min_hits'] !== undefined) this.minHits.set(Number(params['min_hits']));
     if (params['iou_threshold'] !== undefined) this.iouTrackerThreshold.set(Number(params['iou_threshold']));
     if (params['tiempo_reactivacion'] !== undefined) this.tiempoReactivacion.set(Number(params['tiempo_reactivacion']));
+    if (params['metadatos'] !== undefined) {
+      const m = params['metadatos'];
+      this.metadatos.set(m === 'si' || m === 'Si' || m === 'SI' || m === true || m === 1 || m === 'true');
+    } else {
+      this.metadatos.set(false);
+    }
     if (params['scale_area'] !== undefined || params['Escala'] !== undefined || params['scale_factor'] !== undefined) {
       this.scaleFactor.set(Number(params['scale_area'] ?? params['Escala'] ?? params['scale_factor']));
     }
@@ -1516,7 +1525,8 @@ export class AnalyticParamsFormComponent implements OnChanges {
     const detectionParams: Record<string, any> = {
       conf_thres: this.confThres(),
       iou_thres: this.iouThres(),
-      tiempo_reactivacion: this.tiempoReactivacion()
+      tiempo_reactivacion: this.tiempoReactivacion(),
+      metadatos: this.metadatos() ? 'si' : 'no'
     };
 
     if (isLineType) {

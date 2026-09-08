@@ -100,7 +100,7 @@
   pointer-events: auto;
 }
 
-/* Estado Sin Imagen (Tema claro y oscuro adaptativo) */
+/* Estado Sin Imagen (Sin contenedor ni borde, texto flotante de alto contraste sobre el fondo oscuro en ambos temas) */
 .no-image-text-container {
   display: flex;
   flex-direction: column;
@@ -108,30 +108,44 @@
   justify-content: center;
   text-align: center;
   user-select: none;
-  padding: 2.5rem 2rem;
+  pointer-events: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 2rem 1.5rem;
+  max-width: 26rem;
+  margin: auto;
+  box-sizing: border-box;
 }
 
 .no-image-icon {
   width: 48px;
   height: 48px;
-  background-color: var(--text-muted, #64748b);
-  margin-bottom: 0.85rem;
-  opacity: 0.7;
+  background-color: #f59e0b !important;
+  margin-bottom: 1.1rem;
+  opacity: 0.95 !important;
+  filter: drop-shadow(0 2px 10px rgba(245, 158, 11, 0.45));
 }
 
 .no-image-title {
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  letter-spacing: 0.07em;
-  color: var(--text-primary, #0f172a);
-  margin-bottom: 0.35rem;
+  letter-spacing: 0.08em;
+  color: #f8fafc !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+  margin-bottom: 0.45rem;
+  line-height: 1.35;
 }
 
 .no-image-subtitle {
-  font-size: 0.82rem;
-  color: var(--text-muted, #64748b);
-  max-width: 20rem;
-  line-height: 1.45;
+  font-size: 0.84rem;
+  font-weight: 400;
+  color: rgba(226, 232, 240, 0.85) !important;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+  max-width: 22rem;
+  line-height: 1.5;
 }
 
 /* Lente Lupa Magnifier */
@@ -523,28 +537,33 @@
 }
 
 .object-type-pill {
-  background-color: rgba(59, 130, 246, 0.1);
-  color: #2563eb;
+  background-color: var(--color-pill-blue-bg);
+  color: var(--color-pill-blue);
+  border: 1px solid var(--color-pill-blue-border);
 }
 
 .gender-pill {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: #059669;
+  background-color: var(--color-pill-cyan-bg);
+  color: var(--color-pill-cyan);
+  border: 1px solid var(--color-pill-cyan-border);
 }
 
 .posture-pill {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: #d97706;
+  background-color: var(--color-pill-gray-bg);
+  color: var(--color-pill-gray);
+  border: 1px solid var(--color-pill-gray-border);
 }
 
 .age-pill {
-  background-color: rgba(168, 85, 247, 0.1);
-  color: #7c3aed;
+  background-color: var(--color-pill-purple-bg);
+  color: var(--color-pill-purple);
+  border: 1px solid var(--color-pill-purple-border);
 }
 
 .recognition-pill {
-  background-color: rgba(14, 165, 233, 0.1);
-  color: #0284c7;
+  background-color: var(--color-pill-green-bg);
+  color: var(--color-pill-green);
+  border: 1px solid var(--color-pill-green-border);
 }
 
 .pill-dot {

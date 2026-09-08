@@ -12,5 +12,7 @@ services:
     environment:
       - API_HOST=http://aa-core.local:8000
       - OPENSEARCH_HOST=http://aa-core.local:9200
+      - MINIO_PUBLIC_URL=http://aa-core.local:9000
+      - DASHBOARD_HOST=http://aa-core.local:5601
       - JWT_SECRET_KEY=jwt_3st_t1c_us3r_k3y
     restart: always

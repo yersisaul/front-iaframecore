@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of, EMPTY } from 'rxjs';
 import { map, catchError, expand, reduce, switchMap } from 'rxjs/operators';
 import { AppEnvironment } from '../../core/config/app-environment';
-import { EventFilters, EventFilterOptions, defaultEventFilterOptions, EventRecord } from '../../core/domain/entities/event.models';
+import { EventFilters, EventFilterOptions, defaultEventFilterOptions, EventRecord, EventSubjectItem } from '../../core/domain/entities/event.models';
 import { IEventRepository, EventSearchResult } from '../../core/domain/repositories/event.repository';
 import { EventMapper } from '../mappers/event.mapper';
 import { OsResponse } from './dtos/opensearch-response.dto';
@@ -70,7 +70,9 @@ export class EventHttpRepository implements IEventRepository {
     const aggs = {
       camara_vals: { terms: { field: 'nombre_camara', size: 100 } },
       analitica_vals: { terms: { field: 'analitica', size: 100 } },
-      objeto_vals: { terms: { field: 'objeto', size: 100 } }
+      objeto_vals: { terms: { field: 'objeto', size: 100 } },
+      lista_vals: { terms: { field: 'match_detail.list_name.keyword', size: 50 } },
+      direccion_vals: { terms: { field: 'direccion.keyword', size: 10 } }
     };
 
     const queryBody: any = {
@@ -195,7 +197,97 @@ export class EventHttpRepository implements IEventRepository {
     }
 
     if (filters.objetos && filters.objetos.length > 0) {
-      mustFilters.push({ terms: { objeto: filters.objetos } });
+      const objQueries: any[] = [
+        { terms: { objeto: filters.objetos } },
+        { terms: { 'objeto.keyword': filters.objetos } }
+      ];
+
+      // Si el usuario seleccionó "Persona", incluir eventos de reconocimiento facial donde se detectó una persona
+      const includesPersona = filters.objetos.some(o => o.toLowerCase() === 'persona');
+      if (includesPersona) {
+        objQueries.push({
+          wildcard: { analitica: { value: '*facial*', case_insensitive: true } }
+        });
+        objQueries.push({
+          wildcard: { analitica: { value: '*rostro*', case_insensitive: true } }
+        });
+      }
+
+      mustFilters.push({
+        bool: {
+          should: objQueries,
+          minimum_should_match: 1
+        }
+      });
+    }
+
+    if (filters.listas && filters.listas.length > 0) {
+      const listQueries: any[] = [
+        { terms: { 'match_detail.list_name.keyword': filters.listas } },
+        { terms: { 'match_detail.list_name': filters.listas } },
+        { terms: { 'grupo_lista': filters.listas } },
+        { terms: { 'grupo_lista.keyword': filters.listas } },
+        { terms: { 'lista_nombre': filters.listas } },
+        { terms: { 'lista_nombre.keyword': filters.listas } }
+      ];
+
+      // Fallback para eventos legacy donde el grupo está en detalle_evento
+      filters.listas.forEach(listName => {
+        listQueries.push({
+          match_phrase: { detalle_evento: listName }
+        });
+      });
+
+      mustFilters.push({
+        bool: {
+          should: listQueries,
+          minimum_should_match: 1
+        }
+      });
+    }
+
+    if (filters.sujetos && filters.sujetos.length > 0) {
+      const sujetoQueries: any[] = [
+        { terms: { 'match_detail.detail_id': filters.sujetos } },
+        { terms: { 'match_detail.detail_id.keyword': filters.sujetos } },
+        { terms: { 'objeto': filters.sujetos } },
+        { terms: { 'objeto.keyword': filters.sujetos } }
+      ];
+
+      // Búsqueda por nombre o placa en detalle_evento
+      filters.sujetos.forEach(sujeto => {
+        sujetoQueries.push({
+          match_phrase: { detalle_evento: sujeto }
+        });
+        const parts = sujeto.split(/[()]/).map(p => p.trim()).filter(Boolean);
+        parts.forEach(part => {
+          sujetoQueries.push({
+            match_phrase: { detalle_evento: part }
+          });
+          sujetoQueries.push({
+            terms: { objeto: [part] }
+          });
+        });
+      });
+
+      mustFilters.push({
+        bool: {
+          should: sujetoQueries,
+          minimum_should_match: 1
+        }
+      });
+    }
+
+    if (filters.direcciones && filters.direcciones.length > 0) {
+      mustFilters.push({
+        bool: {
+          should: [
+            { terms: { 'direccion.keyword': filters.direcciones } },
+            { terms: { 'direccion': filters.direcciones } }
+          ],
+          minimum_should_match: 1
+        }
+      });
     }
 
     const timestampRange: any = {};
@@ -235,7 +327,9 @@ export class EventHttpRepository implements IEventRepository {
                   'analitica^2',
                   'analitica.keyword^2',
                   'objeto',
-                  'objeto.keyword'
+                  'objeto.keyword',
+                  'detalle_evento',
+                  'match_detail.list_name'
                 ],
                 type: 'best_fields',
                 fuzziness: 'AUTO'
@@ -251,7 +345,9 @@ export class EventHttpRepository implements IEventRepository {
                   'analitica^2',
                   'analitica.keyword^2',
                   'objeto',
-                  'objeto.keyword'
+                  'objeto.keyword',
+                  'detalle_evento',
+                  'match_detail.list_name'
                 ],
                 default_operator: 'OR',
                 analyze_wildcard: true
@@ -277,7 +373,26 @@ export class EventHttpRepository implements IEventRepository {
       options.analiticas = aggs.analitica_vals.buckets.map((b: any) => b.key);
     }
     if (aggs.objeto_vals && aggs.objeto_vals.buckets) {
-      options.objetos = aggs.objeto_vals.buckets.map((b: any) => b.key);
+      const rawObjs: string[] = aggs.objeto_vals.buckets.map((b: any) => b.key);
+      const cleaned = new Set<string>();
+      for (const raw of rawObjs) {
+        if (!raw) continue;
+        const trimmed = raw.trim();
+        // Si tiene 3 o más palabras (nombre propio como "Dolores Gutierrez Valeriano"), se normaliza a la clase "Persona"
+        const words = trimmed.split(/\s+/);
+        if (words.length >= 3) {
+          cleaned.add('Persona');
+        } else {
+          cleaned.add(trimmed);
+        }
+      }
+      options.objetos = Array.from(cleaned).sort();
+    }
+    if (aggs.lista_vals && aggs.lista_vals.buckets) {
+      options.listas = aggs.lista_vals.buckets.map((b: any) => b.key).filter((k: string) => !!k);
+    }
+    if (aggs.direccion_vals && aggs.direccion_vals.buckets) {
+      options.direcciones = aggs.direccion_vals.buckets.map((b: any) => b.key).filter((k: string) => !!k);
     }
 
     return options;
@@ -286,6 +401,103 @@ export class EventHttpRepository implements IEventRepository {
   getById(docId: string): Observable<EventRecord> {
     return this.http.get<any>(`${AppEnvironment.openSearchBaseUrl}/eventos/_doc/${docId}`).pipe(
       map(res => EventMapper.toDomain(res))
+    );
+  }
+
+  getAvailableSubjects(): Observable<EventSubjectItem[]> {
+    return this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/eventos/_search`, {
+      size: 0,
+      aggs: {
+        lists: {
+          terms: { field: 'match_detail.list_name', size: 100 },
+          aggs: {
+            detail_ids: { terms: { field: 'match_detail.detail_id', size: 100 } }
+          }
+        },
+        legacy_facial: {
+          filter: {
+            wildcard: { analitica: { value: '*facial*', case_insensitive: true } }
+          },
+          aggs: {
+            nombres: { terms: { field: 'objeto', size: 50 } }
+          }
+        }
+      }
+    }).pipe(
+      switchMap(res => {
+        const listBuckets = res?.aggregations?.lists?.buckets || [];
+        const detailIdToListMap = new Map<string, string>();
+        const detailIds: string[] = [];
+
+        listBuckets.forEach((lb: any) => {
+          const listName = lb.key;
+          const dBuckets = lb.detail_ids?.buckets || [];
+          dBuckets.forEach((db: any) => {
+            if (db.key) {
+              detailIds.push(db.key);
+              detailIdToListMap.set(db.key, listName);
+            }
+          });
+        });
+
+        const legacyItems: EventSubjectItem[] = [];
+        const facialBuckets = res?.aggregations?.legacy_facial?.nombres?.buckets || [];
+        facialBuckets.forEach((fb: any) => {
+          const obj = fb.key;
+          if (obj && obj.trim().split(/\s+/).length >= 3) {
+            legacyItems.push({
+              name: obj.trim(),
+              listName: 'Personas buscados'
+            });
+          }
+        });
+
+        if (detailIds.length === 0) {
+          return of(legacyItems);
+        }
+
+        return this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/detalle_listas/_search`, {
+          size: detailIds.length,
+          query: {
+            ids: { values: detailIds }
+          },
+          _source: ['nombre_asociado', 'metadata.text_placa', 'list_id']
+        }).pipe(
+          map(detailsRes => {
+            const hits = detailsRes?.hits?.hits || [];
+            const result: EventSubjectItem[] = [...legacyItems];
+
+            hits.forEach((hit: any) => {
+              const src = hit._source || {};
+              const listName = detailIdToListMap.get(hit._id) || '';
+              const placa = src.metadata?.text_placa?.trim() || '';
+              const nombre = src.nombre_asociado?.trim() || '';
+
+              let displayName = nombre;
+              if (placa && nombre) {
+                displayName = `${nombre} (${placa})`;
+              } else if (placa) {
+                displayName = placa;
+              }
+
+              if (displayName) {
+                result.push({
+                  name: displayName,
+                  listName,
+                  detailId: hit._id
+                });
+              }
+            });
+
+            return result;
+          }),
+          catchError(() => of(legacyItems))
+        );
+      }),
+      catchError(err => {
+        console.warn('[EventHttpRepo] Error obteniendo sujetos con eventos:', err);
+        return of([]);
+      })
     );
   }
 }

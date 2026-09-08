@@ -437,22 +437,22 @@
               </h5>
             </div>
 
-            <!-- Derecha de la Cabecera Izquierda: Chip PILL de Fingerprint del Nodo (Redondeado y Copiable) -->
-            @if (resolvedHostFingerprint; as fp) {
+            <!-- Derecha de la Cabecera Izquierda: Chip PILL de ID / Fingerprint de la Analítica (Redondeado y Copiable) -->
+            @if (selectedAnalyticForConfig()?.id; as analyticId) {
             <div class="vms-meta-chip vms-meta-chip--node vms-meta-chip--interactive rounded-pill cursor-pointer"
-              [class.copied-flash]="copiedRowId() === 'subdrawer-fp'"
-              (click)="copyRowContent(fp, 'subdrawer-fp'); $event.stopPropagation()"
-              title="Clic para copiar Fingerprint">
+              [class.copied-flash]="copiedRowId() === 'subdrawer-analytic-id'"
+              (click)="copyRowContent(analyticId, 'subdrawer-analytic-id'); $event.stopPropagation()"
+              title="Clic para copiar ID de la analítica">
 
-              <!-- Capa 1: Fingerprint (Mantiene el ancho natural constante en el flujo) -->
+              <!-- Capa 1: ID / Fingerprint de la analítica (Mantiene el ancho natural constante en el flujo) -->
               <div class="chip-content-layer d-inline-flex align-items-center gap-2"
-                [style.visibility]="copiedRowId() === 'subdrawer-fp' ? 'hidden' : 'visible'">
-                <span class="icon-svg icon-cpu chip-icon"></span>
-                <span class="chip-label font-monospace">{{ fp }}</span>
+                [style.visibility]="copiedRowId() === 'subdrawer-analytic-id' ? 'hidden' : 'visible'">
+                <span class="icon-svg icon-fingerprint chip-icon"></span>
+                <span class="chip-label font-monospace">{{ analyticId }}</span>
               </div>
 
               <!-- Capa 2: Feedback ¡Copiado! (Superpuesto sin alterar las dimensiones) -->
-              @if (copiedRowId() === 'subdrawer-fp') {
+              @if (copiedRowId() === 'subdrawer-analytic-id') {
               <div
                 class="chip-content-layer chip-copied-overlay d-inline-flex align-items-center justify-content-center gap-1.5 text-success">
                 <span class="icon-svg icon-check chip-icon"></span>
@@ -584,8 +584,27 @@
 
             <!-- Constructor de Reglas de Acción & Triggers (Sección 5) -->
             <app-analytic-actions-builder [cameraId]="camera?.id || ''"
-              [initialActions]="selectedAnalyticForConfig()?.acciones" (actionsChanged)="onActionsChanged($event)">
+              [initialActions]="selectedAnalyticForConfig()?.acciones"
+              [highlightErrors]="hasAttemptedSubmitAnalytic()"
+              (actionsChanged)="onActionsChanged($event)">
             </app-analytic-actions-builder>
+
+            <!-- Alerta Informativa de Error en la Parte Inferior -->
+            @if (validationMessage()) {
+            <div
+              class="alert fade show d-flex align-items-center gap-3 p-3 mt-2 mb-2 rounded-3 border shadow-sm transition-all flex-shrink-0"
+              [class.alert-warning]="validationMessageType() === 'warning'"
+              [class.alert-danger]="validationMessageType() === 'danger'"
+              [class.alert-success]="validationMessageType() === 'success'" role="alert">
+              <span class="icon-svg flex-shrink-0 me-1"
+                [class.icon-warning]="validationMessageType() === 'warning' || validationMessageType() === 'danger'"
+                [class.icon-check]="validationMessageType() === 'success'"
+                style="width: 1.25rem; height: 1.25rem; background-color: currentColor;"></span>
+              <div class="small font-semibold flex-fill" style="line-height: 1.4; font-size: 0.8125rem;">
+                {{ validationMessage() }}
+              </div>
+            </div>
+            }
           </div>
         </div>
       </div>

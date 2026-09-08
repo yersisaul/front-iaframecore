@@ -1,0 +1,378 @@
+/* ==========================================================================
+   Header Stats Subtitle — Native Azor VMS Standard Telemetry Popovers
+   ========================================================================== */
+
+:host {
+  display: inline-block;
+  user-select: none;
+}
+
+/* --- Texto del Subtítulo --- */
+.header-page-subtitle {
+  font-size: 0.8rem !important;
+  line-height: 1.4 !important;
+  color: var(--text-muted, #737373) !important;
+  font-weight: 400;
+  cursor: default;
+}
+
+/* --- Gatillos de Texto Inline --- */
+.stat-anchor {
+  position: relative;
+  display: inline-block;
+  cursor: default;
+}
+
+.stat-highlight {
+  cursor: default;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+  vertical-align: baseline;
+}
+
+.stat-highlight .stat-num,
+.stat-highlight .stat-word {
+  color: var(--azor-text-blue, var(--primary, #2b7fff)) !important;
+  font-weight: 600 !important;
+  cursor: default;
+}
+
+.stat-highlight:hover,
+.stat-highlight.active {
+  background-color: rgba(43, 127, 255, 0.08);
+}
+
+/* ==========================================================================
+   Menú Popover Flotante (Mismo estándar que .filter-dropdown-menu)
+   ========================================================================== */
+
+.stat-popover-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1050;
+  min-width: 230px;
+  background-color: var(--bg-filter-dropdown-menu, var(--card, #ffffff)) !important;
+  border: 1px solid var(--border-filter-dropdown-menu, var(--border, #e5e5e5)) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+  animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 6px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  cursor: default;
+}
+
+[data-bs-theme="dark"] .stat-popover-menu,
+[data-theme="dark"] .stat-popover-menu,
+.dark .stat-popover-menu {
+  background-color: var(--bg-filter-dropdown-menu, #1e293b) !important;
+  border-color: var(--border-filter-dropdown-menu, rgba(255, 255, 255, 0.12)) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Cabecera del Menú Popover (Sin barra divisora) --- */
+.popover-menu-header {
+  padding: 6px 10px 6px 10px;
+  margin-bottom: 2px;
+}
+
+.popover-icon-box {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.popover-icon-box.box-blue {
+  background-color: rgba(43, 127, 255, 0.12);
+  color: var(--azor-text-blue, #2b7fff);
+}
+
+.popover-icon-box.box-purple {
+  background-color: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+}
+
+.popover-menu-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  line-height: 1.2;
+}
+
+/* --- Insignia de Conteo Total (.filter-dropdown-count-pill) --- */
+.filter-dropdown-count-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  background: rgba(15, 23, 42, 0.07);
+  color: var(--text-secondary, #64748b);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  line-height: 1;
+}
+
+[data-bs-theme="dark"] .filter-dropdown-count-pill {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary, #94a3b8);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.filter-dropdown-count-pill.pill-blue {
+  background: rgba(43, 127, 255, 0.12);
+  color: var(--azor-text-blue, #2b7fff);
+  border-color: rgba(43, 127, 255, 0.25);
+}
+
+.filter-dropdown-count-pill.pill-purple {
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+/* --- Filas de Elementos (.dropdown-item estándar) --- */
+.popover-items-wrapper {
+  width: 100%;
+}
+
+.stat-popover-menu .dropdown-item {
+  color: var(--text-secondary, #64748b) !important;
+  font-size: 0.84rem !important;
+  font-weight: 500 !important;
+  padding: 7px 10px !important;
+  border-radius: 8px !important;
+  width: 100%;
+  border: none !important;
+  background: transparent !important;
+  text-align: left;
+  cursor: default;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+.stat-popover-menu .dropdown-item:hover {
+  background-color: var(--bg-filter-dropdown-item-hover, rgba(0, 0, 0, 0.04)) !important;
+  color: var(--text-primary, #0f172a) !important;
+}
+
+[data-bs-theme="dark"] .stat-popover-menu .dropdown-item:hover {
+  background-color: var(--bg-filter-dropdown-item-hover, rgba(255, 255, 255, 0.06)) !important;
+  color: var(--text-filter-dropdown-item-hover, #f1f5f9) !important;
+}
+
+/* --- Puntos de Estado Estándar (.status-dot) --- */
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+  display: inline-block;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.status-dot.online {
+  background-color: #10b981 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6) !important;
+}
+
+.status-dot.degraded {
+  background-color: #f97316 !important;
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.6) !important;
+}
+
+.status-dot.recovering {
+  background-color: #eab308 !important;
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.6) !important;
+}
+
+.status-dot.pending {
+  background-color: #00e5ff !important;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.6) !important;
+}
+
+.status-dot.offline {
+  background-color: #ef4444 !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5) !important;
+}
+
+/* --- Insignias Semánticas (.filter-item-badge) --- */
+.filter-item-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 6px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  background: rgba(100, 116, 139, 0.1);
+  color: var(--text-secondary, #64748b);
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.filter-item-badge.badge-status-online {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #10b981 !important;
+  border-color: rgba(16, 185, 129, 0.28) !important;
+}
+
+.filter-item-badge.badge-status-offline {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.28) !important;
+}
+
+.filter-item-badge.badge-status-degraded {
+  background: rgba(249, 115, 22, 0.12) !important;
+  color: #f97316 !important;
+  border-color: rgba(249, 115, 22, 0.28) !important;
+}
+
+.filter-item-badge.badge-status-recovering {
+  background: rgba(234, 179, 8, 0.12) !important;
+  color: #eab308 !important;
+  border-color: rgba(234, 179, 8, 0.28) !important;
+}
+
+.filter-item-badge.badge-status-pending {
+  background: rgba(6, 182, 212, 0.12) !important;
+  color: #06b6d4 !important;
+  border-color: rgba(6, 182, 212, 0.28) !important;
+}
+
+/* ==========================================================================
+   Cabecera de Columnas y Tabla en Popovers (Cámaras y Analíticas)
+   ========================================================================== */
+
+.analytics-popover-menu {
+  min-width: 315px !important;
+  max-width: 370px !important;
+}
+
+.popover-table-header {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary, #475569) !important;
+  background-color: rgba(15, 23, 42, 0.06) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 9999px;
+  margin-bottom: 5px;
+  margin-top: 2px;
+  padding: 4px 10px !important;
+  user-select: none;
+}
+
+[data-bs-theme="dark"] .popover-table-header,
+[data-theme="dark"] .popover-table-header,
+.dark .popover-table-header,
+:host-context([data-bs-theme="dark"]) .popover-table-header,
+:host-context([data-theme="dark"]) .popover-table-header,
+:host-context(.dark) .popover-table-header {
+  background-color: rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #cbd5e1 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.popover-table-header .col-type-title {
+  flex: 1;
+}
+
+.popover-table-header .col-count-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.col-total-header {
+  width: 36px;
+  min-width: 36px;
+  text-align: center;
+}
+
+.col-active-header,
+.col-active-cell {
+  width: 54px;
+  min-width: 54px;
+  max-width: 54px;
+  text-align: center;
+}
+
+.col-inactive-header,
+.col-inactive-cell {
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  text-align: center;
+}
+
+.col-count-cell .filter-item-badge {
+  min-width: 28px;
+}
+
+.analytics-table-row {
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: var(--text-secondary, #64748b);
+  transition: background-color 0.15s ease, color 0.15s ease;
+  font-size: 0.8rem;
+  width: 100%;
+}
+
+.analytics-table-row:hover {
+  background-color: var(--bg-filter-dropdown-item-hover, rgba(0, 0, 0, 0.04));
+  color: var(--text-primary, #0f172a);
+}
+
+[data-bs-theme="dark"] .analytics-table-row:hover {
+  background-color: var(--bg-filter-dropdown-item-hover, rgba(255, 255, 255, 0.06));
+  color: var(--text-filter-dropdown-item-hover, #f1f5f9);
+}
+
+.analytics-total-row {
+  background-color: transparent !important;
+  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+}
+
+[data-bs-theme="dark"] .analytics-total-row {
+  background-color: transparent !important;
+  color: #ffffff;
+}
+
+.opacity-40 {
+  opacity: 0.4;
+}

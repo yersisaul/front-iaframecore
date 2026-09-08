@@ -226,10 +226,10 @@ export class MonitoringStateService {
     if (!slot.camera) return;
 
     if (this.activeWebRtcConnections.has(connKey)) {
-      // Si ya existe la conexión pero se proporciona un nuevo elemento de video, adjuntar el stream existente
+      // Si ya existe la conexión pero se proporciona un nuevo elemento de video, adjuntar el stream existente solo si no está ya asignado
       if (videoEl && this.mediaStreamsMap.has(slot.id)) {
         const stream = this.mediaStreamsMap.get(slot.id);
-        if (stream) {
+        if (stream && videoEl.srcObject !== stream) {
           videoEl.srcObject = stream;
           videoEl.play().catch(err => console.warn('[MonitoringStateService] Autoplay attach warning:', err));
         }
@@ -314,7 +314,7 @@ export class MonitoringStateService {
   attachStreamToVideo(slotId: string, videoEl: HTMLVideoElement): void {
     if (!videoEl) return;
     const stream = this.mediaStreamsMap.get(slotId);
-    if (stream) {
+    if (stream && videoEl.srcObject !== stream) {
       videoEl.srcObject = stream;
       videoEl.play().catch(err => console.warn('[MonitoringStateService] Autoplay play warning:', err));
     }

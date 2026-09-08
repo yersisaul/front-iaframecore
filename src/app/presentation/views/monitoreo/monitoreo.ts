@@ -64,7 +64,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onDrawerCameraUpdated(updatedCamera: Camera): void {
-    this.allCameras.update(cams => cams.map(c => c.id === updatedCamera.id ? updatedCamera : c));
+    this.cameraService.cameras.update(cams => cams.map(c => c.id === updatedCamera.id ? updatedCamera : c));
   }
 
   // WebRTC Live Video Connections & States vinculados al servicio singleton
@@ -79,23 +79,38 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   readonly targetAddCol = signal<number | null>(null);
   readonly targetAddRow = signal<number | null>(null);
+  readonly modalTriggerMode = signal<'general' | 'add-row' | 'add-column' | 'slot'>('general');
 
   // Custom Drag & Resize Signals
   readonly draggingSlotId = signal<string | null>(null);
+  readonly isGroupDragging = signal<boolean>(false);
+  readonly draggingDropTargets = signal<{ col: number; row: number; spanX: number; spanY: number; isValid: boolean }[]>([]);
   readonly resizingSlotId = signal<string | null>(null);
   readonly swapPulseSlotId = signal<string | null>(null);
-  readonly activeHoveredExpander = signal<'column' | 'row' | null>(null);
+  readonly activeHoveredExpander = signal<'column' | 'row' | 'both' | null>(null);
 
   // Canvas Mode, Panning and Zooming Signals for Grid > 4x4
   readonly canvasPanX = this.monitoringStateService.canvasPanX;
   readonly canvasPanY = this.monitoringStateService.canvasPanY;
   readonly canvasZoom = this.monitoringStateService.canvasZoom;
-  readonly showMinimap = signal<boolean>(true);
+  readonly showMinimap = signal<boolean>(false);
   readonly isCanvasPinned = this.monitoringStateService.isCanvasPinned;
   readonly isCanvasActive = signal<boolean>(true);
+  readonly isCanvasAnimating = signal<boolean>(false);
+  private canvasAnimationTimeout: any = null;
   readonly isCanvasMode = computed(() => this.gridSlots().some(s => s.camera !== null));
   readonly isRightPanelCollapsed = signal<boolean>(false);
   private canvasActivityTimer: any = null;
+
+  // Zen Mode & Canvas Dropup Menu Signals
+  readonly isZenMode = signal<boolean>(false);
+  readonly isZenHintVisible = signal<boolean>(false);
+  readonly showCanvasMenuDropdown = signal<boolean>(false);
+  private zenHintTimeout: any = null;
+
+  // Off-screen Viewport Throttling Signal & Observer
+  readonly offscreenSlotIds = signal<Set<string>>(new Set());
+  private offscreenObserver: IntersectionObserver | null = null;
 
   // Box Selection (Recuadro de Selección por Clic + Arrastre) Signals & Sync State
   readonly isSyncMode = this.monitoringStateService.isSyncMode;
@@ -110,6 +125,42 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   // Camera Fullscreen Overlay Signal & Origin Animation
   readonly fullscreenSlot = signal<GridSlot | null>(null);
   readonly fullscreenTransformOrigin = signal<string>('center center');
+
+  toggleZenMode(): void {
+    const next = !this.isZenMode();
+    this.isZenMode.set(next);
+    this.showCanvasMenuDropdown.set(false);
+    if (next) {
+      this.isRightPanelCollapsed.set(true);
+      document.body.classList.add('zen-mode-active');
+      this.isZenHintVisible.set(true);
+      if (this.zenHintTimeout) clearTimeout(this.zenHintTimeout);
+      this.zenHintTimeout = setTimeout(() => {
+        this.isZenHintVisible.set(false);
+        this.zenHintTimeout = null;
+      }, 3200);
+    } else {
+      document.body.classList.remove('zen-mode-active');
+      this.isZenHintVisible.set(false);
+      if (this.zenHintTimeout) {
+        clearTimeout(this.zenHintTimeout);
+        this.zenHintTimeout = null;
+      }
+    }
+    this.showToast(next ? '🖥️ Modo Zen activado (Pantalla completa)' : 'Modo estándar restaurado', 'primary');
+    setTimeout(() => this.resetCanvas(), 100);
+  }
+
+  toggleCanvasMenuDropdown(event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.showCanvasMenuDropdown.update(v => !v);
+  }
+
+  closeCanvasMenuDropdown(): void {
+    this.showCanvasMenuDropdown.set(false);
+  }
 
   openFullscreen(slot: GridSlot, event?: MouseEvent): void {
     if (event) {
@@ -155,6 +206,44 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   handleEscapeKey(): void {
     if (this.fullscreenSlot()) {
       this.closeFullscreen();
+    } else if (this.showCanvasMenuDropdown()) {
+      this.showCanvasMenuDropdown.set(false);
+    } else if (this.isZenMode()) {
+      this.isZenMode.set(false);
+      this.isZenHintVisible.set(false);
+      if (this.zenHintTimeout) clearTimeout(this.zenHintTimeout);
+      document.body.classList.remove('zen-mode-active');
+      this.showToast('Modo estándar restaurado', 'primary');
+      setTimeout(() => this.resetCanvas(), 100);
+    }
+  }
+
+  showZenHintDirectly(): void {
+    if (!this.isZenMode()) return;
+    if (this.zenHintTimeout) {
+      clearTimeout(this.zenHintTimeout);
+      this.zenHintTimeout = null;
+    }
+    if (!this.isZenHintVisible()) {
+      this.isZenHintVisible.set(true);
+    }
+  }
+
+  hideZenHintDirectly(): void {
+    if (!this.isZenMode()) return;
+    if (!this.zenHintTimeout && this.isZenHintVisible()) {
+      this.isZenHintVisible.set(false);
+    }
+  }
+
+  @HostListener('window:mousemove', ['$event'])
+  handleZenTopMouseMove(event: MouseEvent): void {
+    if (!this.isZenMode()) return;
+    const clientY = event.clientY;
+    if (clientY <= 120) {
+      this.showZenHintDirectly();
+    } else if (clientY > 160) {
+      this.hideZenHintDirectly();
     }
   }
 
@@ -195,12 +284,32 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   // Modal Search & Filter States
   readonly modalSearchQuery = signal<string>('');
+  readonly modalTypeFilter = signal<string>('all');
+  readonly showModalTypeDropdown = signal<boolean>(false);
   readonly modalStatusFilter = signal<string>('all');
   readonly showModalStatusDropdown = signal<boolean>(false);
+  readonly modalSortDirection = signal<'asc' | 'desc'>('asc');
+
+  toggleModalSortDirection(): void {
+    this.modalSortDirection.update(dir => dir === 'asc' ? 'desc' : 'asc');
+  }
+
+  toggleModalTypeDropdown(event?: Event): void {
+    if (event) event.stopPropagation();
+    this.showModalTypeDropdown.update(v => !v);
+    this.showModalStatusDropdown.set(false);
+  }
+
+  selectModalType(type: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.modalTypeFilter.set(type);
+    this.showModalTypeDropdown.set(false);
+  }
 
   toggleModalStatusDropdown(event?: Event): void {
     if (event) event.stopPropagation();
     this.showModalStatusDropdown.update(v => !v);
+    this.showModalTypeDropdown.set(false);
   }
 
   selectModalStatus(status: string, event?: Event): void {
@@ -208,6 +317,16 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.modalStatusFilter.set(status);
     this.showModalStatusDropdown.set(false);
   }
+
+  readonly modalTypeOptions = computed(() => {
+    const cams = this.allCameras();
+    const set = new Set<string>();
+    cams.forEach(c => {
+      const badges = this.getCameraAnalytics(c);
+      badges.forEach(b => set.add(b));
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  });
 
   readonly modalStatusOptions = computed(() => {
     const cams = this.allCameras();
@@ -249,8 +368,8 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   private isEditingDateSegments = false;
 
   // Collections
-  readonly allCameras = signal<Camera[]>([]);
-  readonly allHosts = signal<Host[]>([]);
+  readonly allCameras = this.cameraService.cameras;
+  readonly allHosts = this.hostService.allHosts;
   readonly eventsList = this.monitoringStateService.eventsList;
   readonly bufferedEvents = signal<EventRecord[]>([]);
   readonly latestEventsMap = this.monitoringStateService.latestEventsMap;
@@ -413,57 +532,95 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
 
 
-    // Clave computada única de IDs de cámaras presentes en el grid (evita re-ejecución al mover celdas)
-    const activeCameraIdsKey = computed(() => {
-      const ids = this.gridSlots()
-        .map(s => s.camera?.id)
-        .filter((id): id is string => !!id)
-        .sort();
-      return Array.from(new Set(ids)).join(',');
-    });
+    // Cargar eventos históricos SOLO cuando realmente se agregan nuevas cámaras al lienzo o cambia la fecha manual
+    let lastCameraIdSet = new Set<string>();
+    let lastEventsQueryKey = '';
 
-    // Rango de búsqueda para la consulta HTTP a OpenSearch (NO depende del reloj ticker de 1s)
-    const activeSearchRange = computed(() => {
-      const key = activeCameraIdsKey();
-      const manualDate = this.selectedManualDate();
-      if (!key) return null;
-
-      if (!manualDate) {
-        // Modo por defecto / En Vivo (Últimas 24 horas a partir del momento de la consulta)
-        const end = new Date();
-        const start = new Date(end.getTime() - 24 * 3600 * 1000);
-        return { start, end, key };
-      } else {
-        // Fecha pasada seleccionada manualmente
-        const start = new Date(manualDate.getFullYear(), manualDate.getMonth(), manualDate.getDate(), 0, 0, 0, 0);
-        const end = new Date(manualDate.getFullYear(), manualDate.getMonth(), manualDate.getDate(), 23, 59, 59, 999);
-        return { start, end, key };
-      }
-    });
-
-    // Cargar eventos históricos SOLO cuando cambian las cámaras del lienzo o se selecciona una fecha manual
     effect(() => {
-      const range = activeSearchRange();
-      if (!range) {
+      const activeCams = this.gridSlots()
+        .map(s => s.camera)
+        .filter((c): c is Camera => c !== null);
+
+      const currentIds = Array.from(new Set(activeCams.map(c => c.id))).sort();
+      const currentIdSet = new Set(currentIds);
+      const key = currentIds.join(',');
+      const manualDate = this.selectedManualDate();
+      const manualDateTime = manualDate ? manualDate.getTime() : 0;
+      const queryKey = `${key}_${manualDateTime}`;
+
+      if (!key) {
+        lastEventsQueryKey = '';
+        lastCameraIdSet.clear();
         this.eventsList.set([]);
         this.latestEventsMap.set({});
         return;
       }
 
-      const activeCams = this.gridSlots()
-        .map(s => s.camera)
-        .filter((c): c is Camera => c !== null);
+      // Si el conjunto de cámaras y la fecha no han cambiado (ej. solo cambio de posición/swap), no hacer nada
+      if (queryKey === lastEventsQueryKey) {
+        return;
+      }
+
+      // CASO 1: Si solo se ELIMINARON cámaras (el conjunto actual es un subconjunto estricto del anterior con la misma fecha)
+      const isOnlyRemoval = lastEventsQueryKey.endsWith(`_${manualDateTime}`) &&
+        lastCameraIdSet.size > 0 &&
+        currentIds.every(id => lastCameraIdSet.has(id)) &&
+        currentIds.length < lastCameraIdSet.size;
+
+      if (isOnlyRemoval) {
+        lastEventsQueryKey = queryKey;
+        lastCameraIdSet = currentIdSet;
+
+        const activeCamNamesSet = new Set(activeCams.map(c => c.name.trim().toLowerCase()));
+        const activeCamIdsSet = new Set(activeCams.map(c => c.id));
+
+        // Filtrar en memoria instantáneamente SIN petición de red ni spinner de carga
+        this.eventsList.update(list => list.filter(e => {
+          const matchName = e.nombreCamara && activeCamNamesSet.has(e.nombreCamara.trim().toLowerCase());
+          const matchId = e.idCamara && activeCamIdsSet.has(e.idCamara);
+          return matchName || matchId;
+        }));
+
+        this.latestEventsMap.update(map => {
+          const nextMap: Record<string, EventRecord> = {};
+          Object.entries(map).forEach(([k, evt]) => {
+            const matchName = evt.nombreCamara && activeCamNamesSet.has(evt.nombreCamara.trim().toLowerCase());
+            const matchId = evt.idCamara && activeCamIdsSet.has(evt.idCamara);
+            if (matchName || matchId) {
+              nextMap[k] = evt;
+            }
+          });
+          return nextMap;
+        });
+        return;
+      }
+
+      lastEventsQueryKey = queryKey;
+      lastCameraIdSet = currentIdSet;
+
+      // CASO 2: Se agregaron cámaras nuevas o cambió la fecha manual -> Consultar sin borrar la lista previa si ya hay elementos
+      let start: Date;
+      let end: Date;
+      if (!manualDate) {
+        end = new Date();
+        start = new Date(end.getTime() - 24 * 3600 * 1000);
+      } else {
+        start = new Date(manualDate.getFullYear(), manualDate.getMonth(), manualDate.getDate(), 0, 0, 0, 0);
+        end = new Date(manualDate.getFullYear(), manualDate.getMonth(), manualDate.getDate(), 23, 59, 59, 999);
+      }
 
       const cameraNames = Array.from(new Set(activeCams.map(c => c.name)));
-      this.isLoadingEvents.set(true);
+      if (this.eventsList().length === 0) {
+        this.isLoadingEvents.set(true);
+      }
 
       this.eventRepository.search({
         search: '',
         camaras: cameraNames,
         analiticas: [],
         objetos: [],
-        timestampDesde: range.start,
-        timestampHasta: range.end
+        timestampDesde: start,
+        timestampHasta: end
       }, 1, 10000).subscribe({
         next: (res) => {
           const recordsWithMs = res.records.map(r => {
@@ -490,7 +647,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
         },
         error: (err) => {
           console.error('[Monitoreo] Error al cargar histórico de eventos:', err);
-          this.eventsList.set([]);
           this.isLoadingEvents.set(false);
         }
       });
@@ -514,7 +670,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
         }
       }
 
-      // 2. Iniciar conexiones para nuevos slots o con cámaras cambiadas
+      // 2. Iniciar conexiones ÚNICAMENTE para slots que no tengan conexión ni estado previo registrado
       if (occupiedSlots.length > 0) {
         setTimeout(() => {
           // Re-confirmar que no se haya iniciado un arrastre o redimensionamiento en el intervalo
@@ -524,7 +680,10 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
           occupiedSlots.forEach(s => {
             const connKey = `${s.id}_${s.camera!.id}`;
-            this.startWebRtcStreamByKey(s, connKey);
+            // Iniciar solo si no existe la conexión y aún no tiene estado asignado
+            if (!this.activeWebRtcConnections.has(connKey) && !this.webRtcStates()[s.id]) {
+              this.startWebRtcStreamByKey(s, connKey);
+            }
           });
         }, 150);
       }
@@ -579,12 +738,8 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.hostService.isViewActive.set(true);
     this.eventService.isViewActive.set(true);
 
-    this.cameraService.getAllCameras().subscribe({
-      next: (cams) => this.allCameras.set(cams)
-    });
-    this.hostService.loadAllHosts().subscribe({
-      next: (hosts) => this.allHosts.set(hosts)
-    });
+    this.cameraService.getAllCameras().subscribe();
+    this.hostService.loadAllHosts().subscribe();
     this.analyticService.getAllAnalytics().subscribe();
 
     this.setupWebSocketSubscription();
@@ -683,10 +838,77 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    setTimeout(() => this.resetCanvas(), 150);
+    setTimeout(() => {
+      const currentZoom = this.canvasZoom();
+      if (!currentZoom || currentZoom <= 0.05) {
+        this.resetCanvas();
+      }
+      this.setupOffscreenObserver();
+    }, 150);
+  }
+
+  /**
+   * Configura un IntersectionObserver para detectar qué cámaras quedan fuera del viewport visible
+   * en modo lienzo (paneo/zoom) y pausar su decodificación de video para ahorrar CPU/GPU.
+   */
+  setupOffscreenObserver(): void {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const container = document.querySelector('.monitoring-grid-container');
+    if (!container) return;
+
+    this.offscreenObserver?.disconnect();
+    this.offscreenObserver = new IntersectionObserver((entries) => {
+      // Ignorar eventos durante la animación activa de zoom/pan para evitar parpadeo y recarga de videos
+      if (this.isCanvasAnimating()) return;
+
+      const currentOffscreen = new Set(this.offscreenSlotIds());
+      let changed = false;
+
+      entries.forEach(entry => {
+        const slotId = entry.target.getAttribute('data-id');
+        if (!slotId) return;
+
+        const videoEl = entry.target.querySelector('video') as HTMLVideoElement;
+        if (!entry.isIntersecting) {
+          if (!currentOffscreen.has(slotId)) {
+            currentOffscreen.add(slotId);
+            changed = true;
+            if (videoEl && !videoEl.paused) {
+              videoEl.pause();
+            }
+          }
+        } else {
+          if (currentOffscreen.has(slotId)) {
+            currentOffscreen.delete(slotId);
+            changed = true;
+            if (videoEl && videoEl.paused) {
+              videoEl.play().catch(() => {});
+            }
+          }
+        }
+      });
+
+      if (changed) {
+        this.offscreenSlotIds.set(currentOffscreen);
+      }
+    }, {
+      root: container,
+      rootMargin: '120px', // Buffer de precarga para transiciones suaves al mover el lienzo
+      threshold: 0.01
+    });
+
+    // Observar cada celda del grid
+    document.querySelectorAll('.grid-slot-cell').forEach(cell => {
+      this.offscreenObserver?.observe(cell);
+    });
   }
 
   ngOnDestroy(): void {
+    if (this.offscreenObserver) {
+      this.offscreenObserver.disconnect();
+      this.offscreenObserver = null;
+    }
+
     this.cameraService.isViewActive.set(false);
     this.analyticService.isViewActive.set(false);
     this.scheduleService.isViewActive.set(false);
@@ -702,6 +924,11 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     if (this.canvasActivityTimer) {
       clearTimeout(this.canvasActivityTimer);
     }
+    if (this.zenHintTimeout) {
+      clearTimeout(this.zenHintTimeout);
+    }
+
+    document.body.classList.remove('zen-mode-active');
 
     // Delegar ciclo de vida de salida a MonitoringStateService
     this.monitoringStateService.onLeaveMonitoreo();
@@ -824,10 +1051,11 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const colsVal = this.cols();
     const rowsVal = this.rows();
 
-    const showExpanders = (this.draggingSlotId() !== null || this.isGridFullyOccupied()) && !this.isCanvasPinned();
+    const showColExpander = this.isCanvasMode() && !this.isCanvasPinned() && this.activeHoveredExpander() !== 'column' && this.activeHoveredExpander() !== 'both';
+    const showRowExpander = this.isCanvasMode() && !this.isCanvasPinned() && this.activeHoveredExpander() !== 'row' && this.activeHoveredExpander() !== 'both';
     const extDim = this.getExtenderDimensions();
-    const draggingOffsetW = showExpanders ? extDim.width : 0;
-    const draggingOffsetH = showExpanders ? extDim.height : 0;
+    const draggingOffsetW = showColExpander ? extDim.width : 0;
+    const draggingOffsetH = showRowExpander ? extDim.height : 0;
 
     const width = colsVal * cellW + (colsVal - 1) * 12 + 20 + draggingOffsetW;
     const height = rowsVal * cellH + (rowsVal - 1) * 12 + 20 + draggingOffsetH;
@@ -1025,6 +1253,47 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.canvasPanY.set(panY);
   }
 
+  animateFitCanvas(durationMs: number = 480): void {
+    const gridContainer = document.querySelector('.monitoring-grid-container') as HTMLElement;
+    if (!gridContainer) return;
+
+    const { cellW, cellH } = this.getCellDimensions();
+    const colsVal = Math.max(1, this.cols());
+    const rowsVal = Math.max(1, this.rows());
+
+    const totalW = colsVal * cellW + (colsVal - 1) * 12 + 20;
+    const totalH = rowsVal * cellH + (rowsVal - 1) * 12 + 20;
+    const viewportW = gridContainer.clientWidth;
+    const viewportH = gridContainer.clientHeight;
+
+    if (totalW === 0 || totalH === 0 || viewportW === 0 || viewportH === 0) return;
+
+    const padding = 0.94; // 6% margen de seguridad
+    const zoomToFitX = (viewportW * padding) / totalW;
+    const zoomToFitY = (viewportH * padding) / totalH;
+    const targetZoom = Math.max(0.05, Math.min(3.0, zoomToFitX, zoomToFitY));
+
+    const targetPanX = (viewportW - totalW * targetZoom) / 2;
+    const targetPanY = (viewportH - totalH * targetZoom) / 2;
+
+    if (this.canvasAnimationTimeout) {
+      clearTimeout(this.canvasAnimationTimeout);
+    }
+
+    this.isCanvasAnimating.set(true);
+
+    requestAnimationFrame(() => {
+      this.canvasZoom.set(targetZoom);
+      this.canvasPanX.set(targetPanX);
+      this.canvasPanY.set(targetPanY);
+    });
+
+    this.canvasAnimationTimeout = setTimeout(() => {
+      this.isCanvasAnimating.set(false);
+      this.canvasAnimationTimeout = null;
+    }, durationMs + 50);
+  }
+
   centerOnSlot(slot: GridSlot): void {
     const gridContainer = document.querySelector('.monitoring-grid-container');
     if (!gridContainer) return;
@@ -1104,7 +1373,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.cols.set(prevSnapshot.cols);
     this.rows.set(prevSnapshot.rows);
 
-    this.recalculateGridDimensions();
+    this.recalculateGridDimensions(true);
     this.showToast('Cambio deshecho', 'warning');
   }
 
@@ -1135,7 +1404,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.cols.set(nextSnapshot.cols);
     this.rows.set(nextSnapshot.rows);
 
-    this.recalculateGridDimensions();
+    this.recalculateGridDimensions(true);
     this.showToast('Cambio rehecho', 'primary');
   }
 
@@ -1466,28 +1735,101 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     document.addEventListener('mouseup', onMouseUp);
   }
 
-  recalculateGridDimensions(): void {
-    this.compressGrid();
+  getOptimalColumnsForCount(N: number): number {
+    if (N <= 1) return 1;
+    if (N <= 2) return 2;
+    if (N <= 4) return 2;
+    if (N <= 6) return 3;
+    if (N <= 9) return 3;
+    if (N <= 12) return 4;
+    if (N <= 16) return 4;
+    if (N <= 20) return 5;
+    if (N <= 25) return 5;
+    if (N <= 30) return 6;
+    if (N <= 36) return 6;
+    if (N <= 42) return 7;
+    if (N <= 49) return 7;
+    if (N <= 56) return 8;
+    if (N <= 64) return 8;
+    if (N <= 72) return 9;
+    if (N <= 81) return 9;
+    return Math.ceil(Math.sqrt(N * 1.2));
+  }
 
-    const slots = this.gridSlots();
-    if (slots.length === 0) {
-      this.cols.set(1);
-      this.rows.set(1);
+  /**
+   * Compacta y optimiza la distribución del lienzo eliminando huecos vacíos
+   * y reorganizando todas las cámaras activas en una cuadrícula óptima balanceada (16:9 / cuadrada).
+   */
+  autoPackGrid(): void {
+    const occupiedSlots = this.gridSlots().filter(s => s.camera !== null);
+    if (occupiedSlots.length === 0) {
+      this.showToast('No hay cámaras en el lienzo para compactar', 'warning');
       return;
     }
 
-    const dims = this.getDimensionsForArray(slots);
+    this.saveStateToHistory();
+
+    const N = occupiedSlots.length;
+    const C = this.getOptimalColumnsForCount(N);
+    const R = Math.max(1, Math.ceil(N / C));
+
+    // Ordenar cámaras de forma natural (fila por fila, de izquierda a derecha) para preservar el orden visual
+    const sortedCams = [...occupiedSlots].sort((a, b) => {
+      if (a.row !== b.row) return a.row - b.row;
+      return a.col - b.col;
+    });
+
+    const newSlots: GridSlot[] = sortedCams.map((slot, i) => {
+      const col = (i % C) + 1;
+      const row = Math.floor(i / C) + 1;
+      return {
+        ...slot,
+        col,
+        row,
+        spanX: 1,
+        spanY: 1
+      };
+    });
+
+    this.gridSlots.set(newSlots);
+    this.recalculateGridDimensions(true);
+    this.showToast(`Lienzo optimizado y compactado (${C}x${R})`, 'success');
+  }
+
+  recalculateGridDimensions(animate: boolean = false): void {
+    this.compressGrid();
+
+    const slots = this.gridSlots();
+    const occupied = slots.filter(s => s.camera !== null);
+    if (occupied.length === 0) {
+      this.cols.set(1);
+      this.rows.set(1);
+      if (animate) {
+        this.animateFitCanvas();
+      } else {
+        this.resetCanvas();
+      }
+      return;
+    }
+
+    const dims = this.getDimensionsForArray(occupied);
     this.cols.set(dims.cols);
     this.rows.set(dims.rows);
 
-    // Ajustar zoom actual si el lienzo se encoge y excede el zoom mínimo dinámico
-    const minZoom = this.getMinZoom();
-    if (this.canvasZoom() < minZoom) {
-      this.canvasZoom.set(minZoom);
-      const constrained = this.constrainPan(this.canvasPanX(), this.canvasPanY(), minZoom);
-      this.canvasPanX.set(constrained.x);
-      this.canvasPanY.set(constrained.y);
+    if (animate) {
+      this.animateFitCanvas();
+    } else {
+      // Ajustar zoom actual si el lienzo se encoge y excede el zoom mínimo dinámico
+      const minZoom = this.getMinZoom();
+      if (this.canvasZoom() < minZoom) {
+        this.canvasZoom.set(minZoom);
+        const constrained = this.constrainPan(this.canvasPanX(), this.canvasPanY(), minZoom);
+        this.canvasPanX.set(constrained.x);
+        this.canvasPanY.set(constrained.y);
+      }
     }
+
+    setTimeout(() => this.setupOffscreenObserver(), animate ? 550 : 120);
   }
 
   compressGrid(): void {
@@ -1498,37 +1840,51 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       this.gridSlots.set([
         { id: 'slot-1-1', camera: null, col: 1, row: 1, spanX: 1, spanY: 1 }
       ]);
+      this.cols.set(1);
+      this.rows.set(1);
       return;
     }
 
-    const maxCol = Math.max(...occupiedSlots.map(s => s.col + s.spanX - 1));
-    const maxRow = Math.max(...occupiedSlots.map(s => s.row + s.spanY - 1));
-
-    for (let c = 1; c <= maxCol; c++) {
-      const colHasCamera = occupiedSlots.some(s => s.col <= c && (s.col + s.spanX - 1) >= c);
-      if (!colHasCamera) {
-        occupiedSlots.forEach(s => {
-          if (s.col > c) s.col -= 1;
-        });
-        this.gridSlots.set(occupiedSlots);
-        this.compressGrid();
-        return;
+    // 1. Desplazar columnas hacia la izquierda si hay columnas vacías intermedias o iniciales
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const maxCol = Math.max(...occupiedSlots.map(s => s.col + s.spanX - 1));
+      for (let c = 1; c <= maxCol; c++) {
+        const colHasCamera = occupiedSlots.some(s => s.col <= c && (s.col + s.spanX - 1) >= c);
+        if (!colHasCamera) {
+          occupiedSlots.forEach(s => {
+            if (s.col > c) s.col -= 1;
+          });
+          changed = true;
+          break;
+        }
       }
     }
 
-    for (let r = 1; r <= maxRow; r++) {
-      const rowHasCamera = occupiedSlots.some(s => s.row <= r && (s.row + s.spanY - 1) >= r);
-      if (!rowHasCamera) {
-        occupiedSlots.forEach(s => {
-          if (s.row > r) s.row -= 1;
-        });
-        this.gridSlots.set(occupiedSlots);
-        this.compressGrid();
-        return;
+    // 2. Desplazar filas hacia arriba si hay filas vacías intermedias o iniciales
+    changed = true;
+    while (changed) {
+      changed = false;
+      const maxRow = Math.max(...occupiedSlots.map(s => s.row + s.spanY - 1));
+      for (let r = 1; r <= maxRow; r++) {
+        const rowHasCamera = occupiedSlots.some(s => s.row <= r && (s.row + s.spanY - 1) >= r);
+        if (!rowHasCamera) {
+          occupiedSlots.forEach(s => {
+            if (s.row > r) s.row -= 1;
+          });
+          changed = true;
+          break;
+        }
       }
     }
+
+    const finalCols = Math.max(1, ...occupiedSlots.map(s => s.col + s.spanX - 1));
+    const finalRows = Math.max(1, ...occupiedSlots.map(s => s.row + s.spanY - 1));
 
     this.gridSlots.set(occupiedSlots);
+    this.cols.set(finalCols);
+    this.rows.set(finalRows);
   }
 
   // Resuelve solapamientos desplazando celdas en orden de lectura concéntrico para mantener cuadrículas proporcionadas
@@ -1610,6 +1966,77 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
+  // Resuelve solapamientos para arrastres grupales garantizando que las cámaras del grupo mantengan su posición exacta
+  private resolveGroupOverlapConflicts(groupSlots: GridSlot[], slots: GridSlot[]): void {
+    const occupied = new Set<string>();
+    const colsLimit = Math.max(1, this.cols());
+    const groupSlotIdSet = new Set(groupSlots.map(s => s.id));
+
+    // 1. Reservar el espacio exacto de todas las cámaras del grupo
+    groupSlots.forEach(gSlot => {
+      for (let r = gSlot.row; r < gSlot.row + gSlot.spanY; r++) {
+        for (let c = gSlot.col; c < gSlot.col + gSlot.spanX; c++) {
+          occupied.add(`${r},${c}`);
+        }
+      }
+    });
+
+    // 2. Ordenar las cámaras ajenas al grupo para mantener estabilidad
+    const nonGroupCams = slots.filter(s => !groupSlotIdSet.has(s.id) && s.camera !== null);
+    nonGroupCams.sort((a, b) => {
+      if (a.row !== b.row) return a.row - b.row;
+      return a.col - b.col;
+    });
+
+    // 3. Reubicar únicamente las cámaras ajenas que colisionan con las reservadas por el grupo
+    nonGroupCams.forEach(cam => {
+      let col = cam.col;
+      let row = cam.row;
+      const cSpanX = cam.spanX;
+      const cSpanY = cam.spanY;
+
+      let fitsCurrent = true;
+      const maxAllowedCol = Math.max(colsLimit, cSpanX);
+      for (let r = row; r < row + cSpanY; r++) {
+        for (let c = col; c < col + cSpanX; c++) {
+          if (c > maxAllowedCol || occupied.has(`${r},${c}`)) {
+            fitsCurrent = false;
+            break;
+          }
+        }
+        if (!fitsCurrent) break;
+      }
+
+      if (!fitsCurrent) {
+        let found = false;
+        let checkRow = 1;
+        let checkCol = 1;
+
+        while (!found && checkRow < 1000) {
+          if (this.doesSlotFit(checkCol, checkRow, cSpanX, cSpanY, occupied, colsLimit)) {
+            col = checkCol;
+            row = checkRow;
+            found = true;
+          } else {
+            checkCol++;
+            if (checkCol > colsLimit) {
+              checkCol = 1;
+              checkRow++;
+            }
+          }
+        }
+      }
+
+      cam.col = col;
+      cam.row = row;
+      for (let r = row; r < row + cSpanY; r++) {
+        for (let c = col; c < col + cSpanX; c++) {
+          occupied.add(`${r},${c}`);
+        }
+      }
+    });
+  }
+
   private getDimensionsForArray(slots: GridSlot[]): { cols: number; rows: number } {
     let maxCol = 1;
     let maxRow = 1;
@@ -1669,10 +2096,8 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       }
     }
 
-    return cells.sort((a, b) => {
-      if (a.row !== b.row) return a.row - b.row;
-      return a.col - b.col;
-    });
+    // Retornar celdas en orden estable sin re-ordenar el DOM para evitar desconexiones/recargas del pipeline de video
+    return cells;
   });
 
   // --- Manejador Inteligente: Clic de Selección vs Arrastre de Reordenamiento ---
@@ -1738,7 +2163,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     document.addEventListener('mouseup', onMouseUp);
   }
 
-  // --- Arrastre por Mousedown con Clonación Ghost y Detección de Destino ---
+  // --- Arrastre por Mousedown con Clonación Ghost y Detección de Destino (Individual y en Grupo) ---
   initDrag(slot: GridSlot, event: MouseEvent, index: number): void {
     if (this.isCanvasPinned()) {
       return;
@@ -1768,197 +2193,311 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const offsetX = startX - rect.left;
     const offsetY = startY - rect.top;
 
-    // Clon ghost
-    const ghost = cellEl.cloneNode(true) as HTMLElement;
-    ghost.classList.add('ghost-drag-card');
-    ghost.style.position = 'fixed';
-    ghost.style.width = `${rect.width}px`;
-    ghost.style.height = `${rect.height}px`;
-    ghost.style.left = `${rect.left}px`;
-    ghost.style.top = `${rect.top}px`;
-    ghost.style.pointerEvents = 'none';
-    ghost.style.zIndex = '9999';
-    ghost.style.opacity = '0.9';
-    ghost.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.6)';
-    ghost.style.border = '2px solid var(--primary)';
-
-    document.body.appendChild(ghost);
-
-    this.draggingSlotId.set(slot.id);
-    document.body.classList.add('grabbing-active');
-
     // GUARDAR ESTADO ORIGINAL PARA PREVIEWS TEMPORALES
     const backupSlots = this.gridSlots().map(s => ({ ...s }));
     const originalCols = this.cols();
     const originalRows = this.rows();
 
+    // Detección de arrastre en grupo si la celda pertenece a una multiselección activa
+    const selectedIds = this.selectedCanvasSlotIds();
+    const isSlotInSelection = selectedIds.has(slot.id);
+    const groupSlots = (isSlotInSelection && selectedIds.size > 1)
+      ? backupSlots.filter(s => selectedIds.has(s.id) && !s.isLocked && s.camera !== null)
+      : [slot];
+    const isGroup = groupSlots.length > 1;
+    this.isGroupDragging.set(isGroup);
+
+    // Contenedor maestro de clones Ghost para mover todo el grupo visualmente
+    const anchorRect = cellEl.getBoundingClientRect();
+    const ghostContainer = document.createElement('div');
+    ghostContainer.className = 'ghost-multi-drag-container';
+    ghostContainer.style.position = 'fixed';
+    ghostContainer.style.left = '0px';
+    ghostContainer.style.top = '0px';
+    ghostContainer.style.width = '0px';
+    ghostContainer.style.height = '0px';
+    ghostContainer.style.pointerEvents = 'none';
+    ghostContainer.style.zIndex = '99999';
+
+    const ghostItems: { element: HTMLElement; relX: number; relY: number }[] = [];
+
+    groupSlots.forEach(gSlot => {
+      const gCellEl = document.querySelector(`.grid-slot-cell[data-id="${gSlot.id}"]`) as HTMLElement;
+      if (gCellEl) {
+        const gRect = gCellEl.getBoundingClientRect();
+        const clone = gCellEl.cloneNode(true) as HTMLElement;
+        clone.classList.add('ghost-drag-card');
+        clone.style.position = 'fixed';
+        clone.style.width = `${gRect.width}px`;
+        clone.style.height = `${gRect.height}px`;
+        clone.style.left = `${gRect.left}px`;
+        clone.style.top = `${gRect.top}px`;
+        clone.style.pointerEvents = 'none';
+        clone.style.zIndex = '99999';
+        clone.style.opacity = '0.88';
+        clone.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.6)';
+        clone.style.border = '2px solid var(--primary)';
+        clone.style.borderRadius = '10px';
+        ghostContainer.appendChild(clone);
+
+        ghostItems.push({
+          element: clone,
+          relX: gRect.left - anchorRect.left,
+          relY: gRect.top - anchorRect.top
+        });
+      }
+    });
+
+    document.body.appendChild(ghostContainer);
+    this.draggingSlotId.set(slot.id);
+    document.body.classList.add('grabbing-active');
+
+    const groupSlotIdSet = new Set(groupSlots.map(s => s.id));
+    const groupDeltas = groupSlots.map(s => ({
+      id: s.id,
+      dCol: s.col - slot.col,
+      dRow: s.row - slot.row,
+      spanX: s.spanX,
+      spanY: s.spanY
+    }));
+
     let lastTargetKey = '';
     let finalSlots = [...backupSlots];
     let hoverSuccess = false;
-    let pendingExpanderDrop: 'column' | 'row' | null = null;
+    let pendingExpanderDrop: 'column' | 'row' | 'both' | null = null;
+    let lastHoverTargetCol = 1;
+    let lastHoverTargetRow = 1;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
-      const ghostX = moveEvent.clientX - offsetX;
-      const ghostY = moveEvent.clientY - offsetY;
-      ghost.style.left = `${ghostX}px`;
-      ghost.style.top = `${ghostY}px`;
+      const anchorX = moveEvent.clientX - offsetX;
+      const anchorY = moveEvent.clientY - offsetY;
+
+      // Actualizar posición de todos los clones flotantes del grupo
+      ghostItems.forEach(item => {
+        item.element.style.left = `${anchorX + item.relX}px`;
+        item.element.style.top = `${anchorY + item.relY}px`;
+      });
 
       const wrapperEl = document.querySelector('.monitoring-grid-canvas-wrapper') as HTMLElement;
       if (!wrapperEl) return;
       const wrapperRect = wrapperEl.getBoundingClientRect();
 
       const isOutside = (
-        moveEvent.clientX < wrapperRect.left ||
-        moveEvent.clientX > wrapperRect.right ||
-        moveEvent.clientY < wrapperRect.top ||
-        moveEvent.clientY > wrapperRect.bottom
+        moveEvent.clientX < wrapperRect.left - 200 ||
+        moveEvent.clientX > wrapperRect.right + 200 ||
+        moveEvent.clientY < wrapperRect.top - 200 ||
+        moveEvent.clientY > wrapperRect.bottom + 200
       );
 
       if (!isOutside) {
-        let targetCol = 1;
-        let targetRow = 1;
-        let type = 'cell';
+        const { cellW, cellH } = this.getCellDimensions();
+        const gap = 12;
+        const zoom = this.isCanvasMode() ? this.canvasZoom() : 1.0;
 
-        const hoveredEl = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY) as HTMLElement;
-        const expander = hoveredEl?.closest('[data-type="vertical-expander"], [data-type="horizontal-expander"]') as HTMLElement;
-        const cell = hoveredEl?.closest('.grid-slot-cell') as HTMLElement;
+        const localX = (moveEvent.clientX - wrapperRect.left) / zoom;
+        const localY = (moveEvent.clientY - wrapperRect.top) / zoom;
 
-        if (expander) {
-          const typeAttr = expander.getAttribute('data-type');
-          if (typeAttr === 'vertical-expander') {
-            type = 'vertical-expander';
-            targetCol = originalCols + 1;
-            targetRow = 1;
-          } else if (typeAttr === 'horizontal-expander') {
-            type = 'horizontal-expander';
-            targetCol = 1;
-            targetRow = originalRows + 1;
-          }
-        } else if (cell) {
-          const colAttr = cell.getAttribute('data-col');
-          const rowAttr = cell.getAttribute('data-row');
-          if (colAttr && rowAttr) {
-            targetCol = parseInt(colAttr, 10);
-            targetRow = parseInt(rowAttr, 10);
-            type = 'cell';
-          }
-        } else {
-          const { cellW, cellH } = this.getCellDimensions();
-          const gap = 12;
-          const zoom = this.isCanvasMode() ? this.canvasZoom() : 1.0;
+        const rawCol = Math.floor(localX / (cellW + gap)) + 1;
+        const rawRow = Math.floor(localY / (cellH + gap)) + 1;
 
-          const localX = (moveEvent.clientX - wrapperRect.left) / zoom;
-          const localY = (moveEvent.clientY - wrapperRect.top) / zoom;
+        let anchorCol = Math.max(1, rawCol);
+        let anchorRow = Math.max(1, rawRow);
 
-          targetCol = Math.floor(localX / (cellW + gap)) + 1;
-          targetRow = Math.floor(localY / (cellH + gap)) + 1;
-
-          const maxC = originalCols + 1;
-          const maxR = originalRows + 1;
-          targetCol = Math.max(1, Math.min(targetCol, maxC));
-          targetRow = Math.max(1, Math.min(targetRow, maxR));
-
-          if (targetCol === originalCols + 1) {
-            type = 'vertical-expander';
-          } else if (targetRow === originalRows + 1) {
-            type = 'horizontal-expander';
-          }
+        // Si es arrastre en grupo, calibrar para que ninguna celda quede con col < 1 o row < 1
+        if (isGroup) {
+          const minGroupCol = Math.min(...groupDeltas.map(d => anchorCol + d.dCol));
+          const minGroupRow = Math.min(...groupDeltas.map(d => anchorRow + d.dRow));
+          if (minGroupCol < 1) anchorCol += (1 - minGroupCol);
+          if (minGroupRow < 1) anchorRow += (1 - minGroupRow);
         }
 
-        const targetKey = `${type}-${targetCol}-${targetRow}`;
+        // Calcular el límite máximo que ocupará la selección (individual o grupo)
+        const maxGroupCol = isGroup ? Math.max(...groupDeltas.map(d => anchorCol + d.dCol + d.spanX - 1)) : (anchorCol + slot.spanX - 1);
+        const maxGroupRow = isGroup ? Math.max(...groupDeltas.map(d => anchorRow + d.dRow + d.spanY - 1)) : (anchorRow + slot.spanY - 1);
+
+        const isExpandingCols = maxGroupCol > originalCols;
+        const isExpandingRows = maxGroupRow > originalRows;
+
+        let type: 'cell' | 'vertical-expander' | 'horizontal-expander' | 'both-expanders' = 'cell';
+        if (isExpandingCols && isExpandingRows) {
+          type = 'both-expanders';
+        } else if (isExpandingCols) {
+          type = 'vertical-expander';
+        } else if (isExpandingRows) {
+          type = 'horizontal-expander';
+        } else {
+          type = 'cell';
+        }
+
+        lastHoverTargetCol = anchorCol;
+        lastHoverTargetRow = anchorRow;
+
+        const targetKey = `${type}-${anchorCol}-${anchorRow}-${maxGroupCol}-${maxGroupRow}`;
 
         if (targetKey !== lastTargetKey) {
           lastTargetKey = targetKey;
 
-          if (type === 'vertical-expander') {
-            this.cols.set(originalCols);
-            this.rows.set(originalRows);
-            this.gridSlots.set(backupSlots.map(s => ({ ...s })));
-            finalSlots = [...backupSlots];
+          if (isExpandingCols || isExpandingRows) {
+            // El grupo o celda está extendiendo la cuadrícula en filas, columnas o ambas
+            this.cols.set(Math.max(originalCols, maxGroupCol));
+            this.rows.set(Math.max(originalRows, maxGroupRow));
+
+            const tempSlots = backupSlots.map(s => ({ ...s }));
+            if (isGroup) {
+              const updatedGroupSlots: GridSlot[] = [];
+              groupDeltas.forEach(d => {
+                const gSlot = tempSlots.find(s => s.id === d.id);
+                if (gSlot) {
+                  gSlot.col = anchorCol + d.dCol;
+                  gSlot.row = anchorRow + d.dRow;
+                  updatedGroupSlots.push(gSlot);
+                }
+              });
+              this.resolveGroupOverlapConflicts(updatedGroupSlots, tempSlots);
+              this.draggingDropTargets.set(groupDeltas.map(d => ({
+                col: anchorCol + d.dCol,
+                row: anchorRow + d.dRow,
+                spanX: d.spanX,
+                spanY: d.spanY,
+                isValid: true
+              })));
+            } else {
+              const dragSlot = tempSlots.find(s => s.id === slot.id);
+              if (dragSlot) {
+                dragSlot.col = anchorCol;
+                dragSlot.row = anchorRow;
+                this.resolveOverlapConflictsForArray(dragSlot, tempSlots);
+              }
+              this.draggingDropTargets.set([{
+                col: anchorCol,
+                row: anchorRow,
+                spanX: slot.spanX,
+                spanY: slot.spanY,
+                isValid: true
+              }]);
+            }
+
+            finalSlots = tempSlots;
             hoverSuccess = true;
-            pendingExpanderDrop = 'column';
-            this.activeHoveredExpander.set('column');
+            pendingExpanderDrop = (isExpandingCols && isExpandingRows) ? 'both' : (isExpandingCols ? 'column' : 'row');
+            this.activeHoveredExpander.set(pendingExpanderDrop);
             return;
           }
 
-          if (type === 'horizontal-expander') {
-            this.cols.set(originalCols);
-            this.rows.set(originalRows);
-            this.gridSlots.set(backupSlots.map(s => ({ ...s })));
-            finalSlots = [...backupSlots];
-            hoverSuccess = true;
-            pendingExpanderDrop = 'row';
-            this.activeHoveredExpander.set('row');
-            return;
-          }
+          // Dentro de los límites originales de la cuadrícula
+          this.cols.set(originalCols);
+          this.rows.set(originalRows);
+          this.activeHoveredExpander.set(null);
+          pendingExpanderDrop = null;
 
-          if (targetCol === slot.col && targetRow === slot.row) {
-            this.cols.set(originalCols);
-            this.rows.set(originalRows);
-            this.gridSlots.set(backupSlots.map(s => ({ ...s })));
+          if (anchorCol === slot.col && anchorRow === slot.row) {
             finalSlots = [...backupSlots];
             hoverSuccess = false;
-            pendingExpanderDrop = null;
-            this.activeHoveredExpander.set(null);
+            this.draggingDropTargets.set([]);
             return;
           }
 
           const tempSlots = backupSlots.map(s => ({ ...s }));
-          const dragSlot = tempSlots.find(s => s.id === slot.id);
-          if (!dragSlot) return;
-
           let validHover = false;
-          pendingExpanderDrop = null;
-          this.activeHoveredExpander.set(null);
 
-          const overlapsLocked = backupSlots.some(s =>
-            s.isLocked && s.id !== slot.id &&
-            targetCol < s.col + s.spanX && targetCol + slot.spanX > s.col &&
-            targetRow < s.row + s.spanY && targetRow + slot.spanY > s.row
-          );
+          if (!isGroup) {
+            // Arrastre individual interno
+            const dragSlot = tempSlots.find(s => s.id === slot.id);
+            if (!dragSlot) return;
 
-          if (overlapsLocked) {
-            validHover = false;
-          } else {
-            const targetSlotInBackup = backupSlots.find(s =>
-              s.camera !== null &&
-              targetCol >= s.col && targetCol < s.col + s.spanX &&
-              targetRow >= s.row && targetRow < s.row + s.spanY
+            const overlapsLocked = backupSlots.some(s =>
+              s.isLocked && s.id !== slot.id &&
+              anchorCol < s.col + s.spanX && anchorCol + slot.spanX > s.col &&
+              anchorRow < s.row + s.spanY && anchorRow + slot.spanY > s.row
             );
 
-            if (targetSlotInBackup && targetSlotInBackup.id !== slot.id) {
-              const hoverSlot = tempSlots.find(s => s.id === targetSlotInBackup.id);
-              if (hoverSlot) {
-                const tempCol = dragSlot.col;
-                const tempRow = dragSlot.row;
-                dragSlot.col = hoverSlot.col;
-                dragSlot.row = hoverSlot.row;
-                hoverSlot.col = tempCol;
-                hoverSlot.row = tempRow;
+            if (!overlapsLocked) {
+              const targetSlotInBackup = backupSlots.find(s =>
+                s.camera !== null &&
+                anchorCol >= s.col && anchorCol < s.col + s.spanX &&
+                anchorRow >= s.row && anchorRow < s.row + s.spanY
+              );
 
+              if (targetSlotInBackup && targetSlotInBackup.id !== slot.id) {
+                const hoverSlot = tempSlots.find(s => s.id === targetSlotInBackup.id);
+                if (hoverSlot) {
+                  const tempCol = dragSlot.col;
+                  const tempRow = dragSlot.row;
+                  dragSlot.col = hoverSlot.col;
+                  dragSlot.row = hoverSlot.row;
+                  hoverSlot.col = tempCol;
+                  hoverSlot.row = tempRow;
+
+                  this.resolveOverlapConflictsForArray(dragSlot, tempSlots);
+                  validHover = true;
+                }
+              } else {
+                dragSlot.col = anchorCol;
+                dragSlot.row = anchorRow;
                 this.resolveOverlapConflictsForArray(dragSlot, tempSlots);
                 validHover = true;
               }
+            }
+
+            if (validHover) {
+              finalSlots = tempSlots;
+              hoverSuccess = true;
+              this.draggingDropTargets.set([{
+                col: anchorCol,
+                row: anchorRow,
+                spanX: slot.spanX,
+                spanY: slot.spanY,
+                isValid: true
+              }]);
             } else {
-              dragSlot.col = targetCol;
-              dragSlot.row = targetRow;
-              this.resolveOverlapConflictsForArray(dragSlot, tempSlots);
+              finalSlots = [...backupSlots];
+              hoverSuccess = false;
+              this.draggingDropTargets.set([]);
+            }
+          } else {
+            // Arrastre en grupo interno
+            const overlapsLocked = backupSlots.some(s =>
+              s.isLocked && !groupSlotIdSet.has(s.id) &&
+              groupDeltas.some(d => {
+                const c = anchorCol + d.dCol;
+                const r = anchorRow + d.dRow;
+                return c < s.col + s.spanX && c + d.spanX > s.col &&
+                       r < s.row + s.spanY && r + d.spanY > s.row;
+              })
+            );
+
+            if (!overlapsLocked) {
+              const updatedGroupSlots: GridSlot[] = [];
+              groupDeltas.forEach(d => {
+                const gSlot = tempSlots.find(s => s.id === d.id);
+                if (gSlot) {
+                  gSlot.col = anchorCol + d.dCol;
+                  gSlot.row = anchorRow + d.dRow;
+                  updatedGroupSlots.push(gSlot);
+                }
+              });
+
+              // Resolver conflictos con las celdas ajenas respetando el grupo intacto
+              this.resolveGroupOverlapConflicts(updatedGroupSlots, tempSlots);
+
               validHover = true;
             }
-          }
 
-          if (validHover) {
-            this.cols.set(originalCols);
-            this.rows.set(originalRows);
-            this.gridSlots.set(tempSlots);
-            finalSlots = tempSlots;
-            hoverSuccess = true;
-          } else {
-            this.cols.set(originalCols);
-            this.rows.set(originalRows);
-            this.gridSlots.set(backupSlots.map(s => ({ ...s })));
-            finalSlots = [...backupSlots];
-            hoverSuccess = false;
+            if (validHover) {
+              finalSlots = tempSlots;
+              hoverSuccess = true;
+              this.draggingDropTargets.set(groupDeltas.map(d => ({
+                col: anchorCol + d.dCol,
+                row: anchorRow + d.dRow,
+                spanX: d.spanX,
+                spanY: d.spanY,
+                isValid: true
+              })));
+            } else {
+              finalSlots = [...backupSlots];
+              hoverSuccess = false;
+              this.draggingDropTargets.set([]);
+            }
           }
         }
       } else {
@@ -1966,11 +2505,11 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
           lastTargetKey = '';
           this.cols.set(originalCols);
           this.rows.set(originalRows);
-          this.gridSlots.set(backupSlots.map(s => ({ ...s })));
           finalSlots = [...backupSlots];
           hoverSuccess = false;
           pendingExpanderDrop = null;
           this.activeHoveredExpander.set(null);
+          this.draggingDropTargets.set([]);
         }
       }
     };
@@ -1979,62 +2518,28 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
 
-      if (ghost && ghost.parentNode) {
-        ghost.parentNode.removeChild(ghost);
+      if (ghostContainer && ghostContainer.parentNode) {
+        ghostContainer.parentNode.removeChild(ghostContainer);
       }
 
       document.body.classList.remove('grabbing-active');
       this.draggingSlotId.set(null);
+      this.isGroupDragging.set(false);
       this.activeHoveredExpander.set(null);
+      this.draggingDropTargets.set([]);
 
       if (hoverSuccess) {
-        if (pendingExpanderDrop === 'column') {
-          // Confirmar adición de columna
-          this.pushToUndoStack({ slots: backupSlots, cols: originalCols, rows: originalRows });
-          const nextSlots = backupSlots.map(s => ({ ...s }));
-          const dragSlot = nextSlots.find(s => s.id === slot.id);
-          if (dragSlot) {
-            dragSlot.col = originalCols + 1;
-            dragSlot.row = 1;
-            dragSlot.spanX = 1;
-            dragSlot.spanY = 1;
-          }
-          this.gridSlots.set(nextSlots);
-          this.recalculateGridDimensions();
-          this.swapPulseSlotId.set(slot.id);
-          setTimeout(() => this.swapPulseSlotId.set(null), 1000);
-          this.showToast('Columna añadida con canal reubicado', 'primary');
-        } else if (pendingExpanderDrop === 'row') {
-          // Confirmar adición de fila
-          this.pushToUndoStack({ slots: backupSlots, cols: originalCols, rows: originalRows });
-          const nextSlots = backupSlots.map(s => ({ ...s }));
-          const dragSlot = nextSlots.find(s => s.id === slot.id);
-          if (dragSlot) {
-            dragSlot.col = 1;
-            dragSlot.row = originalRows + 1;
-            dragSlot.spanX = 1;
-            dragSlot.spanY = 1;
-          }
-          this.gridSlots.set(nextSlots);
-          this.recalculateGridDimensions();
-          this.swapPulseSlotId.set(slot.id);
-          setTimeout(() => this.swapPulseSlotId.set(null), 1000);
-          this.showToast('Fila añadida con canal reubicado', 'primary');
-        } else {
-          // Confirmar cambio normal
-          this.pushToUndoStack({ slots: backupSlots, cols: originalCols, rows: originalRows });
-          this.gridSlots.set(finalSlots);
-          this.recalculateGridDimensions();
-          this.swapPulseSlotId.set(slot.id);
-          setTimeout(() => this.swapPulseSlotId.set(null), 1000);
-          this.showToast('Distribución de canales reordenada', 'primary');
-        }
+        this.pushToUndoStack({ slots: backupSlots, cols: originalCols, rows: originalRows });
+        this.gridSlots.set(finalSlots);
+        this.recalculateGridDimensions(true);
+        this.swapPulseSlotId.set(slot.id);
+        setTimeout(() => this.swapPulseSlotId.set(null), 1000);
+        this.showToast(isGroup ? `${groupSlots.length} cámaras reubicadas en grupo` : 'Distribución de canales reordenada', 'primary');
       } else {
-        // Cancelar y restaurar el estado original intacto
         this.cols.set(originalCols);
         this.rows.set(originalRows);
         this.gridSlots.set(backupSlots);
-        this.recalculateGridDimensions();
+        this.recalculateGridDimensions(true);
         this.showToast('Reordenamiento cancelado', 'warning');
       }
     };
@@ -2158,7 +2663,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
       // Confirmar el cambio de redimensionamiento final forzando un clon del array final para reactividad
       this.gridSlots.set([...finalSlots]);
-      this.recalculateGridDimensions();
+      this.recalculateGridDimensions(true);
       this.showToast(`Grid ajustado: Cámara redimensionada a ${lastSpanX}x${lastSpanX}`, 'primary');
     };
 
@@ -2226,10 +2731,10 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     // Caso 1: Video WebRTC en tiempo real activo en el lienzo
     const videoEl = document.getElementById(`video-feed-${slot.id}`) as HTMLVideoElement;
     const isVideoActive = videoEl &&
-                          this.webRtcStates()[slot.id] === 'connected' &&
-                          !this.isSlotInPlaybackMode(slot) &&
-                          videoEl.videoWidth > 0 &&
-                          videoEl.videoHeight > 0;
+      this.webRtcStates()[slot.id] === 'connected' &&
+      !this.isSlotInPlaybackMode(slot) &&
+      videoEl.videoWidth > 0 &&
+      videoEl.videoHeight > 0;
 
     if (isVideoActive) {
       try {
@@ -3288,7 +3793,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     const current = this.currentTimePointer();
     const updated = new Date(current.getFullYear(), current.getMonth(), current.getDate(), h, m, s);
     const maxEndMs = this.maxTimelineEnd().getTime();
-    
+
     // NUNCA permitir que la hora sobrepase el instante actual `now`
     const targetMs = Math.min(now.getTime(), Math.min(maxEndMs, updated.getTime()));
 
@@ -3880,96 +4385,200 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       // Si hay cámaras previas, conservar sus posiciones y tamaños intactos
       const preservedCameraIds = new Set(preservedSlots.map(s => s.camera!.id));
       const newCams = selectedCams.filter(c => !preservedCameraIds.has(c.id));
+      const nextSlots = preservedSlots.map(s => ({ ...s }));
+      const mode = this.modalTriggerMode();
 
-      let maxCol = 1;
-      preservedSlots.forEach(s => {
+      // Determinar dimensiones máximas ocupadas actuales
+      let currentMaxCol = 1;
+      let currentMaxRow = 1;
+      nextSlots.forEach(s => {
         const endCol = s.col + s.spanX - 1;
-        if (endCol > maxCol) maxCol = endCol;
+        const endRow = s.row + s.spanY - 1;
+        if (endCol > currentMaxCol) currentMaxCol = endCol;
+        if (endRow > currentMaxRow) currentMaxRow = endRow;
       });
 
-      const nextSlots = preservedSlots.map(s => ({ ...s }));
-      const limitCols = Math.max(4, maxCol);
+      const isSlotOccupied = (col: number, row: number): boolean => {
+        return nextSlots.some(s =>
+          col >= s.col && col < s.col + s.spanX &&
+          row >= s.row && row < s.row + s.spanY
+        );
+      };
 
-      // Ubicar las nuevas cámaras agregadas al final del último objeto de la última fila (currentMaxRow)
-      newCams.forEach((cam) => {
-        // Encontrar la última fila ocupada en nextSlots actual
-        let currentMaxRow = 0;
-        nextSlots.forEach(s => {
-          const endRow = s.row + s.spanY - 1;
-          if (endRow > currentMaxRow) currentMaxRow = endRow;
-        });
+      const totalCams = nextSlots.length + newCams.length;
+      const optimalCols = this.getOptimalColumnsForCount(totalCams);
+      const optimalRows = Math.max(1, Math.ceil(totalCams / optimalCols));
 
-        if (currentMaxRow === 0) {
+      if (mode === 'add-row') {
+        // Modo Añadir Fila: Completar la fila hacia la derecha hasta colsLimit y luego saltar a la siguiente fila
+        const colsLimit = Math.max(1, this.cols(), currentMaxCol, optimalCols);
+        let targetRow = currentMaxRow + 1;
+        let targetCol = 1;
+
+        newCams.forEach(cam => {
+          while (isSlotOccupied(targetCol, targetRow)) {
+            targetCol++;
+            if (targetCol > colsLimit) {
+              targetCol = 1;
+              targetRow++;
+            }
+          }
+
           nextSlots.push({
-            id: `slot-1-1-${Math.floor(Math.random() * 1000000)}`,
+            id: `slot-${targetCol}-${targetRow}-${Math.floor(Math.random() * 1000000)}`,
             camera: cam,
-            col: 1,
-            row: 1,
+            col: targetCol,
+            row: targetRow,
             spanX: 1,
             spanY: 1
           });
-          return;
-        }
 
-        // Encontrar el último objeto (columna más a la derecha) en la última fila
-        let maxColInLastRow = 0;
-        nextSlots.forEach(s => {
-          const occupiesLastRow = s.row <= currentMaxRow && (s.row + s.spanY - 1) >= currentMaxRow;
-          if (occupiesLastRow) {
-            const endCol = s.col + s.spanX - 1;
-            if (endCol > maxColInLastRow) {
-              maxColInLastRow = endCol;
+          targetCol++;
+          if (targetCol > colsLimit) {
+            targetCol = 1;
+            targetRow++;
+          }
+        });
+      } else if (mode === 'add-column') {
+        // Modo Añadir Columna: Completar la columna hacia abajo hasta rowsLimit y luego saltar a la siguiente columna
+        const rowsLimit = Math.max(1, this.rows(), currentMaxRow, optimalRows);
+        let targetCol = currentMaxCol + 1;
+        let targetRow = 1;
+
+        newCams.forEach(cam => {
+          while (isSlotOccupied(targetCol, targetRow)) {
+            targetRow++;
+            if (targetRow > rowsLimit) {
+              targetRow = 1;
+              targetCol++;
             }
           }
-        });
 
-        let col = maxColInLastRow + 1;
-        let row = currentMaxRow;
+          nextSlots.push({
+            id: `slot-${targetCol}-${targetRow}-${Math.floor(Math.random() * 1000000)}`,
+            camera: cam,
+            col: targetCol,
+            row: targetRow,
+            spanX: 1,
+            spanY: 1
+          });
 
-        if (col > limitCols) {
-          col = 1;
-          row = currentMaxRow + 1;
-        }
-
-        // Asegurarse de que no solape con ningún slot
-        while (true) {
-          const overlaps = nextSlots.some(s =>
-            col >= s.col && col < s.col + s.spanX &&
-            row >= s.row && row < s.row + s.spanY
-          );
-          if (!overlaps) {
-            break;
+          targetRow++;
+          if (targetRow > rowsLimit) {
+            targetRow = 1;
+            targetCol++;
           }
-          col++;
-          if (col > limitCols) {
-            col = 1;
-            row++;
-          }
-        }
-
-        nextSlots.push({
-          id: `slot-${col}-${row}-${Math.floor(Math.random() * 1000000)}`,
-          camera: cam,
-          col,
-          row,
-          spanX: 1,
-          spanY: 1
         });
-      });
+      } else if (mode === 'slot' && this.targetAddCol() !== null && this.targetAddRow() !== null) {
+        // Modo Slot: Primera cámara en la celda clickeada, las siguientes llenan los huecos vacíos o añaden filas proporcionadas
+        const specifiedCol = this.targetAddCol()!;
+        const specifiedRow = this.targetAddRow()!;
+        const colsLimit = Math.max(1, this.cols(), currentMaxCol, optimalCols);
+
+        newCams.forEach((cam, idx) => {
+          let targetCol = specifiedCol;
+          let targetRow = specifiedRow;
+
+          if (idx === 0 && !isSlotOccupied(specifiedCol, specifiedRow)) {
+            targetCol = specifiedCol;
+            targetRow = specifiedRow;
+          } else {
+            // Buscar primer hueco vacío en el grid existente
+            let foundEmpty = false;
+            for (let r = 1; r <= currentMaxRow; r++) {
+              for (let c = 1; c <= colsLimit; c++) {
+                if (!isSlotOccupied(c, r)) {
+                  targetCol = c;
+                  targetRow = r;
+                  foundEmpty = true;
+                  break;
+                }
+              }
+              if (foundEmpty) break;
+            }
+
+            // Si no hay huecos vacíos, agregar a la siguiente fila
+            if (!foundEmpty) {
+              let r = currentMaxRow + 1;
+              let c = 1;
+              while (isSlotOccupied(c, r)) {
+                c++;
+                if (c > colsLimit) {
+                  c = 1;
+                  r++;
+                }
+              }
+              targetCol = c;
+              targetRow = r;
+            }
+          }
+
+          nextSlots.push({
+            id: `slot-${targetCol}-${targetRow}-${Math.floor(Math.random() * 1000000)}`,
+            camera: cam,
+            col: targetCol,
+            row: targetRow,
+            spanX: 1,
+            spanY: 1
+          });
+        });
+      } else {
+        // Modo General ("Gestionar Cámaras"): Rellenar huecos existentes y expandir proporcionalmente respetando la posición y orden previo
+        const colsLimit = Math.max(1, this.cols(), currentMaxCol, optimalCols);
+
+        newCams.forEach(cam => {
+          let targetCol = 1;
+          let targetRow = 1;
+          let found = false;
+
+          // 1. Intentar llenar huecos dentro de las filas existentes hasta el límite de columnas óptimo
+          for (let r = 1; r <= currentMaxRow; r++) {
+            for (let c = 1; c <= colsLimit; c++) {
+              if (!isSlotOccupied(c, r)) {
+                targetCol = c;
+                targetRow = r;
+                found = true;
+                break;
+              }
+            }
+            if (found) break;
+          }
+
+          // 2. Si no hay huecos en las filas existentes, añadir a las siguientes filas
+          if (!found) {
+            let r = currentMaxRow + 1;
+            let c = 1;
+            while (isSlotOccupied(c, r)) {
+              c++;
+              if (c > colsLimit) {
+                c = 1;
+                r++;
+              }
+            }
+            targetCol = c;
+            targetRow = r;
+          }
+
+          nextSlots.push({
+            id: `slot-${targetCol}-${targetRow}-${Math.floor(Math.random() * 1000000)}`,
+            camera: cam,
+            col: targetCol,
+            row: targetRow,
+            spanX: 1,
+            spanY: 1
+          });
+        });
+      }
 
       this.gridSlots.set(nextSlots);
     }
 
-    this.recalculateGridDimensions();
-
-    // Auto-centrar el lienzo al crear/actualizar cámaras
-    setTimeout(() => {
-      this.resetCanvas();
-    }, 100);
+    this.recalculateGridDimensions(true);
 
     this.showModal.set(false);
     this.targetAddCol.set(null);
     this.targetAddRow.set(null);
+    this.modalTriggerMode.set('general');
     this.showToast('Canales de monitoreo actualizados', 'success');
   }
 
@@ -3983,21 +4592,11 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     // Guardar estado actual en el historial de Deshacer antes de la eliminación masiva
     this.saveStateToHistory();
 
-    const slots = this.gridSlots().map(s => ({
-      ...s,
-      camera: s.camera ? { ...s.camera } : null
-    }));
+    const remainingSlots = this.gridSlots().filter(s => !selectedIds.has(s.id) && s.camera !== null);
 
-    occupiedSelectedSlots.forEach(targetSlot => {
-      const idx = slots.findIndex(s => s.id === targetSlot.id);
-      if (idx !== -1) {
-        slots[idx].camera = null;
-      }
-    });
-
-    this.gridSlots.set(slots);
+    this.gridSlots.set(remainingSlots);
     this.selectedCanvasSlotIds.set(new Set());
-    this.recalculateGridDimensions();
+    this.recalculateGridDimensions(true);
 
     if (occupiedSelectedSlots.length === 1) {
       const camName = occupiedSelectedSlots[0].camera?.name;
@@ -4018,19 +4617,9 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     }
 
     this.saveStateToHistory();
-    const slots = this.gridSlots().map(s => ({
-      ...s,
-      camera: s.camera ? { ...s.camera } : null
-    }));
-    const idx = slots.findIndex(s => s.col === col && s.row === row);
 
-    if (idx !== -1) {
-      const camName = slots[idx].camera?.name;
-      slots[idx].camera = null;
-      if (camName) {
-        this.showToast(`Cámara ${camName} removida del slot`, 'warning');
-      }
-    }
+    const targetCameraName = targetSlot?.camera?.name;
+    const remainingSlots = this.gridSlots().filter(s => s.id !== targetSlot?.id && s.camera !== null);
 
     if (targetSlot) {
       const nextSelected = new Set(this.selectedCanvasSlotIds());
@@ -4038,13 +4627,29 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       this.selectedCanvasSlotIds.set(nextSelected);
     }
 
-    this.gridSlots.set(slots);
-    this.recalculateGridDimensions();
+    this.gridSlots.set(remainingSlots);
+    this.recalculateGridDimensions(true);
+
+    if (targetCameraName) {
+      this.showToast(`Cámara ${targetCameraName} removida del slot`, 'warning');
+    }
   }
 
-  openSelectionModal(col: number | null, row: number | null): void {
+  openSelectionModal(col: number | null, row: number | null, mode?: 'general' | 'add-row' | 'add-column' | 'slot'): void {
     this.targetAddCol.set(col);
     this.targetAddRow.set(row);
+
+    if (mode) {
+      this.modalTriggerMode.set(mode);
+    } else if (col === null && row === null) {
+      this.modalTriggerMode.set('general');
+    } else if (col === 1 && row === this.rows() + 1) {
+      this.modalTriggerMode.set('add-row');
+    } else if (col === this.cols() + 1 && row === 1) {
+      this.modalTriggerMode.set('add-column');
+    } else {
+      this.modalTriggerMode.set('slot');
+    }
 
     // Resetear filtros locales de la modal al abrir
     this.modalSearchQuery.set('');
@@ -4429,13 +5034,14 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.tempDateEnd.set(this.filterDateHastaStr());
   }
 
-  // --- Date/Time Filters ---
+  // --- Date/Time Filters & Dropdowns ---
   @HostListener('document:click')
   onDocumentClick(): void {
     this.activeCalendarField.set(null);
     this.activeNestedCalendar.set(null);
     this.activeTimeField.set(null);
     this.showTimeRangeDropdown.set(false);
+    this.showCanvasMenuDropdown.set(false);
   }
 
   toggleDropdown(dropdownName: string, event: Event): void {
@@ -4750,6 +5356,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
   getStatusCssClass(status: string): string {
     const stLower = status.trim().toLowerCase();
+    if (stLower === 'all' || stLower === 'todos') return 'all';
     if (stLower === 'online' || stLower === 'active' || stLower === 'activo') return 'online';
     if (stLower === 'degraded' || stLower === 'degradado') return 'degraded';
     if (stLower === 'recovering' || stLower === 'recuperando') return 'recovering';
@@ -4757,10 +5364,18 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     return 'offline';
   }
 
+  cameraMatchesAnalyticType(c: Camera, typeFilter: string): boolean {
+    if (typeFilter === 'all') return true;
+    const badges = this.getCameraAnalytics(c);
+    return badges.some(b => b.toLowerCase() === typeFilter.toLowerCase());
+  }
+
   // --- Filtered computed properties for modal ---
   readonly filteredCamerasForModal = computed(() => {
     const query = this.modalSearchQuery().trim().toLowerCase();
     const statusFilter = this.modalStatusFilter();
+    const typeFilter = this.modalTypeFilter();
+    const sortDir = this.modalSortDirection();
     const hosts = this.allHosts();
     let cams = this.allCameras();
 
@@ -4770,6 +5385,10 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
         c.id.toLowerCase().includes(query) ||
         (c.streamType && c.streamType.toLowerCase().includes(query))
       );
+    }
+
+    if (typeFilter !== 'all') {
+      cams = cams.filter(c => this.cameraMatchesAnalyticType(c, typeFilter));
     }
 
     if (statusFilter !== 'all') {
@@ -4786,12 +5405,18 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       });
     }
 
-    return cams;
+    // Orden alfabético fijo y configurable (A-Z / Z-A)
+    return cams.slice().sort((a, b) => {
+      const cmp = (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' });
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
   });
 
   readonly filteredNodeGroupsForModal = computed(() => {
     const query = this.modalSearchQuery().trim().toLowerCase();
     const statusFilter = this.modalStatusFilter();
+    const typeFilter = this.modalTypeFilter();
+    const sortDir = this.modalSortDirection();
     const hosts = this.allHosts();
     const cameras = this.allCameras();
 
@@ -4808,6 +5433,10 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       return effLower === stLower;
     };
 
+    const matchesFilters = (c: Camera) => {
+      return matchesStatus(c) && this.cameraMatchesAnalyticType(c, typeFilter);
+    };
+
     const groups: { host: Host; cameras: Camera[] }[] = [];
 
     hosts.forEach(h => {
@@ -4821,22 +5450,52 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
         );
       }
 
-      hostCams = hostCams.filter(matchesStatus);
+      hostCams = hostCams.filter(matchesFilters);
 
       const matchesHost = query ? (h.hostname.toLowerCase().includes(query) || h.fingerprint.toLowerCase().includes(query)) : false;
 
       const finalCams = matchesHost
-        ? cameras.filter(c => c.hostFingerprint === h.fingerprint && matchesStatus(c))
+        ? cameras.filter(c => c.hostFingerprint === h.fingerprint && matchesFilters(c))
         : hostCams;
 
       if (finalCams.length > 0) {
+        // Ordenar cámaras dentro del nodo alfabéticamente
+        const sortedCams = finalCams.slice().sort((a, b) => {
+          const cmp = (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' });
+          return sortDir === 'asc' ? cmp : -cmp;
+        });
+
         groups.push({
           host: h,
-          cameras: finalCams
+          cameras: sortedCams
         });
       }
     });
 
-    return groups;
+    // Ordenar los nodos alfabéticamente por hostname
+    return groups.sort((a, b) => {
+      const cmp = (a.host.hostname || '').localeCompare(b.host.hostname || '', undefined, { numeric: true, sensitivity: 'base' });
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
   });
+
+  isLinuxHost(host: Host): boolean {
+    const sys = host?.hwInfo?.system?.toLowerCase() || '';
+    return sys.includes('linux') || sys.includes('ubuntu') || sys.includes('debian');
+  }
+
+  isWindowsHost(host: Host): boolean {
+    const sys = host?.hwInfo?.system?.toLowerCase() || '';
+    return sys.includes('windows') || sys.includes('win');
+  }
+
+  getHostOsIcon(host: Host): string {
+    if (this.isLinuxHost(host)) {
+      return 'icon-ubuntu';
+    }
+    if (this.isWindowsHost(host)) {
+      return 'icon-windows';
+    }
+    return 'icon-nodos';
+  }
 }

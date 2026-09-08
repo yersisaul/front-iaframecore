@@ -142,6 +142,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
   readonly validationMessage = signal<string | null>(null);
   readonly validationMessageType = signal<'warning' | 'danger' | 'success'>('warning');
   readonly activeErrorTarget = signal<'classes' | 'canvas' | 'prueba_movimiento' | string | null>(null);
+  readonly hasAttemptedSubmitAnalytic = signal<boolean>(false);
   private notificationTimeoutId: any = null;
 
   triggerErrorHighlight(target: 'classes' | 'canvas' | 'prueba_movimiento' | string): void {
@@ -306,6 +307,8 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
     this.lastEventImageUrl.set('');
     this.selectedAnalyticForConfig.set(null);
     this.selectedScheduleId.set(null);
+    this.hasAttemptedSubmitAnalytic.set(false);
+    this.clearNotification();
     this.canvasGeometryType.set('polygon'); // Reset a Polígono por defecto para nueva analítica
     this.drawnGeometryData.set(null);
     this.ensureWebRtcConnectionForCamera();
@@ -407,6 +410,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
   submitAnalyticForm(): void {
     if (this.isSubmittingAnalytic()) return;
     this.clearNotification();
+    this.hasAttemptedSubmitAnalytic.set(true);
 
     const formState = this.analyticFormState();
     const classes = formState?.detection_classes || [];
@@ -444,6 +448,37 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
     const hostFp = this.resolvedHostFingerprint;
     if (!hostFp) {
       this.showNotification('No se pudo determinar el Fingerprint del Nodo asociado a la cámara.', 'danger');
+      return;
+    }
+
+    // 5. Validar Acciones Programadas (Activar o Desactivar análisis requieren analítica objetivo seleccionada)
+    const actionsObj = this.analyticActionsState() || {};
+    const actionValues = Object.values(actionsObj) as any[];
+    const hasUnselectedAction = actionValues.some(act => {
+      const tipo = (act?.tipo || '').toLowerCase();
+      if (tipo.startsWith('activar analisis') || tipo.startsWith('desactivar analisis')) {
+        return !act?.accion?.analitica || String(act.accion.analitica).trim() === '';
+      }
+      return false;
+    });
+
+    if (hasUnselectedAction) {
+      this.showNotification(
+        'No se puede guardar: debes seleccionar la analítica objetivo a activar o desactivar en las acciones programadas.',
+        'warning'
+      );
+      // Auto-desplazamiento hacia la acción incompleta para enfocar el selector con advertencia
+      setTimeout(() => {
+        const warningTrigger = document.querySelector('.btn-target-selector-trigger.is-warning') as HTMLElement | null;
+        if (warningTrigger) {
+          warningTrigger.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          const actionsBuilderEl = document.querySelector('app-analytic-actions-builder') as HTMLElement | null;
+          if (actionsBuilderEl) {
+            actionsBuilderEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          }
+        }
+      }, 60);
       return;
     }
 
@@ -772,6 +807,8 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
     this.liveWebRtcFrameUrl.set('');
     this.lastEventImageUrl.set('');
     this.selectedAnalyticForConfig.set(analytic);
+    this.hasAttemptedSubmitAnalytic.set(false);
+    this.clearNotification();
 
     // Pre-seleccionar horario asociado localmente o coincidente por parámetro de analítica
     const matchedLocal = this.findScheduleForAnalytic(analytic, this.schedules());
@@ -832,6 +869,8 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
     this.cleanupWebRtcForDrawer();
     this.showAnalyticConfigDrawer.set(false);
     this.selectedAnalyticForConfig.set(null);
+    this.hasAttemptedSubmitAnalytic.set(false);
+    this.clearNotification();
   }
 
   // Señales de estado CRUD de analíticas
@@ -1076,7 +1115,17 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
   }
 
   getAnalyticsForCamera(cameraId: string): Analytic[] {
-    return this.analytics().filter(a => (!this.hostId || a.hostFingerprint === this.hostId) && a.targetCameraIds.includes(cameraId));
+    const list = this.analytics().filter(a => (!this.hostId || a.hostFingerprint === this.hostId) && a.targetCameraIds.includes(cameraId));
+    return [...list].sort((a, b) => {
+      const activeA = a.status === 'active' || a.status === 'online';
+      const activeB = b.status === 'active' || b.status === 'online';
+      if (activeA !== activeB) {
+        return activeA ? -1 : 1;
+      }
+      const labelA = this.getAnalyticLabel(a.type);
+      const labelB = this.getAnalyticLabel(b.type);
+      return labelA.localeCompare(labelB, undefined, { numeric: true, sensitivity: 'base' });
+    });
   }
 
   normalizeAnalyticType(type: string): string {

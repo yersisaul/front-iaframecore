@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, forkJoin } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { AppEnvironment } from '../config/app-environment';
 import { EventRecord } from '../domain/entities/event.models';
@@ -73,7 +73,7 @@ export class FacialMatchService {
     }
 
     const personName = event.objeto ? event.objeto.trim() : '';
-    const groupName = this.extractGroupName(event.detalleEvento);
+    const groupName = event.matchDetail?.listName || event.grupoLista || this.extractGroupName(event.detalleEvento);
 
     if (!personName) {
       const fallback = this.getFallbackMatch(event);
@@ -81,7 +81,48 @@ export class FacialMatchService {
       return of(fallback);
     }
 
-    // 1. Consulta al índice 'detalle_listas' para obtener la foto registrada en la lista
+    // Si el evento cuenta con matchDetail formal (nuevo mapping OpenSearch)
+    if (event.matchDetail?.detailId) {
+      const detailId = event.matchDetail.detailId;
+      const directSim = Math.round(
+        event.matchDetail.confianza <= 1 ? event.matchDetail.confianza * 100 : event.matchDetail.confianza
+      );
+
+      // Consulta directa por ID exacto de documento en 'detalle_listas' (sin búsqueda difusa ni homónimos)
+      const queryById = {
+        query: {
+          ids: { values: [detailId] }
+        },
+        size: 1
+      };
+
+      return this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/detalle_listas/_search`, queryById).pipe(
+        map(res => {
+          const hit = res.hits?.hits?.[0]?._source;
+          const rawImg = hit?.metadata?.url_img || hit?.url_img || hit?.url_imagen || hit?.foto;
+          const matchImgUrl = rawImg ? MetadataMapper.sanitizeImageUrl(rawImg) : (event.urlImgMatch || null);
+
+          const result: FacialMatchInfo = {
+            personName,
+            groupName,
+            matchImgUrl,
+            similarity: directSim,
+            isMatchConfirmed: true
+          };
+          this.matchCache.set(cacheKey, result);
+          return result;
+        }),
+        catchError(err => {
+          console.warn('[FacialMatchService] Error al obtener documento por detail_id:', err);
+          const fallback = this.getFallbackMatch(event);
+          this.matchCache.set(cacheKey, fallback);
+          return of(fallback);
+        })
+      );
+    }
+
+    // Ruta retrocompatible para eventos legacy sin matchDetail
+    // 1. Consulta al índice 'detalle_listas' por nombre asociado
     const queryList = {
       query: {
         bool: {
@@ -98,48 +139,20 @@ export class FacialMatchService {
     const fetchListPhoto$ = this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/detalle_listas/_search`, queryList).pipe(
       map(res => {
         const hit = res.hits?.hits?.[0]?._source;
-        if (hit?.metadata?.url_img) {
-          return MetadataMapper.sanitizeImageUrl(hit.metadata.url_img);
+        const rawImg = hit?.metadata?.url_img || hit?.url_img || hit?.url_imagen || hit?.foto;
+        if (rawImg) {
+          return MetadataMapper.sanitizeImageUrl(rawImg);
         }
         return null;
       }),
       catchError(() => of(null))
     );
 
-    // 2. Consulta al índice 'rostros' para obtener la confiabilidad del match
-    const queryRostro = {
-      query: {
-        bool: {
-          should: [
-            { term: { 'reconocimiento.keyword': personName } },
-            { match_phrase: { 'reconocimiento': personName } }
-          ],
-          minimum_should_match: 1
-        }
-      },
-      sort: [{ timestamp: { order: 'desc' } }],
-      size: 1
-    };
-
-    const fetchRostroScore$ = this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/rostros/_search`, queryRostro).pipe(
-      map(res => {
-        const hit = res.hits?.hits?.[0]?._source;
-        if (hit && typeof hit.confiabilidad === 'number' && hit.confiabilidad > 0) {
-          return Math.round(hit.confiabilidad <= 1 ? hit.confiabilidad * 100 : hit.confiabilidad);
-        }
-        return null;
-      }),
-      catchError(() => of(null))
-    );
-
-    return forkJoin({
-      matchImgUrl: fetchListPhoto$,
-      score: fetchRostroScore$
-    }).pipe(
-      map(({ matchImgUrl, score }) => {
+    return fetchListPhoto$.pipe(
+      map(matchImgUrl => {
         let similarity: number | null = null;
-        if (score !== null) {
-          similarity = score;
+        if (typeof event.matchDetail?.confianza === 'number') {
+          similarity = Math.round(event.matchDetail.confianza <= 1 ? event.matchDetail.confianza * 100 : event.matchDetail.confianza);
         } else if (typeof event.porcentajeSimilitud === 'number') {
           similarity = event.porcentajeSimilitud;
         } else if (typeof event.confiabilidad === 'number') {
@@ -150,14 +163,14 @@ export class FacialMatchService {
           personName,
           groupName,
           matchImgUrl: matchImgUrl || event.urlImgMatch || null,
-          similarity: similarity ?? (event.porcentajeSimilitud || 0),
+          similarity: similarity ?? 0,
           isMatchConfirmed: true
         };
         this.matchCache.set(cacheKey, result);
         return result;
       }),
       catchError(err => {
-        console.warn('[FacialMatchService] Error al resolver coincidencia facial desde OpenSearch:', err);
+        console.warn('[FacialMatchService] Error al resolver coincidencia facial legacy desde OpenSearch:', err);
         const fallback = this.getFallbackMatch(event);
         this.matchCache.set(cacheKey, fallback);
         return of(fallback);
@@ -172,7 +185,7 @@ export class FacialMatchService {
 
     return {
       personName: event?.objeto || 'Sujeto Identificado',
-      groupName: event ? this.extractGroupName(event.detalleEvento) : 'Lista de Control',
+      groupName: event?.matchDetail?.listName || event?.grupoLista || (event ? this.extractGroupName(event.detalleEvento) : 'Lista de Control'),
       matchImgUrl: event?.urlImgMatch || null,
       similarity: sim,
       isMatchConfirmed: true

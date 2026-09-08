@@ -23,7 +23,8 @@ describe('authGuard', () => {
     };
 
     permissionsServiceMock = {
-      activePermissionCodes: signal(new Set<string>())
+      activePermissionCodes: signal(new Set<string>()),
+      getDefaultRedirectRoute: vi.fn().mockReturnValue('/dashboard')
     };
 
     TestBed.configureTestingModule({

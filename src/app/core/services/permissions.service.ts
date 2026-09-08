@@ -295,7 +295,8 @@ export class PermissionsService {
       'analytics.create', 'analytics.read', 'analytics.update', 'analytics.delete',
       'schedules.create', 'schedules.read', 'schedules.update', 'schedules.delete',
       'lists.create', 'lists.read', 'lists.update', 'lists.delete',
-      'list_details.create', 'list_details.read', 'list_details.update', 'list_details.delete'
+      'list_details.create', 'list_details.read', 'list_details.update', 'list_details.delete',
+      'dashboard.create', 'dashboard.read', 'dashboard.update', 'dashboard.delete'
     ];
     const codes = new Set<string>(allCodes);
     this.activePermissionCodes.set(codes);
@@ -324,6 +325,7 @@ export class PermissionsService {
     if (mod === 'horarios') mod = 'schedules';
     if (mod === 'listas') mod = 'lists';
     if (mod === 'detalles listas' || mod === 'detalles_listas') mod = 'list_details';
+    if (mod === 'dashboard' || mod === 'dashboards') mod = 'dashboard';
 
     return `${mod}.${act}`;
   }
@@ -343,6 +345,7 @@ export class PermissionsService {
   getDefaultRedirectRoute(): string {
     const active = this.activePermissionCodes();
 
+    if (active.has('dashboard.read')) return '/dashboard/dashboards';
     if (active.has('hosts.read')) return '/dashboard/nodos';
     if (active.has('cameras.read')) return '/dashboard/camaras';
     if (active.has('schedules.read')) return '/dashboard/horarios';

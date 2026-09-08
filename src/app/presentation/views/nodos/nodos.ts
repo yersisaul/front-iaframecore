@@ -14,6 +14,7 @@ import { CameraService } from '../../../core/services/camera.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { Host } from '../../../core/domain/entities/host.models';
+import { getCameraStatusFilterLabel } from '../../../core/utils/camera-status.utils';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
 import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
@@ -78,7 +79,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     return sortedA.every((val, index) => val === sortedB[index]);
   }
 
-  readonly showFilterPanel = signal<boolean>(false);
+  readonly showFilterPanel = signal<boolean>(true);
   readonly activeDropdown = signal<string | null>(null);
   readonly showExportDropdown = signal<boolean>(false);
 
@@ -184,13 +185,23 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
         const matchesFp = h.fingerprint.toLowerCase().includes(term);
         if (!matchesHostname && !matchesIp && !matchesFp) return false;
       }
-      // Status filter — backend uses 'online'/'offline' but also 'active'/'inactive'
+      // Status filter
       if (st.length > 0) {
-        const isOnline = h.status === 'online' || h.status === 'active';
         const matchesStatus = st.some(s => {
-          if (s === 'active' || s === 'online') return isOnline;
-          if (s === 'inactive' || s === 'offline') return !isOnline;
-          return h.status === s;
+          const sLower = s.toLowerCase();
+          const rawStatus = (h.status || 'offline').trim().toLowerCase();
+          let hostStatus = 'offline';
+          if (rawStatus === 'online' || rawStatus === 'active' || rawStatus === 'activo') hostStatus = 'online';
+          else if (rawStatus === 'degraded' || rawStatus === 'degradado') hostStatus = 'degraded';
+          else if (rawStatus === 'recovering' || rawStatus === 'recuperando') hostStatus = 'recovering';
+          else if (rawStatus === 'pending' || rawStatus === 'pendiente') hostStatus = 'pending';
+          else hostStatus = rawStatus;
+
+          let targetStatus = sLower;
+          if (sLower === 'active' || sLower === 'activo') targetStatus = 'online';
+          else if (sLower === 'inactive' || sLower === 'inactivo') targetStatus = 'offline';
+
+          return hostStatus === targetStatus;
         });
         if (!matchesStatus) return false;
       }
@@ -299,6 +310,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.hostService.isViewActive.set(true);
     this.isLoading.set(true);
+    this.updatePaginationLimit();
     this.hostService.loadAllHosts().subscribe(() => {
       this.isLoading.set(false);
       // Consultar el estado y métricas iniciales una única vez al iniciar
@@ -355,6 +367,8 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
       });
       this.resizeObserver.observe(this.nodosContainer.nativeElement);
     }
+
+    setTimeout(() => this.updatePaginationLimit(), 50);
   }
 
   ngOnDestroy(): void {
@@ -364,21 +378,74 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     if (this.copiedTimeout) clearTimeout(this.copiedTimeout);
   }
 
-  // ── Resize handling ───────────────────────────────────────────────────────────
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updatePaginationLimit();
+  }
+
+  private calculateTableRowsCapacity(): number {
+    if (typeof window === 'undefined') return 8;
+
+    const winH = window.innerHeight || document.documentElement.clientHeight || 800;
+
+    // Medición dinámica directa en el DOM independiente del estado del panel de filtros
+    const container = (this.nodosContainer?.nativeElement || document) as HTMLElement;
+    const headerEl = container.querySelector('app-page-header') as HTMLElement;
+    const theadEl = container.querySelector('.nm-table thead') as HTMLElement;
+    const sampleRow = container.querySelector('.nm-table-tr') as HTMLElement;
+
+    // 1. Determinar el inicio vertical base del cuerpo de la tabla a partir de la cabecera estándar
+    const headerBottom = headerEl ? headerEl.getBoundingClientRect().bottom : 180;
+    const theadH = theadEl && theadEl.getBoundingClientRect().height > 0
+      ? theadEl.getBoundingClientRect().height
+      : 44;
+    const baseTableBodyTop = headerBottom + theadH + 16;
+
+    // 2. Determinar la zona de seguridad inferior antes del dock flotante de paginación
+    // La barra flotante fija tiene bottom: 0.9rem (~15px) + altura de barra (~48px) + sombra y elevación (~35px)
+    // + margen de respiración del contenedor (~32px) y borde/tarjeta de tabla (~20px) = 160px de holgura total
+    const bottomClearance = 160;
+
+    const targetBottom = winH - bottomClearance;
+    const availableHeight = Math.max(120, targetBottom - baseTableBodyTop);
+
+    // 3. Medir la altura real de una fila en el DOM (incluyendo border-bottom)
+    const rowHeight = (sampleRow && sampleRow.getBoundingClientRect().height > 0)
+      ? sampleRow.getBoundingClientRect().height
+      : 61;
+
+    return Math.max(4, Math.floor(availableHeight / rowHeight));
+  }
+
+  private updatePaginationLimit(containerWidth?: number): void {
+    if (this.viewMode() === 'list') {
+      const tableLimit = this.calculateTableRowsCapacity();
+      if (this.limit() !== tableLimit) {
+        this.limit.set(tableLimit);
+      }
+    } else {
+      const width = containerWidth ?? (this.nodosContainer?.nativeElement?.clientWidth || this.estimateContainerWidth());
+      if (width > 0) {
+        const newCols = Math.max(1, Math.floor((width + 24) / (335 + 24)));
+        const oldCols = this.columns();
+        let multiplier = Math.round(this.limit() / (oldCols || 1));
+        if (multiplier !== 10 && multiplier !== 20 && multiplier !== 30) {
+          multiplier = 10;
+        }
+        if (newCols !== oldCols) {
+          this.columns.set(newCols);
+        }
+        const newLimit = newCols * multiplier;
+        if (this.limit() !== newLimit) {
+          this.limit.set(newLimit);
+        }
+      }
+    }
+  }
+
   private adjustColumnsAndLimit(containerWidth: number): void {
     if (containerWidth <= 0) return;
-    const newCols = Math.max(1, Math.floor((containerWidth + 24) / (335 + 24)));
-    const oldCols = this.columns();
-    if (newCols !== oldCols) {
-      const currentLimit = this.limit();
-      let multiplier = Math.round(currentLimit / oldCols);
-      if (multiplier !== 10 && multiplier !== 20 && multiplier !== 30) {
-        multiplier = 10;
-      }
-      this.columns.set(newCols);
-      this.limit.set(newCols * multiplier);
-      this.currentPage.set(1);
-    }
+    this.updatePaginationLimit(containerWidth);
   }
 
   // ── Pagination controls ───────────────────────────────────────────────────────
@@ -678,7 +745,9 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   setViewMode(mode: 'cards' | 'list'): void {
     this.viewMode.set(mode);
     localStorage.setItem('nodos_view_mode', mode);
+    this.updatePaginationLimit();
     this.currentPage.set(1);
+    setTimeout(() => this.updatePaginationLimit(), 0);
   }
 
   copyRowContent(value: string, uniqueKey: string): void {
@@ -801,5 +870,36 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     });
 
     exportToCsv('reporte_nodos_computo.csv', columns, data);
+  }
+
+  // ── Status Filter Helpers ───────────────────────────────────────────────────
+  getStatusCssClass(status: string): string {
+    const stLower = (status || '').trim().toLowerCase();
+    if (stLower === 'all' || stLower === 'todos') return 'all';
+    if (stLower === 'online' || stLower === 'active' || stLower === 'activo') return 'online';
+    if (stLower === 'degraded' || stLower === 'degradado') return 'degraded';
+    if (stLower === 'recovering' || stLower === 'recuperando') return 'recovering';
+    if (stLower === 'pending' || stLower === 'pendiente') return 'pending';
+    return 'offline';
+  }
+
+  getStatusFilterLabel(status: string): string {
+    return getCameraStatusFilterLabel(status);
+  }
+
+  getStatusCount(status: string): number {
+    const opts = this.filterOptions();
+    if (!status || status === 'all') return opts.totalCount || 0;
+    const counts = opts.statusCounts || {};
+    return counts[status] || counts[status.toLowerCase()] || 0;
+  }
+
+  getStatusCountSummary(): string {
+    const selected = this.tempFilterStatus();
+    if (selected.length === 0) {
+      return `${this.filterOptions().totalCount || 0}`;
+    }
+    const totalSelected = selected.reduce((sum, st) => sum + this.getStatusCount(st), 0);
+    return `${totalSelected}`;
   }
 }

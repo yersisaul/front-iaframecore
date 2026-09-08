@@ -148,13 +148,13 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   });
 
   // Filter drawer/panel visibility
-  readonly showFilterPanel = signal<boolean>(false);
+  readonly showFilterPanel = signal<boolean>(true);
 
   // Active filter dropdown inside the panel
   readonly activeDropdown = signal<string | null>(null);
 
   // Toggle state to hide/show horizontal filters
-  readonly showFilters = signal<boolean>(false);
+  readonly showFilters = signal<boolean>(true);
 
   // Unified search control
   readonly searchControl = new FormControl('');

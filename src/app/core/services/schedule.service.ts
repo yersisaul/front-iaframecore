@@ -53,18 +53,16 @@ export class ScheduleService {
     }, 1200);
   }
 
-  constructor(private scheduleRepository: IScheduleRepository) {
-    this.getAllSchedules().subscribe({
-      error: (err) => console.error('[ScheduleService] Error autoloader getAllSchedules:', err)
-    });
-  }
+  constructor(private scheduleRepository: IScheduleRepository) { }
 
   /**
    * Fetches ALL schedules from the backend and optionally filters by hostFingerprint
    * on the client side.
    */
   getSchedulesByHost(hostFingerprint: string): Observable<Schedule[]> {
-    this.isLoading.set(true);
+    if (this.schedules().length === 0) {
+      this.isLoading.set(true);
+    }
     return this.scheduleRepository.getAll().pipe(
       map(all => {
         // Filter client-side by the host fingerprint
@@ -86,7 +84,9 @@ export class ScheduleService {
    * Fetches ALL schedules without filtering. Used by the Horarios view.
    */
   getAllSchedules(): Observable<Schedule[]> {
-    this.isLoading.set(true);
+    if (this.schedules().length === 0) {
+      this.isLoading.set(true);
+    }
     return this.scheduleRepository.getAll().pipe(
       tap(schedules => {
         this.schedules.set(schedules);

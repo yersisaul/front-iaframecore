@@ -7,14 +7,17 @@ import { IStorageRepository } from '../domain/repositories/storage.repository';
 
 export interface DetectionHit {
   id: string;
+  eventId?: string;
   camara: string;
   timestamp: Date;
   confiabilidad: number;
   imagen: string;
+  urlVideo?: string | null;
   tipoObjeto?: string;
   edad?: string;
   genero?: string;
   reconocimiento?: string;
+  detalleEvento?: string;
   posturas?: Array<{ postura: string; conteo: number }>;
   colores?: Array<{ colorText: string; r: number; g: number; b: number; porcentaje: number }>;
 }
@@ -61,7 +64,9 @@ export class ListService {
   readonly similarityThreshold = signal<number>(0.85);
 
   loadLists(): Observable<List[]> {
-    this.isLoading.set(true);
+    if (this.lists().length === 0) {
+      this.isLoading.set(true);
+    }
     return this.listRepository.getLists().pipe(
       tap(items => {
         this.lists.set(items);
@@ -203,17 +208,24 @@ export class ListService {
   }
 
   /**
-   * Queries OpenSearch for past face matches of the subject name.
+   * Obtiene en lote el resumen de eventos (conteo y último avistamiento) para todos los sujetos de la lista estrictamente por listId.
    */
-  queryDetections(subjectName: string, documentId?: string): Observable<DetectionHit[]> {
-    return this.listRepository.querySubjectDetections(subjectName, 'face', documentId);
+  loadListEventSummaries(listId: string): Observable<Record<string, { count: number; latestHit?: DetectionHit }>> {
+    return this.listRepository.queryListEventSummaries(listId);
   }
 
   /**
-   * Queries OpenSearch for past plate matches of the plate text.
+   * Consulta los eventos históricos del sujeto vinculados formalmente por su ID de detalle (`match_detail.detail_id`).
    */
-  queryPlateDetections(plateText: string, documentId?: string): Observable<DetectionHit[]> {
-    return this.listRepository.querySubjectDetections(plateText, 'plate', documentId);
+  queryDetections(detailId: string): Observable<DetectionHit[]> {
+    return this.listRepository.querySubjectDetections(detailId);
+  }
+
+  /**
+   * Consulta los eventos de reconocimiento de placas para el vehículo/placa por su ID de detalle.
+   */
+  queryPlateDetections(detailId: string): Observable<DetectionHit[]> {
+    return this.listRepository.querySubjectDetections(detailId);
   }
 
   /**

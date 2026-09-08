@@ -150,8 +150,8 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   readonly geometryStatusLabel = computed(() => {
     if (this.isCanvasLocked()) {
       return this.shapes().length > 0
-        ? `Lienzo Bloqueado · ${this.shapes().length} ${this.shapes().length === 1 ? 'área' : 'áreas'} (Solo lectura)`
-        : 'Lienzo Bloqueado · Sin captura';
+        ? `${this.shapes().length} ${this.shapes().length === 1 ? 'área' : 'áreas'} (Solo lectura)`
+        : 'Solo lectura · Sin captura';
     }
     const gType = this.currentGeometryType();
     const typeName = gType === 'polygon' ? 'Polígono'
@@ -162,10 +162,10 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     const pts = this.totalPointsCount();
     const activeOpen = this.activeOpenShape();
     if (activeOpen) {
-      return `Trazando ${typeName} (${activeOpen.points.length} pts) — Clic en 1er punto para cerrar`;
+      return `Trazando (${activeOpen.points.length} pts) — Clic en 1er punto para cerrar`;
     }
-    if (count === 0) return `${typeName} · Vacío (0/${max})`;
-    return `${typeName} · ${count}/${max} ${gType === 'polygon' ? 'Áreas' : gType === 'speed_quad' ? 'Cuadriláteros' : 'Líneas'} (${pts}pts)`;
+    if (count === 0) return `${typeName} · 0/${max}`;
+    return `${typeName} · ${count}/${max} (${pts} pts)`;
   });
 
   private resizeObserver: ResizeObserver | null = null;
@@ -208,8 +208,8 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       if (!changes['geometryType'].firstChange && oldType && oldType !== newType) {
         const current = this.shapes();
         const isCompatible = (newType === 'polygon' && current.some(s => s.points.length >= 3)) ||
-                             (newType === 'line' && current.some(s => s.points.length === 2)) ||
-                             (newType === 'speed_quad' && current.some(s => s.points.length === 4));
+          (newType === 'line' && current.some(s => s.points.length === 2)) ||
+          (newType === 'speed_quad' && current.some(s => s.points.length === 4));
         if (!isCompatible) {
           // Reiniciar el lienzo únicamente cuando el tipo de analítica cambie de verdad a un tipo incompatible
           this.shapes.set([]);

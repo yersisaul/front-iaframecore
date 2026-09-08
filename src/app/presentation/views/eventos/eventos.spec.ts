@@ -5,9 +5,13 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of } from 'rxjs';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
+import { signal } from '@angular/core';
 import { Eventos } from './eventos';
 import { IEventRepository } from '../../../core/domain/repositories/event.repository';
 import { PermissionsService } from '../../../core/services/permissions.service';
+import { CameraService } from '../../../core/services/camera.service';
+
+import { ListService } from '../../../core/services/list.service';
 
 describe('Eventos', () => {
   let component: Eventos;
@@ -22,11 +26,23 @@ describe('Eventos', () => {
         analiticas: [],
         objetos: []
       }
-    })
+    }),
+    getAvailableSubjects: () => of([])
   };
 
   const mockPermissionsService = {
     hasPermission: () => true
+  };
+
+  const mockCameraService = {
+    cameras: signal([]),
+    getAllCameras: () => of([])
+  };
+
+  const mockListService = {
+    lists: signal([]),
+    loadLists: () => of([]),
+    isViewActive: signal(false)
   };
 
   beforeEach(async () => {
@@ -37,7 +53,9 @@ describe('Eventos', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: IEventRepository, useValue: mockEventRepository },
-        { provide: PermissionsService, useValue: mockPermissionsService }
+        { provide: PermissionsService, useValue: mockPermissionsService },
+        { provide: CameraService, useValue: mockCameraService },
+        { provide: ListService, useValue: mockListService }
       ]
     }).compileComponents();
 

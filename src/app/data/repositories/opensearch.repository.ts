@@ -21,41 +21,27 @@ export class OpenSearchRepository implements IMetadataRepository {
   constructor(private http: HttpClient) {}
 
   getAvailableIndices(): Observable<MetaIndexInfo[]> {
-    return this.http.get<CatIndexResponse[]>(`${AppEnvironment.openSearchBaseUrl}/_cat/indices?format=json`).pipe(
-      switchMap(indices => {
-        const validNames: MetaIndexName[] = ['personas', 'vehiculos', 'rostros', 'otros'];
-        const activeNames = indices
-          .map(i => i.index as MetaIndexName)
-          .filter(name => validNames.includes(name));
-
-        validNames.forEach(name => {
-          if (!activeNames.includes(name)) {
-            activeNames.push(name);
+    const validNames: MetaIndexName[] = ['personas', 'vehiculos', 'rostros', 'otros'];
+    const countRequests = validNames.map(name =>
+      this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/${name}/_search`, {
+        track_total_hits: true,
+        size: 0
+      }).pipe(
+        map(res => {
+          let count = 0;
+          if (res.hits?.total) {
+            count = typeof res.hits.total === 'number' ? res.hits.total : (res.hits.total.value || 0);
           }
-        });
-
-        const countObservables = activeNames.map(name =>
-          this.http.get<{ count: number }>(`${AppEnvironment.openSearchBaseUrl}/${name}/_count`).pipe(
-            map(res => ({ name, count: res.count })),
-            catchError(() => of({ name, count: 0 }))
-          )
-        );
-
-        return forkJoin(countObservables);
-      }),
-      map(mapped => {
-        return mapped.sort((a, b) => b.count - a.count);
-      }),
-      catchError(() => {
-        console.warn('Failed to fetch indices or counts from OpenSearch. Using default list.');
-        return of<MetaIndexInfo[]>([
-          { name: 'personas', count: 0 },
-          { name: 'vehiculos', count: 0 },
-          { name: 'rostros', count: 0 },
-          { name: 'otros', count: 0 }
-        ]);
-      })
+          return { name, count };
+        }),
+        catchError(err => {
+          console.warn(`[OpenSearchRepository] No se pudo consultar _search para índice "${name}":`, err);
+          return of({ name, count: 0 });
+        })
+      )
     );
+
+    return forkJoin(countRequests);
   }
 
   search(

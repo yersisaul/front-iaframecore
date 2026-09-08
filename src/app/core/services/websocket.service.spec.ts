@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { of, Subject } from 'rxjs';
 import { vi } from 'vitest';
 import { WebsocketService } from './websocket.service';
@@ -18,6 +19,8 @@ import { IEventRepository } from '../domain/repositories/event.repository';
 import { IUserRepository } from '../domain/repositories/user.repository';
 import { IScheduleRepository } from '../domain/repositories/schedule.repository';
 import { IListRepository } from '../domain/repositories/list.repository';
+import { DashboardService } from './dashboard.service';
+import { IDashboardRepository } from '../domain/repositories/dashboard.repository';
 
 describe('WebsocketService Handlers', () => {
   let service: WebsocketService;
@@ -32,19 +35,22 @@ describe('WebsocketService Handlers', () => {
   let listServiceSpy: any;
   let userServiceSpy: any;
   let hostServiceSpy: any;
+  let dashboardServiceSpy: any;
   let permissionsServiceSpy: any;
   let metadataRepoSpy: any;
   let eventRepoSpy: any;
   let userRepoSpy: any;
   let scheduleRepoSpy: any;
   let listRepoSpy: any;
+  let dashboardRepoSpy: any;
   let websocketConnectionServiceSpy: any;
 
   beforeEach(() => {
     vi.useFakeTimers();
 
     authServiceSpy = {
-      currentUser: vi.fn().mockReturnValue({ email: 'admin@test.com' })
+      currentUser: signal<any>({ id: 'u111', email: 'admin@test.com', roleId: 'role-old' }),
+      logout: vi.fn().mockReturnValue(of(undefined))
     };
 
     metadataServiceSpy = {
@@ -54,7 +60,9 @@ describe('WebsocketService Handlers', () => {
       pageSize: vi.fn().mockReturnValue(24),
       markAsNew: vi.fn(),
       incrementIndexCount: vi.fn(),
-      filters: vi.fn().mockReturnValue({ imageSearchUrl: null, imageEmbedding: null })
+      filters: vi.fn().mockReturnValue({ imageSearchUrl: null, imageEmbedding: null }),
+      isViewActive: vi.fn().mockReturnValue(true),
+      addNewRecord: vi.fn()
     };
 
     eventServiceSpy = {
@@ -62,7 +70,8 @@ describe('WebsocketService Handlers', () => {
       totalRecords: { update: vi.fn() },
       pageSize: vi.fn().mockReturnValue(24),
       markAsNew: vi.fn(),
-      addNewEvent: vi.fn()
+      addNewEvent: vi.fn(),
+      isViewActive: vi.fn().mockReturnValue(true)
     };
 
     cameraServiceSpy = {
@@ -144,6 +153,7 @@ describe('WebsocketService Handlers', () => {
 
     userServiceSpy = {
       isViewActive: vi.fn().mockReturnValue(true),
+      users: { set: vi.fn(), update: vi.fn() },
       newRecordIds: vi.fn().mockReturnValue(new Set()),
       updatedRecordIds: vi.fn().mockReturnValue(new Set()),
       deletingRecordIds: vi.fn().mockReturnValue(new Set()),
@@ -167,8 +177,28 @@ describe('WebsocketService Handlers', () => {
       markAsDeletingHost: vi.fn()
     };
 
+    dashboardServiceSpy = {
+      dashboards: vi.fn().mockReturnValue([]),
+      isViewActive: vi.fn().mockReturnValue(true),
+      newRecordIds: vi.fn().mockReturnValue(new Set()),
+      updatedRecordIds: vi.fn().mockReturnValue(new Set()),
+      deletingRecordIds: vi.fn().mockReturnValue(new Set()),
+      addOrUpdateDashboardLocal: vi.fn(),
+      deleteDashboardLocal: vi.fn(),
+      loadDashboards: vi.fn().mockReturnValue(of([])),
+      markAsNew: vi.fn(),
+      markAsUpdated: vi.fn(),
+      markAsDeleting: vi.fn()
+    };
+
+    dashboardRepoSpy = {
+      getById: vi.fn().mockReturnValue(of({ id: 'dash-1', nombre: 'Dashboard 1', url: 'http://test.com' })),
+      getAll: vi.fn().mockReturnValue(of([]))
+    };
+
     userRepoSpy = {
-      getById: vi.fn().mockReturnValue(of({ id: 'u111', roleId: 'role-new' }))
+      getById: vi.fn().mockReturnValue(of({ id: 'u111', roleId: 'role-new' })),
+      getAll: vi.fn().mockReturnValue(of([]))
     };
 
     scheduleRepoSpy = {
@@ -205,12 +235,14 @@ describe('WebsocketService Handlers', () => {
         { provide: ListService, useValue: listServiceSpy },
         { provide: UserService, useValue: userServiceSpy },
         { provide: HostService, useValue: hostServiceSpy },
+        { provide: DashboardService, useValue: dashboardServiceSpy },
         { provide: PermissionsService, useValue: permissionsServiceSpy },
         { provide: IMetadataRepository, useValue: metadataRepoSpy },
         { provide: IEventRepository, useValue: eventRepoSpy },
         { provide: IUserRepository, useValue: userRepoSpy },
         { provide: IScheduleRepository, useValue: scheduleRepoSpy },
-        { provide: IListRepository, useValue: listRepoSpy }
+        { provide: IListRepository, useValue: listRepoSpy },
+        { provide: IDashboardRepository, useValue: dashboardRepoSpy }
       ]
     });
 
@@ -280,7 +312,7 @@ describe('WebsocketService Handlers', () => {
 
     (service as any).handleMessage(payload);
 
-    expect(cameraServiceSpy.getCamerasByHost).toHaveBeenCalledWith('host-123');
+    expect(cameraServiceSpy.getCamerasByHost).not.toHaveBeenCalled();
     expect(cameraServiceSpy.markAsNew).not.toHaveBeenCalled();
   });
 
@@ -349,7 +381,7 @@ describe('WebsocketService Handlers', () => {
 
     (service as any).handleMessage(payload);
 
-    expect(analyticServiceSpy.getAnalyticsByHost).toHaveBeenCalledWith('host-123');
+    expect(analyticServiceSpy.getAnalyticsByHost).not.toHaveBeenCalled();
     expect(analyticServiceSpy.markAsUpdated).not.toHaveBeenCalled();
   });
 
@@ -464,13 +496,10 @@ describe('WebsocketService Handlers', () => {
       body: { list_id: 'lst-111' }
     };
 
-    const mockList = { list_id: 'lst-111', name: 'New List' };
-    listRepoSpy.getListById.mockReturnValue(of(mockList));
-
     (service as any).handleMessage(payload);
 
-    expect(listRepoSpy.getListById).toHaveBeenCalledWith('lst-111');
-    expect(listServiceSpy.addOrUpdateListLocal).toHaveBeenCalledWith(mockList);
+    expect(listRepoSpy.getListById).not.toHaveBeenCalled();
+    expect(listServiceSpy.addOrUpdateListLocal).not.toHaveBeenCalled();
     expect(listServiceSpy.markAsNew).not.toHaveBeenCalled();
   });
 
@@ -511,13 +540,10 @@ describe('WebsocketService Handlers', () => {
       body: { detail_id: 'det-222' }
     };
 
-    const mockDetail = { detail_id: 'det-222', list_id: 'list-999', nombre_asociado: 'Test' };
-    listRepoSpy.getListDetailById.mockReturnValue(of(mockDetail));
-
     (service as any).handleMessage(payload);
 
-    expect(listRepoSpy.getListDetailById).toHaveBeenCalledWith('det-222');
-    expect(listServiceSpy.addOrUpdateListDetailLocal).toHaveBeenCalledWith(mockDetail);
+    expect(listRepoSpy.getListDetailById).not.toHaveBeenCalled();
+    expect(listServiceSpy.addOrUpdateListDetailLocal).not.toHaveBeenCalled();
     expect(listServiceSpy.markAsNew).not.toHaveBeenCalled();
   });
 
@@ -551,8 +577,9 @@ describe('WebsocketService Handlers', () => {
   });
 
   it('should process "user_updated" and sync permissions if user matches', () => {
-    authServiceSpy.currentUser.mockReturnValue({ id: 'u111', roleId: 'role-old' });
-    userRepoSpy.getById.mockReturnValue(of({ id: 'u111', roleId: 'role-new' }));
+    authServiceSpy.currentUser.set({ id: 'u111', email: 'admin@test.com', roleId: 'role-old' });
+    const mockUpdatedUser = { id: 'u111', email: 'admin@test.com', roleId: 'role-new' };
+    userRepoSpy.getAll.mockReturnValue(of([mockUpdatedUser]));
 
     const payload = {
       action: 'user_updated',
@@ -561,15 +588,14 @@ describe('WebsocketService Handlers', () => {
 
     (service as any).handleMessage(payload);
 
-    expect(userRepoSpy.getById).toHaveBeenCalledWith('u111');
-    expect(userServiceSpy.updateUserLocal).toHaveBeenCalledWith('u111', expect.any(Object));
+    expect(userRepoSpy.getAll).toHaveBeenCalled();
+    expect(userServiceSpy.users.set).toHaveBeenCalledWith([mockUpdatedUser]);
+    expect(userServiceSpy.markAsUpdated).toHaveBeenCalledWith('u111');
     expect(permissionsServiceSpy.loadUserPermissions).toHaveBeenCalledWith('role-new');
   });
 
   it('should process "role_updated" and sync permissions if role matches', () => {
-    authServiceSpy.currentUser.mockReturnValue({ id: 'u111', roleId: 'role-match' });
-    const mockRole = { rol_id: 'role-match', nombre: 'ROLE_MATCH', id_permisos: [] };
-    permissionsServiceSpy.getRoleById.mockReturnValue(of(mockRole));
+    authServiceSpy.currentUser.set({ id: 'u111', email: 'admin@test.com', roleId: 'role-match' });
 
     const payload = {
       action: 'role_updated',
@@ -578,13 +604,14 @@ describe('WebsocketService Handlers', () => {
 
     (service as any).handleMessage(payload);
 
-    expect(permissionsServiceSpy.getRoleById).toHaveBeenCalledWith('role-match');
-    expect(permissionsServiceSpy.addOrUpdateRoleLocal).toHaveBeenCalledWith(mockRole);
+    expect(permissionsServiceSpy.loadAllRoles).toHaveBeenCalled();
+    expect(permissionsServiceSpy.markAsUpdatedRole).toHaveBeenCalledWith('role-match');
     expect(permissionsServiceSpy.loadUserPermissions).toHaveBeenCalledWith('role-match');
   });
 
   it('should process "user_created" in real time without lists refreshes', () => {
-    userRepoSpy.getById.mockReturnValue(of({ id: 'u222', roleId: 'role-x' }));
+    const mockCreatedUser = { id: 'u222', roleId: 'role-x' };
+    userRepoSpy.getAll.mockReturnValue(of([mockCreatedUser]));
 
     const payload = {
       action: 'user_created',
@@ -593,14 +620,13 @@ describe('WebsocketService Handlers', () => {
 
     (service as any).handleMessage(payload);
 
-    expect(userRepoSpy.getById).toHaveBeenCalledWith('u222');
-    expect(userServiceSpy.addUserLocal).toHaveBeenCalled();
+    expect(userRepoSpy.getAll).toHaveBeenCalled();
+    expect(userServiceSpy.users.set).toHaveBeenCalledWith([mockCreatedUser]);
     expect(userServiceSpy.markAsNew).toHaveBeenCalledWith('u222');
   });
 
   it('should process "role_created" and add to roles list in memory', () => {
-    const mockRole = { rol_id: 'r555', nombre: 'R555', id_permisos: [] };
-    permissionsServiceSpy.getRoleById.mockReturnValue(of(mockRole));
+    permissionsServiceSpy.isViewActive.mockReturnValue(true);
 
     const payload = {
       action: 'role_created',
@@ -609,8 +635,7 @@ describe('WebsocketService Handlers', () => {
 
     (service as any).handleMessage(payload);
 
-    expect(permissionsServiceSpy.getRoleById).toHaveBeenCalledWith('r555');
-    expect(permissionsServiceSpy.addOrUpdateRoleLocal).toHaveBeenCalledWith(mockRole);
+    expect(permissionsServiceSpy.loadAllRoles).toHaveBeenCalled();
     expect(permissionsServiceSpy.markAsNewRole).toHaveBeenCalledWith('r555');
   });
 
@@ -686,5 +711,46 @@ describe('WebsocketService Handlers', () => {
     expect(hostServiceSpy.markAsDeletingHost).toHaveBeenCalledWith('fp-del');
     vi.runAllTimers();
     expect(hostServiceSpy.deleteHostLocal).toHaveBeenCalledWith('fp-del');
+  });
+
+  it('should handle "dashboard_created" and mark it as new', () => {
+    dashboardServiceSpy.dashboards.mockReturnValue([]);
+    const payload = {
+      action: 'dashboard_created',
+      body: { dashboard_id: 'dash-new-123' }
+    };
+
+    (service as any).handleMessage(payload);
+
+    expect(dashboardRepoSpy.getById).toHaveBeenCalledWith('dash-new-123');
+    expect(dashboardServiceSpy.addOrUpdateDashboardLocal).toHaveBeenCalled();
+    expect(dashboardServiceSpy.markAsNew).toHaveBeenCalledWith('dash-new-123');
+  });
+
+  it('should handle "dashboard_updated" and mark it as updated', () => {
+    dashboardServiceSpy.dashboards.mockReturnValue([{ id: 'dash-upd-456' }]);
+    const payload = {
+      action: 'dashboard_updated',
+      body: { dashboard_id: 'dash-upd-456' }
+    };
+
+    (service as any).handleMessage(payload);
+
+    expect(dashboardRepoSpy.getById).toHaveBeenCalledWith('dash-upd-456');
+    expect(dashboardServiceSpy.addOrUpdateDashboardLocal).toHaveBeenCalled();
+    expect(dashboardServiceSpy.markAsUpdated).toHaveBeenCalledWith('dash-upd-456');
+  });
+
+  it('should handle "dashboard_deleted" and delete local item after delay', () => {
+    const payload = {
+      action: 'dashboard_deleted',
+      body: { dashboard_id: 'dash-del-789' }
+    };
+
+    (service as any).handleMessage(payload);
+
+    expect(dashboardServiceSpy.markAsDeleting).toHaveBeenCalledWith('dash-del-789');
+    vi.runAllTimers();
+    expect(dashboardServiceSpy.deleteDashboardLocal).toHaveBeenCalledWith('dash-del-789');
   });
 });

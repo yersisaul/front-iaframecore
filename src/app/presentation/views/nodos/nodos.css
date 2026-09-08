@@ -10,7 +10,7 @@
 .nodos-container {
   animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: visible !important;
-  padding-bottom: 5rem !important;
+  padding-bottom: 2rem !important;
 }
 
 .hosts-grid {
@@ -107,6 +107,12 @@
   display: flex;
   align-items: center;
   container-type: inline-size;
+  transition: -webkit-mask-image 0.25s ease, mask-image 0.25s ease;
+}
+
+.host-card:hover .host-title-container {
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 14px), transparent 100%);
 }
 
 .host-title {
@@ -941,6 +947,66 @@
   color: var(--primary) !important;
   font-weight: 600;
 }
+
+/* Dropdown de estado específico */
+.filter-dropdown-menu.dropdown-status {
+  min-width: 230px;
+}
+
+/* Insignia en cada elemento de la lista del dropdown */
+.filter-item-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 6px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  font-family: var(--font-monospace, monospace);
+  background: rgba(100, 116, 139, 0.1);
+  color: var(--text-secondary);
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+/* Colores semánticos de estado para los badges */
+.filter-item-badge.badge-status-online {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #10b981 !important;
+  border-color: rgba(16, 185, 129, 0.28) !important;
+}
+
+.filter-item-badge.badge-status-offline {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.28) !important;
+}
+
+.filter-item-badge.badge-status-degraded {
+  background: rgba(249, 115, 22, 0.12) !important;
+  color: #f97316 !important;
+  border-color: rgba(249, 115, 22, 0.28) !important;
+}
+
+.filter-item-badge.badge-status-recovering {
+  background: rgba(234, 179, 8, 0.12) !important;
+  color: #eab308 !important;
+  border-color: rgba(234, 179, 8, 0.28) !important;
+}
+
+.filter-item-badge.badge-status-pending {
+  background: rgba(6, 182, 212, 0.12) !important;
+  color: #06b6d4 !important;
+  border-color: rgba(6, 182, 212, 0.28) !important;
+}
+
+.dropdown-item.active .filter-item-badge {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
 
 .btn-premium-action {
   font-size: 0.78rem;
@@ -2100,7 +2166,6 @@ option {
 
 .nm-table td,
 .nm-table th {
-  border-bottom: none !important;
   box-shadow: none !important;
   white-space: nowrap;
   vertical-align: middle;
@@ -2124,13 +2189,7 @@ option {
 
 .nm-table-tr {
   cursor: pointer;
-  border-bottom: 1px solid var(--border-color) !important;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-  position: relative;
-}
-
-.nm-table-tr:last-child {
-  border-bottom: none !important;
+  transition: background-color 0.2s ease;
 }
 
 .nm-table td {
@@ -2138,6 +2197,12 @@ option {
   color: var(--text-secondary);
   font-size: 0.88rem;
   vertical-align: middle;
+  border-bottom: 1px solid var(--border-color) !important;
+  background-clip: padding-box;
+}
+
+.nm-table-tr:last-child td {
+  border-bottom: none !important;
 }
 
 /* Hover general */
@@ -2156,30 +2221,20 @@ option {
 
 /* Bordes decorativos interactivos a la izquierda (según OS) */
 .nm-table-tr td:first-child {
-  position: relative;
+  box-shadow: inset 3.5px 0 0 transparent !important;
+  transition: box-shadow 0.2s ease;
 }
 
-.nm-table-tr td:first-child::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3.5px;
-  background-color: transparent;
-  transition: background-color 0.2s ease;
+.nm-table-tr.ubuntu-tr:hover td:first-child {
+  box-shadow: inset 3.5px 0 0 rgba(232, 114, 52, 1) !important;
 }
 
-.nm-table-tr.ubuntu-tr:hover td:first-child::before {
-  background-color: rgba(232, 114, 52, 1);
+.nm-table-tr.windows-tr:hover td:first-child {
+  box-shadow: inset 3.5px 0 0 rgba(0, 120, 215, 1) !important;
 }
 
-.nm-table-tr.windows-tr:hover td:first-child::before {
-  background-color: rgba(0, 120, 215, 1);
-}
-
-.nm-table-tr:not(.ubuntu-tr):not(.windows-tr):hover td:first-child::before {
-  background-color: var(--primary);
+.nm-table-tr:not(.ubuntu-tr):not(.windows-tr):hover td:first-child {
+  box-shadow: inset 3.5px 0 0 var(--primary) !important;
 }
 
 /* Iconos de OS y status dot */
@@ -2213,22 +2268,31 @@ option {
   justify-content: center;
   container-type: inline-size;
   position: relative;
+  transition: -webkit-mask-image 0.25s ease, mask-image 0.25s ease;
+}
+
+.nm-table-tr:hover .host-table-name-container {
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 14px), transparent 100%);
 }
 
 .host-table-name-text {
-  display: inline-block !important;
-  width: max-content !important;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
   line-height: 1.25;
   vertical-align: middle;
 }
 
 .nm-table-tr:hover .host-table-name-text {
   color: var(--text-primary);
+  display: inline-block !important;
+  width: max-content !important;
   max-width: none !important;
+  overflow: visible !important;
   text-overflow: clip !important;
   animation: marquee-host-table-name 3.5s linear infinite alternate;
 }
@@ -2429,7 +2493,7 @@ option {
   border: 1px solid var(--border-color);
   border-radius: 22px;
   padding: 4px 5px;
-  gap: 2px !important;
+  gap: 0.25rem !important;
   align-items: center;
   box-sizing: border-box;
   height: 42px !important;

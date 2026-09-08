@@ -59,6 +59,39 @@
 }
 
 /* ==========================================================================
+   ANIMACIÓN DE EXPANSIÓN CALCULADA (PiP -> VISOR TÁCTICO)
+   ========================================================================== */
+.monitoring-pip-window.is-expanding-fullscreen {
+  max-width: none !important;
+  max-height: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  transition: left 0.42s cubic-bezier(0.16, 1, 0.3, 1),
+              top 0.42s cubic-bezier(0.16, 1, 0.3, 1),
+              width 0.42s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.42s cubic-bezier(0.16, 1, 0.3, 1),
+              border-radius 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.3s ease,
+              box-shadow 0.38s ease !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15)) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5) !important;
+  z-index: 1090 !important;
+  pointer-events: none !important;
+}
+
+.monitoring-pip-window.is-expanding-fullscreen .pip-resize-handle,
+.monitoring-pip-window.is-expanding-fullscreen .pip-youtube-overlay {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.monitoring-pip-window.is-expanding-fullscreen .pip-canvas-inner {
+  transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* ==========================================================================
    1. LIENZO Y CELDAS DE CÁMARAS IDÉNTICAS A MONITOREO
    ========================================================================== */
 

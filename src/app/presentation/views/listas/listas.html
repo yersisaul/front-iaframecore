@@ -435,9 +435,8 @@
         <div class="identity-card mb-4 p-4">
           <div class="identity-columns-container">
 
-            <!-- Columna Izquierda: Foto y Nombre/Identidad -->
+            <!-- Columna Izquierda: Solo Foto/Avatar Independiente -->
             <div class="identity-column-left">
-              <!-- Clean Avatar Header -->
               <div class="identity-avatar-header position-relative d-flex align-items-center justify-content-center">
                 <div class="subject-card-placeholder drawer-avatar-placeholder shadow-sm"
                   [class.rounded-circle]="listType() === 'face_recognition'"
@@ -457,69 +456,93 @@
                   (click)="openFullscreenImage(activeDetail.metadata?.url_img || '', $event)" alt="Foto" />
                 }
               </div>
-
-              <!-- Name / Plate with Edit Trigger -->
-              <div class="d-flex align-items-center justify-content-center gap-2 mt-3 identity-title-row w-100">
-                @if (listType() === 'face_recognition') {
-                <h3 class="identity-name fw-bold mb-0 text-truncate" [title]="activeDetail.nombre_asociado"
-                  style="max-width: 85%;">{{
-                  activeDetail.nombre_asociado }}</h3>
-                } @else {
-                <h3 class="identity-plate fw-bold font-monospace mb-0 text-truncate"
-                  [title]="activeDetail.metadata?.text_placa || 'DESCONOCIDA'" style="max-width: 85%;">{{
-                  activeDetail.metadata?.text_placa || 'DESCONOCIDA' }}</h3>
-                }
-
-                @if (permissionsService.hasPermission('Detalles Listas', 'editar')) {
-                <button
-                  class="btn-ghost p-1 text-primary-hover rounded-circle edit-subject-icon-btn d-flex align-items-center justify-content-center"
-                  (click)="openEditSubjectModal(activeDetail)" title="Editar Sujeto">
-                  <span class="icon-svg icon-edit text-muted opacity-60" style="width: 14px; height: 14px;"></span>
-                </button>
-                }
-              </div>
             </div>
 
-            <!-- Columna Derecha: Metadatos -->
+            <!-- Columna Derecha: Metadatos Completos con ID Copiable y Nombre Editable -->
             <div class="identity-column-right">
-              <!-- Metadata Rows -->
               <div class="identity-meta-list">
 
-                <!-- Propietario (Vehicle only) -->
+                <!-- ID de Registro (Copiable al hacer click) -->
+                <div class="identity-meta-row cursor-pointer"
+                  [class.copied-flash]="copiedRowId() === activeDetail.detail_id + '-id'"
+                  (click)="copyRowContent(activeDetail.detail_id, activeDetail.detail_id + '-id'); $event.stopPropagation()"
+                  title="Click para copiar ID de Registro">
+                  <div class="identity-meta-icon identity-meta-icon--secondary">
+                    <span class="icon-svg icon-box" style="width: 13px; height: 13px;"></span>
+                  </div>
+                  <div class="identity-meta-body min-w-0">
+                    <span class="identity-meta-label">ID Registro</span>
+                    @if (copiedRowId() === activeDetail.detail_id + '-id') {
+                    <span class="copied-badge text-success fw-bold font-monospace" style="font-size: 0.8rem;">¡Copiado!</span>
+                    } @else {
+                    <div class="identity-meta-val-container">
+                      <span class="identity-meta-value font-monospace"
+                        [title]="activeDetail.detail_id">{{ activeDetail.detail_id }}</span>
+                    </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Nombre del Sujeto / Placa Registrada con Botón de Edición -->
+                <div class="identity-meta-row">
+                  <div class="identity-meta-icon"
+                    [class.identity-meta-icon--primary]="listType() === 'face_recognition'"
+                    [class.identity-meta-icon--plate]="listType() !== 'face_recognition'">
+                    <span class="icon-svg" [class.icon-user]="listType() === 'face_recognition'"
+                      [class.icon-camara]="listType() !== 'face_recognition'" style="width: 13px; height: 13px;"></span>
+                  </div>
+                  <div class="identity-meta-body d-flex align-items-center justify-content-between min-w-0 gap-2">
+                    <div class="min-w-0 flex-grow-1">
+                      <span class="identity-meta-label">{{ listType() === 'face_recognition' ? 'Nombre del Sujeto' : 'Placa Registrada' }}</span>
+                      <div class="identity-meta-val-container">
+                        @if (listType() === 'face_recognition') {
+                        <span class="identity-meta-value fw-bold" [title]="activeDetail.nombre_asociado || 'Sin Nombre'">
+                          {{ activeDetail.nombre_asociado || 'Sin Nombre' }}
+                        </span>
+                        } @else {
+                        <span class="identity-meta-value fw-bold font-monospace" [title]="activeDetail.metadata?.text_placa || 'DESCONOCIDA'">
+                          {{ activeDetail.metadata?.text_placa || 'DESCONOCIDA' }}
+                        </span>
+                        }
+                      </div>
+                    </div>
+                    @if (permissionsService.hasPermission('Detalles Listas', 'editar')) {
+                    <button
+                      class="btn-ghost p-1 text-primary-hover rounded-circle edit-subject-icon-btn d-flex align-items-center justify-content-center flex-shrink-0"
+                      (click)="openEditSubjectModal(activeDetail); $event.stopPropagation()" title="Editar Sujeto">
+                      <span class="icon-svg icon-edit text-muted opacity-60" style="width: 14px; height: 14px;"></span>
+                    </button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Propietario (Vehículos / Placas) -->
                 @if (listType() !== 'face_recognition') {
                 <div class="identity-meta-row">
                   <div class="identity-meta-icon identity-meta-icon--primary">
                     <span class="icon-svg icon-user" style="width: 13px; height: 13px;"></span>
                   </div>
-                  <div class="identity-meta-body">
+                  <div class="identity-meta-body min-w-0">
                     <span class="identity-meta-label">Propietario</span>
-                    <span class="identity-meta-value" [title]="activeDetail.nombre_asociado">{{
-                      activeDetail.nombre_asociado || 'No asignado' }}</span>
+                    <div class="identity-meta-val-container">
+                      <span class="identity-meta-value" [title]="activeDetail.nombre_asociado">{{
+                        activeDetail.nombre_asociado || 'No asignado' }}</span>
+                    </div>
                   </div>
                 </div>
                 }
-
-                <!-- ID de Registro -->
-                <div class="identity-meta-row">
-                  <div class="identity-meta-icon identity-meta-icon--secondary">
-                    <span class="icon-svg icon-box" style="width: 13px; height: 13px;"></span>
-                  </div>
-                  <div class="identity-meta-body">
-                    <span class="identity-meta-label">ID Registro</span>
-                    <span class="identity-meta-value font-monospace text-truncate d-block"
-                      [title]="activeDetail.detail_id">{{ activeDetail.detail_id }}</span>
-                  </div>
-                </div>
 
                 <!-- Lista de Control -->
                 <div class="identity-meta-row">
                   <div class="identity-meta-icon identity-meta-icon--info">
                     <span class="icon-svg icon-list" style="width: 13px; height: 13px;"></span>
                   </div>
-                  <div class="identity-meta-body">
+                  <div class="identity-meta-body min-w-0">
                     <span class="identity-meta-label">Lista de Control</span>
-                    <span class="identity-meta-value text-truncate d-block" [title]="activeList()?.name">{{
-                      activeList()?.name }}</span>
+                    <div class="identity-meta-val-container">
+                      <span class="identity-meta-value" [title]="activeList()?.name">{{
+                        activeList()?.name }}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -529,10 +552,12 @@
                   <div class="identity-meta-icon identity-meta-icon--muted">
                     <span class="icon-svg icon-message-square" style="width: 13px; height: 13px;"></span>
                   </div>
-                  <div class="identity-meta-body">
+                  <div class="identity-meta-body min-w-0">
                     <span class="identity-meta-label">Descripción</span>
-                    <span class="identity-meta-value text-truncate d-block" [title]="activeList()?.description">{{
-                      activeList()?.description }}</span>
+                    <div class="identity-meta-val-container">
+                      <span class="identity-meta-value" [title]="activeList()?.description">{{
+                        activeList()?.description }}</span>
+                    </div>
                   </div>
                 </div>
                 }
@@ -659,7 +684,15 @@
       </div>
 
       @if (hit.imagen) {
-      <img [src]="hit.imagen" (error)="onImageError($event)" class="sighting-preview-img" alt="Avistamiento" />
+      <div class="sighting-preview-img-container w-100 h-100 position-relative cursor-pointer"
+        (click)="openFullscreenImage(hit.imagen, $event)"
+        title="Clic para ver en pantalla completa">
+        <img [src]="hit.imagen" (error)="onImageError($event)" class="sighting-preview-img" alt="Avistamiento" />
+        <div class="sighting-preview-zoom-overlay">
+          <span class="icon-svg icon-fullscreen" style="width: 20px; height: 20px; background-color: currentColor;"></span>
+          <span class="zoom-text">Pantalla Completa</span>
+        </div>
+      </div>
       }
 
       <!-- Top Bar Badges -->
@@ -668,7 +701,7 @@
         <div class="sighting-preview-conf shadow-sm" [class.conf-emerald]="hit.confiabilidad >= 0.8"
           [class.conf-amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
           [class.conf-rose]="hit.confiabilidad < 0.5" style="position: static;">
-          {{ (hit.confiabilidad * 100) | number:'1.0-0' }}% Confianza
+          {{ (hit.confiabilidad * 100) | number:'1.0-0' }}% Similitud
         </div>
       </div>
     </div>
@@ -704,33 +737,35 @@
           </div>
         </div>
 
-        <!-- Confiabilidad -->
+        <!-- Similitud -->
         <div class="sighting-preview-row">
           <div class="sighting-preview-icon sp-icon--conf">
             <span class="icon-svg icon-shield"
               style="width: 14px; height: 14px; background-color: currentColor;"></span>
           </div>
           <div class="sighting-preview-field">
-            <span class="sp-label">Confiabilidad</span>
+            <span class="sp-label">Similitud</span>
             <div class="sp-conf-bar-wrapper">
-              <div class="sp-conf-bar" [style.width.%]="hit.confiabilidad * 100"
-                [class.sp-conf-bar--emerald]="hit.confiabilidad >= 0.8"
-                [class.sp-conf-bar--amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
-                [class.sp-conf-bar--rose]="hit.confiabilidad < 0.5">
+              <div class="sp-conf-track">
+                <div class="sp-conf-bar" [style.width.%]="hit.confiabilidad * 100"
+                  [class.sp-conf-bar--emerald]="hit.confiabilidad >= 0.8"
+                  [class.sp-conf-bar--amber]="hit.confiabilidad < 0.8 && hit.confiabilidad >= 0.5"
+                  [class.sp-conf-bar--rose]="hit.confiabilidad < 0.5">
+                </div>
               </div>
               <span class="sp-conf-label">{{ (hit.confiabilidad * 100) | number:'1.0-0' }}%</span>
             </div>
           </div>
         </div>
 
-        <!-- ID del registro -->
+        <!-- ID del Evento -->
         <div class="sighting-preview-row">
           <div class="sighting-preview-icon sp-icon--id">
             <span class="icon-svg icon-box" style="width: 14px; height: 14px; background-color: currentColor;"></span>
           </div>
           <div class="sighting-preview-field">
-            <span class="sp-label">ID Detección</span>
-            <span class="sp-value font-monospace text-truncate d-block" [title]="hit.id">{{ hit.id }}</span>
+            <span class="sp-label">ID Evento</span>
+            <span class="sp-value font-monospace text-truncate d-block" [title]="hit.eventId || hit.id">{{ hit.eventId || hit.id }}</span>
           </div>
         </div>
 
@@ -1514,7 +1549,6 @@
   <!-- Vista Fullscreen de Imagen estilo Redes Sociales -->
   @if (fullscreenImgUrl()) {
   <div class="fullscreen-image-overlay" (click)="closeFullscreenImage()" role="dialog" aria-modal="true">
-    <button class="btn-close-fullscreen" (click)="closeFullscreenImage()" aria-label="Cerrar imagen completa">✕</button>
     <img [src]="fullscreenImgUrl()!" class="fullscreen-image" (click)="$event.stopPropagation()"
       alt="Imagen completa" />
   </div>

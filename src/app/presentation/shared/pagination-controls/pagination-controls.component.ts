@@ -21,6 +21,17 @@ export class PaginationControlsComponent {
 
   @Output() pageChange = new EventEmitter<number>();
 
+  formatPageNumber(page: number): string {
+    if (!page && page !== 0) return '';
+    return page.toLocaleString('es-ES');
+  }
+
+  getInputWidth(): string {
+    const digits = String(this.totalPages || this.currentPage || 1).length;
+    const calculatedWidth = Math.max(54, Math.min(110, digits * 10 + 26));
+    return `${calculatedWidth}px`;
+  }
+
   setPage(page: number): void {
     if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
       this.pageChange.emit(page);

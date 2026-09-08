@@ -1,6 +1,5 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 import { AppEnvironment } from '../config/app-environment';
-import { ApiKeyConfig } from '../config/api-key.config';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const isRelative = !/^https?:\/\//i.test(req.url);
@@ -19,7 +18,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   if (isApiRequest) {
     // Buscar la clave estática configurada en el archivo contenedor (solo si no es producción)
     const isDevMode = !AppEnvironment.production;
-    const configKey = ApiKeyConfig?.apiKey;
+    const configKey = AppEnvironment.apiKey;
     const hasConfigKey = isDevMode &&
                          configKey &&
                          configKey !== 'REPLACE_WITH_YOUR_JWT_API_KEY' &&

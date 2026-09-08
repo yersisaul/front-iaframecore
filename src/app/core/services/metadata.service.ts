@@ -6,11 +6,35 @@ import { MetaFilterState, MetaFilterOptions, defaultFilterState, defaultFilterOp
 import { IMetadataRepository } from '../domain/repositories/metadata.repository';
 import { SearchMetadataUseCase } from '../domain/use-cases/search-metadata.use-case';
 
+const DEFAULT_INDICES: MetaIndexInfo[] = [
+  { name: 'personas', count: 0 },
+  { name: 'vehiculos', count: 0 },
+  { name: 'rostros', count: 0 },
+  { name: 'otros', count: 0 }
+];
+
+const INDICES_CACHE_KEY = 'ia_available_indices_cache';
+
+function getInitialIndices(): MetaIndexInfo[] {
+  try {
+    const cached = localStorage.getItem(INDICES_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    // Ignorar errores de acceso a storage
+  }
+  return DEFAULT_INDICES;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class MetadataService {
-  readonly availableIndices = signal<MetaIndexInfo[]>([]);
+  readonly availableIndices = signal<MetaIndexInfo[]>(getInitialIndices());
   readonly activeIndex = signal<MetaIndexName | null>(null);
   readonly isViewActive = signal<boolean>(false);
   readonly records = signal<MetaRecord[]>([]);
@@ -157,35 +181,55 @@ export class MetadataService {
   ) {}
 
   loadAvailableIndices(): Observable<MetaIndexInfo[]> {
-    this.isLoading.set(true);
     return this.repository.getAvailableIndices().pipe(
       tap(indices => {
-        this.availableIndices.set(indices);
-        this.isLoading.set(false);
+        if (indices && indices.length > 0) {
+          this.availableIndices.set(indices);
+          try {
+            localStorage.setItem(INDICES_CACHE_KEY, JSON.stringify(indices));
+          } catch (e) {
+            // Ignorar
+          }
+        }
       }),
       catchError(err => {
         console.error('Error loading available indices:', err);
-        const fallback: MetaIndexInfo[] = [
-          { name: 'personas', count: 0 },
-          { name: 'vehiculos', count: 0 },
-          { name: 'rostros', count: 0 },
-          { name: 'otros', count: 0 }
-        ];
-        this.availableIndices.set(fallback);
-        this.isLoading.set(false);
-        return of(fallback);
+        return of(this.availableIndices());
       })
     );
   }
 
   incrementIndexCount(indexName: MetaIndexName): void {
     this.availableIndices.update(list => {
-      return list.map(item => {
+      const nextList = list.map(item => {
         if (item.name === indexName) {
           return { ...item, count: item.count + 1 };
         }
         return item;
       });
+      try {
+        localStorage.setItem(INDICES_CACHE_KEY, JSON.stringify(nextList));
+      } catch (e) {
+        // Ignorar
+      }
+      return nextList;
+    });
+  }
+
+  syncIndexCount(indexName: MetaIndexName, count: number): void {
+    this.availableIndices.update(list => {
+      const nextList = list.map(item => {
+        if (item.name === indexName) {
+          return { ...item, count };
+        }
+        return item;
+      });
+      try {
+        localStorage.setItem(INDICES_CACHE_KEY, JSON.stringify(nextList));
+      } catch (e) {
+        // Ignorar
+      }
+      return nextList;
     });
   }
 
@@ -329,9 +373,11 @@ export class MetadataService {
           bufferPrefix.forEach(r => this.markAsNew(r.id));
         }
 
+        const finalCount = Math.max(res.total, finalRecords.length);
         this.records.set(finalRecords);
-        this.totalRecords.set(Math.max(res.total, finalRecords.length));
+        this.totalRecords.set(finalCount);
         this.filterOptions.set(res.filterOptions);
+        this.syncIndexCount(idx, finalCount);
         this.isLoading.set(false);
       },
       error: err => {

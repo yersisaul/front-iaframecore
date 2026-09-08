@@ -7,6 +7,7 @@ import { debounceTime } from 'rxjs/operators';
 import { ListService } from '../../../core/services/list.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
+import { copyToClipboard } from '../../../core/utils/clipboard.util';
 import { List, ListDetail } from '../../../core/domain/entities/list.models';
 import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
 import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
@@ -38,10 +39,13 @@ export interface SubjectDetectionColor {
 
 export interface SubjectDetectionHit {
   id: string;
+  eventId?: string;
   camara: string;
   timestamp: Date;
   confiabilidad: number;
   imagen: string;
+  urlVideo?: string | null;
+  detalleEvento?: string;
   // Atributos de identificación (rostros)
   tipoObjeto?: string;
   edad?: string;
@@ -103,6 +107,9 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   readonly subjectToDeleteName = signal<string | null>(null);
   readonly isDeletingSubject = signal<boolean>(false);
   readonly selectedSubjectDetailIds = signal<Set<string>>(new Set());
+
+  readonly copiedRowId = signal<string | null>(null);
+  private copiedTimeout: any = null;
 
   readonly isAllSubjectsSelected = computed<boolean>(() => {
     const total = this.filteredListDetails().length;
@@ -175,7 +182,7 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   // Search & Filters
   readonly searchControl = new FormControl('');
   readonly searchQuery = signal<string>('');
-  readonly showFilters = signal<boolean>(false);
+  readonly showFilters = signal<boolean>(true);
   readonly activeDropdown = signal<string | null>(null);
 
   // Local draft filters state (matches metadatos temp/apply flow)
@@ -444,6 +451,22 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     this.listService.isViewActive.set(false);
     this.resizeObserver?.disconnect();
     this.resizeSubscription?.unsubscribe();
+    if (this.copiedTimeout) {
+      clearTimeout(this.copiedTimeout);
+    }
+  }
+
+  copyRowContent(value: string, uniqueKey: string): void {
+    if (!value) return;
+    copyToClipboard(value).then(() => {
+      this.copiedRowId.set(uniqueKey);
+      if (this.copiedTimeout) clearTimeout(this.copiedTimeout);
+      this.copiedTimeout = setTimeout(() => {
+        this.copiedRowId.set(null);
+      }, 2000);
+    }).catch(err => {
+      console.error('Error al copiar al portapapeles', err);
+    });
   }
 
   onListSelected(listId: string): void {
@@ -463,65 +486,38 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
         const detectionsMap: Record<string, { count: number; hits: SubjectDetectionHit[]; loading: boolean; expanded: boolean }> = {};
         details.forEach(d => {
           detectionsMap[d.detail_id] = { count: 0, hits: [], loading: true, expanded: false };
+        });
+        this.subjectDetections.set(detectionsMap);
 
-          if (this.listType() === 'face_recognition') {
-            this.listService.queryDetections(d.nombre_asociado, d.metadata?.['document_id']).subscribe({
-              next: (hits) => {
-                this.subjectDetections.update(current => {
-                  const updated = { ...current };
-                  updated[d.detail_id] = {
-                    count: hits.length,
-                    hits: hits,
-                    loading: false,
-                    expanded: false
-                  };
-                  return updated;
-                });
-              },
-              error: () => {
-                this.subjectDetections.update(current => {
-                  const updated = { ...current };
-                  updated[d.detail_id] = {
-                    count: 0,
-                    hits: [],
-                    loading: false,
-                    expanded: false
-                  };
-                  return updated;
-                });
-              }
+        // Carga agregada batch instantánea desde el índice eventos estrictamente por match_detail.detail_id
+        this.listService.loadListEventSummaries(listId).subscribe({
+          next: (summaries) => {
+            this.subjectDetections.update(current => {
+              const updated = { ...current };
+              details.forEach(d => {
+                const summary = summaries[d.detail_id];
+                updated[d.detail_id] = {
+                  count: summary?.count || 0,
+                  hits: summary?.latestHit ? [summary.latestHit] : [],
+                  loading: false,
+                  expanded: false
+                };
+              });
+              return updated;
             });
-          } else {
-            const queryPlaca = d.metadata?.text_placa || d.nombre_asociado;
-            this.listService.queryPlateDetections(queryPlaca, d.metadata?.['document_id']).subscribe({
-              next: (hits) => {
-                this.subjectDetections.update(current => {
-                  const updated = { ...current };
-                  updated[d.detail_id] = {
-                    count: hits.length,
-                    hits: hits,
-                    loading: false,
-                    expanded: false
-                  };
-                  return updated;
-                });
-              },
-              error: () => {
-                this.subjectDetections.update(current => {
-                  const updated = { ...current };
-                  updated[d.detail_id] = {
-                    count: 0,
-                    hits: [],
-                    loading: false,
-                    expanded: false
-                  };
-                  return updated;
-                });
-              }
+          },
+          error: () => {
+            this.subjectDetections.update(current => {
+              const updated = { ...current };
+              details.forEach(d => {
+                if (updated[d.detail_id]) {
+                  updated[d.detail_id] = { ...updated[d.detail_id], loading: false };
+                }
+              });
+              return updated;
             });
           }
         });
-        this.subjectDetections.set(detectionsMap);
       });
     } else {
       this.listService.listDetails.set([]);
@@ -535,6 +531,44 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     this.drawerScrolledToBottom.set(false);
     this.hoveredHit.set(null);
     this.selectedHit.set(null);
+
+    // Cargar historial de eventos completo para el timeline del drawer
+    if (detailId) {
+      const currentEntry = this.subjectDetections()[detailId];
+      if (currentEntry && (currentEntry.count > 1 || currentEntry.hits.length <= 1)) {
+        this.subjectDetections.update(curr => {
+          const updated = { ...curr };
+          if (updated[detailId]) {
+            updated[detailId] = { ...updated[detailId], loading: true };
+          }
+          return updated;
+        });
+
+        this.listService.queryDetections(detailId).subscribe({
+          next: (hits) => {
+            this.subjectDetections.update(curr => {
+              const updated = { ...curr };
+              updated[detailId] = {
+                count: hits.length || currentEntry.count,
+                hits: hits,
+                loading: false,
+                expanded: false
+              };
+              return updated;
+            });
+          },
+          error: () => {
+            this.subjectDetections.update(curr => {
+              const updated = { ...curr };
+              if (updated[detailId]) {
+                updated[detailId] = { ...updated[detailId], loading: false };
+              }
+              return updated;
+            });
+          }
+        });
+      }
+    }
   }
 
   onDrawerScroll(event: Event): void {

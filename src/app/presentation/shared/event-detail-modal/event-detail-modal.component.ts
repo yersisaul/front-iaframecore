@@ -191,14 +191,39 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges {
 
     const isInsideContent = (target: HTMLElement | null): boolean => {
       if (!target) return false;
+
+      // El panel lateral de detalles técnicos siempre es interactivo
+      if (target.closest('.event-detail-drawer')) {
+        return true;
+      }
+
+      // La consola inferior de pestañas y botones siempre es interactiva
+      if (target.closest('.biometric-hud-console')) {
+        return true;
+      }
+
+      // Comprobar si hay un medio activo válido visible en el workspace
+      const isVideoMode = this.activeMediaType() === 'video';
+      const isComparisonMode = this.activeMediaType() === 'comparison';
+      const hasValidVideo = !!this.event?.urlVideo && !this.hasVideoError();
+      const hasValidImage = !!this.event?.urlImg && !this.hasImageError();
+
+      const hasActiveMedia = isComparisonMode
+        ? (hasValidImage || hasValidVideo)
+        : (isVideoMode ? hasValidVideo : hasValidImage);
+
+      // Si no hay medio activo visible (ej: sin imagen de captura, o pestaña de video sin video),
+      // todo el área del workspace es tratada como fondo clicable para cerrar el modal!
+      if (!hasActiveMedia) {
+        return false;
+      }
+
+      // Si sí hay un medio activo válido, evitar que clics sobre la imagen/video cierren el modal
       return !!(
         target.closest('.stage-media-card') ||
         target.closest('.stage-img-box') ||
         target.closest('.modal-img-wrapper') ||
-        target.closest('.no-image-text-container') ||
-        target.closest('.comparison-card') ||
-        target.closest('.biometric-hud-console') ||
-        target.closest('.event-detail-drawer')
+        target.closest('.comparison-card')
       );
     };
 
@@ -290,8 +315,41 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges {
     return lower.includes('facial') || lower.includes('rostro') || lower.includes('face');
   }
 
+  /**
+   * Determina si es un evento de reconocimiento de placas vehicular
+   */
+  isPlateEvent(record: EventRecord | null | undefined): boolean {
+    if (!record?.analitica) return false;
+    const lower = record.analitica.toLowerCase();
+    return lower.includes('placa') || lower.includes('plate') || lower.includes('lpr');
+  }
+
+  /**
+   * Determina si es un evento con coincidencia en lista de control (Facial o Placas)
+   */
+  isMatchEvent(record: EventRecord | null | undefined): boolean {
+    return this.isFacialEvent(record) || this.isPlateEvent(record) || !!record?.matchDetail;
+  }
+
   onMatchImageError(errEvent: Event): void {
     this.hasMatchImageError.set(true);
+  }
+
+  /**
+   * Obtiene la similitud real del evento o match sin recurrir a fallbacks hardcodeados
+   */
+  getDisplaySimilarity(): number {
+    if (typeof this.matchData()?.similarity === 'number') {
+      return this.matchData()!.similarity;
+    }
+    if (typeof this.event?.porcentajeSimilitud === 'number') {
+      return this.event.porcentajeSimilitud;
+    }
+    if (typeof this.event?.matchDetail?.confianza === 'number') {
+      const c = this.event.matchDetail.confianza;
+      return Math.round(c <= 1 ? c * 100 : c);
+    }
+    return 0;
   }
 
   /**

@@ -1,0 +1,139 @@
+<p class="header-page-subtitle text-muted mb-0 mt-1 d-inline-flex align-items-center flex-wrap gap-1">
+  <span>Se encontraron</span>
+
+  <!-- TRIGGER 1: CÁMARAS -->
+  @if (showCameras()) {
+  <span class="stat-anchor position-relative d-inline-block"
+    (mouseenter)="openPopover('cameras')"
+    (mouseleave)="closePopover()">
+    
+    <span class="stat-highlight" [class.active]="activePopover() === 'cameras'">
+      <span class="stat-num">{{ totalCamerasCount() }}</span>
+      <span class="stat-word">{{ totalCamerasCount() === 1 ? 'cámara' : 'cámaras' }}</span>
+    </span>
+
+    <!-- POPOVER CÁMARAS (AZOR VMS STANDARD) -->
+    @if (activePopover() === 'cameras') {
+    <div class="filter-dropdown-menu stat-popover-menu" (click)="$event.stopPropagation()">
+      <!-- Header -->
+      <div class="popover-menu-header d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          <div class="popover-icon-box box-blue d-flex align-items-center justify-content-center">
+            <span class="icon-svg icon-camara" style="width: 13px; height: 13px;"></span>
+          </div>
+          <span class="popover-menu-title">Estado de Cámaras</span>
+        </div>
+        <span class="filter-dropdown-count-pill pill-blue">{{ totalCamerasCount() }}</span>
+      </div>
+
+      <!-- Cabecera de Columnas: Estado / Total -->
+      <div class="popover-table-header px-2 py-1 d-flex align-items-center justify-content-between text-muted">
+        <span class="col-type-title">Estado</span>
+        <span class="col-count-title col-total-header text-center">Total</span>
+      </div>
+
+      <!-- Lista Dinámica de Estados (Nombres de filtro oficiales y badges del sistema) -->
+      <div class="popover-items-wrapper d-flex flex-column gap-1">
+        @if (cameraStatuses().length === 0) {
+        <div class="text-muted small text-center py-2 opacity-60">Sin cámaras registradas</div>
+        }
+
+        @for (st of cameraStatuses(); track st.statusKey) {
+        <div class="dropdown-item d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <span class="status-dot" [class]="st.cssClass"></span>
+            <span>{{ st.label }}</span>
+          </div>
+          <span class="filter-item-badge" [class]="'badge-status-' + st.cssClass">
+            {{ st.count }}
+          </span>
+        </div>
+        }
+      </div>
+    </div>
+    }
+  </span>
+  }
+
+  @if (showCameras() && showAnalytics()) {
+  <span>y</span>
+  }
+
+  <!-- TRIGGER 2: ANALÍTICAS -->
+  @if (showAnalytics()) {
+  <span class="stat-anchor position-relative d-inline-block"
+    (mouseenter)="openPopover('analytics')"
+    (mouseleave)="closePopover()">
+    
+    <span class="stat-highlight" [class.active]="activePopover() === 'analytics'">
+      <span class="stat-num">{{ totalAnalyticsCount() }}</span>
+      <span class="stat-word">{{ totalAnalyticsCount() === 1 ? 'analítica' : 'analíticas' }}</span>
+    </span>
+
+    <!-- POPOVER ANALÍTICAS (3 COLUMNAS: TIPO DE ANALÍTICA, ACTIVAS, INACTIVAS) -->
+    @if (activePopover() === 'analytics') {
+    <div class="filter-dropdown-menu stat-popover-menu analytics-popover-menu" (click)="$event.stopPropagation()">
+      <!-- Header -->
+      <div class="popover-menu-header d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          <div class="popover-icon-box box-purple d-flex align-items-center justify-content-center">
+            <span class="icon-svg icon-cpu" style="width: 13px; height: 13px;"></span>
+          </div>
+          <span class="popover-menu-title">Analíticas de IA</span>
+        </div>
+        <span class="filter-dropdown-count-pill pill-purple">{{ totalAnalyticsCount() }}</span>
+      </div>
+
+      <!-- Cabecera de 3 Columnas -->
+      <div class="popover-table-header px-2 py-1 d-flex align-items-center justify-content-between text-muted">
+        <span class="col-type-title">Tipo</span>
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+          <span class="col-count-title col-active-header text-center" title="Analíticas activadas">Activas</span>
+          <span class="col-count-title col-inactive-header text-center" title="Analíticas inactivas">Inactivas</span>
+        </div>
+      </div>
+
+      <!-- Filas de Datos (La primera fila siempre es Total) -->
+      <div class="popover-items-wrapper d-flex flex-column gap-1">
+        @if (analyticsBreakdown().length === 0) {
+        <div class="text-muted small text-center py-2 opacity-60">Sin analíticas configuradas</div>
+        }
+
+        @for (row of analyticsBreakdown(); track row.typeKey) {
+        <div class="analytics-table-row d-flex align-items-center justify-content-between"
+             [class.analytics-total-row]="row.isTotal">
+          <div class="d-flex align-items-center gap-1.5 min-w-0 pe-2">
+            @if (row.isTotal) {
+            <span class="fw-bold text-body" style="font-size: 0.84rem;">{{ row.label }}</span>
+            } @else {
+            <span class="text-truncate" style="font-size: 0.8rem;" [title]="row.label">{{ row.label }}</span>
+            }
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-shrink-0">
+            <!-- Columna 2: Activas -->
+            <div class="col-count-cell col-active-cell d-flex justify-content-center">
+              <span class="filter-item-badge text-center"
+                    [class.badge-status-online]="row.active > 0"
+                    [class.opacity-40]="row.active === 0">
+                {{ row.active }}
+              </span>
+            </div>
+            <!-- Columna 3: Inactivas -->
+            <div class="col-count-cell col-inactive-cell d-flex justify-content-center">
+              <span class="filter-item-badge text-center"
+                    [class.badge-status-offline]="row.inactive > 0"
+                    [class.opacity-40]="row.inactive === 0">
+                {{ row.inactive }}
+              </span>
+            </div>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
+  </span>
+  }
+
+  <span>{{ contextSuffix() }}</span>
+</p>

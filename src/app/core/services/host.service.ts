@@ -6,6 +6,8 @@ import { IHostRepository } from '../domain/repositories/host.repository';
 
 export interface HostFilterOptions {
   status: string[];
+  statusCounts?: Record<string, number>;
+  totalCount?: number;
   os: string[];
   arch: string[];
   gpu: string[];
@@ -93,10 +95,9 @@ export class HostService {
   }
 
   /**
-   * Legacy method kept for backward compatibility with Horarios view.
-   * Use loadAllHosts() for the Nodos view.
+   * @deprecated Use loadAllHosts() directly.
    */
-  getHosts(page: number, limit: number, filters?: HostFilterParams): Observable<Host[]> {
+  getHosts(): Observable<Host[]> {
     return this.loadAllHosts();
   }
 
@@ -107,6 +108,7 @@ export class HostService {
   buildFilterOptions(): HostFilterOptions {
     const items = this.allHosts();
     const statusSet = new Set<string>();
+    const statusCounts: Record<string, number> = {};
     const osSet = new Set<string>();
     const archSet = new Set<string>();
     const gpuSet = new Set<string>();
@@ -114,12 +116,20 @@ export class HostService {
     const versionSet = new Set<string>();
 
     items.forEach(h => {
-      const isOnline = h.status === 'online' || h.status === 'active';
-      if (isOnline) {
-        statusSet.add('online');
-      } else {
-        statusSet.add('offline');
-      }
+      const rawStatus = (h.status || 'offline').trim();
+      const rawLower = rawStatus.toLowerCase();
+      let statusKey = 'Offline';
+      if (rawLower === 'online' || rawLower === 'active' || rawLower === 'activo') statusKey = 'Online';
+      else if (rawLower === 'degraded' || rawLower === 'degradado') statusKey = 'Degraded';
+      else if (rawLower === 'recovering' || rawLower === 'recuperando') statusKey = 'Recovering';
+      else if (rawLower === 'pending' || rawLower === 'pendiente') statusKey = 'Pending';
+      else if (rawLower === 'offline' || rawLower === 'inactive' || rawLower === 'inactivo') statusKey = 'Offline';
+      else statusKey = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
+
+      statusSet.add(statusKey);
+      statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
+      statusCounts[statusKey.toLowerCase()] = statusCounts[statusKey];
+
       if (h.hwInfo?.system) osSet.add(h.hwInfo.system);
       if (h.hwInfo?.arch) archSet.add(h.hwInfo.arch);
       if (h.gpuInfo?.model) gpuSet.add(h.gpuInfo.model);
@@ -127,11 +137,20 @@ export class HostService {
       if (h.version) versionSet.add(h.version);
     });
 
-    const statusOrder = ['online', 'offline'];
-    const sortedStatus = Array.from(statusSet).sort((a, b) => statusOrder.indexOf(a) - statusOrder.indexOf(b));
+    const statusPriority = ['Online', 'Degraded', 'Recovering', 'Pending', 'Offline'];
+    const sortedStatus = Array.from(statusSet).sort((a, b) => {
+      const idxA = statusPriority.indexOf(a);
+      const idxB = statusPriority.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
 
     return {
       status: sortedStatus,
+      statusCounts,
+      totalCount: items.length,
       os: Array.from(osSet).sort(),
       arch: Array.from(archSet).sort(),
       gpu: Array.from(gpuSet).sort(),

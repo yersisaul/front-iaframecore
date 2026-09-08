@@ -10,7 +10,8 @@ export abstract class IListRepository {
   abstract getListDetailById(detailId: string): Observable<ListDetail>;
   abstract registerListDetail(detail: Partial<ListDetail>, file?: File): Observable<ListDetail>;
   abstract deleteListDetail(detailId: string): Observable<void>;
-  abstract querySubjectDetections(subjectName: string, type: 'face' | 'plate', documentId?: string): Observable<any[]>;
+  abstract querySubjectDetections(detailId: string): Observable<any[]>;
+  abstract queryListEventSummaries(listId: string): Observable<Record<string, { count: number; latestHit?: any }>>;
   abstract updateList(list: List): Observable<List>;
   abstract updateFaceImg(detailId: string, file: File): Observable<ListDetail>;
   abstract updateFaceDetail(detailId: string, listId: string, payload: { nombre_asociado: string }): Observable<ListDetail>;

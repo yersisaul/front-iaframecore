@@ -51,9 +51,9 @@
             [class.rotated]="activeDropdown() === 'camaras'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'camaras') {
-        <div class="filter-dropdown-menu dropdown-camaras p-2 scrollable-menu" (click)="$event.stopPropagation()">
-          <!-- Searchbar interno de cámaras -->
-          <div class="camera-search-wrapper px-1 pb-2">
+        <div class="filter-dropdown-menu dropdown-camaras p-0" (click)="$event.stopPropagation()">
+          <!-- Searchbar interno de cámaras fijo arriba -->
+          <div class="dropdown-search-header p-2">
             <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
               style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
@@ -70,20 +70,23 @@
               }
             </div>
           </div>
-          @if (filteredCamarasOptions().length === 0) {
-          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
-          }
-          @for (cam of filteredCamarasOptions(); track cam) {
-          @let isSelected = tempFilters().camaras.includes(cam);
-          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded"
-            [class.active]="isSelected"
-            (click)="toggleMultiSelectFilter('camaras', cam)">
-            <span class="text-truncate" [title]="cam">{{ cam }}</span>
-            @if (isSelected) {
-            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+          <!-- Opciones scrolleables -->
+          <div class="dropdown-items-scroll scrollable-menu p-2 pt-1">
+            @if (filteredCamarasOptions().length === 0) {
+            <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
             }
-          </button>
-          }
+            @for (cam of filteredCamarasOptions(); track cam) {
+            @let isSelected = tempFilters().camaras.includes(cam);
+            <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded"
+              [class.active]="isSelected"
+              (click)="toggleMultiSelectFilter('camaras', cam)">
+              <span class="text-truncate" [title]="cam">{{ cam }}</span>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </button>
+            }
+          </div>
         </div>
         }
       </div>

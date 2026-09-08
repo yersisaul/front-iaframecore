@@ -32,6 +32,9 @@ export class EventService {
     return (f.camaras && f.camaras.length > 0) ||
            (f.analiticas && f.analiticas.length > 0) ||
            (f.objetos && f.objetos.length > 0) ||
+           (f.listas && f.listas.length > 0) ||
+           (f.sujetos && f.sujetos.length > 0) ||
+           (f.direcciones && f.direcciones.length > 0) ||
            f.timestampDesde !== null ||
            f.timestampHasta !== null ||
            !!(f.search && f.search.trim().length > 0);
@@ -65,7 +68,38 @@ export class EventService {
       if (!matchObj) return false;
     }
 
-    // 4. Rango de Fechas
+    // 4. Listas de Control
+    if (filters.listas && filters.listas.length > 0) {
+      const recList = record.matchDetail?.listName || record.grupoLista || '';
+      const matchLst = filters.listas.some(
+        l => l.toLowerCase() === recList.toLowerCase()
+      );
+      if (!matchLst) return false;
+    }
+
+    // 5. Sujetos (Listas Detalle)
+    if (filters.sujetos && filters.sujetos.length > 0) {
+      const matchSujeto = filters.sujetos.some(s => {
+        const lowerS = s.toLowerCase();
+        return (
+          (record.matchDetail?.detailId && record.matchDetail.detailId === s) ||
+          (record.detalleEvento && record.detalleEvento.toLowerCase().includes(lowerS)) ||
+          (record.objeto && record.objeto.toLowerCase() === lowerS)
+        );
+      });
+      if (!matchSujeto) return false;
+    }
+
+    // 6. Direcciones (Cruce de Línea)
+    if (filters.direcciones && filters.direcciones.length > 0) {
+      const recDir = record.direccion || '';
+      const matchDir = filters.direcciones.some(
+        d => d.toLowerCase() === recDir.toLowerCase()
+      );
+      if (!matchDir) return false;
+    }
+
+    // 6. Rango de Fechas
     if (record.timestamp) {
       const d = parseUtcDate(record.timestamp);
       if (filters.timestampDesde && d.getTime() < filters.timestampDesde.getTime()) {
@@ -76,7 +110,7 @@ export class EventService {
       }
     }
 
-    // 5. Búsqueda de texto libre
+    // 7. Búsqueda de texto libre
     if (filters.search && filters.search.trim().length > 0) {
       const q = filters.search.trim().toLowerCase();
       const text = [
@@ -85,7 +119,9 @@ export class EventService {
         record.analitica,
         record.objeto,
         record.detalleEvento,
-        record.direccion
+        record.direccion,
+        record.matchDetail?.listName,
+        record.grupoLista
       ].filter(Boolean).join(' ').toLowerCase();
 
       if (!text.includes(q)) return false;
@@ -113,6 +149,19 @@ export class EventService {
 
       if (event.objeto && !current.objetos.includes(event.objeto)) {
         current.objetos = [...current.objetos, event.objeto].sort();
+        changed = true;
+      }
+
+      const listName = event.matchDetail?.listName || event.grupoLista;
+      const currentListas = current.listas || [];
+      if (listName && !currentListas.includes(listName)) {
+        current.listas = [...currentListas, listName].sort();
+        changed = true;
+      }
+
+      const currentDirs = current.direcciones || [];
+      if (event.direccion && !currentDirs.includes(event.direccion)) {
+        current.direcciones = [...currentDirs, event.direccion].sort();
         changed = true;
       }
 

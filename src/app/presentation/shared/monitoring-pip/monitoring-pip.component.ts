@@ -39,9 +39,14 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
   readonly showControls = signal<boolean>(false);
   private controlsHideTimeout: any = null;
 
-  // Estados de arrastre y redimensionamiento de la ventana flotante
+  // Estados de arrastre, redimensionamiento y expansión calculada
   readonly isDragging = signal<boolean>(false);
   readonly isResizing = signal<boolean>(false);
+  readonly isExpanding = signal<boolean>(false);
+  readonly expandingLeft = signal<number | null>(null);
+  readonly expandingTop = signal<number | null>(null);
+  readonly expandingWidth = signal<number | null>(null);
+  readonly expandingHeight = signal<number | null>(null);
   private activeResizeEdge: string | null = null;
 
   private dragStartMouseX = 0;
@@ -62,9 +67,9 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
   private panStartCanvasX = 0;
   private panStartCanvasY = 0;
 
-  readonly pipPanX = signal<number>(0);
-  readonly pipPanY = signal<number>(0);
-  readonly pipZoom = signal<number>(1.0);
+  readonly pipPanX = this.stateService.canvasPanX;
+  readonly pipPanY = this.stateService.canvasPanY;
+  readonly pipZoom = this.stateService.canvasZoom;
 
   // Referencias a los slots del servicio singleton
   readonly gridSlots = this.stateService.gridSlots;
@@ -187,14 +192,12 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
     const viewportH = pipSize.height;
 
     const { width: totalW, height: totalH } = this.getCanvasDimensions();
+    const currentZoom = this.pipZoom();
+    const rawPanX = (viewportW - totalW * currentZoom) / 2;
+    const rawPanY = (viewportH - totalH * currentZoom) / 2;
 
-    const minZoom = this.getMinZoom();
-    const rawPanX = (viewportW - totalW * minZoom) / 2;
-    const rawPanY = (viewportH - totalH * minZoom) / 2;
+    const constrained = this.constrainPan(rawPanX, rawPanY, currentZoom);
 
-    const constrained = this.constrainPan(rawPanX, rawPanY, minZoom);
-
-    this.pipZoom.set(minZoom);
     this.pipPanX.set(constrained.x);
     this.pipPanY.set(constrained.y);
   }
@@ -319,12 +322,117 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
     setTimeout(() => this.attachAllLiveVideos(), 150);
   }
 
-  goToFullScreenMonitoring(event?: Event): void {
+  /**
+   * Obtiene la posición y dimensiones exactas del lienzo del Visor Táctico (.monitoring-grid-container)
+   * para limitar el crecimiento del PiP exactamente al marco del lienzo de monitoreo de cámaras.
+   */
+  getTargetGridRect(): { left: number; top: number; width: number; height: number } {
+    const existingContainer = document.querySelector('.monitoring-grid-container') as HTMLElement;
+    if (existingContainer) {
+      const r = existingContainer.getBoundingClientRect();
+      if (r.width > 100 && r.height > 100) {
+        return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) };
+      }
+    }
+
+    const mainContent = (document.querySelector('.main-content') || document.querySelector('.main-container') || document.body) as HTMLElement;
+    const mainRect = mainContent ? mainContent.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+
+    // Medidas calculadas pixel-perfect del layout de Monitoreo:
+    const paddingLeft = 24; // px (container-fluid padding left)
+    const headerTopTotal = 94; // px (pt-4: 24px + view-header: 46px + mb-4: 24px)
+    const bottomTotal = 72; // px (timeline: 52px + gap: 12px + pb-2: 8px)
+    
+    // Panel lateral derecho de eventos (30% del ancho disponible, mínimo 352px, máximo 512px)
+    const rightPanelWidth = Math.min(512, Math.max(352, (mainRect.width - 48) * 0.30));
+    const layoutGap = 14; // px (gap: 0.85rem)
+    const rightTotal = 24 + rightPanelWidth + layoutGap;
+
+    const targetLeft = mainRect.left + paddingLeft;
+    const targetTop = mainRect.top + headerTopTotal;
+    const targetWidth = Math.max(320, mainRect.width - paddingLeft - rightTotal);
+    const targetHeight = Math.max(200, mainRect.height - headerTopTotal - bottomTotal);
+
+    return {
+      left: Math.round(targetLeft),
+      top: Math.round(targetTop),
+      width: Math.round(targetWidth),
+      height: Math.round(targetHeight)
+    };
+  }
+
+  /**
+   * Expande de forma calculada el PiP creciendo suavemente desde sus coordenadas actuales
+   * hasta ocupar exactamente el tamaño del lienzo de Monitoreo de cámaras (.monitoring-grid-container),
+   * conservando el zoom y desplazamiento del lienzo para una transición continua y estética.
+   */
+  expandToMonitoring(event?: Event): void {
     if (event) {
+      event.preventDefault();
       event.stopPropagation();
     }
-    console.log('[MonitoringPip] Redirigiendo a pantalla completa de Monitoreo');
-    this.stateService.navigateToMonitoring();
+    if (this.isExpanding()) return;
+
+    const pipEl = this.elementRef.nativeElement.querySelector('.monitoring-pip-window') as HTMLElement;
+    if (!pipEl) {
+      this.stateService.navigateToMonitoring();
+      return;
+    }
+
+    // 1. Posición y tamaño exacto actual del PiP medidos en tiempo real
+    const startRect = pipEl.getBoundingClientRect();
+
+    // 2. Área objetivo exacta del lienzo del Visor Táctico (.monitoring-grid-container)
+    const targetRect = this.getTargetGridRect();
+
+    // 3. Zoom y Pan del PiP que se conservan idénticos en el Visor Táctico
+    const pipCurrentZoom = Math.max(0.05, this.pipZoom());
+    const pipCurrentPanX = this.pipPanX();
+    const pipCurrentPanY = this.pipPanY();
+
+    // Sincronizar de inmediato al servicio de estado para que Monitoreo use exactamente este mismo zoom
+    this.stateService.canvasZoom.set(pipCurrentZoom);
+    this.stateService.canvasPanX.set(pipCurrentPanX);
+    this.stateService.canvasPanY.set(pipCurrentPanY);
+
+    // 4. Fijar explícitamente las coordenadas iniciales en los signals
+    this.expandingLeft.set(startRect.left);
+    this.expandingTop.set(startRect.top);
+    this.expandingWidth.set(startRect.width);
+    this.expandingHeight.set(startRect.height);
+
+    this.isExpanding.set(true);
+
+    // 5. En el siguiente ciclo de renderizado, animar hacia el área exacta del lienzo de monitoreo conservando el zoom
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        this.expandingLeft.set(targetRect.left);
+        this.expandingTop.set(targetRect.top);
+        this.expandingWidth.set(targetRect.width);
+        this.expandingHeight.set(targetRect.height);
+
+        // El zoom y pan se conservan constantes durante toda la animación
+        this.pipZoom.set(pipCurrentZoom);
+        this.pipPanX.set(pipCurrentPanX);
+        this.pipPanY.set(pipCurrentPanY);
+      });
+    });
+
+    // 6. Al finalizar la animación (420ms), completar la navegación hacia el visor táctico
+    setTimeout(() => {
+      this.stateService.navigateToMonitoring();
+      setTimeout(() => {
+        this.isExpanding.set(false);
+        this.expandingLeft.set(null);
+        this.expandingTop.set(null);
+        this.expandingWidth.set(null);
+        this.expandingHeight.set(null);
+      }, 150);
+    }, 420);
+  }
+
+  goToFullScreenMonitoring(event?: Event): void {
+    this.expandToMonitoring(event);
   }
 
   closePip(event?: Event): void {
@@ -461,7 +569,15 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
     }
   }
 
-  // --- Redimensionamiento (Resize) de la Ventana PiP con Clamping Suave ---
+  getCanvasAspectRatio(): number {
+    const targetRect = this.getTargetGridRect();
+    if (targetRect.width > 50 && targetRect.height > 50) {
+      return targetRect.width / targetRect.height;
+    }
+    return 16 / 10;
+  }
+
+  // --- Redimensionamiento (Resize) de la Ventana PiP con Relación de Aspecto Bloqueada ---
 
   onResizeHandleMouseDown(event: MouseEvent, edge: string): void {
     event.preventDefault();
@@ -480,45 +596,73 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
     const startPosX = currentPos.x;
     const startPosY = currentPos.y;
 
+    const ar = this.getCanvasAspectRatio();
     const minW = 320;
-    const minH = 200;
-    const maxW = Math.round(window.innerWidth * 0.92);
-    const maxH = Math.round(window.innerHeight * 0.88);
+    const maxW = Math.min(Math.round(window.innerWidth * 0.92), Math.round((window.innerHeight * 0.88) * ar));
+    const minH = Math.round(minW / ar);
+    const maxH = Math.round(maxW / ar);
 
     const onMouseMove = (e: MouseEvent) => {
       if (!this.isResizing()) return;
       const deltaX = e.clientX - this.resizeStartMouseX;
       const deltaY = e.clientY - this.resizeStartMouseY;
 
-      let newWidth = this.resizeStartWidth;
-      let newHeight = this.resizeStartHeight;
+      let calcWidth = this.resizeStartWidth;
       let newPosX = startPosX;
       let newPosY = startPosY;
 
-      if (edge.includes('right')) {
-        newWidth = Math.max(minW, Math.min(maxW, this.resizeStartWidth + deltaX));
-      }
-      if (edge.includes('bottom')) {
-        newHeight = Math.max(minH, Math.min(maxH, this.resizeStartHeight + deltaY));
-      }
-      if (edge.includes('left')) {
-        const clampedW = Math.max(minW, Math.min(maxW, this.resizeStartWidth - deltaX));
+      if (edge === 'right' || edge === 'edge-right') {
+        calcWidth = this.resizeStartWidth + deltaX;
+      } else if (edge === 'bottom' || edge === 'edge-bottom') {
+        calcWidth = (this.resizeStartHeight + deltaY) * ar;
+      } else if (edge === 'bottom-right' || edge === 'corner-bottom-right') {
+        const dominantDelta = Math.abs(deltaX) > Math.abs(deltaY * ar) ? deltaX : deltaY * ar;
+        calcWidth = this.resizeStartWidth + dominantDelta;
+      } else if (edge === 'left' || edge === 'edge-left') {
+        calcWidth = this.resizeStartWidth - deltaX;
+        const clampedW = Math.max(minW, Math.min(maxW, calcWidth));
         newPosX = startPosX + (this.resizeStartWidth - clampedW);
-        newWidth = clampedW;
+      } else if (edge === 'top' || edge === 'edge-top') {
+        const calcHeight = this.resizeStartHeight - deltaY;
+        calcWidth = calcHeight * ar;
+        const clampedH = Math.max(minH, Math.min(maxH, calcHeight));
+        newPosY = startPosY + (this.resizeStartHeight - clampedH);
+      } else if (edge === 'bottom-left' || edge === 'corner-bottom-left') {
+        const dominantDelta = Math.abs(deltaX) > Math.abs(deltaY * ar) ? -deltaX : deltaY * ar;
+        calcWidth = this.resizeStartWidth + dominantDelta;
+        const clampedW = Math.max(minW, Math.min(maxW, calcWidth));
+        newPosX = startPosX + (this.resizeStartWidth - clampedW);
+      } else if (edge === 'top-right' || edge === 'corner-top-right') {
+        const dominantDelta = Math.abs(deltaX) > Math.abs(deltaY * ar) ? deltaX : -deltaY * ar;
+        calcWidth = this.resizeStartWidth + dominantDelta;
+        const clampedH = Math.max(minH, Math.min(maxH, Math.round(calcWidth / ar)));
+        newPosY = startPosY + (this.resizeStartHeight - clampedH);
+      } else if (edge === 'top-left' || edge === 'corner-top-left') {
+        const dominantDelta = Math.abs(deltaX) > Math.abs(deltaY * ar) ? -deltaX : -deltaY * ar;
+        calcWidth = this.resizeStartWidth + dominantDelta;
+        const clampedW = Math.max(minW, Math.min(maxW, calcWidth));
+        const clampedH = Math.round(clampedW / ar);
+        newPosX = startPosX + (this.resizeStartWidth - clampedW);
+        newPosY = startPosY + (this.resizeStartHeight - clampedH);
+      }
+
+      const finalWidth = Math.max(minW, Math.min(maxW, Math.round(calcWidth)));
+      const finalHeight = Math.round(finalWidth / ar);
+
+      if (edge.includes('left')) {
+        newPosX = startPosX + (this.resizeStartWidth - finalWidth);
       }
       if (edge.includes('top')) {
-        const clampedH = Math.max(minH, Math.min(maxH, this.resizeStartHeight - deltaY));
-        newPosY = startPosY + (this.resizeStartHeight - clampedH);
-        newHeight = clampedH;
+        newPosY = startPosY + (this.resizeStartHeight - finalHeight);
       }
 
-      this.stateService.pipSize.set({ width: newWidth, height: newHeight });
+      // Clamping dentro del viewport de pantalla
+      newPosX = Math.max(10, Math.min(window.innerWidth - finalWidth - 10, newPosX));
+      newPosY = Math.max(10, Math.min(window.innerHeight - finalHeight - 10, newPosY));
+
+      this.stateService.pipSize.set({ width: finalWidth, height: finalHeight });
       this.stateService.pipPosition.set({ x: newPosX, y: newPosY });
 
-      const minZoom = this.getMinZoom();
-      if (this.pipZoom() < minZoom) {
-        this.pipZoom.set(minZoom);
-      }
       const constrained = this.constrainPan(this.pipPanX(), this.pipPanY(), this.pipZoom());
       this.pipPanX.set(constrained.x);
       this.pipPanY.set(constrained.y);
@@ -547,6 +691,12 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
   }
 
   private ensureDefaultPosition(): void {
+    const ar = this.getCanvasAspectRatio();
+    const currentSize = this.stateService.pipSize();
+    const idealWidth = Math.max(360, currentSize.width);
+    const idealHeight = Math.round(idealWidth / ar);
+    this.stateService.pipSize.set({ width: idealWidth, height: idealHeight });
+
     if (!this.stateService.pipPosition()) {
       this.stateService.pipPosition.set(this.getDefaultPosition());
     }
@@ -566,12 +716,25 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
     return this.getCellDimensions();
   }
 
+  getExtenderDimensions(): { width: number; height: number } {
+    const zoom = Math.max(0.05, this.isExpanding() ? this.stateService.canvasZoom() : this.pipZoom());
+    const width = Math.round(48 / zoom);
+    const height = Math.round(48 / zoom);
+    return { width, height };
+  }
+
   getCanvasDimensions(): { width: number; height: number } {
     const { cellW, cellH } = this.getCellDimensions();
     const colsVal = Math.max(1, this.cols());
     const rowsVal = Math.max(1, this.rows());
-    const width = colsVal * cellW + (colsVal - 1) * 12 + 20;
-    const height = rowsVal * cellH + (rowsVal - 1) * 12 + 20;
+
+    // Al expandir hacia el Visor Táctico, incluir las dimensiones de los expansores de fila y columna
+    const extDim = this.getExtenderDimensions();
+    const expanderW = this.isExpanding() ? extDim.width : 0;
+    const expanderH = this.isExpanding() ? extDim.height : 0;
+
+    const width = colsVal * cellW + (colsVal - 1) * 12 + 20 + expanderW;
+    const height = rowsVal * cellH + (rowsVal - 1) * 12 + 20 + expanderH;
     return { width, height };
   }
 

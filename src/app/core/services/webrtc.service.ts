@@ -86,7 +86,13 @@ export class WebRtcService {
     }
 
     // 7. Enviar la Offer al servidor de medios con timeout estricto de 3.5s
-    const offerUrl = `http://${streamInfo.host}:${streamInfo.port}/offer`;
+    let targetHost = (streamInfo.host || '').trim();
+    const isLoopback = !targetHost || targetHost === 'localhost' || targetHost === '127.0.0.1' || targetHost === '0.0.0.0';
+    if (isLoopback && typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      targetHost = window.location.hostname;
+      console.info(`[WebRtcService] Host WebRTC loopback del backend corregido a hostname '${targetHost}'`);
+    }
+    const offerUrl = `http://${targetHost}:${streamInfo.port}/offer`;
     const response = await window.fetch(offerUrl, {
       method: 'POST',
       headers: {

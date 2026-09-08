@@ -10,9 +10,12 @@ else
   echo "⚠️ Advertencia: JWT_SECRET_KEY no fue proporcionado. Se mantendrá el valor por defecto."
 fi
 
-# 2. Reemplazar manualmente API_HOST y OPENSEARCH_HOST en el template de Nginx
+# 2. Reemplazar manualmente API_HOST, OPENSEARCH_HOST y MINIO_PUBLIC_URL en el template de Nginx
 echo "🔧 Generando configuración de Nginx de forma dinámica..."
-envsubst '$API_HOST $OPENSEARCH_HOST' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
+if [ -z "$MINIO_PUBLIC_URL" ]; then
+  export MINIO_PUBLIC_URL="$API_HOST"
+fi
+envsubst '$API_HOST $OPENSEARCH_HOST $MINIO_PUBLIC_URL' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
 
 # 3. Continuar con la ejecución de Nginx
 echo "🚀 Iniciando Nginx..."

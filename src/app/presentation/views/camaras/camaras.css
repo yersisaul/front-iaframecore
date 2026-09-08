@@ -11,7 +11,7 @@
 .nodos-container {
   animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: visible !important;
-  padding-bottom: 5rem !important;
+  padding-bottom: 2rem !important;
 }
 
 /* GRID */
@@ -97,10 +97,17 @@
   display: flex;
   align-items: center;
   container-type: inline-size;
+  transition: -webkit-mask-image 0.25s ease, mask-image 0.25s ease;
+}
+
+.host-card:hover .host-title-container {
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 14px), transparent 100%);
 }
 
 .host-title {
-  display: inline-block;
+  display: block;
+  width: 100%;
   max-width: 100%;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -111,6 +118,7 @@
 }
 
 .host-card:hover .host-title {
+  display: inline-block;
   max-width: none;
   width: max-content;
   text-overflow: clip;
@@ -1668,6 +1676,10 @@ code.code-badge {
 
 .dropdown-item.active .filter-item-badge {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.filter-dropdown-menu.dropdown-schedule {
+  min-width: 220px;
 }
 
 .filter-dropdown-menu.scrollable-menu {
@@ -4159,7 +4171,6 @@ code.code-badge {
 
 .nm-table td,
 .nm-table th {
-  border-bottom: none !important;
   box-shadow: none !important;
   white-space: nowrap;
   vertical-align: middle;
@@ -4203,14 +4214,8 @@ code.code-badge {
 
 .nm-table-tr {
   cursor: pointer;
-  border-bottom: 1px solid var(--border-color) !important;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-  position: relative;
+  transition: background-color 0.2s ease;
   height: 3.75rem;
-}
-
-.nm-table-tr:last-child {
-  border-bottom: none !important;
 }
 
 .nm-table td {
@@ -4219,6 +4224,12 @@ code.code-badge {
   color: var(--text-secondary);
   font-size: 0.88rem;
   vertical-align: middle;
+  border-bottom: 1px solid var(--border-color) !important;
+  background-clip: padding-box;
+}
+
+.nm-table-tr:last-child td {
+  border-bottom: none !important;
 }
 
 /* Hover general */
@@ -4228,22 +4239,12 @@ code.code-badge {
 
 /* Bordes decorativos interactivos a la izquierda */
 .nm-table-tr td:first-child {
-  position: relative;
+  box-shadow: inset 3.5px 0 0 transparent !important;
+  transition: box-shadow 0.2s ease;
 }
 
-.nm-table-tr td:first-child::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3.5px;
-  background-color: transparent;
-  transition: background-color 0.2s ease;
-}
-
-.nm-table-tr:hover td:first-child::before {
-  background-color: var(--color-online, #10b981);
+.nm-table-tr:hover td:first-child {
+  box-shadow: inset 3.5px 0 0 var(--color-online, #10b981) !important;
 }
 
 /* Nombre de cámara con ellipsis (...) en reposo y marquesina en hover */
@@ -4260,26 +4261,32 @@ code.code-badge {
   justify-content: center;
   container-type: inline-size;
   position: relative;
+  transition: -webkit-mask-image 0.25s ease, mask-image 0.25s ease;
+}
+
+.nm-table-tr:hover .camera-table-name-container {
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 14px), transparent 100%);
 }
 
 .camera-table-name-text {
-  display: inline-block !important;
-  width: max-content !important;
-  max-width: 125%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
   line-height: 1.25;
   vertical-align: middle;
 }
 
 .camera-table-nx-subtext {
-  display: inline-block !important;
-  width: max-content !important;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
   line-height: 1.2;
   margin-top: 2px;
   vertical-align: middle;
@@ -4287,13 +4294,19 @@ code.code-badge {
 
 .nm-table-tr:hover .camera-table-name-text {
   color: var(--text-primary);
+  display: inline-block !important;
+  width: max-content !important;
   max-width: none !important;
+  overflow: visible !important;
   text-overflow: clip !important;
   animation: marquee-camera-table-name 3.5s linear infinite alternate;
 }
 
 .nm-table-tr:hover .camera-table-nx-subtext {
+  display: inline-block !important;
+  width: max-content !important;
   max-width: none !important;
+  overflow: visible !important;
   text-overflow: clip !important;
   animation: marquee-camera-table-name 3.5s linear infinite alternate;
 }
@@ -4324,8 +4337,8 @@ code.code-badge {
 }
 
 .nm-table-tr:hover .camera-analytics-marquee-container {
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 16px, #000 calc(100% - 16px), transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0%, #000 16px, #000 calc(100% - 16px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 16px), transparent 100%);
 }
 
 .camera-analytics-track {
@@ -4478,7 +4491,7 @@ code.code-badge {
   border: 1px solid var(--border-color);
   border-radius: 22px;
   padding: 4px 5px;
-  gap: 2px !important;
+  gap: 0.25rem !important;
   align-items: center;
   box-sizing: border-box;
   height: 42px !important;

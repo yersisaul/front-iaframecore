@@ -15,6 +15,7 @@ import { getCameraEffectiveStatus, getCameraStatusCssClass, getCameraStatusFilte
 import { Schedule } from '../../../core/domain/entities/schedule.models';
 import { Analytic } from '../../../core/domain/entities/analytic.models';
 import { Camera } from '../../../core/domain/entities/camera.models';
+import { Host } from '../../../core/domain/entities/host.models';
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
@@ -26,12 +27,13 @@ import { ViewModeToggleComponent } from '../../shared/view-mode-toggle/view-mode
 import { CameraDetailDrawerComponent } from '../../shared/camera-detail-drawer/camera-detail-drawer.component';
 import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
+import { HeaderStatsSubtitleComponent } from '../../shared/header-stats-subtitle/header-stats-subtitle.component';
 import { exportToCsv, exportToXlsx, ExportColumn } from '../../../core/utils/export-utils';
 
 @Component({
   selector: 'app-camaras',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, CameraDetailDrawerComponent, FilterActionsComponent, CustomSelectComponent],
+  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, CameraDetailDrawerComponent, FilterActionsComponent, CustomSelectComponent, HeaderStatsSubtitleComponent],
   templateUrl: './camaras.html',
   styleUrl: './camaras.css'
 })
@@ -67,7 +69,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly analyticInactiveStatusIds = this.analyticService.inactiveStatusIds;
 
   readonly isLoading = computed(() =>
-    this.cameraService.isLoading() || this.scheduleService.isLoading()
+    this.cameraService.isLoading()
   );
 
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
@@ -208,6 +210,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly filterStreamType = signal<string[]>([]);
   readonly filterDecoder = signal<string[]>([]);
   readonly filterAnalyticType = signal<string[]>([]);
+  readonly filterSchedule = signal<string[]>([]);
 
   // Temp copies shown in the pills (committed on "Aplicar")
   readonly tempFilterStatus = signal<string[]>([]);
@@ -215,6 +218,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly tempFilterStreamType = signal<string[]>([]);
   readonly tempFilterDecoder = signal<string[]>([]);
   readonly tempFilterAnalyticType = signal<string[]>([]);
+  readonly tempFilterSchedule = signal<string[]>([]);
 
   private _arraysEqual(a: string[], b: string[]): boolean {
     if (a.length !== b.length) return false;
@@ -228,10 +232,11 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       !this._arraysEqual(this.tempFilterHost(), this.filterHost()) ||
       !this._arraysEqual(this.tempFilterStreamType(), this.filterStreamType()) ||
       !this._arraysEqual(this.tempFilterDecoder(), this.filterDecoder()) ||
-      !this._arraysEqual(this.tempFilterAnalyticType(), this.filterAnalyticType());
+      !this._arraysEqual(this.tempFilterAnalyticType(), this.filterAnalyticType()) ||
+      !this._arraysEqual(this.tempFilterSchedule(), this.filterSchedule());
   });
 
-  readonly showFilterPanel = signal<boolean>(false);
+  readonly showFilterPanel = signal<boolean>(true);
   readonly activeDropdown = signal<string | null>(null);
   readonly showExportDropdown = signal<boolean>(false);
   readonly hostSearch = signal<string>('');
@@ -317,35 +322,258 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     );
   });
 
-  // Opciones de filtro dinámicas (construidas a partir de las cámaras y analíticas cargadas)
+  /** Verifica si una analítica está vinculada a un horario específico */
+  isAnalyticRelatedToSchedule(analytic: Analytic, sched: Schedule): boolean {
+    if (!analytic || !sched) return false;
+    if (sched.analyticIds && sched.analyticIds.includes(analytic.id)) return true;
+    const params = analytic.parameters || {};
+    const schedNameOrId = params['horario'] || params['Horario'] || params['schedule'] || params['horario_nombre'] || params['schedule_name'] || params['schedule_id'];
+    if (schedNameOrId && String(schedNameOrId).trim() !== '' && String(schedNameOrId).toLowerCase() !== 'sin horario') {
+      const targetStr = String(schedNameOrId).trim().toLowerCase();
+      if (sched.id.toLowerCase() === targetStr || sched.name.toLowerCase().trim() === targetStr) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Mapa reactivo indexado por ID de cámara para acceso O(1) a sus analíticas sin iterar el arreglo completo */
+  readonly rawAnalyticsByCameraId = computed<Map<string, Analytic[]>>(() => {
+    const map = new Map<string, Analytic[]>();
+    const list = this.analytics();
+    const currentHost = this.hostId();
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      if (currentHost && a.hostFingerprint !== currentHost) continue;
+      const targetIds = a.targetCameraIds || [];
+      for (let j = 0; j < targetIds.length; j++) {
+        const camId = targetIds[j];
+        let arr = map.get(camId);
+        if (!arr) {
+          arr = [];
+          map.set(camId, arr);
+        }
+        arr.push(a);
+      }
+    }
+    return map;
+  });
+
+  /** Información precalculada en O(N) del horario activo para resolver coincidencias y ordenamientos en O(1) */
+  readonly activeScheduleInfo = computed(() => {
+    const schedIds = this.filterSchedule().length > 0 ? this.filterSchedule() : this.tempFilterSchedule();
+    if (schedIds.length === 0) {
+      return {
+        hasFilter: false,
+        relatedAnalyticIds: new Set<string>(),
+        activeAnalyticIds: new Set<string>(),
+        camerasWithActiveSched: new Set<string>()
+      };
+    }
+    const schedSet = new Set(schedIds);
+    const allSchedules = this.schedules().filter(s => schedSet.has(s.id));
+    const relatedAnalyticIds = new Set<string>();
+    const activeAnalyticIds = new Set<string>();
+
+    const allAnalytics = this.analytics();
+    for (let i = 0; i < allAnalytics.length; i++) {
+      const a = allAnalytics[i];
+      let isRelated = false;
+      for (let j = 0; j < allSchedules.length; j++) {
+        if (this.isAnalyticRelatedToSchedule(a, allSchedules[j])) {
+          isRelated = true;
+          break;
+        }
+      }
+      if (isRelated) {
+        relatedAnalyticIds.add(a.id);
+        const st = (a.status || '').trim().toLowerCase();
+        if (st === 'active' || st === 'online' || st === 'activo') {
+          activeAnalyticIds.add(a.id);
+        }
+      }
+    }
+
+    const rawMap = this.rawAnalyticsByCameraId();
+    const camerasWithActiveSched = new Set<string>();
+    for (const [camId, camAnalytics] of rawMap.entries()) {
+      for (let i = 0; i < camAnalytics.length; i++) {
+        if (activeAnalyticIds.has(camAnalytics[i].id)) {
+          camerasWithActiveSched.add(camId);
+          break;
+        }
+      }
+    }
+
+    return {
+      hasFilter: true,
+      relatedAnalyticIds,
+      activeAnalyticIds,
+      camerasWithActiveSched
+    };
+  });
+
+  /** Mapa preordenado y en caché de analíticas por cámara para renderizado O(1) sin disparar ciclos de detección */
+  readonly sortedAnalyticsByCameraId = computed<Map<string, Analytic[]>>(() => {
+    const rawMap = this.rawAnalyticsByCameraId();
+    const { hasFilter, relatedAnalyticIds } = this.activeScheduleInfo();
+    const result = new Map<string, Analytic[]>();
+
+    for (const [camId, list] of rawMap.entries()) {
+      if (list.length <= 1) {
+        result.set(camId, list);
+        continue;
+      }
+
+      const sorted = [...list].sort((a, b) => {
+        const activeA = this.isAnalyticActive(a);
+        const activeB = this.isAnalyticActive(b);
+
+        if (hasFilter) {
+          const schedA = relatedAnalyticIds.has(a.id);
+          const schedB = relatedAnalyticIds.has(b.id);
+
+          // 1. Primero: Analíticas de ese horario que están ACTIVAS (arriba)
+          const selectedActiveA = schedA && activeA;
+          const selectedActiveB = schedB && activeB;
+          if (selectedActiveA !== selectedActiveB) {
+            return selectedActiveA ? -1 : 1;
+          }
+
+          // 2. Segundo: Analíticas de ese horario que están INACTIVAS (abajo de las activas de ese horario)
+          const selectedInactiveA = schedA && !activeA;
+          const selectedInactiveB = schedB && !activeB;
+          if (selectedInactiveA !== selectedInactiveB) {
+            return selectedInactiveA ? -1 : 1;
+          }
+
+          // 3. Tercero: Otras analíticas activas
+          const otherActiveA = !schedA && activeA;
+          const otherActiveB = !schedB && activeB;
+          if (otherActiveA !== otherActiveB) {
+            return otherActiveA ? -1 : 1;
+          }
+
+          // 4. Al final: Otras analíticas inactivas
+        } else {
+          // Sin filtro de horario activo: primero activas, al final inactivas
+          if (activeA !== activeB) {
+            return activeA ? -1 : 1;
+          }
+        }
+
+        // Segunda capa: Orden alfabético por nombre de la analítica
+        const labelA = this.getAnalyticLabel(a.type);
+        const labelB = this.getAnalyticLabel(b.type);
+        const cmp = labelA.localeCompare(labelB, undefined, { numeric: true, sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+
+        // Desempate secundario alfabético por clases o lista de control
+        const classA = this.getAnalyticClassesLabel(a) || '';
+        const classB = this.getAnalyticClassesLabel(b) || '';
+        return classA.localeCompare(classB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      result.set(camId, sorted);
+    }
+
+    return result;
+  });
+
+  /** Determina si una cámara cumple con un conjunto de criterios de filtro */
+  private cameraMatchesCriteria(
+    c: Camera,
+    term: string,
+    st: string[],
+    hFp: string[],
+    stream: string[],
+    dec: string[],
+    analyticType: string[],
+    sched: string[],
+    hosts: Host[]
+  ): boolean {
+    if (this.hostId() && c.hostFingerprint !== this.hostId()) return false;
+    if (!this.hostId() && hFp.length > 0 && !hFp.includes(c.hostFingerprint)) return false;
+
+    if (term) {
+      const matchesName = c.name.toLowerCase().includes(term);
+      const matchesId = c.id.toLowerCase().includes(term);
+      const matchesNxId = !!(c.nxId && c.nxId.toLowerCase().includes(term));
+      if (!matchesName && !matchesId && !matchesNxId) return false;
+    }
+
+    if (st.length > 0) {
+      const effStatus = getCameraEffectiveStatus(c, hosts);
+      const effLower = effStatus.toLowerCase();
+      const matchesStatus = st.some(s => {
+        const sLower = s.toLowerCase();
+        if (sLower === 'active' || sLower === 'online') return effLower === 'online';
+        if (sLower === 'inactive' || sLower === 'offline') return effLower === 'offline';
+        return effLower === sLower;
+      });
+      if (!matchesStatus) return false;
+    }
+
+    if (stream.length > 0) {
+      if (!stream.some(s => s.toLowerCase() === c.streamType.toLowerCase())) return false;
+    }
+
+    if (dec.length > 0) {
+      if (!dec.some(d => d.toLowerCase() === c.decoder.toLowerCase())) return false;
+    }
+
+    if (analyticType.length > 0) {
+      const cameraAnalytics = this.rawAnalyticsByCameraId().get(c.id) || [];
+      const hasAnyAnalytic = cameraAnalytics.some(a =>
+        analyticType.some(at => this.normalizeAnalyticType(a.type) === this.normalizeAnalyticType(at))
+      );
+      if (!hasAnyAnalytic) return false;
+    }
+
+    if (sched.length > 0) {
+      const cameraAnalytics = this.rawAnalyticsByCameraId().get(c.id) || [];
+      const relatedIds = this.activeScheduleInfo().relatedAnalyticIds;
+      const hasMatchingSchedule = cameraAnalytics.some(a => relatedIds.has(a.id));
+      if (!hasMatchingSchedule) return false;
+    }
+
+    return true;
+  }
+
+  // Opciones de filtro dinámicas (construidas reactivamente a partir de los filtros activos)
   readonly filterOptions = computed(() => {
     const list = this.hostId()
       ? this.cameras().filter(c => c.hostFingerprint === this.hostId())
       : this.cameras();
     const hosts = this.hostService.allHosts();
-    const statuses = new Set<string>();
+    const term = this.searchTerm().trim().toLowerCase();
+    const st = this.filterStatus();
+    const hFp = this.filterHost();
+    const stream = this.filterStreamType();
+    const dec = this.filterDecoder();
+    const analyticType = this.filterAnalyticType();
+    const sched = this.filterSchedule();
+
     const streams = new Set<string>();
     const decoders = new Set<string>();
     const hostsSet = new Set<string>();
 
-    const statusCounts: Record<string, number> = {};
     list.forEach(c => {
-      const effStatus = getCameraEffectiveStatus(c, hosts);
-      statuses.add(effStatus);
-      statusCounts[effStatus] = (statusCounts[effStatus] || 0) + 1;
       if (c.streamType) streams.add(c.streamType);
       if (c.decoder) decoders.add(c.decoder);
       if (c.hostFingerprint) hostsSet.add(c.hostFingerprint);
     });
 
-    const uniqueAnalytics = new Set<string>();
-    const analyticsList = this.hostId()
-      ? this.analytics().filter(a => a.hostFingerprint === this.hostId())
-      : this.analytics();
-    analyticsList.forEach(a => {
-      if (a.type) {
-        uniqueAnalytics.add(this.normalizeAnalyticType(a.type));
-      }
+    // 1. Cámaras filtradas por todos los criterios activos EXCEPTO estado
+    // Esto permite que los conteos de estado (Online, Offline, etc.) y totalCount reflejen exactamente las cámaras bajo el horario/nodo/analítica activos
+    const camerasForStatus = list.filter(c =>
+      this.cameraMatchesCriteria(c, term, [], hFp, stream, dec, analyticType, sched, hosts)
+    );
+
+    const statusCounts: Record<string, number> = {};
+    camerasForStatus.forEach(c => {
+      const effStatus = getCameraEffectiveStatus(c, hosts);
+      statusCounts[effStatus] = (statusCounts[effStatus] || 0) + 1;
     });
 
     const hostOptions = Array.from(hostsSet).map(fp => ({
@@ -353,8 +581,59 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       name: this.getHostName(fp)
     })).sort((a, b) => a.name.localeCompare(b.name));
 
+    // 2. Cámaras filtradas por todos los criterios activos EXCEPTO analítica
+    const camerasForAnalytic = list.filter(c =>
+      this.cameraMatchesCriteria(c, term, st, hFp, stream, dec, [], sched, hosts)
+    );
+    const cameraIdsForAnalytic = new Set(camerasForAnalytic.map(c => c.id));
+
+    const uniqueAnalytics = new Set<string>();
+    const analyticCounts: Record<string, number> = {};
+    const analyticsList = this.hostId()
+      ? this.analytics().filter(a => a.hostFingerprint === this.hostId())
+      : this.analytics();
+
+    analyticsList.forEach(a => {
+      if (a.type) {
+        const norm = this.normalizeAnalyticType(a.type);
+        uniqueAnalytics.add(norm);
+        const isAttachedToMatchingCam = (a.targetCameraIds || []).some(id => cameraIdsForAnalytic.has(id));
+        if (isAttachedToMatchingCam) {
+          analyticCounts[norm] = (analyticCounts[norm] || 0) + 1;
+        } else if (analyticCounts[norm] === undefined) {
+          analyticCounts[norm] = 0;
+        }
+      }
+    });
+
+    // 3. Horarios: opciones globales o vinculadas al nodo actual y conteo de cámaras filtradas (excluyendo horario para ver posibilidades)
+    const currentHost = this.hostId();
+    const schedulesList = currentHost
+      ? this.schedules().filter(s => !s.hostFingerprint || s.hostFingerprint === '' || s.hostFingerprint.toLowerCase() === currentHost.toLowerCase())
+      : this.schedules();
+    const sortedSchedules = [...schedulesList].sort((a, b) => a.name.localeCompare(b.name));
+
+    const camerasForSchedule = list.filter(c =>
+      this.cameraMatchesCriteria(c, term, st, hFp, stream, dec, analyticType, [], hosts)
+    );
+
+    const scheduleCameraCounts: Record<string, number> = {};
+    const rawMap = this.rawAnalyticsByCameraId();
+    sortedSchedules.forEach(s => {
+      let count = 0;
+      camerasForSchedule.forEach(c => {
+        const camAnalytics = rawMap.get(c.id) || [];
+        if (camAnalytics.some(a => this.isAnalyticRelatedToSchedule(a, s))) {
+          count++;
+        }
+      });
+      scheduleCameraCounts[s.id] = count;
+    });
+
+    // Solo mostrar estados que tengan al menos 1 cámara (> 0) en el conjunto filtrado actual
     const statusOrder = ['Online', 'Degraded', 'Recovering', 'Pending', 'Offline'];
-    const sortedStatuses = Array.from(statuses).sort((a, b) => {
+    const dynamicStatuses = Object.keys(statusCounts).filter(st => (statusCounts[st] || 0) > 0);
+    const sortedStatuses = dynamicStatuses.sort((a, b) => {
       const idxA = statusOrder.indexOf(a);
       const idxB = statusOrder.indexOf(b);
       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
@@ -366,13 +645,29 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     return {
       status: sortedStatuses,
       statusCounts: statusCounts,
-      totalCount: list.length,
+      totalCount: camerasForStatus.length,
       hosts: hostOptions,
       streamType: Array.from(streams).sort(),
       decoder: Array.from(decoders).sort(),
-      analyticType: Array.from(uniqueAnalytics).sort()
+      analyticType: Array.from(uniqueAnalytics).sort(),
+      analyticCounts: analyticCounts,
+      schedules: sortedSchedules,
+      scheduleCounts: scheduleCameraCounts
     };
   });
+
+  /** Retorna la cantidad de analíticas registradas para un tipo de analítica */
+  getAnalyticCount(type: string): number {
+    const norm = this.normalizeAnalyticType(type);
+    const counts = this.filterOptions().analyticCounts || {};
+    return counts[norm] ?? 0;
+  }
+
+  /** Retorna la cantidad de cámaras que tienen al menos 1 analítica asignada a un horario */
+  getScheduleCameraCount(schedId: string): number {
+    const counts = this.filterOptions().scheduleCounts || {};
+    return counts[schedId] ?? 0;
+  }
 
   // Lista de cámaras filtrada reactivamente por el buscador y filtros avanzados
   readonly filteredCameras = computed<Camera[]>(() => {
@@ -383,60 +678,28 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const stream = this.filterStreamType();
     const dec = this.filterDecoder();
     const analyticType = this.filterAnalyticType();
+    const sched = this.filterSchedule();
+    const hosts = this.hostService.allHosts();
 
-    const filtered = list.filter(c => {
-      if (this.hostId() && c.hostFingerprint !== this.hostId()) return false;
-      if (!this.hostId() && hFp.length > 0 && !hFp.includes(c.hostFingerprint)) return false;
-
-      // Search by camera name (1st priority), camera ID (2nd priority), and NX ID (3rd priority)
-      if (term) {
-        const matchesName = c.name.toLowerCase().includes(term);
-        const matchesId = c.id.toLowerCase().includes(term);
-        const matchesNxId = !!(c.nxId && c.nxId.toLowerCase().includes(term));
-        if (!matchesName && !matchesId && !matchesNxId) return false;
-      }
-
-      // Filter by status (Basado exclusivamente en el estado efectivo visual de la cámara)
-      if (st.length > 0) {
-        const effStatus = getCameraEffectiveStatus(c, this.hostService.allHosts());
-        const effLower = effStatus.toLowerCase();
-        const matchesStatus = st.some(s => {
-          const sLower = s.toLowerCase();
-          if (sLower === 'active' || sLower === 'online') return effLower === 'online';
-          if (sLower === 'inactive' || sLower === 'offline') return effLower === 'offline';
-          return effLower === sLower;
-        });
-        if (!matchesStatus) return false;
-      }
-
-      // Filter by stream type
-      if (stream.length > 0) {
-        if (!stream.some(s => s.toLowerCase() === c.streamType.toLowerCase())) return false;
-      }
-
-      // Filter by decoder type
-      if (dec.length > 0) {
-        if (!dec.some(d => d.toLowerCase() === c.decoder.toLowerCase())) return false;
-      }
-
-      // Filter by analytic type
-      if (analyticType.length > 0) {
-        const cameraAnalytics = this.getAnalyticsForCamera(c.id);
-        const hasAnyAnalytic = cameraAnalytics.some(a =>
-          analyticType.some(at => this.normalizeAnalyticType(a.type) === this.normalizeAnalyticType(at))
-        );
-        if (!hasAnyAnalytic) return false;
-      }
-
-      return true;
-    });
+    const filtered = list.filter(c =>
+      this.cameraMatchesCriteria(c, term, st, hFp, stream, dec, analyticType, sched, hosts)
+    );
 
     const dir = this.sortDirection();
     const activeSortBy = this.viewMode() === 'cards' ? 'name' : this.sortBy();
 
-    // Ordenamiento por Nombre de cámara o Nodo (ascendente o descendente)
-    // Se excluye la ordenación por estado para evitar que las cámaras salten de posición al reconectarse/desconectarse
+    // Ordenamiento con priorización de horario y capa secundaria alfabética
+    const activeSchedInfo = this.activeScheduleInfo();
     return filtered.sort((a, b) => {
+      // 1. Si hay filtro de horario activo: primero cámaras con analíticas activas de ese horario arriba, e inactivas abajo
+      if (sched.length > 0) {
+        const hasActiveSchedA = activeSchedInfo.camerasWithActiveSched.has(a.id);
+        const hasActiveSchedB = activeSchedInfo.camerasWithActiveSched.has(b.id);
+        if (hasActiveSchedA !== hasActiveSchedB) {
+          return hasActiveSchedA ? -1 : 1;
+        }
+      }
+
       if (term) {
         const getSearchPriority = (cam: Camera): number => {
           if (cam.name.toLowerCase().includes(term)) return 3; // 1ra prioridad: Nombre
@@ -452,6 +715,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
         }
       }
 
+      // Segunda capa: Orden alfabético por Nombre de cámara o Nodo
       if (activeSortBy === 'host') {
         const hostA = this.getHostName(a.hostFingerprint);
         const hostB = this.getHostName(b.hostFingerprint);
@@ -468,13 +732,16 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     });
   });
 
-  // Total de analíticas filtradas reactivamente acorde a las cámaras visibles y los filtros de analítica
-  readonly filteredAnalyticsCount = computed<number>(() => {
+  readonly allHosts = this.hostService.allHosts;
+
+  // Lista de analíticas filtradas reactivamente acorde a las cámaras visibles y los filtros de analítica
+  readonly filteredAnalyticsList = computed<Analytic[]>(() => {
     const cameras = this.filteredCameras();
     const cameraIds = new Set(cameras.map(c => c.id));
     const analyticTypeFilter = this.filterAnalyticType();
+    const scheduleFilter = this.filterSchedule();
 
-    const filtered = this.analytics().filter(a => {
+    return this.analytics().filter(a => {
       if (this.hostId() && a.hostFingerprint !== this.hostId()) return false;
       const targetsFilteredCamera = (a.targetCameraIds || []).some(id => cameraIds.has(id));
       if (!targetsFilteredCamera) return false;
@@ -486,11 +753,23 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
           return false;
         }
       }
+
+      if (scheduleFilter.length > 0) {
+        const matchesSchedule = scheduleFilter.some(schedId => {
+          const scheduleObj = this.schedules().find(s => s.id === schedId);
+          return scheduleObj ? this.isAnalyticRelatedToSchedule(a, scheduleObj) : false;
+        });
+        if (!matchesSchedule) {
+          return false;
+        }
+      }
+
       return true;
     });
-
-    return filtered.length;
   });
+
+  // Total de analíticas filtradas
+  readonly filteredAnalyticsCount = computed<number>(() => this.filteredAnalyticsList().length);
 
   readonly currentPage = signal(1, { equal: () => false });
 
@@ -661,7 +940,8 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       this.filterHost().length > 0 ||
       this.filterStreamType().length > 0 ||
       this.filterDecoder().length > 0 ||
-      this.filterAnalyticType().length > 0;
+      this.filterAnalyticType().length > 0 ||
+      this.filterSchedule().length > 0;
   }
 
   toggleFilterPanel(): void {
@@ -672,16 +952,21 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       this.tempFilterStreamType.set([...this.filterStreamType()]);
       this.tempFilterDecoder.set([...this.filterDecoder()]);
       this.tempFilterAnalyticType.set([...this.filterAnalyticType()]);
+      this.tempFilterSchedule.set([...this.filterSchedule()]);
     }
     this.showFilterPanel.update(v => !v);
   }
 
   applyFilters(): void {
-    this.filterStatus.set([...this.tempFilterStatus()]);
+    const validStatuses = new Set(this.filterOptions().status);
+    const sanitizedStatus = this.tempFilterStatus().filter(st => validStatuses.has(st));
+    this.tempFilterStatus.set(sanitizedStatus);
+    this.filterStatus.set(sanitizedStatus);
     this.filterHost.set([...this.tempFilterHost()]);
     this.filterStreamType.set([...this.tempFilterStreamType()]);
     this.filterDecoder.set([...this.tempFilterDecoder()]);
     this.filterAnalyticType.set([...this.tempFilterAnalyticType()]);
+    this.filterSchedule.set([...this.tempFilterSchedule()]);
     this.currentPage.set(1);
   }
 
@@ -693,6 +978,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     this.filterStreamType.set([]); this.tempFilterStreamType.set([]);
     this.filterDecoder.set([]); this.tempFilterDecoder.set([]);
     this.filterAnalyticType.set([]); this.tempFilterAnalyticType.set([]);
+    this.filterSchedule.set([]); this.tempFilterSchedule.set([]);
     this.currentPage.set(1);
     this.activeDropdown.set(null);
   }
@@ -704,6 +990,10 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     } else {
       if (dropdown === 'host') {
         this.hostSearch.set('');
+      }
+      if (dropdown === 'status') {
+        const validStatuses = new Set(this.filterOptions().status);
+        this.tempFilterStatus.update(current => current.filter(st => validStatuses.has(st)));
       }
       this.activeDropdown.set(dropdown);
     }
@@ -725,10 +1015,12 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     if (filterName === 'streamType') toggleInSig(this.tempFilterStreamType);
     if (filterName === 'decoder') toggleInSig(this.tempFilterDecoder);
     if (filterName === 'analyticType') toggleInSig(this.tempFilterAnalyticType);
+    if (filterName === 'schedule') toggleInSig(this.tempFilterSchedule);
   }
 
   getStatusCountSummary(): number {
-    const selected = this.tempFilterStatus();
+    const validStatuses = new Set(this.filterOptions().status);
+    const selected = this.tempFilterStatus().filter(st => validStatuses.has(st));
     if (selected.length === 0) return this.filterOptions().totalCount;
     return selected.reduce((sum, st) => sum + (this.filterOptions().statusCounts[st] || 0), 0);
   }
@@ -764,6 +1056,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
     const savedMode = localStorage.getItem('camaras_view_mode') as 'cards' | 'list';
     if (savedMode) this.viewMode.set(savedMode);
+    this.updatePaginationLimit();
 
     this.loadColumnVisibilityFromStorage();
 
@@ -817,6 +1110,8 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       });
       this.resizeObserver.observe(this.camerasContainer.nativeElement);
     }
+
+    setTimeout(() => this.updatePaginationLimit(), 50);
   }
 
   ngOnDestroy(): void {
@@ -840,22 +1135,75 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updatePaginationLimit();
+  }
+
+  private calculateTableRowsCapacity(): number {
+    if (typeof window === 'undefined') return 8;
+
+    const winH = window.innerHeight || document.documentElement.clientHeight || 800;
+
+    // Medición dinámica directa en el DOM independiente del estado del panel de filtros
+    const container = (this.camerasContainer?.nativeElement || document) as HTMLElement;
+    const headerEl = container.querySelector('app-page-header') as HTMLElement;
+    const theadEl = container.querySelector('.nm-table thead') as HTMLElement;
+    const sampleRow = container.querySelector('.nm-table-tr') as HTMLElement;
+
+    // 1. Determinar el inicio vertical base del cuerpo de la tabla a partir de la cabecera estándar
+    const headerBottom = headerEl ? headerEl.getBoundingClientRect().bottom : 180;
+    const theadH = theadEl && theadEl.getBoundingClientRect().height > 0
+      ? theadEl.getBoundingClientRect().height
+      : 44;
+    const baseTableBodyTop = headerBottom + theadH + 16;
+
+    // 2. Determinar la zona de seguridad inferior antes del dock flotante de paginación
+    // La barra flotante fija tiene bottom: 0.9rem (~15px) + altura de barra (~48px) + sombra y elevación (~35px)
+    // + margen de respiración del contenedor (~32px) y borde/tarjeta de tabla (~20px) = 160px de holgura total
+    const bottomClearance = 160;
+
+    const targetBottom = winH - bottomClearance;
+    const availableHeight = Math.max(120, targetBottom - baseTableBodyTop);
+
+    // 3. Medir la altura real de una fila en el DOM (incluyendo border-bottom)
+    const rowHeight = (sampleRow && sampleRow.getBoundingClientRect().height > 0)
+      ? sampleRow.getBoundingClientRect().height
+      : 61;
+
+    return Math.max(4, Math.floor(availableHeight / rowHeight));
+  }
+
+  private updatePaginationLimit(containerWidth?: number): void {
+    if (this.viewMode() === 'list') {
+      const tableLimit = this.calculateTableRowsCapacity();
+      if (this.limit() !== tableLimit) {
+        this.limit.set(tableLimit);
+      }
+    } else {
+      const width = containerWidth ?? (this.camerasContainer?.nativeElement?.clientWidth || this.estimateContainerWidth());
+      if (width > 0) {
+        const columnas = Math.floor((width + 24) / (335 + 24));
+        const newCols = Math.max(1, columnas);
+        const oldCols = this.columns();
+        let multiplier = Math.round(this.limit() / (oldCols || 1));
+        if (multiplier !== 10 && multiplier !== 20 && multiplier !== 30) {
+          multiplier = 10;
+        }
+        if (newCols !== oldCols) {
+          this.columns.set(newCols);
+        }
+        const newLimit = newCols * multiplier;
+        if (this.limit() !== newLimit) {
+          this.limit.set(newLimit);
+        }
+      }
+    }
+  }
+
   private adjustColumnsAndLimit(containerWidth: number): void {
     if (containerWidth <= 0) return;
-    const columnas = Math.floor((containerWidth + 24) / (335 + 24));
-    const newCols = Math.max(1, columnas);
-    const oldCols = this.columns();
-
-    if (newCols !== oldCols) {
-      const currentLimit = this.limit();
-      let multiplier = Math.round(currentLimit / oldCols);
-      if (multiplier !== 10 && multiplier !== 20 && multiplier !== 30) {
-        multiplier = 10;
-      }
-      this.columns.set(newCols);
-      this.limit.set(newCols * multiplier);
-      this.currentPage.set(1);
-    }
+    this.updatePaginationLimit(containerWidth);
   }
 
   setPage(page: number): void {
@@ -1112,6 +1460,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   getStatusCssClass(status: string): string {
     const stLower = status.trim().toLowerCase();
+    if (stLower === 'all' || stLower === 'todos') return 'all';
     if (stLower === 'online' || stLower === 'active' || stLower === 'activo') return 'online';
     if (stLower === 'degraded' || stLower === 'degradado') return 'degraded';
     if (stLower === 'recovering' || stLower === 'recuperando') return 'recovering';
@@ -1150,9 +1499,29 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   // ── Analíticas ──────────────────────────────────────────────────────────────
 
-  /** Retorna las analíticas de IA asignadas a una cámara específica */
+  /** Comprueba si una analítica está en estado activo */
+  isAnalyticActive(analytic: Analytic): boolean {
+    if (!analytic || !analytic.status) return false;
+    const s = analytic.status.trim().toLowerCase();
+    return s === 'active' || s === 'online' || s === 'activo';
+  }
+
+  /** Comprueba si una analítica está vinculada al horario actualmente seleccionado en el filtro */
+  isAnalyticRelatedToActiveSchedule(analytic: Analytic): boolean {
+    const activeSchedIds = this.filterSchedule().length > 0
+      ? this.filterSchedule()
+      : this.tempFilterSchedule();
+    if (activeSchedIds.length === 0) return false;
+    const allSchedules = this.schedules();
+    return activeSchedIds.some(schedId => {
+      const scheduleObj = allSchedules.find(s => s.id === schedId);
+      return scheduleObj ? this.isAnalyticRelatedToSchedule(analytic, scheduleObj) : false;
+    });
+  }
+
+  /** Retorna las analíticas de IA asignadas a una cámara específica (resuelto en O(1) desde caché reactiva) */
   getAnalyticsForCamera(cameraId: string): Analytic[] {
-    return this.analytics().filter(a => (!this.hostId() || a.hostFingerprint === this.hostId()) && a.targetCameraIds.includes(cameraId));
+    return this.sortedAnalyticsByCameraId().get(cameraId) || [];
   }
 
   /** Retorna el texto formateado de clases o nombre de lista de control de la analítica */
@@ -1473,7 +1842,9 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   setViewMode(mode: 'cards' | 'list'): void {
     this.viewMode.set(mode);
     localStorage.setItem('camaras_view_mode', mode);
+    this.updatePaginationLimit();
     this.currentPage.set(1);
+    setTimeout(() => this.updatePaginationLimit(), 0);
   }
 
   copyRowContent(value: string, uniqueKey: string): void {

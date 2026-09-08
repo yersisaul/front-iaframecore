@@ -449,22 +449,47 @@
       </label>
     </div>
 
-    <!-- tipo_de_tracker -->
-    <div class="mb-3">
-      <label class="form-label text-muted small font-semibold mb-1"
-        title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">
-        Algoritmo de Rastreo (Tracker)
-      </label>
-      <select class="form-select text-paragraph-sm font-semibold rounded-3" [ngModel]="selectedTracker()"
-        (ngModelChange)="selectedTracker.set($event)"
-        title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">
-        <option value="Sort">Sort (Básico y Ligero)</option>
-        <option value="Oc-Sort">Oc-Sort (Intermedio)</option>
-        <option value="Bot-Sort">Bot-Sort (Complejo y Robusto)</option>
-      </select>
-    </div>
-
     <div class="d-flex flex-column gap-3 pt-1">
+      <!-- tipo_de_tracker -->
+      <div class="slider-field-group"
+        title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="slider-field-label"
+            title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">Algoritmo
+            de Rastreo (Tracker)</span>
+        </div>
+        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="selectedTracker()"
+          (ngModelChange)="selectedTracker.set($event)"
+          title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">
+          <option value="Sort">Sort (Básico y Ligero)</option>
+          <option value="Oc-Sort">Oc-Sort (Intermedio)</option>
+          <option value="Bot-Sort">Bot-Sort (Complejo y Robusto)</option>
+        </select>
+      </div>
+
+      <!-- metadatos (si / no) -->
+      <div class="slider-field-group"
+        title="Parámetro que determina si la analítica debe realizar post-procesamiento de metadatos (si/no).">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="slider-field-label"
+            title="Parámetro que determina si la analítica debe realizar post-procesamiento de metadatos (si/no).">Post-procesamiento
+            de Metadatos</span>
+        </div>
+        <div class="media-toggle-pill-wrapper p-1 rounded-pill d-flex align-items-center gap-1 border shadow-xs">
+          <button type="button"
+            class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center py-1 px-3 rounded-pill transition-all"
+            [class.active]="metadatos()" (click)="metadatos.set(true)"
+            title="Activar post-procesamiento de metadatos (Sí)">
+            <span class="fw-bold">Sí</span>
+          </button>
+          <button type="button"
+            class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center py-1 px-3 rounded-pill transition-all"
+            [class.active]="!metadatos()" (click)="metadatos.set(false)"
+            title="Desactivar post-procesamiento de metadatos (No)">
+            <span class="fw-bold">No</span>
+          </button>
+        </div>
+      </div>
       <!-- conf_thres (0.15 - 1.0) -->
       <div class="slider-field-group"
         title="Confianza de la detección: A mayor porcentaje, menos falsos positivos, pero podría omitir objetos lejanos o semiocultos (min: 0.15 - max: 1.0).">

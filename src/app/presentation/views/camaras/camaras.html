@@ -6,8 +6,14 @@
        ══════════════════════════════════════════════════════ -->
   <!-- CABECERA REFACTORIZADA DRY -->
   <app-page-header [showSidebarToggle]="!hostId()"
-    [title]="hostId() ? 'Cámaras del Nodo' + (currentHost()?.hostname ? ' &quot;' + currentHost()?.hostname + '&quot;' : '') : 'Todas las Cámaras'"
-    [subtitle]="'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + filteredCameras().length + '</span> cámaras y <span class=&quot;fw-semibold text-primary&quot;>' + filteredAnalyticsCount() + '</span> analíticas ' + (hostId() ? 'en este nodo.' : 'en el sistema.')">
+    [title]="hostId() ? 'Cámaras del Nodo' + (currentHost()?.hostname ? ' &quot;' + currentHost()?.hostname + '&quot;' : '') : 'Todas las Cámaras'">
+
+    <app-header-stats-subtitle header-subtitle
+      [cameras]="filteredCameras()"
+      [analytics]="filteredAnalyticsList()"
+      [allHosts]="allHosts()"
+      [contextSuffix]="hostId() ? 'en este nodo.' : 'en el sistema.'">
+    </app-header-stats-subtitle>
 
     <!-- Botón Volver a Nodos cuando está en modo nodo -->
     @if (hostId()) {
@@ -89,12 +95,14 @@
 
       <div class="flex-grow-1"></div>
 
+      @if (viewMode() === 'cards') {
       <div class="d-flex align-items-center gap-2">
         <label for="cam-limit-select" class="text-muted small fw-medium mb-0 text-nowrap">Cámaras por página:</label>
         <app-custom-select [options]="limitOptions()" [value]="limit()" size="sm"
           (valueChange)="onLimitValueChange($event)">
         </app-custom-select>
       </div>
+      }
     </div>
   </app-page-header>
   <!-- /view-header -->
@@ -108,7 +116,7 @@
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilterStatus().length > 0" (click)="toggleDropdown('status', $event)">
-          <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
+          <span class="status-dot" [class]="tempFilterStatus().length === 1 ? getStatusCssClass(tempFilterStatus()[0]) : 'all'"></span>
           <span>
             Estado ({{ tempFilterStatus().length || 'Todos' }})
           </span>
@@ -156,10 +164,10 @@
             [class.rotated]="activeDropdown() === 'host'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'host') {
-        <div class="filter-dropdown-menu dropdown-host scrollable-menu" (click)="$event.stopPropagation()">
-          <!-- Searchbar interno de Nodos -->
-          <div class="node-search-wrapper px-1 pb-1">
-            <div class="node-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1">
+        <div class="filter-dropdown-menu dropdown-host p-0" (click)="$event.stopPropagation()">
+          <!-- Searchbar interno de Nodos fijo arriba -->
+          <div class="dropdown-search-header p-2">
+            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1" style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
               <input #nodeSearchInput type="text" class="node-search-input border-0 bg-transparent w-100"
                 placeholder="Buscar nodo..." (input)="hostSearch.set(nodeSearchInput.value)"
@@ -175,19 +183,22 @@
               }
             </div>
           </div>
-          @if (filteredHostOptions().length === 0) {
-          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
-          }
-          @for (h of filteredHostOptions(); track h.fingerprint) {
-          @let isSelected = tempFilterHost().includes(h.fingerprint);
-          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between"
-            [class.active]="isSelected" (click)="toggleFilterValue('host', h.fingerprint, $event)">
-            <span class="text-truncate">{{ h.name }}</span>
-            @if (isSelected) {
-            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+          <!-- Opciones scrolleables -->
+          <div class="dropdown-items-scroll scrollable-menu p-2 pt-1">
+            @if (filteredHostOptions().length === 0) {
+            <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
             }
-          </button>
-          }
+            @for (h of filteredHostOptions(); track h.fingerprint) {
+            @let isSelected = tempFilterHost().includes(h.fingerprint);
+            <button type="button" class="dropdown-item d-flex align-items-center justify-content-between"
+              [class.active]="isSelected" (click)="toggleFilterValue('host', h.fingerprint, $event)">
+              <span class="text-truncate">{{ h.name }}</span>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </button>
+            }
+          </div>
         </div>
         }
       </div>
@@ -268,9 +279,47 @@
           <button type="button" class="dropdown-item text-capitalize d-flex align-items-center justify-content-between"
             [class.active]="isSelected" (click)="toggleFilterValue('analyticType', type, $event)">
             <span>{{ getAnalyticLabel(type) }}</span>
-            @if (isSelected) {
-            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
-            }
+            <div class="d-flex align-items-center gap-2">
+              <span class="filter-item-badge">
+                {{ getAnalyticCount(type) }}
+              </span>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </div>
+          </button>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- 6. HORARIO -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="tempFilterSchedule().length > 0" (click)="toggleDropdown('schedule', $event)">
+          <span class="icon-svg icon-horarios filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Horario ({{ tempFilterSchedule().length || 'Todos' }})</span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'schedule'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'schedule') {
+        <div class="filter-dropdown-menu dropdown-schedule scrollable-menu" (click)="$event.stopPropagation()">
+          @if (filterOptions().schedules.length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
+          @for (sched of filterOptions().schedules; track sched.id) {
+          @let isSelected = tempFilterSchedule().includes(sched.id);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="toggleFilterValue('schedule', sched.id, $event)">
+            <span class="text-truncate" [title]="sched.name">{{ sched.name }}</span>
+            <div class="d-flex align-items-center gap-2">
+              <span class="filter-item-badge">
+                {{ getScheduleCameraCount(sched.id) }}
+              </span>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </div>
           </button>
           }
         </div>
@@ -286,8 +335,8 @@
   </div>
   }
 
-  <!-- Estado de carga -->
-  @if (isLoading()) {
+  <!-- Estado de carga (Solo en carga inicial cuando no hay datos en memoria) -->
+  @if (isLoading() && cameras().length === 0) {
   <div class="text-center py-5">
     <div class="spinner-border text-primary" role="status">
       <span class="visually-hidden">Cargando cámaras...</span>
@@ -305,7 +354,7 @@
   }
 
   <!-- Cuadrícula de Cámaras (Estilo Bento Nodos) o Tabla Premium -->
-  @if (!isLoading() && filteredCameras().length > 0) {
+  @if ((!isLoading() || cameras().length > 0) && filteredCameras().length > 0) {
   @if (viewMode() === 'cards') {
   <div #camerasGrid class="hosts-grid mb-4">
     @for (camera of pagedCameras(); track camera.id) {

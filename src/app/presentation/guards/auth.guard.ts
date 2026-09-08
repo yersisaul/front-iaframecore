@@ -14,7 +14,7 @@ export const authGuard: CanActivateFn = (route, state) => {
   }
 
   // Interceptar la ruta raíz de dashboard para redirigir dinámicamente al primer módulo autorizado
-  const stateUrl = state.url.split('?')[0];
+  const stateUrl = (state?.url || '').split('?')[0];
   if (stateUrl === '/dashboard' || stateUrl === '/dashboard/') {
     const defaultRoute = permissionsService.getDefaultRedirectRoute();
     router.navigate([defaultRoute]);

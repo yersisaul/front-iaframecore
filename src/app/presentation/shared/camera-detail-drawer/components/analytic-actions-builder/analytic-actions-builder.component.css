@@ -10,6 +10,11 @@
   box-shadow: 0 0.125rem 0.6rem rgba(0, 0, 0, 0.03);
 }
 
+.analytic-actions-builder-wrapper.has-open-dropdown {
+  margin-bottom: 16rem !important;
+  transition: margin-bottom 0.25s ease;
+}
+
 .form-section-title {
   letter-spacing: 0.04em;
   font-size: 0.74rem;
@@ -72,7 +77,7 @@
   cursor: pointer;
 }
 
-.action-rule-card:hover {
+.action-rule-card:hover:not(:has(.btn-target-selector-trigger:hover, .remove-action-btn:hover)) {
   background-color: var(--color-primary-light-bg, rgba(var(--primary-rgb, 59, 130, 246), 0.04));
   border-color: rgba(var(--primary-rgb, 59, 130, 246), 0.3) !important;
 }
@@ -90,7 +95,7 @@
   transition: color 0.2s ease, transform 0.2s ease;
 }
 
-.action-rule-card:hover .drag-grip-standalone,
+.action-rule-card:hover:not(:has(.btn-target-selector-trigger:hover, .remove-action-btn:hover)) .drag-grip-standalone,
 .drag-grip-standalone:hover {
   background: transparent !important;
   color: var(--primary, #3b82f6);
@@ -109,7 +114,7 @@
   color: rgba(255, 255, 255, 0.4);
 }
 
-[data-bs-theme="dark"] .action-rule-card:hover .drag-grip-standalone,
+[data-bs-theme="dark"] .action-rule-card:hover:not(:has(.btn-target-selector-trigger:hover, .remove-action-btn:hover)) .drag-grip-standalone,
 :host-context([data-bs-theme="dark"]) .drag-grip-standalone:hover {
   background: transparent !important;
   color: #60a5fa;
@@ -157,7 +162,7 @@
 
 .action-rule-card .form-label {
   font-size: 0.72rem;
-  margin-bottom: 0.25rem !important;
+  margin-bottom: 0.5rem !important;
 }
 
 .action-rule-card .form-control {
@@ -199,10 +204,15 @@
 
 /* CONFIGURACIÓN REACTIVA Y FLUIDA DE ANCHO Y ALTO DEL MENÚ DESPLEGABLE (EN REM/VH) */
 .actions-dropdown-menu {
-  min-width: 13.75rem;
-  max-width: min(17.5rem, 90vw);
-  max-height: min(16.25rem, 50vh);
-  overflow-y: auto;
+  min-width: 14.5rem;
+  max-width: min(18.5rem, 90vw);
+  max-height: none !important;
+  overflow: visible !important;
+  overflow-y: visible !important;
+  background-color: var(--bg-surface, #ffffff);
+  border-color: var(--border-color);
+  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.28), 0 4px 12px -2px rgba(0, 0, 0, 0.15);
+  z-index: 1060 !important;
 }
 
 .icon-micro {
@@ -256,4 +266,776 @@
   color: var(--text-on-primary-btn, #ffffff) !important;
   font-weight: 700;
   box-shadow: 0 4px 14px rgba(var(--primary-rgb, 59, 130, 246), 0.28);
+}
+
+/* =========================================================================
+   CONTROLES DE ANALÍTICA OBJETIVO (ACTIVAR / DESACTIVAR) - REDISEÑADO
+   ========================================================================= */
+
+.btn-target-selector-trigger {
+  background-color: var(--bg-card, var(--bg-surface, #ffffff));
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary);
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-target-selector-trigger:hover,
+.btn-target-selector-trigger.is-selected:hover {
+  border-color: var(--primary) !important;
+  background-color: var(--color-primary-light-bg, rgba(var(--primary-rgb, 59, 130, 246), 0.07)) !important;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb, 59, 130, 246), 0.18) !important;
+  transform: translateY(-1px);
+}
+
+.btn-target-selector-trigger:hover .target-trigger-placeholder {
+  color: var(--primary);
+}
+
+.btn-target-selector-trigger:hover .target-trigger-icon-box {
+  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.16);
+  color: var(--primary);
+}
+
+.btn-target-selector-trigger:hover .chevron-rotate-right {
+  color: var(--primary) !important;
+}
+
+[data-bs-theme="dark"] .btn-target-selector-trigger,
+:host-context([data-bs-theme="dark"]) .btn-target-selector-trigger {
+  background-color: var(--bg-card, var(--bg-surface, #1e293b));
+  border-color: var(--border-color) !important;
+}
+
+/* Estado de advertencia (ámbar/amarillo) cuando no se ha seleccionado ninguna analítica objetivo */
+.btn-target-selector-trigger.is-warning {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  color: #d97706 !important;
+}
+
+.btn-target-selector-trigger.is-warning:hover {
+  background-color: rgba(245, 158, 11, 0.16) !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+.btn-target-selector-trigger.is-warning .target-trigger-icon-box.is-warning {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+  color: #d97706 !important;
+}
+
+.btn-target-selector-trigger.is-warning .target-trigger-placeholder {
+  color: #d97706 !important;
+}
+
+[data-bs-theme="dark"] .btn-target-selector-trigger.is-warning,
+:host-context([data-bs-theme="dark"]) .btn-target-selector-trigger.is-warning {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  color: #fbbf24 !important;
+}
+
+[data-bs-theme="dark"] .btn-target-selector-trigger.is-warning .target-trigger-icon-box.is-warning,
+:host-context([data-bs-theme="dark"]) .btn-target-selector-trigger.is-warning .target-trigger-icon-box.is-warning {
+  background-color: rgba(245, 158, 11, 0.25) !important;
+  color: #fbbf24 !important;
+}
+
+[data-bs-theme="dark"] .btn-target-selector-trigger.is-warning .target-trigger-placeholder,
+:host-context([data-bs-theme="dark"]) .btn-target-selector-trigger.is-warning .target-trigger-placeholder {
+  color: #fbbf24 !important;
+}
+
+.target-trigger-icon-box {
+  width: 20px;
+  height: 20px;
+  background-color: rgba(0, 0, 0, 0.04);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+[data-bs-theme="dark"] .target-trigger-icon-box,
+:host-context([data-bs-theme="dark"]) .target-trigger-icon-box {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.target-trigger-icon-box.is-active {
+  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.12);
+  color: var(--primary);
+}
+
+.target-trigger-placeholder {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.target-change-badge {
+  width: 26px;
+  height: 26px;
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.btn-target-selector-trigger:hover .target-change-badge {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+
+.chevron-rotate-right {
+  transform: rotate(-90deg);
+}
+
+/* =========================================================================
+   MODAL DE SELECCIÓN JERÁRQUICA (BLURRED GLASS DIALOG)
+   ========================================================================= */
+
+.modal-backdrop-blur {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 2050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.22s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.premium-detail-modal.select-camera-modal {
+  width: 95%;
+  max-width: 960px;
+  flex-direction: column !important;
+  height: 85vh;
+  max-height: 90vh;
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  animation: modalScaleUp 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.modal-header-section {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.modal-controls-container {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background-color: var(--bg-surface);
+  width: 100%;
+}
+
+.modal-tabs-pill {
+  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.04) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  padding: 4px !important;
+  display: flex;
+  width: 100%;
+  gap: 6px;
+}
+
+.modal-tabs-pill .btn-premium-tab {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary) !important;
+  font-size: 0.88rem !important;
+  font-weight: 600;
+  padding: 10px 16px !important;
+  border-radius: 8px;
+  transition: all 0.25s ease;
+  flex: 1;
+  cursor: pointer;
+}
+
+.modal-tabs-pill .btn-premium-tab.active {
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb, 59, 130, 246), 0.25) !important;
+}
+
+.modal-search-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.modal-search-wrapper {
+  background-color: var(--bg-surface);
+  border: 1.5px solid var(--border-color) !important;
+  border-radius: 99px !important;
+  padding: 0 18px !important;
+  height: 42px !important;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-search-wrapper:focus-within {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 59, 130, 246), 0.15) !important;
+}
+
+.modal-search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  color: var(--text-primary) !important;
+  font-size: 0.82rem !important;
+  height: 100%;
+}
+
+.modal-filter-pill {
+  background-color: var(--bg-surface);
+  border: 1.5px solid var(--border-color);
+  border-radius: 99px;
+  padding: 0 16px;
+  height: 42px;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-filter-pill:hover,
+.modal-filter-pill.active {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.modal-filter-dropdown-menu {
+  background-color: var(--bg-filter-dropdown-menu, var(--bg-surface)) !important;
+  border: 1px solid var(--border-filter-dropdown-menu, var(--border-color)) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  padding: 6px !important;
+  min-width: 190px !important;
+}
+
+::ng-deep .dark .modal-filter-dropdown-menu,
+::ng-deep [data-bs-theme="dark"] .modal-filter-dropdown-menu,
+::ng-deep [data-theme="dark"] .modal-filter-dropdown-menu,
+[data-bs-theme="dark"] .modal-filter-dropdown-menu,
+[data-theme="dark"] .modal-filter-dropdown-menu,
+.dark .modal-filter-dropdown-menu {
+  background-color: var(--bg-filter-dropdown-menu, var(--bg-surface)) !important;
+  border: 1px solid var(--border-filter-dropdown-menu, var(--border-color)) !important;
+}
+
+.modal-filter-dropdown-menu .dropdown-item {
+  color: var(--text-secondary) !important;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  padding: 8px 14px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+.modal-filter-dropdown-menu .dropdown-item:hover:not(.active) {
+  background-color: var(--bg-filter-dropdown-item-hover, rgba(255, 255, 255, 0.05)) !important;
+  color: var(--text-primary) !important;
+}
+
+.modal-filter-dropdown-menu .dropdown-item.active {
+  background-color: var(--primary-light) !important;
+  color: var(--primary) !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+
+/* ── Botón de alternancia de ordenamiento (A-Z / Z-A) en Modal ── */
+.btn-sort-toggle {
+  background-color: var(--bg-surface) !important;
+  border: 1.5px solid var(--border-color) !important;
+  color: var(--text-secondary) !important;
+  border-radius: 99px !important;
+  height: 42px !important;
+  padding: 0 16px !important;
+  font-size: 0.82rem !important;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.btn-sort-toggle:hover {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.05)) !important;
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 59, 130, 246), 0.15) !important;
+}
+
+.btn-sort-toggle .sort-icon-letters {
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+}
+
+.btn-sort-toggle .sort-arrow-icon {
+  width: 14px;
+  height: 14px;
+  background-color: currentColor;
+}
+
+.status-dot-mini {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* COMPONENTES DE VISTA DETALLADA DE NODO Y CÁMARA (ENCABEZADO GRANDE Y DESCRIPTIVO) */
+.node-hierarchy-detail-card,
+.camera-hierarchy-detail-card {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border-color);
+  animation: fadeIn 0.25s ease-out;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Brillo del color del SO en todo el borde del componente contenedor del nodo */
+.node-hierarchy-detail-card.os-ubuntu {
+  border: 1px solid var(--color-os-ubuntu, #e95420) !important;
+  box-shadow: 0 0 16px rgba(233, 84, 32, 0.22) !important;
+}
+
+.node-hierarchy-detail-card.os-windows {
+  border: 1px solid var(--color-os-windows, #00a4ef) !important;
+  box-shadow: 0 0 16px rgba(0, 164, 239, 0.22) !important;
+}
+
+.node-hierarchy-detail-card.os-standard {
+  border: 1px solid var(--text-muted, #94a3b8) !important;
+  box-shadow: 0 0 16px rgba(148, 163, 184, 0.18) !important;
+}
+
+.node-hierarchy-detail-card.os-ubuntu .node-os-icon {
+  background-color: var(--color-os-ubuntu, #e95420) !important;
+  color: var(--color-os-ubuntu, #e95420) !important;
+}
+
+.node-hierarchy-detail-card.os-windows .node-os-icon {
+  background-color: var(--color-os-windows, #00a4ef) !important;
+  color: var(--color-os-windows, #00a4ef) !important;
+}
+
+.node-hierarchy-detail-card.os-standard .node-os-icon {
+  background-color: var(--text-muted, #94a3b8) !important;
+  color: var(--text-muted, #94a3b8) !important;
+}
+
+/* Botón de regreso solo icono (sin texto ni contenedor) */
+.btn-hierarchy-back-icon {
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-hierarchy-back-icon:hover {
+  color: var(--primary) !important;
+  transform: translateX(-3px);
+}
+
+/* TARJETAS DE JERARQUÍA (NODOS Y CÁMARAS) */
+.btn-hierarchy-card {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border-color) !important;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.btn-hierarchy-card:hover {
+  background-color: var(--bg-surface) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+.btn-hierarchy-card:not(.node-card):hover {
+  border-color: var(--primary) !important;
+}
+
+.node-card {
+  max-width: 100%;
+}
+
+.node-card .min-w-0 {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.node-card .font-monospace.text-truncate {
+  max-width: 100% !important;
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Punto de Estado Fijo Compacto para la Cámara (Homologado con monitoreo) */
+.modal-camera-status-dot {
+  width: 0.55rem !important;
+  height: 0.55rem !important;
+  border-radius: 50%;
+  background-color: var(--color-offline, #ef4444);
+  display: inline-block;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.modal-camera-status-dot.online {
+  background-color: #10b981;
+  box-shadow: 0 0 0.35rem rgba(16, 185, 129, 0.6);
+}
+
+.modal-camera-status-dot.degraded {
+  background-color: #f97316;
+  box-shadow: 0 0 0.35rem rgba(249, 115, 22, 0.6);
+}
+
+.modal-camera-status-dot.recovering {
+  background-color: #eab308;
+  box-shadow: 0 0 0.35rem rgba(234, 179, 8, 0.6);
+}
+
+.modal-camera-status-dot.pending {
+  background-color: #00e5ff;
+  box-shadow: 0 0 0.35rem rgba(0, 229, 255, 0.6);
+}
+
+.modal-camera-status-dot.offline {
+  background-color: #ef4444;
+}
+
+/* Nombre de la Cámara con Marquee dinámico al exceder */
+.camera-card-name-container {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.camera-card-name-text {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1.25;
+  width: 100%;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.btn-hierarchy-card:hover .camera-card-name-text {
+  width: max-content !important;
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  animation: cameraCardNameMarquee 3s linear infinite alternate;
+}
+
+@keyframes cameraCardNameMarquee {
+
+  0%,
+  15% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  85%,
+  100% {
+    transform: translate3d(min(0px, calc(-100% + 100cqw)), 0, 0);
+  }
+}
+
+/* Nombre de Cámara en Encabezado con Marquee Fijo Continuo (sin necesidad de hover) */
+.camera-header-name-container {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.camera-header-name-text {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1.25;
+  width: max-content;
+  max-width: none;
+  white-space: nowrap;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+  animation: cameraHeaderNameMarquee 3s ease-in-out infinite alternate;
+}
+
+@keyframes cameraHeaderNameMarquee {
+
+  0%,
+  25% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  75%,
+  100% {
+    transform: translate3d(min(0px, calc(-100% + 100cqw)), 0, 0);
+  }
+}
+
+/* Pills de Analíticas vinculadas a la cámara (Homologadas con monitoreo) */
+.camera-meta-details {
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.camera-analytic-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.66rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 0.8rem;
+  background: var(--bg-header-light, rgba(0, 0, 0, 0.04));
+  color: var(--text-secondary, #475569);
+  border: 1px solid var(--border-color, #cbd5e1);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+[data-bs-theme="dark"] .camera-analytic-badge,
+[data-theme="dark"] .camera-analytic-badge {
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.camera-analytic-badge.camera-analytic-more-badge {
+  font-weight: 600;
+  padding: 0.12rem 0.4rem;
+  font-size: 0.65rem;
+  max-width: none;
+  cursor: default;
+}
+
+.hierarchy-icon-box {
+  background-color: var(--color-primary-light-bg, rgba(var(--primary-rgb, 59, 130, 246), 0.08));
+}
+
+/* ── NODOS POR SISTEMA OPERATIVO (UBUNTU / WINDOWS / ESTÁNDAR) ── */
+
+.node-os-icon {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-hierarchy-card.node-card:hover .node-os-icon {
+  transform: scale(1.1);
+}
+
+/* 1. Ubuntu / Linux (Naranja) */
+.btn-hierarchy-card.node-card.os-ubuntu .node-os-icon {
+  background-color: var(--color-os-ubuntu, #e95420) !important;
+  color: var(--color-os-ubuntu, #e95420) !important;
+}
+
+.btn-hierarchy-card.node-card.os-ubuntu:hover {
+  border-color: var(--color-os-ubuntu, #e95420) !important;
+  box-shadow: 0 6px 18px rgba(233, 84, 32, 0.18) !important;
+}
+
+.btn-hierarchy-card.node-card.os-ubuntu:hover .node-os-icon {
+  background-color: var(--color-os-ubuntu, #e95420) !important;
+  color: var(--color-os-ubuntu, #e95420) !important;
+}
+
+/* 2. Windows (Celeste) */
+.btn-hierarchy-card.node-card.os-windows .node-os-icon {
+  background-color: var(--color-os-windows, #00a4ef) !important;
+  color: var(--color-os-windows, #00a4ef) !important;
+}
+
+.btn-hierarchy-card.node-card.os-windows:hover {
+  border-color: var(--color-os-windows, #00a4ef) !important;
+  box-shadow: 0 6px 18px rgba(0, 164, 239, 0.18) !important;
+}
+
+.btn-hierarchy-card.node-card.os-windows:hover .node-os-icon {
+  background-color: var(--color-os-windows, #00a4ef) !important;
+  color: var(--color-os-windows, #00a4ef) !important;
+}
+
+/* 3. Estándar / Otro (Gris) */
+.btn-hierarchy-card.node-card.os-standard .node-os-icon {
+  background-color: var(--text-muted, #94a3b8) !important;
+  color: var(--text-muted, #94a3b8) !important;
+}
+
+.btn-hierarchy-card.node-card.os-standard:hover {
+  border-color: var(--text-muted, #94a3b8) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08) !important;
+}
+
+.btn-hierarchy-card.node-card.os-standard:hover .node-os-icon {
+  background-color: var(--text-muted, #94a3b8) !important;
+  color: var(--text-muted, #94a3b8) !important;
+}
+
+.chevron-right-rotate {
+  transform: rotate(-90deg);
+}
+
+/* TOGGLE CARD DE SELECCIÓN ÚNICA DE ANALÍTICA */
+.analytic-toggle-card {
+  background-color: var(--bg-surface);
+  border: 1.5px solid var(--border-color) !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.analytic-toggle-card:hover {
+  border-color: rgba(var(--primary-rgb, 59, 130, 246), 0.5) !important;
+  background-color: var(--color-primary-light-bg, rgba(var(--primary-rgb, 59, 130, 246), 0.02));
+}
+
+.analytic-toggle-card.active-selected {
+  border-color: var(--primary) !important;
+  background-color: var(--color-primary-light-bg, rgba(var(--primary-rgb, 59, 130, 246), 0.08));
+  box-shadow: 0 0 0 1px var(--primary), 0 4px 14px rgba(var(--primary-rgb, 59, 130, 246), 0.12);
+}
+
+.analytic-check-indicator {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-color);
+  background-color: var(--bg-surface);
+  transition: all 0.2s ease;
+}
+
+.analytic-check-indicator.checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.select-indicator-pill {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.select-indicator-pill.selected-pill {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+/* ── Modal Footer Section (Homologado con Monitoreo) ── */
+.modal-footer-section {
+  border-top: none !important;
+  background-color: var(--bg-surface) !important;
+}
+
+/* Premium Footer Buttons */
+.btn-premium-footer {
+  height: 40px;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-premium-cancel {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.btn-premium-cancel:hover {
+  background-color: var(--bg-header-light, rgba(255, 255, 255, 0.04));
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.btn-premium-confirm {
+  background-color: var(--primary);
+  border: 1px solid var(--primary);
+  color: #ffffff;
+}
+
+.btn-premium-confirm:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+  box-shadow: 0 4px 12px rgba(43, 127, 255, 0.2);
+}
+
+.btn-premium-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
 }

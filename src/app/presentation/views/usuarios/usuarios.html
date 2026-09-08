@@ -63,39 +63,73 @@
   <div class="horizontal-filters-bar mb-4">
     <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
-      <!-- 1. FILTRO DE ROL -->
+      <!-- 1. FILTRO DE ROL (SELECCIÓN ÚNICA - DISEÑO VMS ESTÁNDAR) -->
       <div class="filter-dropdown-wrapper position-relative">
-        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
-          [class.active]="tempSelectedRoleFilter().length > 0" (click)="toggleDropdown('rol', $event)">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="!!appliedRoleFilter()" (click)="toggleDropdown('rol', $event)">
           <span class="icon-svg icon-user filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Rol ({{ tempSelectedRoleFilter().length || 'Todos' }})</span>
+          <span>Rol ({{ appliedRoleFilter() || 'Todos' }})</span>
+          @if (appliedRoleFilter()) {
+          <span class="filter-dropdown-count-pill active-pill">
+            {{ getRoleCount(appliedRoleFilter()!) }}
+          </span>
+          }
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'rol'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'rol') {
-        <div class="filter-dropdown-menu dropdown-rol p-2 scrollable-menu" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-rol" (click)="$event.stopPropagation()">
+          <!-- Opción: Todos -->
+          <button type="button"
+            class="dropdown-item d-flex align-items-center justify-content-between"
+            [class.active]="!appliedRoleFilter()"
+            (click)="selectRoleFilter(null, $event)">
+            <div class="d-flex align-items-center gap-2">
+              <span class="status-dot status-dot-all"></span>
+              <span>Todos</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="filter-item-badge">{{ enrichedUsers().length }}</span>
+              @if (!appliedRoleFilter()) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </div>
+          </button>
+
           @if (activeUserRoles().length === 0) {
           <div class="text-muted small text-center py-2 opacity-60">Sin roles asignados</div>
           }
           @for (rol of activeUserRoles(); track rol) {
-          @let isSelected = tempSelectedRoleFilter().includes(rol);
-          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize mb-1"
+          @let isSelected = appliedRoleFilter() === rol;
+          <button type="button"
+            class="dropdown-item d-flex align-items-center justify-content-between"
             [class.active]="isSelected"
-            (click)="toggleRoleFilter(rol, $event)">
-            <span>{{ rol }}</span>
-            @if (isSelected) {
-            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
-            }
+            (click)="selectRoleFilter(rol, $event)">
+            <div class="d-flex align-items-center gap-2">
+              <span class="status-dot" [style.background-color]="getRoleDotColor(rol)"></span>
+              <span class="text-capitalize">{{ rol.toLowerCase() }}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="filter-item-badge">{{ getRoleCount(rol) }}</span>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </div>
           </button>
           }
         </div>
         }
       </div>
 
-      <!-- BOTONES DE APLICAR Y LIMPIAR FILTROS (COMPONENTE COMPARTIDO DRY) -->
-      <app-filter-actions [hasActiveFilters]="hasActiveFilters()" [hasPendingChanges]="hasPendingFilterChanges()"
-        (reset)="onResetFilters()" (apply)="onApplyFilters()">
-      </app-filter-actions>
+      <!-- BOTÓN DE LIMPIAR FILTROS (SE APLICA AUTOMÁTICAMENTE, SOLO SE MUESTRA LIMPIAR) -->
+      @if (hasActiveFilters()) {
+      <div class="filter-actions-group">
+        <button type="button" (click)="onResetFilters()" class="btn-filter-action btn-filter-reset">
+          <span class="icon-svg icon-close" style="width: 13px; height: 13px; background-color: currentColor;"></span>
+          <span>Limpiar Filtros</span>
+        </button>
+      </div>
+      }
     </div>
   </div>
   }
