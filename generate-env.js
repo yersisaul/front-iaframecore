@@ -27,7 +27,6 @@ if (!apiTarget) {
   process.exit(1);
 }
 
-const jwtKey = getEnvValue('JWT_SECRET_KEY') || '';
 const dashboardPath = getEnvValue('DASHBOARD_DEFAULT_PATH') || '/app/dashboards';
 const normalizedPath = dashboardPath.startsWith('/') ? dashboardPath : '/' + dashboardPath;
 
@@ -43,8 +42,8 @@ const appEnvContent = `export const AppEnvironment = {
   wsPath: '/ws/client',
   dashboardDefaultUrl: '${normalizedPath}',
 
-  // Clave API opcional para desarrollo local (vacía por defecto; la auth real usa el JWT dinámico de sesión)
-  apiKey: '${jwtKey}'
+  // Clave API administrada de forma segura por el Reverse Proxy (proxy.conf.js en dev, Nginx en prod)
+  apiKey: ''
 };
 `;
 

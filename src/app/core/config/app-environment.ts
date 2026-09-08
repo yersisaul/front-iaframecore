@@ -10,6 +10,6 @@ export const AppEnvironment = {
   wsPath: '/ws/client',
   dashboardDefaultUrl: '/app/dashboards',
 
-  // Clave API opcional para desarrollo local (vacía por defecto; la auth real usa el JWT dinámico de sesión)
-  apiKey: 'jwt_3st_t1c_us3r_k3y'
+  // Clave API administrada de forma segura por el Reverse Proxy (proxy.conf.js en dev, Nginx en prod)
+  apiKey: ''
 };

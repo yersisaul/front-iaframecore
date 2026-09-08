@@ -29,4 +29,4 @@ envsubst '$API_HOST $OPENSEARCH_HOST $MINIO_PUBLIC_URL $OPENSEARCH_AUTH_HEADER $
 
 # 4. Continuar con la ejecución de Nginx
 echo "🚀 Iniciando Nginx..."
-exec nginx -g "daemon off;"
+exec nginx -g "daemon off;"
