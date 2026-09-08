@@ -461,32 +461,10 @@ export class Horarios implements OnInit, OnDestroy {
   }
 
   isScheduleActive(schedule: Schedule): boolean {
-    if (!schedule || schedule.status !== 'activo') {
+    if (!schedule || !schedule.analyticIds || schedule.analyticIds.length === 0) {
       return false;
     }
-    if (!schedule.analyticIds || schedule.analyticIds.length === 0) {
-      return false;
-    }
-    if (!schedule.start || !schedule.end || isNaN(schedule.start.getTime()) || isNaN(schedule.end.getTime())) {
-      return false;
-    }
-    const now = this.currentTime();
-    
-    if (schedule.frequency === 'diario') {
-      // Comparar ambos en hora LOCAL: la hora actual local vs la hora almacenada en UTC
-      // (convertida a local por JS al usar getHours/getMinutes)
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const startMinutes = schedule.start.getHours() * 60 + schedule.start.getMinutes();
-      const endMinutes = schedule.end.getHours() * 60 + schedule.end.getMinutes();
-      
-      if (startMinutes <= endMinutes) {
-        return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
-      } else {
-        return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
-      }
-    }
-    
-    return now >= schedule.start && now <= schedule.end;
+    return this.scheduleService.isScheduleActive(schedule, this.currentTime());
   }
 
   toggleScheduleStatus(sched: Schedule, event: Event): void {

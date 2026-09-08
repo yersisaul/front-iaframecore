@@ -1,5 +1,20 @@
+export interface EventMatchDetail {
+  detailId: string;
+  confianza: number;
+  listName: string;
+  listId: string;
+  subjectName?: string;
+}
+
+export interface EventSubjectItem {
+  name: string;
+  listName?: string;
+  detailId?: string;
+}
+
 export interface EventRecord {
   id: string;
+  eventId?: string;
   timestamp: Date;
   timestampMs?: number;
   hora: number;
@@ -11,6 +26,7 @@ export interface EventRecord {
   analitica: string;
   location: { lat: number; lon: number } | null;
   objeto: string;
+  sujeto?: string | null;
   detalleEvento: string;
   urlImg: string;
   urlVideo?: string | null;
@@ -20,6 +36,11 @@ export interface EventRecord {
   espaciosLibres: number | null;
   direccion: string | null;
   idReportType: string | null;
+  matchDetail?: EventMatchDetail | null;
+  urlImgMatch?: string | null;
+  porcentajeSimilitud?: number | null;
+  grupoLista?: string | null;
+  confiabilidad?: number | null;
 }
 
 export interface EventFilters {
@@ -27,6 +48,9 @@ export interface EventFilters {
   camaras: string[];
   analiticas: string[];
   objetos: string[];
+  listas?: string[];
+  sujetos?: string[];
+  direcciones?: string[];
   timestampDesde: Date | null;
   timestampHasta: Date | null;
 }
@@ -35,6 +59,9 @@ export interface EventFilterOptions {
   camaras: string[];
   analiticas: string[];
   objetos: string[];
+  listas?: string[];
+  sujetos?: string[];
+  direcciones?: string[];
 }
 
 export function defaultEventFilters(): EventFilters {
@@ -43,6 +70,9 @@ export function defaultEventFilters(): EventFilters {
     camaras: [],
     analiticas: [],
     objetos: [],
+    listas: [],
+    sujetos: [],
+    direcciones: [],
     timestampDesde: null,
     timestampHasta: null
   };
@@ -52,6 +82,9 @@ export function defaultEventFilterOptions(): EventFilterOptions {
   return {
     camaras: [],
     analiticas: [],
-    objetos: []
+    objetos: [],
+    listas: [],
+    sujetos: [],
+    direcciones: []
   };
 }

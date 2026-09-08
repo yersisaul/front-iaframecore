@@ -1,4 +1,5 @@
-<div class="users-view-container container-fluid py-4 position-relative d-flex flex-column h-100 min-h-0">
+<div class="users-view-container container-fluid py-4 position-relative"
+  [class.roles-layout-mode]="activeTab() === 'roles'">
   <!-- Header Section REFACTORIZADO DRY -->
   <app-page-header title="Gestión de Accesos"
     [subtitle]="activeTab() === 'usuarios' ? 'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + filteredUsers().length + '</span> cuentas de acceso en el sistema.' : 'Configura y define permisos específicos en tiempo real para cada rol del sistema.'">
@@ -38,66 +39,105 @@
       }
       }
     </ng-container>
-  </app-page-header>
 
-  <!-- Fila 2: Búsqueda y Filtros (Solo para la pestaña de Usuarios) -->
-  @if (activeTab() === 'usuarios') {
-  <div class="header-row-bottom d-flex align-items-center gap-3 mb-4 flex-shrink-0">
-    <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1 bg-surface">
-      <div class="search-input-wrapper position-relative d-flex align-items-center pl-1 flex-grow-1">
-        <span class="icon-svg icon-search search-icon-prefix text-muted"
-          style="width: 18px; height: 18px; opacity: 0.5;"></span>
-        <input #searchInput type="text" (input)="onSearchChange($event)" placeholder="Buscar usuario..."
-          class="search-input-control border-0 ms-2"
-          style="font-size: 0.82rem; outline: none; width: 100%; background: transparent; color: var(--text-primary);" />
-      </div>
-
-      <div class="filter-dropdown-wrapper position-relative flex-shrink-0">
-        <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2"
-          (click)="toggleFiltersVisibility($event)" [class.active]="selectedRoleFilter() !== 'TODOS'"
-          [class.open]="showFilters()" title="Filtrar por Rol" aria-label="Filtrar por Rol">
+    <!-- Ranura para Fila 2 (Búsqueda + Filtros) solo para la pestaña Usuarios -->
+    @if (activeTab() === 'usuarios') {
+    <div header-bottom class="header-row-bottom d-flex align-items-center gap-3 mt-4">
+      <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
+        <app-search-input [control]="searchControl" placeholder="Buscar usuario..."></app-search-input>
+        <button class="btn-ghost filter-toggle-btn d-flex align-items-center justify-content-center ms-2 flex-shrink-0"
+          (click)="toggleFiltersVisibility($event)" [class.active]="hasActiveFilters()" [class.open]="showFilters()"
+          title="Filtros avanzados" aria-label="Filtros avanzados">
           <span class="icon-svg icon-filter filter-icon"></span>
-          @if (selectedRoleFilter() !== 'TODOS') {
+          @if (hasActiveFilters()) {
           <span class="active-badge-dot"></span>
           }
         </button>
+      </div>
+    </div>
+    }
+  </app-page-header>
 
-        <!-- Dropdown Desplegable -->
-        @if (showFilters()) {
-        <div class="filter-dropdown-menu dropdown-rol p-3 scrollable-menu"
-          style="position: absolute; right: 0; top: calc(100% + 8px); z-index: 1000;"
-          (click)="$event.stopPropagation()">
-          <label class="custom-checkbox-wrapper d-flex align-items-center gap-2" for="role-todos">
-            <input class="custom-checkbox-input" type="checkbox" id="role-todos"
-              [checked]="selectedRoleFilter() === 'TODOS'" (change)="setRoleFilter('TODOS')">
-            <span class="custom-checkbox-box d-flex align-items-center justify-content-center">
-              <span class="icon-svg icon-check checkbox-check-icon" style="width: 10px; height: 10px;"></span>
-            </span>
-            <span class="custom-checkbox-label">Todos los roles</span>
-          </label>
-          <!-- Filtros de rol dinámicos desde el backend -->
-          @for (rol of availableRoles(); track rol.rol_id) {
-          <label class="custom-checkbox-wrapper d-flex align-items-center gap-2 mt-2" [for]="'role-' + rol.rol_id">
-            <input class="custom-checkbox-input" type="checkbox" [id]="'role-' + rol.rol_id"
-              [checked]="selectedRoleFilter() === rol.nombre" (change)="setRoleFilter(rol.nombre)">
-            <span class="custom-checkbox-box d-flex align-items-center justify-content-center">
-              <span class="icon-svg icon-check checkbox-check-icon" style="width: 10px; height: 10px;"></span>
-            </span>
-            <span class="custom-checkbox-label">{{ rol.nombre }}</span>
-          </label>
+  <!-- Barra de Filtros Horizontal -->
+  @if (activeTab() === 'usuarios' && showFilters()) {
+  <div class="horizontal-filters-bar mb-4">
+    <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
+
+      <!-- 1. FILTRO DE ROL (SELECCIÓN ÚNICA - DISEÑO VMS ESTÁNDAR) -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
+          [class.active]="!!appliedRoleFilter()" (click)="toggleDropdown('rol', $event)">
+          <span class="icon-svg icon-user filter-icon" style="width: 14px; height: 14px;"></span>
+          <span>Rol ({{ appliedRoleFilter() || 'Todos' }})</span>
+          @if (appliedRoleFilter()) {
+          <span class="filter-dropdown-count-pill active-pill">
+            {{ getRoleCount(appliedRoleFilter()!) }}
+          </span>
+          }
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+            [class.rotated]="activeDropdown() === 'rol'" style="width: 10px; height: 10px;"></span>
+        </button>
+        @if (activeDropdown() === 'rol') {
+        <div class="filter-dropdown-menu dropdown-rol" (click)="$event.stopPropagation()">
+          <!-- Opción: Todos -->
+          <button type="button"
+            class="dropdown-item d-flex align-items-center justify-content-between"
+            [class.active]="!appliedRoleFilter()"
+            (click)="selectRoleFilter(null, $event)">
+            <div class="d-flex align-items-center gap-2">
+              <span class="status-dot status-dot-all"></span>
+              <span>Todos</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="filter-item-badge">{{ enrichedUsers().length }}</span>
+              @if (!appliedRoleFilter()) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </div>
+          </button>
+
+          @if (activeUserRoles().length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin roles asignados</div>
+          }
+          @for (rol of activeUserRoles(); track rol) {
+          @let isSelected = appliedRoleFilter() === rol;
+          <button type="button"
+            class="dropdown-item d-flex align-items-center justify-content-between"
+            [class.active]="isSelected"
+            (click)="selectRoleFilter(rol, $event)">
+            <div class="d-flex align-items-center gap-2">
+              <span class="status-dot" [style.background-color]="getRoleDotColor(rol)"></span>
+              <span class="text-capitalize">{{ rol.toLowerCase() }}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="filter-item-badge">{{ getRoleCount(rol) }}</span>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </div>
+          </button>
           }
         </div>
         }
       </div>
+
+      <!-- BOTÓN DE LIMPIAR FILTROS (SE APLICA AUTOMÁTICAMENTE, SOLO SE MUESTRA LIMPIAR) -->
+      @if (hasActiveFilters()) {
+      <div class="filter-actions-group">
+        <button type="button" (click)="onResetFilters()" class="btn-filter-action btn-filter-reset">
+          <span class="icon-svg icon-close" style="width: 13px; height: 13px; background-color: currentColor;"></span>
+          <span>Limpiar Filtros</span>
+        </button>
+      </div>
+      }
     </div>
   </div>
   }
 
   <!-- TAB: USUARIOS -->
   @if (activeTab() === 'usuarios' && permissionsService.hasPermission('Usuarios', 'ver')) {
-  <div class="users-tab-wrapper flex-grow-1 min-h-0 overflow-y-auto custom-scrollbar">
-    <!-- Main Bento Grid Layout of Users -->
-    <div class="users-grid mb-4 pe-1">
+  <!-- Main Bento Grid Layout of Users -->
+  <div class="users-grid mb-4">
       @if (isLoading()) {
       <div class="col-12 text-center py-5">
         <div class="spinner-border text-primary" role="status">
@@ -114,8 +154,7 @@
         <app-empty-state title="No se encontraron usuarios"
           description="No se encontraron cuentas de acceso que coincidan con la búsqueda o filtro activo."
           iconClass="icon-usuarios" actionText="Restablecer Filtros"
-          [showAction]="selectedRoleFilter() !== 'TODOS' || searchQuery() !== ''"
-          (action)="resetSearchAndFilter()">
+          [showAction]="hasActiveFilters()" (action)="onResetFilters()">
         </app-empty-state>
       </div>
       } @else {
@@ -129,7 +168,8 @@
             <!-- Header: Avatar Initials + Role Badge -->
             <div class="user-header-block d-flex align-items-center justify-content-between pb-3 mb-3">
               <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 me-2">
-                <div class="avatar-initials-wrap d-flex align-items-center justify-content-center fw-bold fs-5 flex-shrink-0">
+                <div
+                  class="avatar-initials-wrap d-flex align-items-center justify-content-center fw-bold fs-5 flex-shrink-0">
                   {{ (user.firstName?.[0] || user.name?.[0] || 'U') | uppercase }}{{ (user.lastName?.[0] || '') |
                   uppercase }}
                 </div>
@@ -200,7 +240,6 @@
       }
       }
     </div>
-  </div>
   }
 
   <!-- TAB: ROLES Y PERMISOS -->
@@ -424,9 +463,6 @@
               cuenta</p>
           </div>
         </div>
-        <button class="btn-ghost p-1.5" (click)="closeEditModal()" aria-label="Cerrar modal">
-          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
-        </button>
       </div>
 
       <!-- Modal Body -->
@@ -521,9 +557,6 @@
               usuario</p>
           </div>
         </div>
-        <button class="btn-ghost p-1.5" (click)="closePasswordModal()" aria-label="Cerrar modal">
-          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
-        </button>
       </div>
 
       <!-- Modal Body -->
@@ -532,7 +565,16 @@
           <label class="premium-input-label">Contraseña Actual</label>
           <div class="input-icon-wrapper">
             <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
-            <input type="password" class="premium-input-control" formControlName="oldPassword" placeholder="••••••••" />
+            <input [type]="showOldPassword() ? 'text' : 'password'" class="premium-input-control"
+              formControlName="oldPassword" placeholder="••••••••" />
+            <button type="button" class="btn-field-icon-suffix transition-all" (click)="toggleOldPasswordVisibility()"
+              [title]="showOldPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+              @if (showOldPassword()) {
+              <span class="icon-svg icon-eye" style="width: 16px; height: 16px;"></span>
+              } @else {
+              <span class="icon-svg icon-eye-off" style="width: 16px; height: 16px;"></span>
+              }
+            </button>
           </div>
           @if (passwordForm.get('oldPassword')?.touched && passwordForm.get('oldPassword')?.invalid) {
           <span class="premium-error-msg">Este campo es requerido.</span>
@@ -543,8 +585,16 @@
           <label class="premium-input-label">Nueva Contraseña</label>
           <div class="input-icon-wrapper">
             <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
-            <input type="password" class="premium-input-control" formControlName="newPassword"
-              placeholder="Mínimo 6 caracteres" />
+            <input [type]="showNewPassword() ? 'text' : 'password'" class="premium-input-control"
+              formControlName="newPassword" placeholder="Mínimo 6 caracteres" />
+            <button type="button" class="btn-field-icon-suffix transition-all" (click)="toggleNewPasswordVisibility()"
+              [title]="showNewPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+              @if (showNewPassword()) {
+              <span class="icon-svg icon-eye" style="width: 16px; height: 16px;"></span>
+              } @else {
+              <span class="icon-svg icon-eye-off" style="width: 16px; height: 16px;"></span>
+              }
+            </button>
           </div>
           @if (passwordForm.get('newPassword')?.touched && passwordForm.get('newPassword')?.invalid) {
           <span class="premium-error-msg">La contraseña debe tener al menos 6 caracteres.</span>
@@ -555,8 +605,16 @@
           <label class="premium-input-label">Confirmar Nueva Contraseña</label>
           <div class="input-icon-wrapper">
             <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
-            <input type="password" class="premium-input-control" formControlName="confirmPassword"
-              placeholder="Repita la nueva contraseña" />
+            <input [type]="showConfirmPassword() ? 'text' : 'password'" class="premium-input-control"
+              formControlName="confirmPassword" placeholder="Repita la nueva contraseña" />
+            <button type="button" class="btn-field-icon-suffix transition-all" (click)="toggleConfirmPasswordVisibility()"
+              [title]="showConfirmPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+              @if (showConfirmPassword()) {
+              <span class="icon-svg icon-eye" style="width: 16px; height: 16px;"></span>
+              } @else {
+              <span class="icon-svg icon-eye-off" style="width: 16px; height: 16px;"></span>
+              }
+            </button>
           </div>
           @if (passwordForm.get('confirmPassword')?.touched && passwordForm.errors?.['mismatch']) {
           <span class="premium-error-msg">Las contraseñas no coinciden.</span>
@@ -608,9 +666,6 @@
               sistema</p>
           </div>
         </div>
-        <button class="btn-ghost p-1.5" (click)="closeRegisterModal()" aria-label="Cerrar modal">
-          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
-        </button>
       </div>
 
       <!-- Modal Body -->
@@ -658,8 +713,16 @@
           <label class="premium-input-label">Contraseña</label>
           <div class="input-icon-wrapper">
             <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
-            <input type="password" class="premium-input-control" formControlName="password"
-              placeholder="Mínimo 6 caracteres" />
+            <input [type]="showRegisterPassword() ? 'text' : 'password'" class="premium-input-control"
+              formControlName="password" placeholder="Mínimo 6 caracteres" />
+            <button type="button" class="btn-field-icon-suffix transition-all" (click)="toggleRegisterPasswordVisibility()"
+              [title]="showRegisterPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+              @if (showRegisterPassword()) {
+              <span class="icon-svg icon-eye" style="width: 16px; height: 16px;"></span>
+              } @else {
+              <span class="icon-svg icon-eye-off" style="width: 16px; height: 16px;"></span>
+              }
+            </button>
           </div>
           @if (registerForm.get('password')?.touched && registerForm.get('password')?.invalid) {
           <span class="premium-error-msg">La contraseña debe tener al menos 6 caracteres.</span>
@@ -720,9 +783,6 @@
               plataforma</p>
           </div>
         </div>
-        <button class="btn-ghost p-1.5" (click)="closeCreateRoleModal()" aria-label="Cerrar modal">
-          <span class="icon-svg icon-close text-muted" style="width: 18px; height: 18px;"></span>
-        </button>
       </div>
 
       <!-- Modal Body -->

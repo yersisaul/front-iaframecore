@@ -5,7 +5,6 @@ import { AuthService } from './auth.service';
 import { AppEnvironment } from '../config/app-environment';
 import { LoginRequestDTO } from '../../data/repositories/dtos/login-request.dto';
 import { AuthResponseDTO } from '../../data/repositories/dtos/auth-response.dto';
-import { ApiKeyConfig } from '../config/api-key.config';
 import { IAuthRepository } from '../domain/repositories/auth.repository';
 import { AuthHttpRepository } from '../../data/repositories/auth-http.repository';
 
@@ -33,7 +32,7 @@ describe('AuthService', () => {
     service = TestBed.inject(AuthService);
     httpMock = TestBed.inject(HttpTestingController);
     sessionStorage.clear();
-    ApiKeyConfig.apiKey = 'REPLACE_WITH_YOUR_JWT_API_KEY';
+    AppEnvironment.apiKey = 'REPLACE_WITH_YOUR_JWT_API_KEY';
   });
 
   afterEach(() => {

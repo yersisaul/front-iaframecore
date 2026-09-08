@@ -1,80 +1,140 @@
-# Iaframecore
+# IaFrame Core — Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.10.
-
-## Development server
-
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
-
-
-## Despliegue
-Este proyecto está configurado para empaquetarse en una imagen genérica de Docker utilizando un flujo de compilación *Multi-stage* (Node.js + Nginx Alpine). La imagen resultante se puede subir a Docker Hub y reutilizar de forma independiente en la intranet de cualquier cliente modificando únicamente sus variables de entorno.
-
-### Arquitectura Dinámica del Contenedor
-Durante la fase de construcción (`docker build`), la aplicación Angular se compila usando una semilla de texto estática (`PLACEHOLDER_JWT_SECRET_KEY`) para evitar fallos de compilación. 
-
-Al arrancar el contenedor en el servidor del cliente, entra en acción el script de automatización `entrypoint.sh`, el cual cumple dos funciones críticas en caliente (Runtime):
-1. **Inyección de API Key:** Busca la semilla `PLACEHOLDER_JWT_SECRET_KEY` dentro de los archivos Javascript compilados de Angular y la reemplaza por el valor real de la variable `$JWT_SECRET_KEY` configurada para ese cliente.
-2. **Proxy Inverso Dinámico:** Reemplaza de forma explícita las variables `$API_HOST` y `$OPENSEARCH_HOST` en la plantilla `nginx.conf.template` generando el archivo de configuración final de Nginx, protegiendo y manteniendo intactas las variables nativas del servidor web (como `$host` o `$remote_addr`).
+Panel de control y monitoreo web para el sistema de orquestación de analíticas de video y visión computacional IaFrame Core. Construido con **Angular 21**, **RxJS**, y el ejecutor de pruebas **Vitest**.
 
 ---
 
-### 1. Construir la imagen Docker (Modo Genérico)
+## 📋 Tabla de Comandos Rápidos
 
-Para generar la imagen del frontend ejecute el siguiente comando en la raíz del proyecto. Esta imagen queda lista para ser subida a Docker Hub:
+| Comando | Descripción |
+| :--- | :--- |
+| `npm start` | Inicia el servidor de desarrollo local en `http://localhost:4200` con proxy inverso a los servicios backend. |
+| `npm test` | Ejecuta la batería completa de pruebas unitarias (17 suites, 110 tests) usando Vitest. |
+| `npm run test:watch` | Ejecuta las pruebas unitarias en modo observador continuo (*watch mode*). |
+| `npm run build` | Compila la aplicación optimizada para producción en el directorio `dist/iaframecore`. |
+| `npm run watch` | Compila continuamente la aplicación en modo desarrollo. |
+| `npm run toggle-mock` | Alterna la configuración en `.env` entre servicios reales y el servidor mock local. |
+| `npm run mock-server` | Inicia un servidor API mock local en `http://localhost:3000` para pruebas sin backend. |
 
+---
+
+## ⚙️ Configuración de Variables de Entorno (`.env`)
+
+El frontend no quema direcciones IP ni dominios en su código TypeScript compilado. Las rutas del cliente son relativas (`/api`, `/minio`, `/opensearch`, `/ws`) y se resuelven mediante el Reverse Proxy (tanto en desarrollo con `proxy.conf.js` como en producción con Nginx).
+
+Copia el archivo de plantilla para configurar tus servicios:
+```bash
+cp .env.example .env
+```
+
+### Variables disponibles en `.env`:
+```ini
+API_HOST_MOCK=http://localhost:3000
+OPENSEARCH_HOST_MOCK=http://localhost:3000
+MINIO_PUBLIC_URL_MOCK=http://localhost:3000
+```
+
+> [!NOTE]
+> Cada vez que ejecutas `npm start` o `npm run build`, se ejecuta automáticamente `node generate-env.js` para sincronizar las variables necesarias en [app-environment.ts](src/app/core/config/app-environment.ts).
+
+---
+
+## 🚀 Entorno de Desarrollo
+
+### 1. Iniciar el servidor de desarrollo
+```bash
+npm start
+```
+* **Acceso:** Navega a `http://localhost:4200/` o `http://<tu-ip-local>:4200/`.
+* **Proxy Inverso Dinámico:** [proxy.conf.js](proxy.conf.js) intercepta las llamadas a `/api`, `/opensearch`, `/minio` y `/ws` y las redirige automáticamente a los hosts definidos en `.env`, evitando cualquier problema de CORS o certificados en desarrollo.
+
+### 2. Uso con Servidor Mock (Sin backend disponible)
+Si no tienes acceso temporal al servidor backend:
+```bash
+# Alternar configuración hacia servidor mock
+npm run toggle-mock
+
+# Iniciar servidor mock en otra terminal
+npm run mock-server
+
+# Iniciar frontend
+npm start
+```
+
+---
+
+## 🧪 Pruebas Unitarias
+
+El proyecto utiliza **Vitest** como motor de pruebas unitarias de alto rendimiento con Angular TestBed:
+
+### Ejecución de una sola pasada (CI / Verificación)
+```bash
+npx ng test --watch=false
+```
+o mediante:
+```bash
+npm test
+```
+
+### Ejecución en modo interactivo / desarrollo
+```bash
+npx ng test
+```
+
+### Ejecutar una suite específica
+```bash
+npx ng test --include src/app/presentation/views/camaras/camaras.spec.ts --watch=false
+```
+
+---
+
+## 📦 Compilación y Producción
+
+### Compilación local
+```bash
+npm run build
+```
+Los artefactos compilados y optimizados se generarán en la carpeta:
+```text
+dist/iaframecore/browser
+```
+
+---
+
+## 🐳 Despliegue con Docker (Servidores Diferentes)
+
+El proyecto cuenta con un `Dockerfile` multi-stage (Node.js Alpine para compilación + Nginx Alpine para servir archivos estáticos y actuar de Reverse Proxy).
+
+### 1. Construir la imagen Docker
 ```bash
 docker build -t front-iaframecore:latest .
+```
+
+### 2. Ejecutar el contenedor conectándolo a un backend remoto
+Puedes ejecutar el contenedor en cualquier servidor apuntando a la IP o dominio de tu backend sin recompilar la imagen:
+
+```bash
+docker run -d \
+  --name front-iaframecore \
+  -p 80:80 \
+  -e API_HOST="http://192.168.1.100:8000" \
+  -e OPENSEARCH_HOST="http://192.168.1.100:9200" \
+  -e MINIO_PUBLIC_URL="http://192.168.1.100:9000" \
+  --restart unless-stopped \
+  front-iaframecore:latest
+```
+
+### 3. Con Docker Compose
+Si prefieres gestionar el servicio con `docker-compose`:
+```bash
+docker compose up -d
+```
+*(Asegúrate de configurar los valores correspondientes en tu archivo `.env`).*
+
+---
+
+## 🔒 Arquitectura de Seguridad y Autenticación
+* **Autenticación Basada en JWT:** Al iniciar sesión en `/login`, el token dinámico se almacena en `sessionStorage` y se inyecta en cada petición mediante `Authorization: Bearer <token>`.
+* **Cero Secretos en el Cliente:** No se queman claves estáticas ni credenciales privadas en el bundle de JavaScript.
+* **Aislamiento de Red:** Nginx sirve la aplicación y a la vez actúa como túnel proxy hacia el backend, permitiendo que las bases de datos y la API se mantengan en una red interna protegida sin exponer puertos al público.
 

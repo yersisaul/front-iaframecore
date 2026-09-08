@@ -8,6 +8,20 @@
   </div>
 
   <ul class="nav flex-column flex-grow-1">
+    <!-- 0. Dashboard -->
+    @if (permissionsService.hasPermission('Dashboard', 'ver')) {
+    <li class="nav-item mb-2">
+      <a routerLink="/dashboard/dashboards" routerLinkActive="active"
+        class="nav-link text-body fw-500 d-flex align-items-center rounded"
+        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Dashboard' : ''">
+        <div class="active-indicator"></div>
+        <span class="icon-svg icon-dashboard nav-icon" [class.me-3]="!isCollapsed()"
+          style="width: 18px; height: 18px;"></span>
+        <span [class.d-none]="isCollapsed()">Dashboard</span>
+      </a>
+    </li>
+    }
+
     <!-- 1. Nodos -->
     @if (permissionsService.hasPermission('Hosts', 'ver')) {
     <li class="nav-item mb-2">
@@ -119,15 +133,31 @@
       </ul>
     </li>
 
-    <!-- 5.5. Monitoreo -->
+    <!-- 5.5. Monitoreo / Visor Táctico -->
     <li class="nav-item mb-2">
       <a routerLink="/dashboard/monitoreo" routerLinkActive="active"
         class="nav-link text-body fw-500 d-flex align-items-center rounded"
-        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Monitoreo' : ''">
+        [class.justify-content-center]="isCollapsed()"
+        [title]="isCollapsed() ? (unseenMonitoringEventsCount() > 0 ? 'Visor Táctico (' + unseenMonitoringEventsCount() + ')' : 'Visor Táctico') : ''">
         <div class="active-indicator"></div>
-        <span class="icon-svg icon-grid nav-icon" [class.me-3]="!isCollapsed()"
-          style="width: 18px; height: 18px;"></span>
-        <span [class.d-none]="isCollapsed()">Visor Táctico</span>
+        <div class="position-relative d-inline-flex align-items-center justify-content-center flex-shrink-0"
+          [class.me-3]="!isCollapsed()">
+          <span class="icon-svg icon-grid nav-icon" style="width: 18px; height: 18px;"></span>
+          @if (unseenMonitoringEventsCount() > 0 && isCollapsed()) {
+            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
+              style="margin-top: 2px; margin-left: -2px;">
+              <span class="visually-hidden">Nuevos eventos</span>
+            </span>
+          }
+        </div>
+        <span [class.d-none]="isCollapsed()" class="text-truncate flex-grow-1">Visor Táctico</span>
+
+        @if (unseenMonitoringEventsCount() > 0 && !isCollapsed()) {
+          <span class="badge rounded-pill bg-danger text-white fw-bold ms-auto px-2 py-0.5"
+            style="font-size: 0.7rem; letter-spacing: -0.02em; box-shadow: 0 0 10px rgba(239, 68, 68, 0.45);">
+            {{ unseenMonitoringEventsCount() > 99 ? '99+' : unseenMonitoringEventsCount() }}
+          </span>
+        }
       </a>
     </li>
 

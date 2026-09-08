@@ -62,11 +62,22 @@ export class CameraService {
 
   getCamerasByHost(hostFingerprint: string, animateNew = false): Observable<Camera[]> {
     this.isLoading.set(true);
-    this.activeHostFingerprint.set(hostFingerprint);
+    const isHostMode = this.activeHostFingerprint() === hostFingerprint;
     const oldIds = new Set(this.cameras().map(c => c.id));
     return this.getCamerasUseCase.execute(hostFingerprint).pipe(
       tap(cameras => {
-        this.cameras.set(cameras);
+        if (isHostMode) {
+          this.cameras.set(cameras);
+        } else if (this.activeHostFingerprint() === null) {
+          // Modo global: reemplazamos únicamente las cámaras de este host manteniendo las de otros nodos
+          this.cameras.update(current => {
+            const others = current.filter(c => c.hostFingerprint !== hostFingerprint);
+            return [...others, ...cameras];
+          });
+        } else {
+          this.activeHostFingerprint.set(hostFingerprint);
+          this.cameras.set(cameras);
+        }
         this.isLoading.set(false);
         if (animateNew) {
           cameras.forEach(c => {

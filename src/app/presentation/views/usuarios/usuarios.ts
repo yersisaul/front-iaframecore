@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormControl } from '@angular/forms';
+import { debounceTime } from 'rxjs/operators';
 import { GetUsersUseCase } from '../../../core/domain/use-cases/get-users.use-case';
 import { CreateUserUseCase } from '../../../core/domain/use-cases/create-user.use-case';
 import { UpdateUserUseCase } from '../../../core/domain/use-cases/update-user.use-case';
@@ -13,13 +14,17 @@ import { User } from '../../../core/domain/entities/user.entity';
 import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
+import { SearchInputComponent } from '../../shared/search-input/search-input.component';
 
 @Component({
   selector: 'app-usuarios',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent, EmptyStateComponent],
+  imports: [CommonModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent, EmptyStateComponent, SearchInputComponent],
   templateUrl: './usuarios.html',
   styleUrl: './usuarios.css',
+  host: {
+    '[class.is-roles-tab]': "activeTab() === 'roles'"
+  }
 })
 export class Usuarios implements OnInit, OnDestroy {
   private getUsersUseCase = inject(GetUsersUseCase);
@@ -40,10 +45,21 @@ export class Usuarios implements OnInit, OnDestroy {
   readonly activeTab = signal<'usuarios' | 'roles'>('usuarios');
 
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
+  readonly searchControl = new FormControl('');
   readonly searchQuery = signal<string>('');
-  readonly selectedRoleFilter = signal<string>('TODOS');
-  readonly showFilters = signal<boolean>(false);
+  readonly tempSelectedRoleFilter = signal<string | null>(null);
+  readonly appliedRoleFilter = signal<string | null>(null);
+  readonly selectedRoleFilter = this.appliedRoleFilter;
+  readonly showFilters = signal<boolean>(true);
   readonly activeDropdown = signal<string | null>(null);
+
+  readonly hasActiveFilters = computed<boolean>(() => {
+    return this.searchQuery().trim().length > 0 || !!this.appliedRoleFilter();
+  });
+
+  readonly hasPendingFilterChanges = computed<boolean>(() => {
+    return this.tempSelectedRoleFilter() !== this.appliedRoleFilter();
+  });
 
   // Roles disponibles cargados dinámicamente desde el backend
   readonly availableRoles = this.permissionsService.allRoles;
@@ -57,6 +73,7 @@ export class Usuarios implements OnInit, OnDestroy {
   readonly expandedGroups = signal<Set<string>>(new Set());
 
   private readonly resourceNames: Record<string, string> = {
+    'dashboard': 'Gestión de Dashboards',
     'users': 'Gestión de Usuarios',
     'roles': 'Gestión de Roles',
     'hosts': 'Gestión de Nodos / Servidores',
@@ -105,7 +122,7 @@ export class Usuarios implements OnInit, OnDestroy {
         others: group.others
       };
     }).sort((a, b) => {
-      const resourceOrder = ['hosts', 'cameras', 'analytics', 'schedules', 'lists', 'list_details', 'users', 'roles'];
+      const resourceOrder = ['dashboard', 'hosts', 'cameras', 'analytics', 'schedules', 'lists', 'list_details', 'users', 'roles'];
       const idxA = resourceOrder.indexOf(a.resource);
       const idxB = resourceOrder.indexOf(b.resource);
       return idxA - idxB;
@@ -171,6 +188,12 @@ export class Usuarios implements OnInit, OnDestroy {
         this.activeTab.set('usuarios');
       }
     }, { allowSignalWrites: true });
+
+    this.searchControl.valueChanges.pipe(
+      debounceTime(300)
+    ).subscribe(val => {
+      this.searchQuery.set(val || '');
+    });
   }
 
   toggleSidebar(): void {
@@ -180,6 +203,9 @@ export class Usuarios implements OnInit, OnDestroy {
   toggleFiltersVisibility(event?: Event): void {
     if (event) {
       event.stopPropagation();
+    }
+    if (!this.showFilters()) {
+      this.tempSelectedRoleFilter.set(this.appliedRoleFilter());
     }
     this.showFilters.update(v => !v);
   }
@@ -220,9 +246,40 @@ export class Usuarios implements OnInit, OnDestroy {
     this.activeDropdown.set(null);
   }
 
-  setRoleFilter(role: string): void {
-    this.selectedRoleFilter.set(role);
+  selectRoleFilter(role: string | null, event?: Event): void {
+    if (event) event.stopPropagation();
+    const nextVal = this.appliedRoleFilter() === role ? null : role;
+    this.tempSelectedRoleFilter.set(nextVal);
+    this.appliedRoleFilter.set(nextVal);
     this.activeDropdown.set(null);
+  }
+
+  setRoleFilter(role: string | null): void {
+    const val = role === 'TODOS' ? null : role;
+    this.tempSelectedRoleFilter.set(val);
+    this.appliedRoleFilter.set(val);
+    this.activeDropdown.set(null);
+  }
+
+  onApplyFilters(): void {
+    this.appliedRoleFilter.set(this.tempSelectedRoleFilter());
+  }
+
+  onResetFilters(): void {
+    this.searchControl.setValue('', { emitEvent: true });
+    this.searchQuery.set('');
+    this.tempSelectedRoleFilter.set(null);
+    this.appliedRoleFilter.set(null);
+    this.activeDropdown.set(null);
+  }
+
+  getRoleCount(role: string): number {
+    return this.enrichedUsers().filter(u => (u.role || '').toUpperCase() === role.toUpperCase()).length;
+  }
+
+  getRoleDotColor(role: string | null): string {
+    if (!role) return '#94a3b8';
+    return this.getRoleStyle(role)['--role-color'] || '#94a3b8';
   }
 
   setTab(tab: 'usuarios' | 'roles'): void {
@@ -246,16 +303,29 @@ export class Usuarios implements OnInit, OnDestroy {
     });
   });
 
+  readonly activeUserRoles = computed<string[]>(() => {
+    const rolesMap = new Map<string, string>();
+    const roles = this.availableRoles();
+    this.users().forEach(u => {
+      const matchingRol = roles.find(r => r.rol_id === u.roleId);
+      const roleName = matchingRol ? matchingRol.nombre : (u.role || '');
+      if (roleName) {
+        rolesMap.set(roleName.toUpperCase(), roleName);
+      }
+    });
+    return Array.from(rolesMap.values()).sort((a, b) => a.localeCompare(b));
+  });
+
   readonly filteredUsers = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
-    const role = this.selectedRoleFilter();
+    const role = this.appliedRoleFilter();
     const filtered = this.enrichedUsers().filter(u => {
       const matchesQuery = !query ||
         (u.name || '').toLowerCase().includes(query) ||
         (u.firstName || '').toLowerCase().includes(query) ||
         (u.lastName || '').toLowerCase().includes(query) ||
         (u.email || '').toLowerCase().includes(query);
-      const matchesRole = role === 'TODOS' || u.role === role;
+      const matchesRole = !role || role.toUpperCase() === 'TODOS' || (u.role || '').toUpperCase() === role.toUpperCase();
       return matchesQuery && matchesRole;
     });
     return [...filtered].sort((a, b) => {
@@ -318,6 +388,28 @@ export class Usuarios implements OnInit, OnDestroy {
   readonly showDeleteRoleModal = signal<boolean>(false);
   readonly roleToDelete = signal<BackendRol | null>(null);
   readonly isDeletingRole = signal<boolean>(false);
+
+  // Password Visibility States
+  readonly showOldPassword = signal<boolean>(false);
+  readonly showNewPassword = signal<boolean>(false);
+  readonly showConfirmPassword = signal<boolean>(false);
+  readonly showRegisterPassword = signal<boolean>(false);
+
+  toggleOldPasswordVisibility(): void {
+    this.showOldPassword.update(show => !show);
+  }
+
+  toggleNewPasswordVisibility(): void {
+    this.showNewPassword.update(show => !show);
+  }
+
+  toggleConfirmPasswordVisibility(): void {
+    this.showConfirmPassword.update(show => !show);
+  }
+
+  toggleRegisterPasswordVisibility(): void {
+    this.showRegisterPassword.update(show => !show);
+  }
 
   // Forms
   registerForm!: FormGroup;
@@ -400,6 +492,7 @@ export class Usuarios implements OnInit, OnDestroy {
 
   // Register User Operations
   openRegisterModal(): void {
+    this.showRegisterPassword.set(false);
     // Default: último rol de la lista (típicamente el de menor privilegio)
     const defaultRolId = this.availableRoles().length > 0
       ? this.availableRoles()[this.availableRoles().length - 1].rol_id
@@ -409,6 +502,7 @@ export class Usuarios implements OnInit, OnDestroy {
   }
 
   closeRegisterModal(): void {
+    this.showRegisterPassword.set(false);
     this.showRegisterModal.set(false);
   }
 
@@ -438,6 +532,7 @@ export class Usuarios implements OnInit, OnDestroy {
         this.showToast('Usuario registrado con éxito', 'success');
         this.closeRegisterModal();
         this.isSaving.set(false);
+        this.loadUsers();
       },
       error: (err) => {
         console.error('Error registering user:', err);
@@ -485,6 +580,7 @@ export class Usuarios implements OnInit, OnDestroy {
         this.showToast('Usuario actualizado con éxito', 'success');
         this.closeEditModal();
         this.isSaving.set(false);
+        this.loadUsers();
       },
       error: (err) => {
         console.error('Error updating user:', err);
@@ -496,12 +592,18 @@ export class Usuarios implements OnInit, OnDestroy {
 
   // Password Operations
   openPasswordModal(user: User): void {
+    this.showOldPassword.set(false);
+    this.showNewPassword.set(false);
+    this.showConfirmPassword.set(false);
     this.selectedUser.set(user);
     this.passwordForm.reset();
     this.showPasswordModal.set(true);
   }
 
   closePasswordModal(): void {
+    this.showOldPassword.set(false);
+    this.showNewPassword.set(false);
+    this.showConfirmPassword.set(false);
     this.showPasswordModal.set(false);
     this.selectedUser.set(null);
   }
@@ -549,6 +651,7 @@ export class Usuarios implements OnInit, OnDestroy {
         this.showToast('Usuario eliminado con éxito', 'success');
         this.closeDeleteModal();
         this.isSaving.set(false);
+        this.loadUsers();
       },
       error: (err) => {
         console.error('Error deleting user:', err);
@@ -820,6 +923,7 @@ export class Usuarios implements OnInit, OnDestroy {
 
   getResourceIcon(resource: string): string {
     const icons: Record<string, string> = {
+      'dashboard': 'icon-dashboard',
       'users': 'icon-usuarios',
       'roles': 'icon-usuarios',
       'hosts': 'icon-nodos',
@@ -834,6 +938,7 @@ export class Usuarios implements OnInit, OnDestroy {
 
   getResourceColor(resource: string): string {
     const colors: Record<string, string> = {
+      'dashboard': '#0ea5e9',
       'users': '#0d6efd',
       'roles': '#4f46e5',
       'hosts': '#10b981',
@@ -893,8 +998,7 @@ export class Usuarios implements OnInit, OnDestroy {
   }
 
   resetSearchAndFilter(): void {
-    this.searchQuery.set('');
-    this.setRoleFilter('TODOS');
+    this.onResetFilters();
   }
 
   private showToast(msg: string, type: 'success' | 'error'): void {

@@ -29,6 +29,7 @@ export class DateRangePickerComponent implements OnChanges {
   readonly dateHastaStr = signal<string>('');
   readonly timeDesdeStr = signal<string>('00:00');
   readonly timeHastaStr = signal<string>('23:59');
+  readonly activeDatePreset = signal<'today' | '24h' | '7d' | null>(null);
 
   readonly calendarGrid = computed(() => {
     const month = this.calendarViewMonth();
@@ -94,6 +95,7 @@ export class DateRangePickerComponent implements OnChanges {
       this.dateHastaStr.set(dateStr);
       this._applyDateTimeToFilter('hasta');
     }
+    this.activeDatePreset.set(null);
     this.activeCalendarField.set(null);
   }
 
@@ -166,6 +168,7 @@ export class DateRangePickerComponent implements OnChanges {
     const newTs = `${pad(h)}:${pad(parts.minute)}`;
     if (field === 'desde') { this.timeDesdeStr.set(newTs); this._applyDateTimeToFilter('desde'); }
     else { this.timeHastaStr.set(newTs); this._applyDateTimeToFilter('hasta'); }
+    this.activeDatePreset.set(null);
   }
 
   selectTimeMinute(m: number): void {
@@ -177,6 +180,7 @@ export class DateRangePickerComponent implements OnChanges {
     const newTs = `${pad(parts.hour)}:${pad(m)}`;
     if (field === 'desde') { this.timeDesdeStr.set(newTs); this._applyDateTimeToFilter('desde'); }
     else { this.timeHastaStr.set(newTs); this._applyDateTimeToFilter('hasta'); }
+    this.activeDatePreset.set(null);
   }
 
   private syncDateTimePickerStrings(desde: Date | null, hasta: Date | null): void {
@@ -255,10 +259,12 @@ export class DateRangePickerComponent implements OnChanges {
 
     if (preset === 'today') {
       desde = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      hasta = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       this.dateDesdeStr.set(toDateStr(desde));
       this.timeDesdeStr.set('00:00');
-      this.dateHastaStr.set('');
+      this.dateHastaStr.set(toDateStr(hasta));
       this.timeHastaStr.set('23:59');
+      this.activeDatePreset.set('today');
     } else if (preset === '24h') {
       desde = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       hasta = now;
@@ -266,6 +272,7 @@ export class DateRangePickerComponent implements OnChanges {
       this.timeDesdeStr.set(toTimeStr(desde));
       this.dateHastaStr.set(toDateStr(hasta));
       this.timeHastaStr.set(toTimeStr(hasta));
+      this.activeDatePreset.set('24h');
     } else if (preset === '7d') {
       desde = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       hasta = now;
@@ -273,11 +280,13 @@ export class DateRangePickerComponent implements OnChanges {
       this.timeDesdeStr.set(toTimeStr(desde));
       this.dateHastaStr.set(toDateStr(hasta));
       this.timeHastaStr.set(toTimeStr(hasta));
+      this.activeDatePreset.set('7d');
     } else if (preset === 'clear') {
       this.dateDesdeStr.set('');
       this.timeDesdeStr.set('00:00');
       this.dateHastaStr.set('');
       this.timeHastaStr.set('23:59');
+      this.activeDatePreset.set(null);
     }
 
     this.dateRangeChange.emit({ desde, hasta });

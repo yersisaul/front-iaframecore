@@ -22,6 +22,7 @@
         @if (subtitle) {
         <p class="text-muted mb-0 header-page-subtitle mt-1" [innerHTML]="subtitle"></p>
         }
+        <ng-content select="[header-subtitle]"></ng-content>
       </div>
     </div>
 

@@ -449,22 +449,47 @@
       </label>
     </div>
 
-    <!-- tipo_de_tracker -->
-    <div class="mb-3">
-      <label class="form-label text-muted small font-semibold mb-1"
-        title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">
-        Algoritmo de Rastreo (Tracker)
-      </label>
-      <select class="form-select text-paragraph-sm font-semibold rounded-3" [ngModel]="selectedTracker()"
-        (ngModelChange)="selectedTracker.set($event)"
-        title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">
-        <option value="Sort">Sort (Básico y Ligero)</option>
-        <option value="Oc-Sort">Oc-Sort (Intermedio)</option>
-        <option value="Bot-Sort">Bot-Sort (Complejo y Robusto)</option>
-      </select>
-    </div>
-
     <div class="d-flex flex-column gap-3 pt-1">
+      <!-- tipo_de_tracker -->
+      <div class="slider-field-group"
+        title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="slider-field-label"
+            title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">Algoritmo
+            de Rastreo (Tracker)</span>
+        </div>
+        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="selectedTracker()"
+          (ngModelChange)="selectedTracker.set($event)"
+          title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">
+          <option value="Sort">Sort (Básico y Ligero)</option>
+          <option value="Oc-Sort">Oc-Sort (Intermedio)</option>
+          <option value="Bot-Sort">Bot-Sort (Complejo y Robusto)</option>
+        </select>
+      </div>
+
+      <!-- metadatos (si / no) -->
+      <div class="slider-field-group"
+        title="Parámetro que determina si la analítica debe realizar post-procesamiento de metadatos (si/no).">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="slider-field-label"
+            title="Parámetro que determina si la analítica debe realizar post-procesamiento de metadatos (si/no).">Post-procesamiento
+            de Metadatos</span>
+        </div>
+        <div class="media-toggle-pill-wrapper p-1 rounded-pill d-flex align-items-center gap-1 border shadow-xs">
+          <button type="button"
+            class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center py-1 px-3 rounded-pill transition-all"
+            [class.active]="metadatos()" (click)="metadatos.set(true)"
+            title="Activar post-procesamiento de metadatos (Sí)">
+            <span class="fw-bold">Sí</span>
+          </button>
+          <button type="button"
+            class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center py-1 px-3 rounded-pill transition-all"
+            [class.active]="!metadatos()" (click)="metadatos.set(false)"
+            title="Desactivar post-procesamiento de metadatos (No)">
+            <span class="fw-bold">No</span>
+          </button>
+        </div>
+      </div>
       <!-- conf_thres (0.15 - 1.0) -->
       <div class="slider-field-group"
         title="Confianza de la detección: A mayor porcentaje, menos falsos positivos, pero podría omitir objetos lejanos o semiocultos (min: 0.15 - max: 1.0).">
@@ -599,25 +624,39 @@
         <label class="form-label text-muted small font-semibold mb-1"
           title="Representa el umbral mínimo de tiempo (s) de permanencia dentro del área para generar eventos (min: 0.01 - max: 72000).">Tiempo
           de Permanencia</label>
-        <div class="input-group"
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'tiempo_permanencia'"
           title="Representa el umbral mínimo de tiempo (s) de permanencia dentro del área para generar eventos (min: 0.01 - max: 72000).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="0.01" max="72000"
+            [class.is-invalid]="isParamInvalid('tiempo_permanencia')"
             [ngModel]="tiempoPermanencia()" (ngModelChange)="tiempoPermanencia.set($event)"
             title="Representa el umbral mínimo de tiempo (s) de permanencia dentro del área para generar eventos (min: 0.01 - max: 72000)." />
           <span class="input-group-text text-micro font-monospace bg-light">seg</span>
         </div>
+        @if (isParamInvalid('tiempo_permanencia')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 0.01 y 72000 s
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Distancia de movimiento en píxeles que el objeto debe moverse para considerar que se encuentra en movimiento (min: 2 - max: 300).">Sensibilidad
           de Movimiento</label>
-        <div class="input-group"
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'prueba_movimiento'"
           title="Distancia de movimiento en píxeles que el objeto debe moverse para considerar que se encuentra en movimiento (min: 2 - max: 300).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="2" max="300"
+            [class.is-invalid]="isParamInvalid('prueba_movimiento')"
             [ngModel]="pruebaMovimiento()" (ngModelChange)="pruebaMovimiento.set($event)"
             title="Distancia de movimiento en píxeles que el objeto debe moverse para considerar que se encuentra en movimiento (min: 2 - max: 300)." />
           <span class="input-group-text text-micro font-monospace bg-light">px</span>
         </div>
+        @if (isParamInvalid('prueba_movimiento')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 2 y 300 px
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
@@ -651,13 +690,20 @@
         <label class="form-label text-muted small font-semibold mb-1"
           title="Cantidad de fotogramas en que un objeto ocupa o libera un espacio para confirmar el evento (min: 30 - max: 600).">Fotogramas
           de Validación</label>
-        <div class="input-group"
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'n_validaciones'"
           title="Cantidad de fotogramas en que un objeto ocupa o libera un espacio para confirmar el evento (min: 30 - max: 600).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="30" max="600"
+            [class.is-invalid]="isParamInvalid('n_validaciones')"
             [ngModel]="nValidacionesEstacionamiento()" (ngModelChange)="nValidacionesEstacionamiento.set($event)"
             title="Cantidad de fotogramas en que un objeto ocupa o libera un espacio para confirmar el evento (min: 30 - max: 600)." />
           <span class="input-group-text text-micro font-monospace bg-light">frames</span>
         </div>
+        @if (isParamInvalid('n_validaciones')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 30 y 600 frames
+        </div>
+        }
       </div>
     </div>
     }
@@ -669,13 +715,20 @@
         <label class="form-label text-muted small font-semibold mb-1"
           title="Distancia de movimiento en píxeles que el objeto debe moverse para considerar que se encuentra en movimiento (min: 2 - max: 300).">Sensibilidad
           de Movimiento</label>
-        <div class="input-group"
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'prueba_movimiento'"
           title="Distancia de movimiento en píxeles que el objeto debe moverse para considerar que se encuentra en movimiento (min: 2 - max: 300).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="2" max="300"
+            [class.is-invalid]="isParamInvalid('prueba_movimiento')"
             [ngModel]="pruebaMovimiento()" (ngModelChange)="pruebaMovimiento.set($event)"
             title="Distancia de movimiento en píxeles que el objeto debe moverse para considerar que se encuentra en movimiento (min: 2 - max: 300)." />
           <span class="input-group-text text-micro font-monospace bg-light">px</span>
         </div>
+        @if (isParamInvalid('prueba_movimiento')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 2 y 300 px
+        </div>
+        }
       </div>
     </div>
     }
@@ -715,19 +768,34 @@
           title="Factor de escala del box de la detección para determinar zona orbital de proximidad (min: 0.1 - max: 0.9).">Radio
           / Órbita de Proximidad</label>
         <input type="number" class="form-control text-paragraph-sm rounded-3" step="0.05" min="0.1" max="0.9"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'escala_orbita'"
+          [class.is-invalid]="isParamInvalid('escala_orbita')"
           [ngModel]="escalaOrbita()" (ngModelChange)="escalaOrbita.set($event)"
           title="Factor de escala del box de la detección para determinar zona orbital de proximidad (min: 0.1 - max: 0.9)." />
+        @if (isParamInvalid('escala_orbita')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 0.1 y 0.9
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Cantidad de detecciones continuas para considerar evento (min: 5 - max: 300).">Detecciones
           Continuas</label>
-        <div class="input-group" title="Cantidad de detecciones continuas para considerar evento (min: 5 - max: 300).">
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'n_detecciones'"
+          title="Cantidad de detecciones continuas para considerar evento (min: 5 - max: 300).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="5" max="300"
+            [class.is-invalid]="isParamInvalid('n_detecciones')"
             [ngModel]="nDeteccionesPersonasObjetos()" (ngModelChange)="nDeteccionesPersonasObjetos.set($event)"
             title="Cantidad de detecciones continuas para considerar evento (min: 5 - max: 300)." />
           <span class="input-group-text text-micro font-monospace bg-light">hits</span>
         </div>
+        @if (isParamInvalid('n_detecciones')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 5 y 300 hits
+        </div>
+        }
       </div>
     </div>
     }
@@ -739,25 +807,39 @@
         <label class="form-label text-muted small font-semibold mb-1"
           title="Tiempo(s) máximo que un objeto debe permanecer dentro de la zona para que se generen eventos de tiempo de espera prolongado (min: 60 - max: 72000).">Tiempo
           Máximo de Permanencia</label>
-        <div class="input-group"
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'humbral_maximo'"
           title="Tiempo(s) máximo que un objeto debe permanecer dentro de la zona para que se generen eventos de tiempo de espera prolongado (min: 60 - max: 72000).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="60" max="72000"
+            [class.is-invalid]="isParamInvalid('humbral_maximo')"
             [ngModel]="humbralMaximo()" (ngModelChange)="humbralMaximo.set($event)"
             title="Tiempo(s) máximo que un objeto debe permanecer dentro de la zona para que se generen eventos de tiempo de espera prolongado (min: 60 - max: 72000)." />
           <span class="input-group-text text-micro font-monospace bg-light">seg</span>
         </div>
+        @if (isParamInvalid('humbral_maximo')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 60 y 72000 s
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Tiempo(s) mínimo que un objeto debe permanecer dentro de la zona para ser considerado en las métricas del dashboard (min: 3 - max: 600).">Tiempo
           Mínimo para Métricas</label>
-        <div class="input-group"
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'humbral_minimo'"
           title="Tiempo(s) mínimo que un objeto debe permanecer dentro de la zona para ser considerado en las métricas del dashboard (min: 3 - max: 600).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="3" max="600"
+            [class.is-invalid]="isParamInvalid('humbral_minimo')"
             [ngModel]="humbralMinimo()" (ngModelChange)="humbralMinimo.set($event)"
             title="Tiempo(s) mínimo que un objeto debe permanecer dentro de la zona para ser considerado en las métricas del dashboard (min: 3 - max: 600)." />
           <span class="input-group-text text-micro font-monospace bg-light">seg</span>
         </div>
+        @if (isParamInvalid('humbral_minimo')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 3 y 600 s (<= máx)
+        </div>
+        }
       </div>
     </div>
     }
@@ -770,16 +852,30 @@
           title="Cantidad de objetos detectados cerca al objeto principal para considerar evento (min: 1 - max: 10).">Cantidad
           Mínima de Objetos</label>
         <input type="number" class="form-control text-paragraph-sm rounded-3" min="1" max="10"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'n_objetos'"
+          [class.is-invalid]="isParamInvalid('n_objetos')"
           [ngModel]="nObjetosCercanos()" (ngModelChange)="nObjetosCercanos.set($event)"
           title="Cantidad de objetos detectados cerca al objeto principal para considerar evento (min: 1 - max: 10)." />
+        @if (isParamInvalid('n_objetos')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 1 y 10
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Factor de escala del box de la detección del objeto principal para determinar zona orbital de proximidad (min: 1.0 - max: 1.9).">Radio
           / Órbita de Proximidad</label>
         <input type="number" class="form-control text-paragraph-sm rounded-3" step="0.05" min="1.0" max="1.9"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'escala_orbita'"
+          [class.is-invalid]="isParamInvalid('escala_orbita')"
           [ngModel]="escalaOrbita()" (ngModelChange)="escalaOrbita.set($event)"
           title="Factor de escala del box de la detección del objeto principal para determinar zona orbital de proximidad (min: 1.0 - max: 1.9)." />
+        @if (isParamInvalid('escala_orbita')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 1.0 y 1.9
+        </div>
+        }
       </div>
     </div>
     }
@@ -791,45 +887,73 @@
         <label class="form-label text-muted small font-semibold mb-1"
           title="Tiempo(s) máximo que una persona debe permanecer cerca a un vehículo para ser comparada con el propietario (min: 5 - max: 60).">Tiempo
           Cercano a Vehículo</label>
-        <div class="input-group"
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'tiempo_vigilancia'"
           title="Tiempo(s) máximo que una persona debe permanecer cerca a un vehículo para ser comparada con el propietario (min: 5 - max: 60).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="5" max="60"
+            [class.is-invalid]="isParamInvalid('tiempo_vigilancia')"
             [ngModel]="tiempoVigilanciaVehicular()" (ngModelChange)="tiempoVigilanciaVehicular.set($event)"
             title="Tiempo(s) máximo que una persona debe permanecer cerca a un vehículo para ser comparada con el propietario (min: 5 - max: 60)." />
           <span class="input-group-text text-micro font-monospace bg-light">seg</span>
         </div>
+        @if (isParamInvalid('tiempo_vigilancia')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 5 y 60 s
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Tiempo(s) máximo de descenso para considerar condición anormal, posible acción de reglaje (min: 45 - max: 300).">Tiempo
           Máximo de Descenso</label>
-        <div class="input-group"
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'tiempo_descenso'"
           title="Tiempo(s) máximo de descenso para considerar condición anormal, posible acción de reglaje (min: 45 - max: 300).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="45" max="300"
+            [class.is-invalid]="isParamInvalid('tiempo_descenso')"
             [ngModel]="tiempoDescenso()" (ngModelChange)="tiempoDescenso.set($event)"
             title="Tiempo(s) máximo de descenso para considerar condición anormal, posible acción de reglaje (min: 45 - max: 300)." />
           <span class="input-group-text text-micro font-monospace bg-light">seg</span>
         </div>
+        @if (isParamInvalid('tiempo_descenso')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 45 y 300 s
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Umbral de porcentaje de similitud al realizar comparación de siluetas del sospechoso con el propietario (min: 60 - max: 100).">Porcentaje
           de Similitud</label>
-        <div class="input-group"
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'similitud'"
           title="Umbral de porcentaje de similitud al realizar comparación de siluetas del sospechoso con el propietario (min: 60 - max: 100).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="60" max="100"
+            [class.is-invalid]="isParamInvalid('similitud')"
             [ngModel]="similitudProp()" (ngModelChange)="similitudProp.set($event)"
             title="Umbral de porcentaje de similitud al realizar comparación de siluetas del sospechoso con el propietario (min: 60 - max: 100)." />
           <span class="input-group-text text-micro font-monospace bg-light">%</span>
         </div>
+        @if (isParamInvalid('similitud')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 60% y 100%
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Cantidad de imágenes capturadas del sospechoso antes de realizar comparación (min: 2 - max: 30).">Muestras
           de Silueta (Embeddings)</label>
-        <input type="number" class="form-control text-paragraph-sm rounded-3" min="2" max="30" [ngModel]="nEmbeddings()"
-          (ngModelChange)="nEmbeddings.set($event)"
+        <input type="number" class="form-control text-paragraph-sm rounded-3" min="2" max="30"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'n_embeddings'"
+          [class.is-invalid]="isParamInvalid('n_embeddings')"
+          [ngModel]="nEmbeddings()" (ngModelChange)="nEmbeddings.set($event)"
           title="Cantidad de imágenes capturadas del sospechoso antes de realizar comparación (min: 2 - max: 30)." />
+        @if (isParamInvalid('n_embeddings')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 2 y 30
+        </div>
+        }
       </div>
     </div>
     }
@@ -842,18 +966,34 @@
           title="Cantidad mínima de personas juntas para considerarse como aglomeración (min: 3 - max: 20).">Mínimo de
           Personas</label>
         <input type="number" class="form-control text-paragraph-sm rounded-3" min="3" max="20"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'minimo_personas'"
+          [class.is-invalid]="isParamInvalid('minimo_personas')"
           [ngModel]="minimoPersonas()" (ngModelChange)="minimoPersonas.set($event)"
           title="Cantidad mínima de personas juntas para considerarse como aglomeración (min: 3 - max: 20)." />
+        @if (isParamInvalid('minimo_personas')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 3 y 20
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Densidad en metros (min: 0.0015 - max: 0.0065).">Densidad Poblacional</label>
-        <div class="input-group" title="Densidad en metros (min: 0.0015 - max: 0.0065).">
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'densidad'"
+          title="Densidad en metros (min: 0.0015 - max: 0.0065).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" step="0.0005" min="0.0015"
-            max="0.0065" [ngModel]="densidadAglomeracion()" (ngModelChange)="densidadAglomeracion.set($event)"
+            max="0.0065"
+            [class.is-invalid]="isParamInvalid('densidad')"
+            [ngModel]="densidadAglomeracion()" (ngModelChange)="densidadAglomeracion.set($event)"
             title="Densidad en metros (min: 0.0015 - max: 0.0065)." />
           <span class="input-group-text text-micro font-monospace bg-light">m</span>
         </div>
+        @if (isParamInvalid('densidad')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 0.0015 y 0.0065 m
+        </div>
+        }
       </div>
     </div>
     }
@@ -864,12 +1004,20 @@
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Representa el tiempo(s) de abandono del área (min: 30 - max: 600).">Tiempo de Abandono</label>
-        <div class="input-group" title="Representa el tiempo(s) de abandono del área (min: 30 - max: 600).">
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'tiempo_abandono'"
+          title="Representa el tiempo(s) de abandono del área (min: 30 - max: 600).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="30" max="600"
+            [class.is-invalid]="isParamInvalid('tiempo_abandono')"
             [ngModel]="tiempoAbandono()" (ngModelChange)="tiempoAbandono.set($event)"
             title="Representa el tiempo(s) de abandono del área (min: 30 - max: 600)." />
           <span class="input-group-text text-micro font-monospace bg-light">seg</span>
         </div>
+        @if (isParamInvalid('tiempo_abandono')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 30 y 600 s
+        </div>
+        }
       </div>
     </div>
     }
@@ -881,44 +1029,73 @@
         <label class="form-label text-muted small font-semibold mb-1"
           title="Velocidad máxima en km/h para considerar un evento (min: 3 - max: 200).">Velocidad Máxima
           Permitida</label>
-        <div class="input-group" title="Velocidad máxima en km/h para considerar un evento (min: 3 - max: 200).">
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'max_speed'"
+          title="Velocidad máxima en km/h para considerar un evento (min: 3 - max: 200).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="3" max="200"
+            [class.is-invalid]="isParamInvalid('max_speed')"
             [ngModel]="maxSpeed()" (ngModelChange)="maxSpeed.set($event)"
             title="Velocidad máxima en km/h para considerar un evento (min: 3 - max: 200)." />
           <span class="input-group-text text-micro font-monospace bg-light">km/h</span>
         </div>
+        @if (isParamInvalid('max_speed')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 3 y 200 km/h
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Cantidad mínima de puntos para obtener la velocidad, evita lecturas absurdas en las primeras detecciones (min: 3 - max: 60).">Puntos
           Mínimos de Calibración</label>
         <input type="number" class="form-control text-paragraph-sm rounded-3" min="3" max="60"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'min_points_for_speed'"
+          [class.is-invalid]="isParamInvalid('min_points_for_speed')"
           [ngModel]="minPointsForSpeed()" (ngModelChange)="minPointsForSpeed.set($event)"
           title="Cantidad mínima de puntos para obtener la velocidad, evita lecturas absurdas en las primeras detecciones (min: 3 - max: 60)." />
+        @if (isParamInvalid('min_points_for_speed')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 3 y 60
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Distancia real en metros desde el punto superior izquierdo hasta el punto superior derecho (min: 1 - max: 200).">Distancia
           Superior (A -> B)</label>
-        <div class="input-group"
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'distancia_a_b'"
           title="Distancia real en metros desde el punto superior izquierdo hasta el punto superior derecho (min: 1 - max: 200).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="1" max="200"
+            [class.is-invalid]="isParamInvalid('distancia_a_b')"
             [ngModel]="distanciaAB()" (ngModelChange)="distanciaAB.set($event)"
             title="Distancia real en metros desde el punto superior izquierdo hasta el punto superior derecho (min: 1 - max: 200)." />
           <span class="input-group-text text-micro font-monospace bg-light">m</span>
         </div>
+        @if (isParamInvalid('distancia_a_b')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 1 y 200 m
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Distancia real en metros desde el punto superior derecho hasta el punto inferior derecho (min: 1 - max: 400).">Distancia
           Lateral (B -> C)</label>
-        <div class="input-group"
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'distancia_b_c'"
           title="Distancia real en metros desde el punto superior derecho hasta el punto inferior derecho (min: 1 - max: 400).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="1" max="400"
+            [class.is-invalid]="isParamInvalid('distancia_b_c')"
             [ngModel]="distanciaBC()" (ngModelChange)="distanciaBC.set($event)"
             title="Distancia real en metros desde el punto superior derecho hasta el punto inferior derecho (min: 1 - max: 400)." />
           <span class="input-group-text text-micro font-monospace bg-light">m</span>
         </div>
+        @if (isParamInvalid('distancia_b_c')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 1 y 400 m
+        </div>
+        }
       </div>
     </div>
     }
@@ -930,13 +1107,20 @@
         <label class="form-label text-muted small font-semibold mb-1"
           title="Lapso de tiempo en el que las personas deben estar realizando la acción seleccionada para completar una secuencia (min: 1 - max: 300).">Tiempo
           de Secuencia</label>
-        <div class="input-group"
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'tiempo_comportamiento'"
           title="Lapso de tiempo en el que las personas deben estar realizando la acción seleccionada para completar una secuencia (min: 1 - max: 300).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="1" max="300"
+            [class.is-invalid]="isParamInvalid('tiempo_comportamiento')"
             [ngModel]="tiempoComportamiento()" (ngModelChange)="tiempoComportamiento.set($event)"
-            title="Lapso de tiempo en el que las personas deben estar realizando la acción seleccionada para completar una secuencia (min: 1 - max: 300)." />
+            title="Lapso de tiempo en el que las personas deben estar realizando la acción seleccionada para completar una secuencia (min: 1 - max: 300).">
           <span class="input-group-text text-micro font-monospace bg-light">seg</span>
         </div>
+        @if (isParamInvalid('tiempo_comportamiento')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 1 y 300 s
+        </div>
+        }
       </div>
       <div class="col-4">
         <label class="form-label text-muted small font-semibold mb-1"
@@ -954,8 +1138,15 @@
           title="Umbral de confianza del modelo de posturas humanas (min: 0.25 - max: 0.99).">Confianza Mínima de
           Postura</label>
         <input type="number" class="form-control text-paragraph-sm rounded-3" step="0.05" min="0.25" max="0.99"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'confianza_postura'"
+          [class.is-invalid]="isParamInvalid('confianza_postura')"
           [ngModel]="confianzaPostura()" (ngModelChange)="confianzaPostura.set($event)"
           title="Umbral de confianza del modelo de posturas humanas (min: 0.25 - max: 0.99)." />
+        @if (isParamInvalid('confianza_postura')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 0.25 y 0.99
+        </div>
+        }
       </div>
     </div>
     }
@@ -963,61 +1154,179 @@
     <!-- 12. Reconocimiento Facial -->
     @if (selectedType() === 'face_recognition') {
     <div class="row g-3 align-inputs-bottom">
-      <div class="col-12">
+      <div class="col-12 position-relative">
         <label class="form-label text-muted small font-semibold mb-1"
-          title="Vincular lista de rostros autorizados o lista negra.">Vincular Lista de Control</label>
-        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="selectedListId()"
-          (ngModelChange)="selectedListId.set($event)" title="Vincular lista de rostros autorizados o lista negra.">
-          <option value="">-- Seleccionar Lista RF --</option>
-          @for (list of watchlists(); track list.list_id) {
-          @if (list.list_type === 'RF' || list.list_type === 'face_recognition') {
-          <option [value]="list.list_id">{{ list.name }} ({{ list.description }})</option>
-          }
-          }
-        </select>
+          title="Vincular una o más listas de control.">Vincular Lista de Control</label>
+        
+        <button type="button"
+          class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+          [class.active]="isListsDropdownOpen()"
+          [class.is-open]="isListsDropdownOpen()"
+          [class.is-invalid]="isParamInvalid('list_id')"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'list_id'"
+          [title]="getSelectedListNames('RF')"
+          (click)="toggleListsDropdown($event)">
+          <div class="d-flex align-items-center gap-2 min-w-0 flex-fill me-2 overflow-hidden">
+            <span class="icon-svg icon-user text-muted flex-shrink-0" style="width: 14px; height: 14px;"></span>
+            <span class="text-truncate font-semibold text-start flex-fill" style="font-size: 0.8125rem;">
+              {{ getSelectedListNames('RF') }}
+            </span>
+          </div>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+            [class.rotated]="isListsDropdownOpen()" [class.rotate-180]="isListsDropdownOpen()"
+            style="width: 0.8125rem; height: 0.8125rem;"></span>
+        </button>
+
+        @if (isListsDropdownOpen()) {
+        <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+          (click)="$event.stopPropagation()">
+          <div class="multiselect-options-list pe-1" style="max-height: 16rem;">
+            @for (l of getListsForType('RF'); track l.list_id) {
+            @let isSelected = isListSelected(l.list_id);
+            <div
+              class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+              [class.is-selected]="isSelected"
+              (click)="toggleListSelection(l.list_id)">
+              <div class="d-flex align-items-center gap-2 min-w-0 me-2">
+                <span class="icon-svg icon-user text-muted flex-shrink-0" style="width: 15px; height: 15px;"></span>
+                <div class="min-w-0">
+                  <span class="option-name font-semibold text-body text-truncate d-block">{{ l.name }}</span>
+                  @if (l.description) {
+                  <span class="text-muted text-micro text-truncate d-block">{{ l.description }}</span>
+                  }
+                </div>
+              </div>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+            @if (getListsForType('RF').length === 0) {
+            <div class="p-3 text-center text-muted small">
+              No hay listas de control disponibles
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        @if (isParamInvalid('list_id') || selectedListIds().length === 0) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debes seleccionar al menos una Lista de Control
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Umbral de similitud al comparar rostros con una lista (min: 0.25 - max: 0.85).">Umbral de Similitud
           Facial</label>
         <input type="number" class="form-control text-paragraph-sm rounded-3" step="0.05" min="0.25" max="0.85"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'confianza_rf'"
+          [class.is-invalid]="isParamInvalid('confianza_rf')"
           [ngModel]="confianzaRF()" (ngModelChange)="confianzaRF.set($event)"
           title="Umbral de similitud al comparar rostros con una lista (min: 0.25 - max: 0.85)." />
+        @if (isParamInvalid('confianza_rf')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 0.25 y 0.85
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Número de veces que se debe detectar un rostro antes de hacer comparación con una lista, ayuda a reducir la carga de procesamiento (min: 1 - max: 5).">Filtro
           de Detecciones Previas</label>
         <input type="number" class="form-control text-paragraph-sm rounded-3" min="1" max="5"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'n_detecciones_rf'"
+          [class.is-invalid]="isParamInvalid('n_detecciones_rf')"
           [ngModel]="nDeteccionesRF()" (ngModelChange)="nDeteccionesRF.set($event)"
           title="Número de veces que se debe detectar un rostro antes de hacer comparación con una lista, ayuda a reducir la carga de procesamiento (min: 1 - max: 5)." />
+        @if (isParamInvalid('n_detecciones_rf')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 1 y 5
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Cantidad de veces que un rostro debe hacer match con una lista definida para que se genere el evento (min: 1 - max: 5).">Confirmaciones
           de Coincidencia</label>
         <input type="number" class="form-control text-paragraph-sm rounded-3" min="1" max="5"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'n_reconocimientos_rf'"
+          [class.is-invalid]="isParamInvalid('n_reconocimientos_rf')"
           [ngModel]="nReconocimientosRF()" (ngModelChange)="nReconocimientosRF.set($event)"
           title="Cantidad de veces que un rostro debe hacer match con una lista definida para que se genere el evento (min: 1 - max: 5)." />
+        @if (isParamInvalid('n_reconocimientos_rf')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 1 y 5
+        </div>
+        }
       </div>
     </div>
     }
 
     <!-- 13. Reconocimiento de Placas -->
     @if (selectedType() === 'license_plate_recognition') {
-    <div class="mb-3">
+    <div class="mb-3 position-relative">
       <label class="form-label text-muted small font-semibold mb-1"
-        title="Vincular lista de patentes o vehículos autorizados/restringidos.">Vincular Lista de Control LPR</label>
-      <select class="form-select text-paragraph-sm rounded-3" [ngModel]="selectedListId()"
-        (ngModelChange)="selectedListId.set($event)"
-        title="Vincular lista de patentes o vehículos autorizados/restringidos.">
-        <option value="">-- Seleccionar Lista LPR --</option>
-        @for (list of watchlists(); track list.list_id) {
-        @if (list.list_type === 'LPR' || list.list_type === 'plate_recognition') {
-        <option [value]="list.list_id">{{ list.name }} ({{ list.description }})</option>
-        }
-        }
-      </select>
+        title="Vincular una o más listas de patentes o vehículos autorizados/restringidos.">Vincular Lista de Control LPR</label>
+
+      <button type="button"
+        class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+        [class.active]="isListsDropdownOpen()"
+        [class.is-open]="isListsDropdownOpen()"
+        [class.is-invalid]="isParamInvalid('list_id')"
+        [class.element-highlight-amber-pulse]="highlightErrorTarget === 'list_id'"
+        [title]="getSelectedListNames('LPR')"
+        (click)="toggleListsDropdown($event)">
+        <div class="d-flex align-items-center gap-2 min-w-0 flex-fill me-2 overflow-hidden">
+          <span class="icon-svg icon-car text-muted flex-shrink-0" style="width: 14px; height: 14px;"></span>
+          <span class="text-truncate font-semibold text-start flex-fill" style="font-size: 0.8125rem;">
+            {{ getSelectedListNames('LPR') }}
+          </span>
+        </div>
+        <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+          [class.rotated]="isListsDropdownOpen()" [class.rotate-180]="isListsDropdownOpen()"
+          style="width: 0.8125rem; height: 0.8125rem;"></span>
+      </button>
+
+      @if (isListsDropdownOpen()) {
+      <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+        (click)="$event.stopPropagation()">
+        <div class="multiselect-options-list pe-1" style="max-height: 16rem;">
+          @for (l of getListsForType('LPR'); track l.list_id) {
+          @let isSelected = isListSelected(l.list_id);
+          <div
+            class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+            [class.is-selected]="isSelected"
+            (click)="toggleListSelection(l.list_id)">
+            <div class="d-flex align-items-center gap-2 min-w-0 me-2">
+              <span class="icon-svg icon-car text-muted flex-shrink-0" style="width: 15px; height: 15px;"></span>
+              <div class="min-w-0">
+                <span class="option-name font-semibold text-body text-truncate d-block">{{ l.name }}</span>
+                @if (l.description) {
+                <span class="text-muted text-micro text-truncate d-block">{{ l.description }}</span>
+                }
+              </div>
+            </div>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+            }
+          </div>
+          }
+          @if (getListsForType('LPR').length === 0) {
+          <div class="p-3 text-center text-muted small">
+            No hay listas de control LPR disponibles
+          </div>
+          }
+        </div>
+      </div>
+      }
+
+      @if (isParamInvalid('list_id') || selectedListIds().length === 0) {
+      <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+        Debes seleccionar al menos una Lista de Control LPR
+      </div>
+      }
     </div>
     }
 
@@ -1078,22 +1387,38 @@
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Aforo máximo permitido (min: 0 - max: 10000).">Aforo Máximo Permitido</label>
-        <div class="input-group" title="Aforo máximo permitido (min: 0 - max: 10000).">
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'aforo_maximo'"
+          title="Aforo máximo permitido (min: 0 - max: 10000).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="0" max="10000"
+            [class.is-invalid]="isParamInvalid('aforo_maximo')"
             [ngModel]="aforoMaximo()" (ngModelChange)="aforoMaximo.set($event)"
             title="Aforo máximo permitido (min: 0 - max: 10000)." />
           <span class="input-group-text text-micro font-monospace bg-light">personas</span>
         </div>
+        @if (isParamInvalid('aforo_maximo')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 1 y 10000
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Aforo actual inicial (min: 0 - max: 10000).">Conteo de Aforo Inicial</label>
-        <div class="input-group" title="Aforo actual inicial (min: 0 - max: 10000).">
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'aforo_actual'"
+          title="Aforo actual inicial (min: 0 - max: 10000).">
           <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="0" max="10000"
+            [class.is-invalid]="isParamInvalid('aforo_actual')"
             [ngModel]="aforoActual()" (ngModelChange)="aforoActual.set($event)"
             title="Aforo actual inicial (min: 0 - max: 10000)." />
           <span class="input-group-text text-micro font-monospace bg-light">personas</span>
         </div>
+        @if (isParamInvalid('aforo_actual')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 0 y 10000
+        </div>
+        }
       </div>
     </div>
     }

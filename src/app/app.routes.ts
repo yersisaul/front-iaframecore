@@ -10,6 +10,7 @@ import { Camaras } from './presentation/views/camaras/camaras';
 import { Listas } from './presentation/views/listas/listas';
 import { Eventos } from './presentation/views/eventos/eventos';
 import { Monitoreo } from './presentation/views/monitoreo/monitoreo';
+import { Dashboard } from './presentation/views/dashboard/dashboard';
 import { authGuard } from './presentation/guards/auth.guard';
 
 export const routes: Routes = [
@@ -22,6 +23,7 @@ export const routes: Routes = [
         canActivateChild: [authGuard], // Valida permisos en rutas hijas al navegar directamente
         children: [
             { path: '', redirectTo: 'nodos', pathMatch: 'full' }, // Redirección por defecto
+            { path: 'dashboards', component: Dashboard, data: { permissions: ['dashboard.read'] } },
             { path: 'usuarios', component: Usuarios, data: { permissions: ['users.read', 'roles.read'], anyPermission: true } },
             { path: 'nodos', component: Nodos, data: { permissions: ['hosts.read'] } },
             { path: 'nodos/:hostId/camaras', component: Camaras, data: { permissions: ['cameras.read'] } },

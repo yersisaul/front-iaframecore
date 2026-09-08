@@ -1,4 +1,4 @@
-<div class="analytic-actions-builder-wrapper card p-3 border shadow-sm">
+<div class="analytic-actions-builder-wrapper card p-3 border shadow-sm" [class.has-open-dropdown]="isDropdownOpen()">
   <!-- Fila Superior: Título a la izquierda, Botón + Añadir Acción a la derecha -->
   <div class="d-flex align-items-center justify-content-between mb-2">
     <div class="d-flex align-items-center gap-2">
@@ -72,6 +72,67 @@
         </div>
 
         <!-- Formularios Específicos por Tipo de Acción -->
+        @if (actionItem.tipo.startsWith('Activar analisis') || actionItem.tipo.startsWith('Desactivar analisis')) {
+        <div class="mt-2">
+          @if (!actionItem.accion.analitica) {
+          <button type="button"
+            class="btn-target-selector-trigger w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border transition-all cursor-pointer select-none"
+            [class.is-warning]="highlightErrors"
+            (click)="openAnalyticSelectModal(actionItem)"
+            [title]="highlightErrors ? 'Selección requerida: Elige la analítica objetivo' : 'Seleccionar analítica objetivo'">
+            <div class="d-flex align-items-center gap-2 min-w-0">
+              <div
+                class="target-trigger-icon-box d-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
+                [class.is-warning]="highlightErrors">
+                <span class="icon-svg"
+                  [class.icon-warning]="highlightErrors"
+                  [class.icon-activity]="!highlightErrors"
+                  style="width: 14px; height: 14px;"></span>
+              </div>
+              <span class="target-trigger-placeholder font-medium text-truncate"
+                [class.text-warning]="highlightErrors"
+                [class.font-semibold]="highlightErrors">
+                Seleccionar analítica objetivo...
+              </span>
+            </div>
+            <span class="icon-svg icon-chevron-down chevron-rotate-right flex-shrink-0"
+              [class.text-warning]="highlightErrors"
+              [class.text-muted]="!highlightErrors"
+              style="width: 12px; height: 12px;"></span>
+          </button>
+          } @else {
+          <div
+            class="btn-target-selector-trigger is-selected w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border transition-all cursor-pointer select-none"
+            (click)="openAnalyticSelectModal(actionItem)" title="Clic para cambiar analítica objetivo">
+            <div class="d-flex align-items-center gap-2 min-w-0">
+              <div
+                class="target-trigger-icon-box is-active d-flex align-items-center justify-content-center rounded-2 flex-shrink-0">
+                <span class="icon-svg icon-activity text-primary" style="width: 15px; height: 15px;"></span>
+              </div>
+              <div class="min-w-0">
+                <span class="fw-bold text-body text-truncate d-block" style="font-size: 0.825rem; line-height: 1.25;">
+                  {{ getSelectedAnalyticLabel(actionItem) }}
+                </span>
+                @if (getSelectedAnalyticCamera(actionItem)) {
+                <span class="text-muted small text-truncate d-block" style="font-size: 0.72rem; line-height: 1.2;">
+                  {{ getSelectedAnalyticCamera(actionItem) }}
+                </span>
+                }
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-2">
+              <span class="target-change-badge d-flex align-items-center justify-content-center rounded-circle"
+                title="Cambiar analítica">
+                <span class="icon-svg icon-refresh"
+                  style="width: 12px; height: 12px; background-color: currentColor;"></span>
+              </span>
+            </div>
+          </div>
+          }
+        </div>
+        }
+
         @if (actionItem.tipo.startsWith('Voz de sistema')) {
         <div class="mt-2">
           <label class="form-label text-muted small font-semibold mb-2 ps-2">Mensaje TTS (Audio de Voz de
@@ -156,3 +217,600 @@
   </div>
   }
 </div>
+
+<!-- =========================================================================
+     MODAL DE SELECCIÓN JERÁRQUICA DE ANALÍTICA OBJETIVO (BLURRED DIALOG)
+     ========================================================================= -->
+@if (isSelectModalOpen()) {
+<div class="modal-backdrop-blur d-flex align-items-center justify-content-center"
+  (mousedown)="onModalBackdropMouseDown($event)" (mouseup)="onModalBackdropMouseUp($event)">
+  <div class="premium-detail-modal select-camera-modal d-flex flex-column shadow-2xl"
+    (click)="$event.stopPropagation()">
+
+    <!-- Modal Header -->
+    <div class="modal-header-section p-4 d-flex justify-content-between align-items-center">
+      <div>
+        <h5 class="fw-bold mb-1 text-body">
+          Seleccionar Analítica a {{ selectedActionItemForModal()?.tipo?.startsWith('Activar') ? 'Activar' :
+          'Desactivar' }}
+        </h5>
+        <p class="text-muted small mb-0">
+          Seleccione la analítica que se {{ selectedActionItemForModal()?.tipo?.startsWith('Activar') ? 'activará' :
+          'desactivará' }} al dispararse esta acción.
+        </p>
+      </div>
+    </div>
+
+    <!-- Modal Controls Area: Pestañas, Barra de Búsqueda y Filtros -->
+    <div class="modal-controls-container gap-3 px-5 pb-3">
+      <!-- Modal Tabs -->
+      <div class="modal-tabs-pill">
+        <button type="button" class="btn-premium-tab" [class.active]="activeModalTab() === 'nodos'"
+          (click)="switchModalTab('nodos')">
+          Por Nodo
+        </button>
+        <button type="button" class="btn-premium-tab" [class.active]="activeModalTab() === 'todas'"
+          (click)="switchModalTab('todas')">
+          Todas las Cámaras
+        </button>
+      </div>
+
+      <!-- Searchbar and Filter Row -->
+      <div class="modal-search-row">
+        <div class="modal-search-wrapper d-flex align-items-center flex-grow-1">
+          <span class="icon-svg icon-search me-2 text-muted" style="width: 14px; height: 14px; opacity: 0.5;"></span>
+          <input #modalSearchInput type="text" placeholder="Buscar por nodo o cámara..." class="modal-search-input"
+            [value]="modalSearchQuery()" (input)="modalSearchQuery.set(modalSearchInput.value)" />
+        </div>
+
+        <!-- Filtro por Tipo de Analítica -->
+        <div class="filter-dropdown-wrapper position-relative flex-shrink-0">
+          <button type="button" class="modal-filter-pill d-flex align-items-center gap-2"
+            [class.active]="modalTypeFilter() !== 'all'" (click)="toggleTypeFilterDropdown($event)">
+            <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
+            <span>Tipo: {{ modalTypeFilter() === 'all' ? 'Todos' : modalTypeFilter() }}</span>
+            <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+              [class.rotated]="showTypeFilterDropdown()" style="width: 10px; height: 10px;"></span>
+          </button>
+
+          @if (showTypeFilterDropdown()) {
+          <div class="modal-filter-dropdown-menu p-2 show position-absolute end-0 mt-1 shadow-sm"
+            style="z-index: 1060; min-width: 200px;" (click)="$event.stopPropagation()">
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="modalTypeFilter() === 'all'"
+              (click)="selectTypeFilter('all', $event)">
+              Todos los Tipos
+            </button>
+            @for (t of availableAnalyticTypes(); track t) {
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="modalTypeFilter() === t"
+              (click)="selectTypeFilter(t, $event)">
+              {{ t }}
+            </button>
+            }
+          </div>
+          }
+        </div>
+
+        <!-- Filtro por Estado de Analítica (Crítico para Activar / Desactivar) -->
+        <div class="filter-dropdown-wrapper position-relative flex-shrink-0">
+          <button type="button" class="modal-filter-pill d-flex align-items-center gap-2"
+            [class.active]="modalStatusFilter() !== 'all'" (click)="toggleStatusFilterDropdown($event)">
+            <span class="status-dot-mini" [class.bg-success]="modalStatusFilter() === 'active'"
+              [class.bg-secondary]="modalStatusFilter() === 'inactive'"
+              [class.bg-primary]="modalStatusFilter() === 'all'"></span>
+            <span>Estado: {{ getStatusFilterLabel(modalStatusFilter()) }}</span>
+            <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+              [class.rotated]="showStatusFilterDropdown()" style="width: 10px; height: 10px;"></span>
+          </button>
+
+          @if (showStatusFilterDropdown()) {
+          <div class="modal-filter-dropdown-menu p-2 show position-absolute end-0 mt-1 shadow-sm"
+            style="z-index: 1060; min-width: 170px;" (click)="$event.stopPropagation()">
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+              [class.active]="modalStatusFilter() === 'all'" (click)="selectStatusFilter('all', $event)">
+              Todos los Estados
+            </button>
+            @if (availableAnalyticStatuses().has('active')) {
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center gap-2"
+              [class.active]="modalStatusFilter() === 'active'" (click)="selectStatusFilter('active', $event)">
+              <span class="status-dot-mini bg-success"></span>
+              <span>Activas</span>
+            </button>
+            }
+            @if (availableAnalyticStatuses().has('inactive')) {
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center gap-2"
+              [class.active]="modalStatusFilter() === 'inactive'" (click)="selectStatusFilter('inactive', $event)">
+              <span class="status-dot-mini bg-secondary"></span>
+              <span>Inactivas</span>
+            </button>
+            }
+          </div>
+          }
+        </div>
+
+        <!-- Botón de Alternancia de Ordenamiento A-Z / Z-A (Defecto A-Z) -->
+        <button type="button"
+          class="btn btn-sort-toggle d-flex align-items-center gap-2 shadow-sm rounded-pill border px-3 py-1.5 flex-shrink-0"
+          (click)="toggleModalSortDirection()"
+          [title]="modalSortDirection() === 'asc' ? 'Orden actual: (A → Z) · Clic para cambiar a (Z → A)' : 'Orden actual: (Z → A) · Clic para cambiar a (A → Z)'"
+          aria-label="Alternar orden alfabético">
+          <span class="sort-icon-letters font-monospace fw-bold">{{ modalSortDirection() === 'asc' ? 'A→Z' : 'Z→A'
+            }}</span>
+          <span class="icon-svg sort-arrow-icon" [class.icon-arrow-up]="modalSortDirection() === 'asc'"
+            [class.icon-arrow-down]="modalSortDirection() === 'desc'"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Body: Contenido por Niveles -->
+    <div class="modal-body-content py-2 px-5 flex-grow-1 overflow-y-auto">
+
+      <!-- ========================================== -->
+      <!-- TAB 1: POR NODO                            -->
+      <!-- ========================================== -->
+      @if (activeModalTab() === 'nodos') {
+
+      <!-- Nivel 1: Lista de Nodos -->
+      @if (!selectedNode()) {
+      <div class="row g-3">
+        @if (filteredNodes().length === 0) {
+        <div class="col-12 text-center py-5 text-muted">
+          No se encontraron nodos con cámaras y analíticas coincidentes con los filtros aplicados.
+        </div>
+        } @else {
+        @for (group of filteredNodes(); track group.host.fingerprint) {
+        <div class="col-md-6">
+          <button type="button"
+            class="btn-hierarchy-card node-card w-100 text-start p-3 rounded-3 border bg-surface transition-all d-flex align-items-center justify-content-between shadow-xs"
+            [class.os-ubuntu]="isLinuxHost(group.host)" [class.os-windows]="isWindowsHost(group.host)"
+            [class.os-standard]="!isLinuxHost(group.host) && !isWindowsHost(group.host)"
+            (click)="selectNode(group.host)">
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden">
+              <span class="icon-svg node-os-icon flex-shrink-0" [class]="getHostOsIcon(group.host)"
+                style="width: 24px; height: 24px;"></span>
+              <div class="min-w-0 flex-grow-1 overflow-hidden">
+                <span class="fw-bold text-body d-block text-truncate" style="font-size: 0.9rem;">
+                  {{ group.host.hostname || 'Host Sin Nombre' }}
+                </span>
+                <span class="text-muted small d-block font-monospace text-truncate w-100" style="font-size: 0.72rem;"
+                  [title]="'ID: ' + group.host.fingerprint">
+                  ID: {{ group.host.fingerprint }}
+                </span>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-2">
+              <span
+                class="badge bg-secondary-light text-secondary rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1">
+                <span class="icon-svg icon-camara" style="width: 12px; height: 12px;"></span>
+                <span>{{ group.cameras.length }}</span>
+              </span>
+              <span class="icon-svg icon-chevron-down chevron-right-rotate text-muted"
+                style="width: 12px; height: 12px;"></span>
+            </div>
+          </button>
+        </div>
+        }
+        }
+      </div>
+      }
+
+      <!-- Nivel 2: Cámaras del Nodo Seleccionado (Componente con Encabezado Grande y Detallado) -->
+      @else if (selectedNode() && !selectedCamera()) {
+      <div class="node-hierarchy-detail-card border rounded-4 bg-surface p-4 d-flex flex-column gap-3 shadow-xs"
+        [class.os-ubuntu]="isLinuxHost(selectedNode()!)" [class.os-windows]="isWindowsHost(selectedNode()!)"
+        [class.os-standard]="!isLinuxHost(selectedNode()!) && !isWindowsHost(selectedNode()!)">
+
+        <!-- Encabezado Grande y Descriptivo del Nodo -->
+        <div class="node-hierarchy-header d-flex flex-column gap-3">
+          <div class="d-flex align-items-center justify-content-between flex-nowrap gap-3">
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden">
+              <!-- Botón de Retroceso al listado de nodos (sin texto ni contenedor) -->
+              <button type="button"
+                class="btn-hierarchy-back-icon p-0 border-0 bg-transparent text-muted transition-all d-flex align-items-center justify-content-center flex-shrink-0"
+                (click)="goBack()" title="Volver al listado de nodos" aria-label="Volver">
+                <span class="icon-svg icon-arrow-left"
+                  style="width: 18px; height: 18px; background-color: currentColor;"></span>
+              </button>
+
+              <!-- Logo SVG del SO Standalone con su color -->
+              <span class="icon-svg node-os-icon flex-shrink-0" [class]="getHostOsIcon(selectedNode()!)"
+                style="width: 28px; height: 28px;"></span>
+
+              <!-- Nombre del Nodo -->
+              <div class="min-w-0">
+                <h5 class="fw-bold mb-0 text-body text-truncate" style="font-size: 1.15rem; letter-spacing: -0.01em;">
+                  {{ selectedNode()!.hostname || 'Host Sin Nombre' }}
+                </h5>
+                <span class="text-muted small font-monospace d-block text-truncate" style="font-size: 0.76rem;">
+                  ID: {{ selectedNode()!.fingerprint }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Badge con SVG de cámara y número de cámaras a la derecha -->
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+              <span
+                class="badge bg-secondary-light text-secondary rounded-pill px-2.5 py-1.5 fw-semibold d-inline-flex align-items-center gap-1"
+                style="font-size: 0.82rem;">
+                <span class="icon-svg icon-camara" style="width: 14px; height: 14px;"></span>
+                <span>{{ nodeCameras().length }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subtítulo de Sección -->
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted small fw-semibold text-uppercase font-monospace"
+            style="font-size: 0.72rem; letter-spacing: 0.04em;">
+            Cámaras vinculadas al nodo
+          </span>
+          @if (modalTypeFilter() !== 'all' || modalStatusFilter() !== 'all' || modalSearchQuery()) {
+          <span class="badge bg-primary-light text-primary rounded-pill small px-2 py-0.5" style="font-size: 0.72rem;">
+            Filtros aplicados
+          </span>
+          }
+        </div>
+
+        <!-- Cuadrícula de Cámaras del Nodo (En formato tarjeta como antes) -->
+        <div class="row g-3">
+          @if (nodeCameras().length === 0) {
+          <div class="col-12 text-center py-5 text-muted">
+            Este nodo no posee cámaras con analíticas coincidentes con los filtros aplicados.
+          </div>
+          } @else {
+          @for (cam of nodeCameras(); track cam.id) {
+          @let badgesInfo = getCameraAnalyticsBadgesInfo(cam);
+          <div class="col-md-6">
+            <button type="button"
+              class="btn-hierarchy-card camera-card-btn w-100 text-start p-3 rounded-3 border bg-surface transition-all d-flex align-items-center justify-content-between shadow-xs"
+              (click)="selectCamera(cam)">
+              <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden">
+                <div class="position-relative flex-shrink-0 d-flex align-items-center justify-content-center"
+                  style="width: 14px; height: 14px;">
+                  <span class="modal-camera-status-dot" [class]="'modal-camera-status-dot ' + getCameraStatusClass(cam)"
+                    [title]="getCameraStatusLabel(cam)"></span>
+                </div>
+                <div class="min-w-0 flex-grow-1 d-flex flex-column gap-1 overflow-hidden">
+                  <div class="camera-card-name-container min-w-0 w-100">
+                    <span class="camera-card-name-text fw-bold text-body d-block" [title]="cam.name">
+                      {{ cam.name }}
+                    </span>
+                  </div>
+                  <div class="camera-meta-details d-flex align-items-center gap-2 flex-nowrap overflow-hidden">
+                    @for (badge of badgesInfo.visible; track badge) {
+                    <span class="camera-analytic-badge text-truncate">{{ badge }}</span>
+                    }
+                    @if (badgesInfo.remainingCount > 0) {
+                    <span class="camera-analytic-badge camera-analytic-more-badge flex-shrink-0"
+                      [title]="'Otras analíticas: ' + badgesInfo.remainingTooltip">
+                      +{{ badgesInfo.remainingCount }}
+                    </span>
+                    }
+                  </div>
+                </div>
+              </div>
+              <span class="icon-svg icon-chevron-down chevron-right-rotate text-muted flex-shrink-0 ms-2"
+                style="width: 12px; height: 12px;"></span>
+            </button>
+          </div>
+          }
+          }
+        </div>
+
+      </div>
+      }
+
+      <!-- Nivel 3: Analíticas de la Cámara (Componente con Encabezado Grande y Detallado) -->
+      @else if (selectedNode() && selectedCamera()) {
+      <div class="camera-hierarchy-detail-card border rounded-4 bg-surface p-4 d-flex flex-column gap-3 shadow-xs">
+
+        <!-- Encabezado Grande y Descriptivo de la Cámara -->
+        <div class="camera-hierarchy-header d-flex flex-column gap-3">
+          <div class="d-flex align-items-center justify-content-between flex-nowrap gap-3">
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden">
+              <!-- Botón de Retroceso a las cámaras del nodo (sin texto ni contenedor) -->
+              <button type="button"
+                class="btn-hierarchy-back-icon p-0 border-0 bg-transparent text-muted transition-all d-flex align-items-center justify-content-center flex-shrink-0"
+                (click)="goBack()" title="Volver a las cámaras del nodo" aria-label="Volver">
+                <span class="icon-svg icon-arrow-left"
+                  style="width: 18px; height: 18px; background-color: currentColor;"></span>
+              </button>
+
+              <!-- Dot de estado de la cámara al lado izquierdo, centrado en medio del título y el ID -->
+              <div class="position-relative flex-shrink-0 d-flex align-items-center justify-content-center"
+                style="width: 14px; height: 14px;">
+                <span class="modal-camera-status-dot"
+                  [class]="'modal-camera-status-dot ' + getCameraStatusClass(selectedCamera())"
+                  [title]="'Estado de cámara: ' + getCameraStatusLabel(selectedCamera())"></span>
+              </div>
+
+              <!-- Nombre e ID de la Cámara -->
+              <div class="min-w-0 flex-grow-1 overflow-hidden">
+                <div class="camera-header-name-container min-w-0 w-100">
+                  <h5 class="camera-header-name-text fw-bold mb-0 text-body" [title]="selectedCamera()!.name">
+                    {{ selectedCamera()!.name }}
+                  </h5>
+                </div>
+                <span class="text-muted small font-monospace d-block text-truncate" style="font-size: 0.76rem;">
+                  ID: {{ selectedCamera()!.id }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Badge contador de analíticas a la derecha (fijo, nunca salta de fila) -->
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+              <span class="badge bg-secondary-light text-secondary rounded-pill px-3 py-2 fw-semibold"
+                style="font-size: 0.82rem;">
+                {{ cameraAnalytics().length }} analíticas disponibles
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subtítulo de Sección -->
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted small fw-semibold text-uppercase font-monospace"
+            style="font-size: 0.72rem; letter-spacing: 0.04em;">
+            Analíticas configuradas en la cámara
+          </span>
+          @if (tempSelectedAnalyticId()) {
+          <span class="badge bg-success-subtle text-success rounded-pill small px-2 py-0.5" style="font-size: 0.72rem;">
+            Analítica seleccionada
+          </span>
+          }
+        </div>
+
+        <!-- Tarjetas de Analítica -->
+        <div class="d-flex flex-column gap-3">
+          @if (cameraAnalytics().length === 0) {
+          <div class="text-center py-5 text-muted">
+            <span class="icon-svg icon-activity opacity-40 mb-2 d-block mx-auto"
+              style="width: 32px; height: 32px;"></span>
+            <span class="fw-semibold d-block">Esta cámara no tiene analíticas configuradas con el filtro
+              seleccionado.</span>
+            <span class="small text-muted">Configure una analítica en esta cámara para poder seleccionarla como
+              objetivo.</span>
+          </div>
+          } @else {
+          @for (analytic of cameraAnalytics(); track analytic.id) {
+          @let classesInfo = getAnalyticClassesInfo(analytic);
+          <button type="button"
+            class="analytic-toggle-card w-100 text-start p-3 rounded-3 border bg-surface transition-all d-flex align-items-center justify-content-between gap-3 shadow-xs"
+            [class.active-selected]="tempSelectedAnalyticId() === analytic.id"
+            (click)="toggleAnalyticSelection(analytic.id)">
+
+            <!-- Lado Izquierdo: Dot de Estado + Tipo de Analítica e ID -->
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden">
+              <div class="position-relative flex-shrink-0 d-flex align-items-center justify-content-center"
+                style="width: 14px; height: 14px;">
+                <span class="modal-camera-status-dot" [class.online]="analytic.status === 'active'"
+                  [class.offline]="analytic.status !== 'active'"
+                  [title]="analytic.status === 'active' ? 'Analítica Activa' : 'Analítica Inactiva'"></span>
+              </div>
+
+              <div class="min-w-0 flex-grow-1 overflow-hidden">
+                <span class="fw-bold text-body d-block text-truncate" style="font-size: 0.9rem;">
+                  {{ analytic.type }}
+                </span>
+                <span class="text-muted small font-monospace d-block text-truncate" style="font-size: 0.74rem;">
+                  ID: {{ analytic.id }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Lado Derecho: Listado de clases/objetos con pill +N -->
+            <div class="d-flex align-items-center gap-2 flex-shrink-0 flex-nowrap overflow-hidden ms-2">
+              @if (classesInfo.visible.length === 0) {
+              <span class="text-muted small fst-italic" style="font-size: 0.72rem;">Sin clases</span>
+              } @else {
+              @for (cls of classesInfo.visible; track cls) {
+              <span class="camera-analytic-badge text-truncate" [title]="cls">{{ cls }}</span>
+              }
+              @if (classesInfo.remainingCount > 0) {
+              <span class="camera-analytic-badge camera-analytic-more-badge flex-shrink-0"
+                [title]="'Otras clases: ' + classesInfo.remainingTooltip">
+                +{{ classesInfo.remainingCount }}
+              </span>
+              }
+              }
+            </div>
+          </button>
+          }
+          }
+        </div>
+
+      </div>
+      }
+      }
+
+      <!-- ========================================== -->
+      <!-- TAB 2: TODAS LAS CÁMARAS                   -->
+      <!-- ========================================== -->
+      @if (activeModalTab() === 'todas') {
+
+      <!-- Nivel 1: Lista de Todas las Cámaras -->
+      @if (!selectedCamera()) {
+      <div class="row g-3">
+        @if (allCamerasList().length === 0) {
+        <div class="col-12 text-center py-5 text-muted">
+          No se encontraron cámaras con analíticas coincidentes con los filtros aplicados.
+        </div>
+        } @else {
+        @for (cam of allCamerasList(); track cam.id) {
+        @let badgesInfo = getCameraAnalyticsBadgesInfo(cam);
+        <div class="col-md-6">
+          <button type="button"
+            class="btn-hierarchy-card camera-card-btn w-100 text-start p-3 rounded-3 border bg-surface transition-all d-flex align-items-center justify-content-between shadow-xs"
+            (click)="selectCamera(cam)">
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden">
+              <div class="position-relative flex-shrink-0 d-flex align-items-center justify-content-center"
+                style="width: 14px; height: 14px;">
+                <span class="modal-camera-status-dot" [class]="'modal-camera-status-dot ' + getCameraStatusClass(cam)"
+                  [title]="getCameraStatusLabel(cam)"></span>
+              </div>
+              <div class="min-w-0 flex-grow-1 d-flex flex-column gap-1 overflow-hidden">
+                <div class="camera-card-name-container min-w-0 w-100">
+                  <span class="camera-card-name-text fw-bold text-body d-block" [title]="cam.name">
+                    {{ cam.name }}
+                  </span>
+                </div>
+                <div class="camera-meta-details d-flex align-items-center gap-2 flex-nowrap overflow-hidden">
+                  @for (badge of badgesInfo.visible; track badge) {
+                  <span class="camera-analytic-badge text-truncate">{{ badge }}</span>
+                  }
+                  @if (badgesInfo.remainingCount > 0) {
+                  <span class="camera-analytic-badge camera-analytic-more-badge flex-shrink-0"
+                    [title]="'Otras analíticas: ' + badgesInfo.remainingTooltip">
+                    +{{ badgesInfo.remainingCount }}
+                  </span>
+                  }
+                </div>
+              </div>
+            </div>
+            <span class="icon-svg icon-chevron-down chevron-right-rotate text-muted flex-shrink-0 ms-2"
+              style="width: 12px; height: 12px;"></span>
+          </button>
+        </div>
+        }
+        }
+      </div>
+      }
+
+      <!-- Nivel 2: Analíticas de la Cámara Seleccionada (Componente con Encabezado Grande y Detallado) -->
+      @else if (selectedCamera()) {
+      <div class="camera-hierarchy-detail-card border rounded-4 bg-surface p-4 d-flex flex-column gap-3 shadow-xs">
+
+        <!-- Encabezado Grande y Descriptivo de la Cámara -->
+        <div class="camera-hierarchy-header d-flex flex-column gap-3">
+          <div class="d-flex align-items-center justify-content-between flex-nowrap gap-3">
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden">
+              <!-- Botón de Retroceso a todas las cámaras (sin texto ni contenedor) -->
+              <button type="button"
+                class="btn-hierarchy-back-icon p-0 border-0 bg-transparent text-muted transition-all d-flex align-items-center justify-content-center flex-shrink-0"
+                (click)="goBack()" title="Volver al listado de cámaras" aria-label="Volver">
+                <span class="icon-svg icon-arrow-left"
+                  style="width: 18px; height: 18px; background-color: currentColor;"></span>
+              </button>
+
+              <!-- Dot de estado de la cámara al lado izquierdo, centrado en medio del título y el ID -->
+              <div class="position-relative flex-shrink-0 d-flex align-items-center justify-content-center"
+                style="width: 14px; height: 14px;">
+                <span class="modal-camera-status-dot"
+                  [class]="'modal-camera-status-dot ' + getCameraStatusClass(selectedCamera())"
+                  [title]="'Estado de cámara: ' + getCameraStatusLabel(selectedCamera())"></span>
+              </div>
+
+              <!-- Nombre e ID de la Cámara -->
+              <div class="min-w-0 flex-grow-1 overflow-hidden">
+                <div class="camera-header-name-container min-w-0 w-100">
+                  <h5 class="camera-header-name-text fw-bold mb-0 text-body" [title]="selectedCamera()!.name">
+                    {{ selectedCamera()!.name }}
+                  </h5>
+                </div>
+                <span class="text-muted small font-monospace d-block text-truncate" style="font-size: 0.76rem;">
+                  ID: {{ selectedCamera()!.id }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Badge contador de analíticas a la derecha (fijo, nunca salta de fila) -->
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+              <span class="badge bg-secondary-light text-secondary rounded-pill px-3 py-2 fw-semibold"
+                style="font-size: 0.82rem;">
+                {{ cameraAnalytics().length }} analíticas disponibles
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subtítulo de Sección -->
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted small fw-semibold text-uppercase font-monospace"
+            style="font-size: 0.72rem; letter-spacing: 0.04em;">
+            Analíticas configuradas en la cámara
+          </span>
+          @if (tempSelectedAnalyticId()) {
+          <span class="badge bg-success-subtle text-success rounded-pill small px-2 py-0.5" style="font-size: 0.72rem;">
+            Analítica seleccionada
+          </span>
+          }
+        </div>
+
+        <!-- Tarjetas de Analítica -->
+        <div class="d-flex flex-column gap-3">
+          @if (cameraAnalytics().length === 0) {
+          <div class="text-center py-5 text-muted">
+            <span class="icon-svg icon-activity opacity-40 mb-2 d-block mx-auto"
+              style="width: 32px; height: 32px;"></span>
+            <span class="fw-semibold d-block">Esta cámara no tiene analíticas configuradas con el filtro
+              seleccionado.</span>
+            <span class="small text-muted">Configure una analítica en esta cámara para poder seleccionarla como
+              objetivo.</span>
+          </div>
+          } @else {
+          @for (analytic of cameraAnalytics(); track analytic.id) {
+          @let classesInfo = getAnalyticClassesInfo(analytic);
+          <button type="button"
+            class="analytic-toggle-card w-100 text-start p-3 rounded-3 border bg-surface transition-all d-flex align-items-center justify-content-between gap-3 shadow-xs"
+            [class.active-selected]="tempSelectedAnalyticId() === analytic.id"
+            (click)="toggleAnalyticSelection(analytic.id)">
+
+            <!-- Lado Izquierdo: Dot de Estado + Tipo de Analítica e ID -->
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden">
+              <div class="position-relative flex-shrink-0 d-flex align-items-center justify-content-center"
+                style="width: 14px; height: 14px;">
+                <span class="modal-camera-status-dot" [class.online]="analytic.status === 'active'"
+                  [class.offline]="analytic.status !== 'active'"
+                  [title]="analytic.status === 'active' ? 'Analítica Activa' : 'Analítica Inactiva'"></span>
+              </div>
+
+              <div class="min-w-0 flex-grow-1 overflow-hidden">
+                <span class="fw-bold text-body d-block text-truncate" style="font-size: 0.9rem;">
+                  {{ analytic.type }}
+                </span>
+                <span class="text-muted small font-monospace d-block text-truncate" style="font-size: 0.74rem;">
+                  ID: {{ analytic.id }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Lado Derecho: Listado de clases/objetos con pill +N -->
+            <div class="d-flex align-items-center gap-2 flex-shrink-0 flex-nowrap overflow-hidden ms-2">
+              @if (classesInfo.visible.length === 0) {
+              <span class="text-muted small fst-italic" style="font-size: 0.72rem;">Sin clases</span>
+              } @else {
+              @for (cls of classesInfo.visible; track cls) {
+              <span class="camera-analytic-badge text-truncate" [title]="cls">{{ cls }}</span>
+              }
+              @if (classesInfo.remainingCount > 0) {
+              <span class="camera-analytic-badge camera-analytic-more-badge flex-shrink-0"
+                [title]="'Otras clases: ' + classesInfo.remainingTooltip">
+                +{{ classesInfo.remainingCount }}
+              </span>
+              }
+              }
+            </div>
+          </button>
+          }
+          }
+        </div>
+
+      </div>
+      }
+      }
+
+    </div>
+
+    <!-- Modal Footer Section -->
+    <div class="modal-footer-section p-3 d-flex w-100 gap-3" style="background-color: var(--bg-surface);">
+      <button type="button" class="btn-premium-footer btn-premium-cancel flex-grow-1" (click)="closeSelectModal()">
+        Cancelar
+      </button>
+      <button type="button" class="btn-premium-footer btn-premium-confirm flex-grow-1"
+        [disabled]="!tempSelectedAnalyticId()" (click)="confirmAnalyticSelection()">
+        Confirmar
+      </button>
+    </div>
+  </div>
+</div>
+}

@@ -277,9 +277,9 @@ describe('Usuarios', () => {
   });
 
   it('should toggle filters visibility', () => {
-    expect(component.showFilters()).toBe(false);
-    component.toggleFiltersVisibility();
     expect(component.showFilters()).toBe(true);
+    component.toggleFiltersVisibility();
+    expect(component.showFilters()).toBe(false);
   });
 
   it('should set role filter and close dropdown', () => {
@@ -317,7 +317,6 @@ describe('Usuarios', () => {
   it('should toggle permissions for role editing and save in real-time', () => {
     component.selectRoleForEdit(mockRoles[1]); // INVITADO (rol editable)
     const updateSpy = vi.spyOn(mockPermissionsService, 'updateRolePermissions');
-    const loadRolesSpy = vi.spyOn(mockPermissionsService, 'loadAllRoles');
 
     component.togglePermissionForRole('c3d434da-69ad-4ac1-a62f-ea197bfb4e44');
 
@@ -328,6 +327,5 @@ describe('Usuarios', () => {
       expect.arrayContaining(['c3d434da-69ad-4ac1-a62f-ea197bfb4e44'])
     );
     expect(component.isPermissionSelected('c3d434da-69ad-4ac1-a62f-ea197bfb4e44')).toBe(true);
-    expect(loadRolesSpy).toHaveBeenCalled();
   });
 });

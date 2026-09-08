@@ -1,7 +1,6 @@
 import { Injectable, inject, effect, computed } from '@angular/core';
 import { Subject } from 'rxjs';
 import { AuthService } from './auth.service';
-import { ApiKeyConfig } from '../config/api-key.config';
 import { HttpClient } from '@angular/common/http';
 import { AppEnvironment } from '../config/app-environment';
 
@@ -55,7 +54,8 @@ export class WebsocketConnectionService {
   private buildWsUrl(token: string): string {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    return `${protocol}//${host}/ws/client?token=${token}`;
+    const wsPath = AppEnvironment.wsPath || '/ws/client';
+    return `${protocol}//${host}${wsPath}?token=${token}`;
   }
 
   private connect(): void {

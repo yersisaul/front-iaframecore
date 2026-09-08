@@ -189,6 +189,22 @@ const dbHosts = Array.from({ length: 25 }, (_, i) => {
 const dbCameras = [];
 const dbAnalytics = [];
 const dbSchedules = [];
+const dbDashboards = [
+  {
+    dashboard_id: 'dash-001',
+    nombre: 'OpenSearch Dashboards',
+    url: 'http://192.168.210.20:5601/app/dashboards',
+    descripcion: 'Tablero principal centralizado de métricas y analítica de seguridad',
+    created_at: new Date('2026-03-01T10:00:00Z').toISOString()
+  },
+  {
+    dashboard_id: 'dash-002',
+    nombre: 'Monitoreo de Infraestructura',
+    url: 'http://192.168.210.20:5601/app/discover',
+    descripcion: 'Visualización y trazabilidad de eventos y rendimiento de hosts',
+    created_at: new Date('2026-03-02T12:30:00Z').toISOString()
+  }
+];
 
 dbHosts.forEach((host, i) => {
   const hostFp = host.fingerprint;
@@ -1631,6 +1647,80 @@ const server = http.createServer((req, res) => {
       } else {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ detail: 'Detalle de placa no encontrado' }));
+      }
+      return;
+    }
+
+    // ---- RUTA: GET /frontend/dashboards/ ----
+    if ((pathname === '/frontend/dashboards/' || pathname === '/frontend/dashboards') && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(dbDashboards));
+      return;
+    }
+
+    // ---- RUTA: POST /frontend/dashboards/ ----
+    if ((pathname === '/frontend/dashboards/' || pathname === '/frontend/dashboards') && req.method === 'POST') {
+      const newDash = {
+        dashboard_id: `dash-${Math.random().toString(36).substring(2, 9)}`,
+        nombre: parsedBody.nombre || parsedBody.name || 'Nuevo Dashboard',
+        url: parsedBody.url || '',
+        descripcion: parsedBody.descripcion !== undefined ? parsedBody.descripcion : (parsedBody.description || null),
+        created_at: new Date().toISOString()
+      };
+      dbDashboards.push(newDash);
+      res.writeHead(201, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(newDash));
+      return;
+    }
+
+    // ---- RUTA: GET /frontend/dashboards/{id} ----
+    const getDashMatch = pathname.match(/^\/frontend\/dashboards\/([^\/]+)$/);
+    if (getDashMatch && req.method === 'GET') {
+      const dashId = getDashMatch[1];
+      const dash = dbDashboards.find(d => d.dashboard_id === dashId);
+      if (dash) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(dash));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Dashboard no encontrado' }));
+      }
+      return;
+    }
+
+    // ---- RUTA: PATCH /frontend/dashboards/{id} ----
+    const patchDashMatch = pathname.match(/^\/frontend\/dashboards\/([^\/]+)$/);
+    if (patchDashMatch && req.method === 'PATCH') {
+      const dashId = patchDashMatch[1];
+      const idx = dbDashboards.findIndex(d => d.dashboard_id === dashId);
+      if (idx !== -1) {
+        if (parsedBody.nombre !== undefined) dbDashboards[idx].nombre = parsedBody.nombre;
+        if (parsedBody.name !== undefined) dbDashboards[idx].nombre = parsedBody.name;
+        if (parsedBody.url !== undefined) dbDashboards[idx].url = parsedBody.url;
+        if (parsedBody.descripcion !== undefined) dbDashboards[idx].descripcion = parsedBody.descripcion;
+        if (parsedBody.description !== undefined) dbDashboards[idx].descripcion = parsedBody.description;
+        dbDashboards[idx].updated_at = new Date().toISOString();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(dbDashboards[idx]));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Dashboard no encontrado' }));
+      }
+      return;
+    }
+
+    // ---- RUTA: DELETE /frontend/dashboards/{id} ----
+    const deleteDashMatch = pathname.match(/^\/frontend\/dashboards\/([^\/]+)$/);
+    if (deleteDashMatch && req.method === 'DELETE') {
+      const dashId = deleteDashMatch[1];
+      const idx = dbDashboards.findIndex(d => d.dashboard_id === dashId);
+      if (idx !== -1) {
+        dbDashboards.splice(idx, 1);
+        res.writeHead(204);
+        res.end();
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Dashboard no encontrado' }));
       }
       return;
     }

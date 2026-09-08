@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs';
-import { EventFilters, EventRecord, EventFilterOptions } from '../entities/event.models';
+import { EventFilters, EventRecord, EventFilterOptions, EventSubjectItem } from '../entities/event.models';
 
 export interface EventSearchResult {
   records: EventRecord[];
@@ -14,4 +14,5 @@ export abstract class IEventRepository {
     pageSize: number
   ): Observable<EventSearchResult>;
   abstract getById(docId: string): Observable<EventRecord>;
+  abstract getAvailableSubjects(): Observable<EventSubjectItem[]>;
 }

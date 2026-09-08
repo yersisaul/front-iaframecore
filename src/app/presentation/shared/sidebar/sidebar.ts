@@ -7,6 +7,7 @@ import { SessionControl } from '../session-control/session-control';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { MetadataService } from '../../../core/services/metadata.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
+import { MonitoringStateService } from '../../../core/services/monitoring-state.service';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
@@ -23,6 +24,7 @@ export class Sidebar implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private sidebarService = inject(SidebarService);
   private metadataService = inject(MetadataService);
+  private monitoringStateService = inject(MonitoringStateService);
   private router = inject(Router);
   readonly permissionsService = inject(PermissionsService);
 
@@ -30,6 +32,7 @@ export class Sidebar implements OnInit, OnDestroy {
   readonly environment = AppEnvironment;
   readonly isCollapsed = this.sidebarService.isCollapsed;
   readonly availableIndices = this.metadataService.availableIndices;
+  readonly unseenMonitoringEventsCount = this.monitoringStateService.unseenEventsCount;
 
   readonly isMetadataOpen = signal(false);
   readonly isListasOpen = signal(false);

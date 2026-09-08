@@ -1,4 +1,5 @@
-<div class="monitoreo-view-container container-fluid py-4 position-relative h-100 min-h-0 d-flex flex-column">
+<div class="monitoreo-view-container container-fluid pt-4 pb-2 position-relative h-100 min-h-0 d-flex flex-column"
+  [class.zen-mode-active]="isZenMode()">
   <!-- HEADER REFACTORIZADO DRY -->
   <app-page-header title="Monitoreo de camaras" subtitle="Monitoreo de camaras y eventos en tiempo real">
     <ng-container header-actions>
@@ -16,7 +17,8 @@
         </button>
       </div>
 
-      <button class="btn-manage-cameras d-flex align-items-center gap-2" (click)="openSelectionModal(null, null)">
+      <button class="btn-manage-cameras d-flex align-items-center gap-2"
+        (click)="openSelectionModal(null, null, 'general')">
         <span class="icon-svg icon-camara" style="width: 14px; height: 14px; background-color: currentColor;"></span>
         Gestionar Cámaras
       </button>
@@ -65,7 +67,20 @@
       <div class="monitoring-grid-container flex-grow-1 position-relative" [class.canvas-viewport]="isCanvasMode()"
         (mousedown)="onCanvasMouseDown($event); resetCanvasActivityTimer()"
         (wheel)="onCanvasWheel($event); resetCanvasActivityTimer()" (contextmenu)="onCanvasContextMenu($event)"
-        (mousemove)="resetCanvasActivityTimer()" (mouseleave)="resetCanvasActivityTimer(2500)">
+        (mousemove)="handleZenTopMouseMove($event); resetCanvasActivityTimer()"
+        (mouseleave)="resetCanvasActivityTimer(2500)">
+
+        <!-- Barra Atmosférica Sutil de Modo Zen en el Lienzo (Solo Informativa, Sin Bloqueo de Clics) -->
+        @if (isZenMode()) {
+        <div class="zen-canvas-ambient-topbar" [class.visible]="isZenHintVisible()" role="status" aria-live="polite">
+          <div class="zen-topbar-content d-flex align-items-center gap-2">
+            <span class="zen-ambient-dot"></span>
+            <span class="zen-topbar-text">
+              Modo Zen activo &middot; Presione <kbd>ESC</kbd> para salir
+            </span>
+          </div>
+        </div>
+        }
 
         <!-- Recuadro de Selección Flotante (Marquee Selection) -->
         @if (isBoxSelecting() && selectionBox(); as box) {
@@ -75,12 +90,12 @@
         }
 
         <!-- Contenedor del Lienzo Transformable -->
-        <div class="monitoring-grid-canvas-wrapper"
+        <div class="monitoring-grid-canvas-wrapper" [class.is-animating-canvas]="isCanvasAnimating()"
           [style.transform]="isCanvasMode() ? ('translate(' + canvasPanX() + 'px, ' + canvasPanY() + 'px) scale(' + canvasZoom() + ')') : 'none'"
           [style.transformOrigin]="'0 0'" [style.width]="isCanvasMode() ? (getCanvasDimensions().width + 'px') : '100%'"
           [style.height]="isCanvasMode() ? (getCanvasDimensions().height + 'px') : '100%'"
-          [style.gridTemplateColumns]="isCanvasMode() ? (((draggingSlotId() !== null || isGridFullyOccupied()) && !isCanvasPinned()) ? ('repeat(' + cols() + ', ' + getCellDimensions().cellW + 'px) ' + getExtenderDimensions().width + 'px') : ('repeat(' + cols() + ', ' + getCellDimensions().cellW + 'px)')) : (draggingSlotId() !== null ? ('repeat(' + cols() + ', minmax(0, 1fr)) ' + getExtenderDimensions().width + 'px') : 'repeat(' + cols() + ', minmax(0, 1fr))')"
-          [style.gridTemplateRows]="isCanvasMode() ? (((draggingSlotId() !== null || isGridFullyOccupied()) && !isCanvasPinned()) ? ('repeat(' + rows() + ', ' + getCellDimensions().cellH + 'px) ' + getExtenderDimensions().height + 'px') : ('repeat(' + rows() + ', ' + getCellDimensions().cellH + 'px)')) : (draggingSlotId() !== null ? ('repeat(' + rows() + ', minmax(0, 1fr)) ' + getExtenderDimensions().height + 'px') : 'repeat(' + rows() + ', minmax(0, 1fr))')">
+          [style.gridTemplateColumns]="isCanvasMode() ? ('repeat(' + cols() + ', ' + getCellDimensions().cellW + 'px)' + (!isCanvasPinned() && activeHoveredExpander() !== 'column' && activeHoveredExpander() !== 'both' ? (' ' + getExtenderDimensions().width + 'px') : '')) : ('repeat(' + cols() + ', minmax(0, 1fr))')"
+          [style.gridTemplateRows]="isCanvasMode() ? ('repeat(' + rows() + ', ' + getCellDimensions().cellH + 'px)' + (!isCanvasPinned() && activeHoveredExpander() !== 'row' && activeHoveredExpander() !== 'both' ? (' ' + getExtenderDimensions().height + 'px') : '')) : ('repeat(' + rows() + ', minmax(0, 1fr))')">
 
           <!-- Renderizado de Slots del Grid (Activos y Vacíos Internos) -->
           @for (slot of visibleGridSlots(); track slot.id; let idx = $index) {
@@ -91,7 +106,7 @@
             [class.selected-slot-async]="!isSyncMode() && selectedCanvasSlotIds().has(slot.id)"
             [class.slot-dimmed]="isSlotDimmed(slot)"
             [class.highlighted-alert]="!slot.isEmpty && slot.camera && highlightedCellCameraName() === slot.camera.name"
-            [class.dragging-placeholder]="draggingSlotId() === slot.id"
+            [class.dragging-placeholder]="draggingSlotId() === slot.id || (isGroupDragging() && selectedCanvasSlotIds().has(slot.id))"
             [class.swap-pulse]="swapPulseSlotId() === slot.id" [style.--span-scale-val]="getClampedSpan(slot.spanX)"
             [style.gridColumn]="slot.col + ' / span ' + slot.spanX" [style.gridRow]="slot.row + ' / span ' + slot.spanY"
             [attr.data-type]="slot.isEmpty ? 'empty' : 'card'" [attr.data-id]="slot.id" [attr.data-col]="slot.col"
@@ -102,7 +117,7 @@
             @if (slot.isEmpty) {
             <!-- Celda Vacía -->
             <div class="empty-slot-content d-flex flex-column align-items-center justify-content-center h-100 w-100"
-              (click)="openSelectionModal(slot.col, slot.row)">
+              (click)="openSelectionModal(slot.col, slot.row, 'slot')">
               <button class="btn-add-camera shadow-lg d-flex align-items-center justify-content-center mb-1">
                 <span class="icon-svg icon-plus"></span>
               </button>
@@ -117,18 +132,10 @@
                   <span class="status-dot-pulse me-2"
                     [class]="'status-dot-pulse me-2 ' + getCameraStatusClass(slot.camera)"
                     [title]="getCameraStatusLabel(slot.camera)"></span>
-                  <span class="slot-camera-name fw-bold text-truncate" [title]="slot.camera?.name">{{ slot.camera?.name
-                    }}</span>
+                  <div class="slot-camera-name-container min-w-0 flex-grow-1">
+                    <span class="slot-camera-name fw-bold" [title]="slot.camera?.name">{{ slot.camera?.name }}</span>
+                  </div>
                 </div>
-
-                @if (slot.camera && isSlotShowingEventPhoto(slot)) {
-                @let targetEvt = getDisplayedEventForSlot(slot);
-                @if (targetEvt && targetEvt.timestamp) {
-                <div class="canvas-slot-time-top-right">
-                  <span>{{ formatDatePart(targetEvt.timestamp) }} • {{ formatTimePart(targetEvt.timestamp) }}</span>
-                </div>
-                }
-                }
               </div>
 
               <!-- Feed / Imagen del último evento o Video en Tiempo Real -->
@@ -165,7 +172,7 @@
                   class="slot-event-img object-fit-contain w-100 h-100 position-absolute top-0 start-0"
                   style="z-index: 7;" [class.feed-paused-grayscale]="isFeedPaused(slot.camera.name)" alt=""
                   draggable="false" />
-                } @else if (webRtcStates()[slot.id] === 'connecting' || isLoadingEvents()) {
+                } @else if (webRtcStates()[slot.id] === 'connecting') {
                 <!-- Placeholder Conectando Cámara (Mientras se efectúa la consulta/conexión) -->
                 <div class="waiting-event-placeholder d-flex flex-column align-items-center justify-content-center">
                   <div class="placeholder-wave-container mb-2">
@@ -212,6 +219,13 @@
                     <span class="vms-analytic-chip__text">{{ getAnalyticLabel(analyticType) }}</span>
                   </span>
                 </div>
+
+                <!-- Fecha y Hora del Evento abajo a la derecha -->
+                @if (targetEvt && targetEvt.timestamp) {
+                <span class="canvas-slot-time-bottom-right">
+                  {{ formatDatePart(targetEvt.timestamp) }} • {{ formatTimePart(targetEvt.timestamp) }}
+                </span>
+                }
                 }
 
                 <!-- BARRA DE CONTROLES VERTICAL EN HOVER (Premium Action Dock) -->
@@ -253,14 +267,23 @@
           </div>
           }
 
+          <!-- Recuadros Fantasma de Aterrizaje Celda por Celda (Ghost Drop Highlights) -->
+          @for (dt of draggingDropTargets(); track $index) {
+          <div class="canvas-drop-ghost-highlight" [style.gridColumn]="dt.col + ' / span ' + dt.spanX"
+            [style.gridRow]="dt.row + ' / span ' + dt.spanY" [class.drop-invalid]="!dt.isValid">
+          </div>
+          }
+
           <!-- expandedores de bordes (Drop Targets para agregar columnas/filas) -->
           <!-- Vertical: Lado derecho -->
-          @if ((draggingSlotId() !== null || isGridFullyOccupied()) && !isCanvasPinned()) {
+          @if (isCanvasMode() && !isCanvasPinned() && activeHoveredExpander() !== 'column' && activeHoveredExpander()
+          !== 'both') {
           @let extDim = getExtenderDimensions();
           <div class="grid-cell-placeholder-vertical d-flex align-items-center justify-content-center"
             [class.hover-active]="activeHoveredExpander() === 'column'" [style.gridColumn]="(cols() + 1) + ' / span 1'"
             [style.gridRow]="'1 / span ' + rows()" data-type="vertical-expander"
-            (click)="openSelectionModal(cols() + 1, 1)" title="Arrastre una cámara aquí para añadir una columna">
+            (click)="openSelectionModal(cols() + 1, 1, 'add-column')"
+            title="Arrastre una cámara aquí para añadir una columna">
             <div class="expander-content d-flex flex-column align-items-center text-muted">
               <span class="icon-svg icon-plus mb-1" [style.width.px]="extDim.iconSize"
                 [style.height.px]="extDim.iconSize" style="background-color: currentColor;"></span>
@@ -270,12 +293,14 @@
           }
 
           <!-- Horizontal: Lado inferior -->
-          @if ((draggingSlotId() !== null || isGridFullyOccupied()) && !isCanvasPinned()) {
+          @if (isCanvasMode() && !isCanvasPinned() && activeHoveredExpander() !== 'row' && activeHoveredExpander() !==
+          'both') {
           @let extDim = getExtenderDimensions();
           <div class="grid-cell-placeholder-wide d-flex align-items-center justify-content-center"
             [class.hover-active]="activeHoveredExpander() === 'row'" [style.gridColumn]="'1 / span ' + cols()"
             [style.gridRow]="(rows() + 1) + ' / span 1'" data-type="horizontal-expander"
-            (click)="openSelectionModal(1, rows() + 1)" title="Arrastre una cámara aquí para añadir una fila">
+            (click)="openSelectionModal(1, rows() + 1, 'add-row')"
+            title="Arrastre una cámara aquí para añadir una fila">
             <div class="expander-content d-flex align-items-center text-muted gap-1">
               <span class="icon-svg icon-plus" [style.width.px]="extDim.iconSize" [style.height.px]="extDim.iconSize"
                 style="background-color: currentColor;"></span>
@@ -312,22 +337,89 @@
             </button>
           </div>
 
-          <!-- Restablecer, Minimapa Toggle y Sincronización -->
-          <div class="dock-divider-group d-flex gap-2">
-            <button class="btn-canvas-text-action" (click)="resetCanvas()"
-              title="Restablecer Vista (Centrar)">Centrar</button>
-            <button class="btn-canvas-text-action" [class.active]="isCanvasPinned()"
-              (click)="isCanvasPinned.set(!isCanvasPinned())" title="Fijar lienzo (Bloquear movimiento)">
-              {{ isCanvasPinned() ? 'FIJADO' : 'FIJAR' }}
-            </button>
-            <button class="btn-canvas-text-action" [class.active]="showMinimap()"
-              (click)="showMinimap.set(!showMinimap())" title="Mapa de Navegación">Mapa</button>
+          <!-- Módulo de Modo & Menú Lienzo -->
+          <div class="dock-divider-group d-flex align-items-center gap-2">
             <!-- Botón SYNC / ASYNC -->
             <button class="btn-canvas-text-action btn-sync-pill" [class.active-sync]="isSyncMode()"
               [class.active-async]="!isSyncMode()" (click)="toggleSyncMode()"
               [title]="isSyncMode() ? 'Modo Sincronizado: Selección filtra panel/timeline, lienzo sincronizado' : 'Modo Asíncrono: Selección controla cámaras de forma independiente'">
               {{ isSyncMode() ? 'SYNC' : 'ASYNC' }}
             </button>
+
+            <!-- Botón Dropup 'Lienzo ▾' Unificado -->
+            <div class="canvas-menu-dropdown-wrapper position-relative">
+              <button class="btn-canvas-text-action btn-canvas-menu-trigger d-flex align-items-center gap-1"
+                [class.active]="showCanvasMenuDropdown() || isCanvasPinned() || showMinimap() || isZenMode()"
+                (click)="toggleCanvasMenuDropdown($event)" title="Opciones y herramientas del lienzo">
+                <span>Lienzo</span>
+                <span class="icon-svg icon-chevron-down canvas-menu-chevron transition-all"
+                  [class.rotated]="showCanvasMenuDropdown()" style="width: 8px; height: 8px;"></span>
+              </button>
+
+              @if (showCanvasMenuDropdown()) {
+              <div class="canvas-menu-dropdown-panel p-2 shadow-lg" (click)="$event.stopPropagation()">
+                <!-- Acción: Compactar -->
+                <button type="button" class="canvas-menu-item d-flex align-items-center justify-content-between w-100"
+                  (click)="autoPackGrid(); closeCanvasMenuDropdown()"
+                  title="Reorganiza en cuadrícula óptima sin huecos">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="icon-svg icon-compact" style="width: 13px; height: 13px;"></span>
+                    <span>Compactar cuadrícula</span>
+                  </div>
+                </button>
+
+                <!-- Acción: Centrar Vista -->
+                <button type="button" class="canvas-menu-item d-flex align-items-center justify-content-between w-100"
+                  (click)="resetCanvas(); closeCanvasMenuDropdown()" title="Reencuadra el lienzo al centro">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="icon-svg icon-center" style="width: 13px; height: 13px;"></span>
+                    <span>Centrar vista</span>
+                  </div>
+                </button>
+
+                <div class="canvas-menu-divider my-1"></div>
+
+                <!-- Toggle: Fijar Lienzo -->
+                <button type="button" class="canvas-menu-item d-flex align-items-center justify-content-between w-100"
+                  [class.active-toggle]="isCanvasPinned()" (click)="isCanvasPinned.set(!isCanvasPinned())"
+                  title="Bloquear movimiento y paneo">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="icon-svg icon-lock" style="width: 13px; height: 13px;"></span>
+                    <span>Fijar lienzo</span>
+                  </div>
+                  <span class="canvas-menu-badge" [class.badge-active]="isCanvasPinned()">
+                    {{ isCanvasPinned() ? 'ON' : 'OFF' }}
+                  </span>
+                </button>
+
+                <!-- Toggle: Minimapa -->
+                <button type="button" class="canvas-menu-item d-flex align-items-center justify-content-between w-100"
+                  [class.active-toggle]="showMinimap()" (click)="showMinimap.set(!showMinimap())"
+                  title="Mapa de navegación en miniatura">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="icon-svg icon-map" style="width: 13px; height: 13px;"></span>
+                    <span>Minimapa</span>
+                  </div>
+                  <span class="canvas-menu-badge" [class.badge-active]="showMinimap()">
+                    {{ showMinimap() ? 'ON' : 'OFF' }}
+                  </span>
+                </button>
+
+                <!-- Toggle: Modo Zen (Muro Inmersivo) -->
+                <button type="button" class="canvas-menu-item d-flex align-items-center justify-content-between w-100"
+                  [class.active-toggle]="isZenMode()" (click)="toggleZenMode()"
+                  title="Pantalla completa inmersiva para videowalls">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="icon-svg icon-zen" style="width: 13px; height: 13px;"></span>
+                    <span>Modo Zen</span>
+                  </div>
+                  <span class="canvas-menu-badge" [class.badge-active]="isZenMode()">
+                    {{ isZenMode() ? 'ON' : 'OFF' }}
+                  </span>
+                </button>
+              </div>
+              }
+            </div>
           </div>
         </div>
         }
@@ -361,12 +453,11 @@
       <!-- =========================================================================
            LÍNEA DE TIEMPO / TIMELINE CONTROLS
            ========================================================================= -->
-      <div class="timeline-player-card card border-0 position-relative px-2 pb-3 pt-4"
-        (contextmenu)="$event.preventDefault()">
-        <div class="d-flex flex-column gap-1">
+      <div class="timeline-player-card card border-0 position-relative" (contextmenu)="$event.preventDefault()">
+        <div class="d-flex flex-column gap-0.5">
 
           <!-- Fila 1: Pista de Tiempo & Regla Scrolleable y Arrastrable con Ratón -->
-          <div class="timeline-slider-wrapper position-relative p-2 mt-1" [class.is-dragging]="isDraggingTimeline()"
+          <div class="timeline-slider-wrapper position-relative" [class.is-dragging]="isDraggingTimeline()"
             [class.is-seeking]="isSeekingNeedle()" (mousedown)="onTimelineMouseDown($event)"
             (wheel)="onTimelineWheel($event)" (mousemove)="onTimelineMouseMove($event)"
             (mouseleave)="onTimelineMouseLeave()" (contextmenu)="$event.preventDefault()">
@@ -429,7 +520,8 @@
           </div>
 
           <!-- Fila 2: Consola de Mandos VMS Dinámica (Centro Fijado Absoluto) -->
-          <div class="d-flex align-items-center justify-content-between position-relative pt-2">
+          <div
+            class="timeline-controls-row d-flex align-items-center justify-content-between position-relative pt-1.5 pb-1">
             <!-- Bloque 1 (Izquierda): Horario (HH:MM:SS) + Badge EN VIVO a su Derecha -->
             <div class="d-flex align-items-center gap-2">
               <div class="vms-time-dock d-flex align-items-center">
@@ -460,24 +552,24 @@
               </div>
             </div>
 
-            <!-- Bloque 2 (Centro Fijado Absoluto): Cápsula de Transporte VMS Inamovible -->
-            <div class="vms-transport-dock d-flex align-items-center justify-content-center">
-              <button class="vms-dock-btn" (click)="backwardEvent()" title="Evento Anterior">
-                <span class="icon-svg icon-chevron-left" style="width: 18px; height: 18px;"></span>
+            <!-- Bloque 2 (Centro Fijado Absoluto): Cápsula de Transporte Unificada -->
+            <div class="vms-transport-dock d-flex align-items-center">
+              <button class="vms-transport-btn" (click)="backwardEvent()" title="Evento Anterior">
+                <span class="icon-svg icon-chevron-left vms-transport-icon"></span>
               </button>
 
-              <button class="vms-dock-play" (click)="togglePlayPause()"
+              <button class="vms-transport-btn vms-transport-play-btn" (click)="togglePlayPause()"
                 [title]="paused() ? 'Reanudar' : 'Pausar reproductor'">
                 @if (paused()) {
-                <span class="icon-svg icon-play-simple" style="width: 18px; height: 18px;"></span>
+                <span class="icon-svg icon-play-simple vms-transport-icon"></span>
                 } @else {
-                <span class="icon-svg icon-pause-simple" style="width: 18px; height: 18px;"></span>
+                <span class="icon-svg icon-pause-simple vms-transport-icon"></span>
                 }
               </button>
 
-              <button class="vms-dock-btn" [disabled]="playbackMode() === 'live'" (click)="forwardEvent()"
+              <button class="vms-transport-btn" [disabled]="playbackMode() === 'live'" (click)="forwardEvent()"
                 title="Siguiente Evento">
-                <span class="icon-svg icon-chevron-right" style="width: 18px; height: 18px;"></span>
+                <span class="icon-svg icon-chevron-right vms-transport-icon"></span>
               </button>
             </div>
 
@@ -555,7 +647,7 @@
               <!-- Listado de tarjetas de eventos -->
               <div class="d-flex flex-column gap-2 flex-grow-1 overflow-y-auto list-eventos-sidebar pe-1"
                 (scroll)="onSidebarScroll($event)">
-                @if (isLoadingEvents()) {
+                @if (isLoadingEvents() && filteredEvents().length === 0) {
                 <div class="text-center py-4">
                   <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
                 </div>
@@ -720,9 +812,6 @@
         <p class="text-muted small mb-0">Active o desactive las cámaras del sistema para distribuirlas en la cuadrícula.
         </p>
       </div>
-      <button class="btn-close-premium" (click)="showModal.set(false)" aria-label="Cerrar modal">
-        <span class="icon-svg icon-close" style="width: 16px; height: 16px;"></span>
-      </button>
     </div>
 
     <!-- Modal Controls Area: Centered, containing Tabs and Search/Filters -->
@@ -746,11 +835,39 @@
           <input #modalSearchInput type="text" placeholder="Buscar por cámara, nodo o tipo..."
             class="modal-search-input" (input)="modalSearchQuery.set(modalSearchInput.value)" />
         </div>
+        <!-- Filtro por Tipo de Analítica (a la izquierda del filtro de estado de cámara) -->
+        <div class="filter-dropdown-wrapper position-relative flex-shrink-0">
+          <button type="button" class="modal-filter-pill d-flex align-items-center gap-2"
+            [class.active]="modalTypeFilter() !== 'all'" (click)="toggleModalTypeDropdown($event)">
+            <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
+            <span>Tipo: {{ modalTypeFilter() === 'all' ? 'Todos' : modalTypeFilter() }}</span>
+            <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+              [class.rotated]="showModalTypeDropdown()" style="width: 10px; height: 10px;"></span>
+          </button>
+          @if (showModalTypeDropdown()) {
+          <div class="modal-filter-dropdown-menu p-2 show position-absolute end-0 mt-1 shadow-sm"
+            style="z-index: 1060; min-width: 190px;" (click)="$event.stopPropagation()">
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+              [class.active]="modalTypeFilter() === 'all'" (click)="selectModalType('all', $event)">
+              Todos los Tipos
+            </button>
+            @for (tp of modalTypeOptions(); track tp) {
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+              [class.active]="modalTypeFilter().toLowerCase() === tp.toLowerCase()"
+              (click)="selectModalType(tp, $event)">
+              {{ tp }}
+            </button>
+            }
+          </div>
+          }
+        </div>
+
         <!-- Dropdown con Chevrón en formato Pill Redonda de Estado de Cámara -->
         <div class="filter-dropdown-wrapper position-relative flex-shrink-0">
           <button type="button" class="modal-filter-pill d-flex align-items-center gap-2"
             [class.active]="modalStatusFilter() !== 'all'" (click)="toggleModalStatusDropdown($event)">
-            <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
+            <span class="modal-camera-status-dot"
+              [class]="getStatusCssClass(modalStatusFilter())"></span>
             <span>
               Estado: {{ modalStatusFilter() === 'all' ? 'Todos' : getStatusFilterLabel(modalStatusFilter()) }}
             </span>
@@ -760,9 +877,10 @@
           @if (showModalStatusDropdown()) {
           <div class="modal-filter-dropdown-menu p-2 show position-absolute end-0 mt-1 shadow-sm"
             style="z-index: 1060; min-width: 190px;" (click)="$event.stopPropagation()">
-            <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center gap-2"
               [class.active]="modalStatusFilter() === 'all'" (click)="selectModalStatus('all', $event)">
-              Todos los Estados
+              <span class="status-dot all"></span>
+              <span>Todos los Estados</span>
             </button>
             @for (st of modalStatusOptions(); track st) {
             <button type="button" class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center gap-2"
@@ -775,6 +893,18 @@
           </div>
           }
         </div>
+
+        <!-- Botón de Alternancia de Ordenamiento A-Z / Z-A -->
+        <button type="button"
+          class="btn btn-sort-toggle d-flex align-items-center gap-2 shadow-sm rounded-pill border px-3 py-1.5 flex-shrink-0"
+          (click)="toggleModalSortDirection()"
+          [title]="modalSortDirection() === 'asc' ? 'Orden actual: (A → Z) · Clic para cambiar a (Z → A)' : 'Orden actual: (Z → A) · Clic para cambiar a (A → Z)'"
+          aria-label="Alternar orden alfabético">
+          <span class="sort-icon-letters font-monospace fw-bold">{{ modalSortDirection() === 'asc' ? 'A→Z' : 'Z→A'
+            }}</span>
+          <span class="icon-svg sort-arrow-icon" [class.icon-arrow-up]="modalSortDirection() === 'asc'"
+            [class.icon-arrow-down]="modalSortDirection() === 'desc'"></span>
+        </button>
       </div>
     </div>
 
@@ -788,28 +918,32 @@
         <span class="text-muted text-center py-5 d-block">Sin nodos coincidentes.</span>
         } @else {
         @for (nodeGroup of filteredNodeGroupsForModal(); track nodeGroup.host.fingerprint) {
-        <div class="node-group-container border rounded-3 overflow-hidden" style="background-color: var(--bg-surface);">
+        <div class="node-group-container border rounded-3 overflow-hidden transition-all"
+          [class.os-ubuntu]="isLinuxHost(nodeGroup.host)"
+          [class.os-windows]="isWindowsHost(nodeGroup.host)"
+          [class.os-standard]="!isLinuxHost(nodeGroup.host) && !isWindowsHost(nodeGroup.host)"
+          style="background-color: var(--bg-surface);">
           <!-- Encabezado del Nodo (Gatillo) -->
           <div
             class="node-group-header p-3 d-flex justify-content-between align-items-center cursor-pointer select-none"
             (click)="toggleNodeCollapse(nodeGroup.host.fingerprint)">
-            <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-fill me-3">
               <!-- Checkbox del Nodo (Selección Total/Parcial) -->
               @if (nodeGroup.cameras.length > 0) {
-              <span class="custom-chk-indicator" [class.checked]="areAllNodeCamerasSelected(nodeGroup.cameras)"
+              <span class="custom-chk-indicator flex-shrink-0" [class.checked]="areAllNodeCamerasSelected(nodeGroup.cameras)"
                 [class.indeterminate]="someNodeCamerasSelected(nodeGroup.cameras)"
                 (click)="selectAllCamerasInNode(nodeGroup.cameras, $event)">
               </span>
               }
-              <span class="icon-svg icon-server text-primary" style="width: 18px; height: 18px;"></span>
-              <div>
-                <span class="fw-bold text-body d-block" style="font-size: 0.9rem;">{{ nodeGroup.host.hostname || 'Host'
+              <span class="icon-svg node-os-icon flex-shrink-0" [class]="getHostOsIcon(nodeGroup.host)" style="width: 22px; height: 22px;"></span>
+              <div class="min-w-0 flex-fill">
+                <span class="fw-bold text-body d-block text-truncate" style="font-size: 0.9rem;">{{ nodeGroup.host.hostname || 'Host'
                   }}</span>
-                <span class="text-muted small d-block font-monospace" style="font-size: 0.72rem;">{{
-                  nodeGroup.host.fingerprint.slice(0, 15) }}...</span>
+                <span class="text-muted small d-block font-monospace text-truncate" style="font-size: 0.72rem;">{{
+                  nodeGroup.host.fingerprint }}</span>
               </div>
             </div>
-            <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-3 flex-shrink-0">
               <span class="badge bg-secondary-light text-secondary">{{ nodeGroup.cameras.length }} cámaras</span>
               <span class="icon-svg icon-chevron-down transition-all" style="width: 12px; height: 12px;"
                 [class.rotated]="expandedNodes().has(nodeGroup.host.fingerprint)"></span>
@@ -913,9 +1047,13 @@
 
     <!-- Modal Footer Section -->
     <div class="modal-footer-section p-3 d-flex w-100 gap-3" style="background-color: var(--bg-surface);">
-      <button class="btn-premium-footer btn-premium-cancel flex-grow-1" (click)="showModal.set(false)">Cancelar</button>
-      <button class="btn-premium-footer btn-premium-confirm flex-grow-1"
-        (click)="confirmCameraSelection()">Confirmar</button>
+      <button type="button" class="btn-premium-footer btn-premium-cancel flex-grow-1" (click)="showModal.set(false)">
+        Cancelar
+      </button>
+      <button type="button" class="btn-premium-footer btn-premium-confirm flex-grow-1"
+        (click)="confirmCameraSelection()">
+        Confirmar
+      </button>
     </div>
   </div>
 </div>

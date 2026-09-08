@@ -7,6 +7,7 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 import { EventService } from '../../../core/services/event.service';
+import { CameraService } from '../../../core/services/camera.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { EventFilters, EventRecord, defaultEventFilters } from '../../../core/domain/entities/event.models';
@@ -19,6 +20,9 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
 import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
+import { ListService } from '../../../core/services/list.service';
+import { IEventRepository } from '../../../core/domain/repositories/event.repository';
+import { EventSubjectItem } from '../../../core/domain/entities/event.models';
 
 @Component({
   selector: 'app-eventos',
@@ -31,6 +35,9 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private eventService = inject(EventService);
+  private eventRepository = inject(IEventRepository);
+  private cameraService = inject(CameraService);
+  private listService = inject(ListService);
   private sidebarService = inject(SidebarService);
   private permissionsService = inject(PermissionsService);
   private destroyRef = inject(DestroyRef);
@@ -67,13 +74,232 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
 
   readonly filteredCamarasOptions = computed(() => {
     const q = this.cameraSearch().trim().toLowerCase();
-    const all = this.filterOptions().camaras;
+    const systemCameras = this.cameraService.cameras().map((c: any) => c.name).filter(Boolean);
+    const eventCameras = this.filterOptions().camaras || [];
+    const tempCameras = this.tempFilters()?.camaras || [];
+    const all = Array.from(new Set([...systemCameras, ...eventCameras, ...tempCameras])).filter(Boolean).sort();
     return q ? all.filter((c: string) => c.toLowerCase().includes(q)) : all;
+  });
+
+  // Búsqueda interna del dropdown de listas de control
+  readonly listaSearch = signal<string>('');
+
+  private isFaceList(listType: string): boolean {
+    const t = (listType || '').toLowerCase().trim();
+    return t === 'face_recognition' || t === 'rf' || t.includes('face') || t.includes('facial') || t.includes('rostro');
+  }
+
+  private isPlateList(listType: string): boolean {
+    const t = (listType || '').toLowerCase().trim();
+    return t === 'plate_recognition' || t === 'lpr' || t.includes('plate') || t.includes('placa') || t.includes('vehic');
+  }
+
+  private isFaceAnalytic(analytic: string): boolean {
+    const a = (analytic || '').toLowerCase().trim();
+    return a.includes('facial') || a.includes('rostro') || a.includes('face') || a.includes('rf');
+  }
+
+  private isPlateAnalytic(analytic: string): boolean {
+    const a = (analytic || '').toLowerCase().trim();
+    return a.includes('placa') || a.includes('plate') || a.includes('lpr') || a.includes('vehic');
+  }
+
+  private getListTypeMap(): Map<string, 'face' | 'plate' | 'unknown'> {
+    const map = new Map<string, 'face' | 'plate' | 'unknown'>();
+
+    // 1. De las listas registradas en backend (ListService)
+    for (const l of this.listService.lists()) {
+      if (l.name) {
+        const lowerName = l.name.trim().toLowerCase();
+        if (this.isFaceList(l.list_type)) {
+          map.set(lowerName, 'face');
+        } else if (this.isPlateList(l.list_type)) {
+          map.set(lowerName, 'plate');
+        } else {
+          map.set(lowerName, 'unknown');
+        }
+      }
+    }
+
+    // 2. Inferir de los registros en memoria para listas no registradas en ListService
+    for (const r of this.records()) {
+      const listName = r.matchDetail?.listName || r.grupoLista;
+      if (listName) {
+        const lowerName = listName.trim().toLowerCase();
+        if (!map.has(lowerName) || map.get(lowerName) === 'unknown') {
+          if (this.isFaceAnalytic(r.analitica)) {
+            map.set(lowerName, 'face');
+          } else if (this.isPlateAnalytic(r.analitica)) {
+            map.set(lowerName, 'plate');
+          }
+        }
+      }
+    }
+
+    return map;
+  }
+
+  private getAllowedListNames(selectedAnalytics: string[]): Set<string> | null {
+    if (!selectedAnalytics || selectedAnalytics.length === 0) {
+      return null;
+    }
+
+    const hasFace = selectedAnalytics.some(a => this.isFaceAnalytic(a));
+    const hasPlate = selectedAnalytics.some(a => this.isPlateAnalytic(a));
+
+    if (!hasFace && !hasPlate) {
+      return new Set<string>();
+    }
+
+    const listTypeMap = this.getListTypeMap();
+    const allowed = new Set<string>();
+
+    for (const [nameLower, type] of listTypeMap.entries()) {
+      if (hasFace && hasPlate) {
+        if (type === 'face' || type === 'plate') {
+          allowed.add(nameLower);
+        }
+      } else if (hasFace) {
+        if (type === 'face') {
+          allowed.add(nameLower);
+        }
+      } else if (hasPlate) {
+        if (type === 'plate') {
+          allowed.add(nameLower);
+        }
+      }
+    }
+
+    return allowed;
+  }
+
+  readonly filteredListasOptions = computed(() => {
+    const q = this.listaSearch().trim().toLowerCase();
+    const selectedAnalytics = this.tempFilters()?.analiticas || [];
+
+    const hasFaceAnalytic = selectedAnalytics.some(a => this.isFaceAnalytic(a));
+    const hasPlateAnalytic = selectedAnalytics.some(a => this.isPlateAnalytic(a));
+    const hasAnyAnalytic = selectedAnalytics.length > 0;
+
+    const listTypeMap = this.getListTypeMap();
+
+    // Colección de todas las listas disponibles
+    const allListNames = Array.from(new Set([
+      ...this.listService.lists().map(l => l.name),
+      ...(this.filterOptions().listas || []),
+      ...this.records().map(r => r.matchDetail?.listName || r.grupoLista).filter(Boolean) as string[],
+      ...(this.tempFilters()?.listas || [])
+    ])).filter(Boolean);
+
+    let matchedLists: string[];
+
+    if (!hasAnyAnalytic) {
+      // Sin filtro de analítica: mostrar todas las listas
+      matchedLists = allListNames;
+    } else if (hasFaceAnalytic && hasPlateAnalytic) {
+      // Filtrar listas que correspondan a rostro o placas
+      matchedLists = allListNames.filter(name => {
+        const type = listTypeMap.get(name.trim().toLowerCase());
+        return type === 'face' || type === 'plate' || type === undefined;
+      });
+    } else if (hasFaceAnalytic) {
+      // Sólo listas de reconocimiento facial
+      matchedLists = allListNames.filter(name => {
+        const type = listTypeMap.get(name.trim().toLowerCase());
+        return type === 'face';
+      });
+    } else if (hasPlateAnalytic) {
+      // Sólo listas de reconocimiento de placas
+      matchedLists = allListNames.filter(name => {
+        const type = listTypeMap.get(name.trim().toLowerCase());
+        return type === 'plate';
+      });
+    } else {
+      // Analítica seleccionada no opera con listas de control
+      matchedLists = [];
+    }
+
+    const sorted = Array.from(new Set(matchedLists)).sort();
+    return q ? sorted.filter(l => l.toLowerCase().includes(q)) : sorted;
+  });
+
+  // Búsqueda interna del dropdown de sujetos (listas detalle)
+  readonly sujetoSearch = signal<string>('');
+  readonly registeredSubjects = signal<EventSubjectItem[]>([]);
+
+  readonly filteredSujetosOptions = computed(() => {
+    const q = this.sujetoSearch().trim().toLowerCase();
+    const selectedLists = this.tempFilters()?.listas || [];
+    const selectedAnalytics = this.tempFilters()?.analiticas || [];
+    const systemSubjects = this.registeredSubjects();
+
+    // Extraer también de los eventos cargados en memoria
+    const fromRecords: EventSubjectItem[] = [];
+    for (const r of this.records()) {
+      const listName = r.matchDetail?.listName || r.grupoLista || '';
+      const placaMatch = r.detalleEvento?.match(/placa\s+([A-Z0-9]+)/i);
+      const nameMatch = r.detalleEvento?.match(/se ha identificado a\s+([^,]+?)(?:\s+que pertenece|\s+en|\s*$)/i);
+      const name = placaMatch ? placaMatch[1].trim() : (nameMatch ? nameMatch[1].trim() : (r.matchDetail ? r.objeto : ''));
+      if (name && !['persona', 'auto', 'moto', 'rostro', 'con_casco'].includes(name.toLowerCase())) {
+        fromRecords.push({
+          name,
+          listName,
+          detailId: r.matchDetail?.detailId
+        });
+      }
+    }
+
+    // Combinar sujetos registrados con eventos y los de los registros
+    const allSubjects = [...systemSubjects, ...fromRecords];
+
+    // 1. Filtrar por listas de control seleccionadas o por tipo de analítica
+    const hasAnyAnalytic = selectedAnalytics.length > 0;
+    let filteredByContext = allSubjects;
+
+    if (selectedLists.length > 0) {
+      filteredByContext = allSubjects.filter(s => {
+        if (!s.listName) return false;
+        return selectedLists.some(l => l.trim().toLowerCase() === s.listName!.trim().toLowerCase());
+      });
+    } else if (hasAnyAnalytic) {
+      const allowedLists = this.getAllowedListNames(selectedAnalytics);
+      if (allowedLists !== null) {
+        filteredByContext = allSubjects.filter(s => {
+          if (!s.listName) return false;
+          return allowedLists.has(s.listName.trim().toLowerCase());
+        });
+      }
+    }
+
+    // 2. Extraer nombres únicos
+    const uniqueNames = Array.from(new Set(filteredByContext.map(s => s.name).filter(Boolean))).sort();
+
+    // 3. Filtrar por búsqueda en tiempo real
+    return q ? uniqueNames.filter(name => name.toLowerCase().includes(q)) : uniqueNames;
+  });
+
+  // Opciones limpias para el filtro de objetos (excluye nombres de personas y nombres de listas)
+  readonly filteredObjetosOptions = computed(() => {
+    const raw = this.filterOptions().objetos || [];
+    const systemLists = this.listService.lists().map((l: any) => (l.name || '').toLowerCase());
+    
+    return raw.filter(item => {
+      if (!item) return false;
+      const lower = item.trim().toLowerCase();
+      // Descartar si coincide con una lista conocida
+      if (systemLists.includes(lower)) return false;
+      // Descartar si es un nombre propio (3 o más palabras)
+      const words = item.trim().split(/\s+/);
+      if (words.length >= 3 && !lower.includes('objeto') && !lower.includes('persona')) {
+        return false;
+      }
+      return true;
+    }).sort();
   });
 
   // Filter dropdown toggle states
   readonly activeDropdown = signal<string | null>(null);
-  readonly showFilters = signal<boolean>(false);
+  readonly showFilters = signal<boolean>(true);
 
   // Search Control
   readonly searchControl = new FormControl('');
@@ -122,6 +348,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   readonly dateHastaStr = signal<string>('');
   readonly timeDesdeStr = signal<string>('00:00');
   readonly timeHastaStr = signal<string>('23:59');
+  readonly activeDatePreset = signal<'today' | '24h' | '7d' | null>(null);
 
   readonly calendarGrid = computed(() => {
     const month = this.calendarViewMonth();
@@ -146,9 +373,12 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     ).subscribe(f => {
       this.tempFilters.set({
         search: f.search || '',
-        camaras: [...f.camaras],
-        analiticas: [...f.analiticas],
-        objetos: [...f.objetos],
+        camaras: [...(f.camaras || [])],
+        analiticas: [...(f.analiticas || [])],
+        objetos: [...(f.objetos || [])],
+        listas: [...(f.listas || [])],
+        sujetos: [...(f.sujetos || [])],
+        direcciones: [...(f.direcciones || [])],
         timestampDesde: f.timestampDesde ? new Date(f.timestampDesde) : null,
         timestampHasta: f.timestampHasta ? new Date(f.timestampHasta) : null
       });
@@ -171,6 +401,16 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnInit(): void {
     this.eventService.isViewActive.set(true);
+    this.cameraService.getAllCameras().subscribe();
+    this.listService.loadLists().subscribe();
+    this.eventRepository.getAvailableSubjects().subscribe({
+      next: (subjects) => {
+        if (subjects && subjects.length > 0) {
+          this.registeredSubjects.set(subjects);
+        }
+      },
+      error: (err) => console.warn('Error cargando sujetos para filtro:', err)
+    });
     this.eventService.loadCurrentPage();
   }
 
@@ -261,6 +501,9 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     const camaras = params['camaras'] ? params['camaras'].split(',') : [];
     const analiticas = params['analiticas'] ? params['analiticas'].split(',') : [];
     const objetos = params['objetos'] ? params['objetos'].split(',') : [];
+    const listas = params['listas'] ? params['listas'].split(',') : [];
+    const sujetos = params['sujetos'] ? params['sujetos'].split(',') : [];
+    const direcciones = params['direcciones'] ? params['direcciones'].split(',') : [];
     const timestampDesde = params['desde'] && !isNaN(Date.parse(params['desde'])) ? new Date(params['desde']) : null;
     const timestampHasta = params['hasta'] && !isNaN(Date.parse(params['hasta'])) ? new Date(params['hasta']) : null;
     const search = params['search'] || '';
@@ -287,6 +530,9 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       camaras,
       analiticas,
       objetos,
+      listas,
+      sujetos,
+      direcciones,
       timestampDesde,
       timestampHasta,
       search
@@ -319,10 +565,16 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onResetFilters(): void {
+    this.searchControl.setValue('', { emitEvent: false });
+    this.tempFilters.set(defaultEventFilters());
     this.dateDesdeStr.set('');
     this.timeDesdeStr.set('00:00');
     this.dateHastaStr.set('');
     this.timeHastaStr.set('23:59');
+    this.activeDatePreset.set(null);
+    this.cameraSearch.set('');
+    this.listaSearch.set('');
+    this.sujetoSearch.set('');
     this.eventService.resetFilters();
   }
 
@@ -330,13 +582,25 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     this.eventService.updateFilters(this.tempFilters());
   }
 
-  toggleMultiSelectFilter(field: 'camaras' | 'analiticas' | 'objetos', value: string): void {
-    const currentList = this.tempFilters()[field] as string[];
+  toggleMultiSelectFilter(field: 'camaras' | 'analiticas' | 'objetos' | 'listas' | 'sujetos' | 'direcciones', value: string): void {
+    const currentList = (this.tempFilters()[field] as string[]) || [];
     const newList = currentList.includes(value)
       ? currentList.filter(item => item !== value)
       : [...currentList, value];
 
-    this.tempFilters.update(f => ({ ...f, [field]: newList }));
+    this.tempFilters.update(f => {
+      const updated = { ...f, [field]: newList };
+
+      // Si se altera el filtro de analíticas, depurar listas seleccionadas incompatibles
+      if (field === 'analiticas') {
+        const allowedLists = this.getAllowedListNames(newList);
+        if (allowedLists !== null) {
+          updated.listas = (f.listas || []).filter(name => allowedLists.has(name.trim().toLowerCase()));
+        }
+      }
+
+      return updated;
+    });
   }
 
   // --- Dynamic Date custom pickers ---
@@ -382,6 +646,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       this.dateHastaStr.set(dateStr);
       this._applyDateTimeToFilter('hasta');
     }
+    this.activeDatePreset.set(null);
     this.activeCalendarField.set(null);
   }
 
@@ -454,6 +719,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     const newTs = `${pad(h)}:${pad(parts.minute)}`;
     if (field === 'desde') { this.timeDesdeStr.set(newTs); this._applyDateTimeToFilter('desde'); }
     else { this.timeHastaStr.set(newTs); this._applyDateTimeToFilter('hasta'); }
+    this.activeDatePreset.set(null);
   }
 
   selectTimeMinute(m: number): void {
@@ -465,6 +731,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     const newTs = `${pad(parts.hour)}:${pad(m)}`;
     if (field === 'desde') { this.timeDesdeStr.set(newTs); this._applyDateTimeToFilter('desde'); }
     else { this.timeHastaStr.set(newTs); this._applyDateTimeToFilter('hasta'); }
+    this.activeDatePreset.set(null);
   }
 
   private _applyDateTimeToFilter(field: 'desde' | 'hasta'): void {
@@ -497,11 +764,13 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
 
     if (preset === 'today') {
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       this.dateDesdeStr.set(toDateStr(todayStart));
       this.timeDesdeStr.set('00:00');
-      this.dateHastaStr.set('');
+      this.dateHastaStr.set(toDateStr(todayEnd));
       this.timeHastaStr.set('23:59');
-      this.tempFilters.update(f => ({ ...f, timestampDesde: todayStart, timestampHasta: null }));
+      this.tempFilters.update(f => ({ ...f, timestampDesde: todayStart, timestampHasta: todayEnd }));
+      this.activeDatePreset.set('today');
     } else if (preset === '24h') {
       const past24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       this.dateDesdeStr.set(toDateStr(past24h));
@@ -509,6 +778,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       this.dateHastaStr.set(toDateStr(now));
       this.timeHastaStr.set(toTimeStr(now));
       this.tempFilters.update(f => ({ ...f, timestampDesde: past24h, timestampHasta: now }));
+      this.activeDatePreset.set('24h');
     } else if (preset === '7d') {
       const past7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       this.dateDesdeStr.set(toDateStr(past7d));
@@ -516,12 +786,14 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       this.dateHastaStr.set(toDateStr(now));
       this.timeHastaStr.set(toTimeStr(now));
       this.tempFilters.update(f => ({ ...f, timestampDesde: past7d, timestampHasta: now }));
+      this.activeDatePreset.set('7d');
     } else if (preset === 'clear') {
       this.dateDesdeStr.set('');
       this.timeDesdeStr.set('00:00');
       this.dateHastaStr.set('');
       this.timeHastaStr.set('23:59');
       this.tempFilters.update(f => ({ ...f, timestampDesde: null, timestampHasta: null }));
+      this.activeDatePreset.set(null);
     }
   }
 
@@ -536,9 +808,12 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   // --- Active State computations ---
   readonly hasActiveFilters = computed<boolean>(() => {
     const f = this.filters();
-    return f.camaras.length > 0 ||
-           f.analiticas.length > 0 ||
-           f.objetos.length > 0 ||
+    return (f.camaras?.length || 0) > 0 ||
+           (f.analiticas?.length || 0) > 0 ||
+           (f.objetos?.length || 0) > 0 ||
+           (f.listas?.length || 0) > 0 ||
+           (f.sujetos?.length || 0) > 0 ||
+           (f.direcciones?.length || 0) > 0 ||
            f.timestampDesde !== null ||
            f.timestampHasta !== null ||
            Boolean(f.search && f.search.trim().length > 0);
@@ -546,9 +821,12 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
 
   readonly hasActiveTempFilters = computed<boolean>(() => {
     const f = this.tempFilters();
-    return f.camaras.length > 0 ||
-           f.analiticas.length > 0 ||
-           f.objetos.length > 0 ||
+    return (f.camaras?.length || 0) > 0 ||
+           (f.analiticas?.length || 0) > 0 ||
+           (f.objetos?.length || 0) > 0 ||
+           (f.listas?.length || 0) > 0 ||
+           (f.sujetos?.length || 0) > 0 ||
+           (f.direcciones?.length || 0) > 0 ||
            f.timestampDesde !== null ||
            f.timestampHasta !== null ||
            Boolean(f.search && f.search.trim().length > 0);
@@ -567,9 +845,12 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       return x.getTime() === y.getTime();
     };
 
-    return !arraysEqual([...t.camaras].sort(), [...a.camaras].sort()) ||
-           !arraysEqual([...t.analiticas].sort(), [...a.analiticas].sort()) ||
-           !arraysEqual([...t.objetos].sort(), [...a.objetos].sort()) ||
+    return !arraysEqual([...(t.camaras || [])].sort(), [...(a.camaras || [])].sort()) ||
+           !arraysEqual([...(t.analiticas || [])].sort(), [...(a.analiticas || [])].sort()) ||
+           !arraysEqual([...(t.objetos || [])].sort(), [...(a.objetos || [])].sort()) ||
+           !arraysEqual([...(t.listas || [])].sort(), [...(a.listas || [])].sort()) ||
+           !arraysEqual([...(t.sujetos || [])].sort(), [...(a.sujetos || [])].sort()) ||
+           !arraysEqual([...(t.direcciones || [])].sort(), [...(a.direcciones || [])].sort()) ||
            !datesEqual(t.timestampDesde, a.timestampDesde) ||
            !datesEqual(t.timestampHasta, a.timestampHasta) ||
            (t.search || '') !== (a.search || '');
@@ -732,6 +1013,13 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     if (target) {
       target.style.display = 'none';
     }
+  }
+
+  isMatchingAnalytic(analitica: string): boolean {
+    if (!analitica) return false;
+    const lower = analitica.toLowerCase();
+    return lower.includes('facial') || lower.includes('rostro') || lower.includes('face') ||
+           lower.includes('placa') || lower.includes('plate') || lower.includes('lpr');
   }
 
   // --- Image Detail Modal & Magnifier Zoom Logic ---

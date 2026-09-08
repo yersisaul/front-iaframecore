@@ -6,14 +6,31 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './pagination-controls.component.html',
-  styleUrl: './pagination-controls.component.css'
+  styleUrl: './pagination-controls.component.css',
+  host: {
+    '[class.pagination-inline]': 'inline',
+    '[class.pagination-floating]': '!inline'
+  }
 })
 export class PaginationControlsComponent {
   @Input() currentPage: number = 1;
   @Input() totalPages: number = 1;
+  @Input() totalRecords: number = 1;
   @Input() visiblePages: number[] = [];
+  @Input() inline: boolean = false;
 
   @Output() pageChange = new EventEmitter<number>();
+
+  formatPageNumber(page: number): string {
+    if (!page && page !== 0) return '';
+    return page.toLocaleString('es-ES');
+  }
+
+  getInputWidth(): string {
+    const digits = String(this.totalPages || this.currentPage || 1).length;
+    const calculatedWidth = Math.max(54, Math.min(110, digits * 10 + 26));
+    return `${calculatedWidth}px`;
+  }
 
   setPage(page: number): void {
     if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {

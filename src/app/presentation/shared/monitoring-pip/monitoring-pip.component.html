@@ -1,0 +1,197 @@
+@if (isVisible()) {
+@if (isPipMinimized()) {
+<!-- =========================================================================
+         ISLA DINÁMICA FLOTANTE SUPERIOR (Estilo iPhone Dynamic Island)
+         ========================================================================= -->
+<aside class="pip-dynamic-island shadow-2xl d-flex align-items-center justify-content-between select-none"
+  [class.has-event-pulse]="isEventPulsing()"
+  (click)="resumeStreaming($event)" title="Haz clic para reanudar y expandir el monitoreo">
+
+  <!-- Lado Izquierdo: Punto de Estado Pulsante y Textos -->
+  <div class="d-flex align-items-center gap-2 min-w-0">
+    <span class="pip-island-pulse-dot" [class.paused]="true"></span>
+    <div class="d-flex flex-column min-w-0">
+      <span class="pip-island-title text-truncate fw-bold">
+        {{ isInactivityPaused() ? 'Pausado por inactividad' : 'Monitoreo en pausa' }}
+      </span>
+      <span class="pip-island-sub text-truncate">
+        {{ activeCameraCount() }} {{ activeCameraCount() === 1 ? 'cámara asignada' : 'cámaras asignadas' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Lado Derecho: Acciones de la Isla (Reanudar/Expandir y Cerrar) -->
+  <div class="pip-island-actions d-flex align-items-center gap-2 ms-3 flex-shrink-0" (click)="$event.stopPropagation()">
+    <!-- Botón Reanudar / Expandir PiP -->
+    <button type="button" class="pip-island-btn pip-island-play-btn shadow-sm" (click)="resumeStreaming($event)"
+      title="Reanudar transmisiones y abrir PiP">
+      <span class="icon-svg icon-play-simple" style="width: 14px; height: 14px;"></span>
+    </button>
+
+    <!-- Botón Cerrar PiP / Desconectar -->
+    <button type="button" class="pip-island-btn pip-island-close-btn" (click)="closePip($event)"
+      title="Cerrar monitoreo flotante">
+      <span class="icon-svg icon-close-simple" style="width: 14px; height: 14px;"></span>
+    </button>
+  </div>
+</aside>
+} @else {
+<!-- =========================================================================
+         VENTANA FLOTANTE PIP COMPLETA
+         ========================================================================= -->
+<div class="monitoring-pip-window position-fixed overflow-hidden select-none" [class.is-dragging]="isDragging()"
+  [class.is-panning]="isPanning()" [class.is-resizing]="isResizing()" [class.controls-revealed]="showControls()"
+  [class.has-event-pulse]="isEventPulsing()" [class.is-expanding-fullscreen]="isExpanding()"
+  [style.left.px]="isExpanding() && expandingLeft() !== null ? expandingLeft() : stateService.pipPosition()?.x"
+  [style.top.px]="isExpanding() && expandingTop() !== null ? expandingTop() : stateService.pipPosition()?.y"
+  [style.width.px]="isExpanding() && expandingWidth() !== null ? expandingWidth() : stateService.pipSize().width"
+  [style.height.px]="isExpanding() && expandingHeight() !== null ? expandingHeight() : stateService.pipSize().height"
+  (wheel)="onCanvasWheel($event)" (contextmenu)="$event.preventDefault(); $event.stopPropagation()"
+  (dblclick)="expandToMonitoring($event)"
+  (mouseleave)="onMouseLeavePip()">
+
+  <!-- 1. LIENZO Y CELDAS DE CÁMARAS IDÉNTICAS A MONITOREO -->
+  <div class="pip-canvas-viewport w-100 h-100 position-relative overflow-hidden" (wheel)="onCanvasWheel($event)">
+    <div class="pip-canvas-inner position-absolute"
+      [style.transform]="'translate(' + pipPanX() + 'px, ' + pipPanY() + 'px) scale(' + pipZoom() + ')'"
+      [style.transformOrigin]="'0 0'" [style.width.px]="getCanvasDimensions().width"
+      [style.height.px]="getCanvasDimensions().height"
+      [style.gridTemplateColumns]="'repeat(' + cols() + ', ' + getSlotDimensions().cellW + 'px)' + (isExpanding() ? (' ' + getExtenderDimensions().width + 'px') : '')"
+      [style.gridTemplateRows]="'repeat(' + rows() + ', ' + getSlotDimensions().cellH + 'px)' + (isExpanding() ? (' ' + getExtenderDimensions().height + 'px') : '')">
+
+      @for (slot of visibleGridSlots(); track slot.id) {
+      <!-- Celda idéntica a Monitoreo: grid-slot-cell con slot-occupied o slot-empty -->
+      <div class="grid-slot-cell position-relative" [class.slot-empty]="slot.isEmpty"
+        [class.slot-occupied]="!slot.isEmpty" [style.gridColumn]="slot.col + ' / span ' + slot.spanX"
+        [style.gridRow]="slot.row + ' / span ' + slot.spanY">
+
+        @if (slot.isEmpty) {
+        <!-- Celda Vacía idéntica a Monitoreo -->
+        <div class="empty-slot-content d-flex flex-column align-items-center justify-content-center h-100 w-100">
+          <button class="btn-add-camera shadow-lg d-flex align-items-center justify-content-center mb-1" type="button"
+            tabindex="-1">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
+          </button>
+          <span class="empty-slot-title text-uppercase fw-bold">Agregar</span>
+        </div>
+        } @else {
+        <!-- Celda Ocupada con Cámara (Estructura idéntica a Monitoreo) -->
+        <div class="occupied-slot-content h-100 w-100 position-relative overflow-hidden">
+
+          <!-- Barra de Encabezado Superior Integrada de Monitoreo -->
+          <div class="slot-top-bar d-flex align-items-center justify-content-between">
+            <div class="slot-overlay-header d-flex align-items-center">
+              <span class="status-dot-pulse me-2" [class]="'status-dot-pulse me-2 ' + getCameraStatusClass(slot.camera)"
+                [title]="getCameraStatusLabel(slot.camera)"></span>
+              <div class="slot-camera-name-container min-w-0 flex-grow-1">
+                <span class="slot-camera-name fw-bold" [title]="slot.camera?.name">{{ slot.camera?.name }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feed / Imagen del último evento o Video en Tiempo Real -->
+          <div
+            class="slot-video-wrapper w-100 h-100 bg-dark d-flex align-items-center justify-content-center position-relative">
+            <!-- Video WebRTC en Vivo -->
+            <video [id]="'pip-video-feed-' + slot.id" class="slot-video-element w-100 h-100 object-fit-contain"
+              [class.d-none]="webRtcStates()[slot.id] !== 'connected'" autoplay playsinline muted>
+            </video>
+
+            <!-- Imagen de Evento / Instantánea (Fallback Estático o de Conexión) -->
+            @if (webRtcStates()[slot.id] !== 'connected') {
+            @let displayImgEvent = getDisplayedEventForSlot(slot);
+            @if (displayImgEvent && displayImgEvent.urlImg) {
+            <img [src]="displayImgEvent.urlImg"
+              class="slot-event-img object-fit-contain w-100 h-100 position-absolute top-0 start-0" alt=""
+              draggable="false" />
+            } @else if (webRtcStates()[slot.id] === 'connecting') {
+            <div class="waiting-event-placeholder d-flex flex-column align-items-center justify-content-center">
+              <div class="spinner-border spinner-border-sm text-light opacity-75 mb-1" role="status"></div>
+              <span class="text-white-50 small text-uppercase fw-semibold"
+                style="font-size: 0.65rem; letter-spacing: 0.05em;">Conectando...</span>
+            </div>
+            } @else {
+            <div
+              class="no-image-placeholder d-flex flex-column align-items-center justify-content-center w-100 h-100 select-none">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round" class="text-white-50 opacity-40 mb-1">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              <span class="text-white-50 small text-uppercase fw-semibold"
+                style="font-size: 0.65rem; letter-spacing: 0.05em;">Sin imagen</span>
+            </div>
+            }
+
+            <!-- Fecha y Hora del Evento abajo a la derecha -->
+            @if (displayImgEvent && displayImgEvent.timestamp) {
+            <span class="canvas-slot-time-bottom-right">
+              {{ formatDatePart(displayImgEvent.timestamp) }} • {{ formatTimePart(displayImgEvent.timestamp) }}
+            </span>
+            }
+            }
+          </div>
+        </div>
+        }
+      </div>
+      }
+    </div>
+  </div>
+
+  <!-- 2. CONTROLES FLOTANTES OVERLAY EN LA PARTE SUPERIOR -->
+  <div
+    class="pip-youtube-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-between p-3"
+    (mousedown)="onOverlayMouseDown($event)" (click)="onOverlayClick($event)" (dblclick)="expandToMonitoring($event)" (wheel)="onCanvasWheel($event)">
+
+    <!-- Barra Superior: Info en vivo y Botones de Acción Agrupados -->
+    <div class="pip-yt-top-bar d-flex align-items-center justify-content-between w-100">
+      <!-- Badge de estado en vivo -->
+      <div class="pip-yt-live-pill d-flex align-items-center gap-2 px-2 py-1 rounded-pill">
+        <span class="pip-yt-pulse-dot flex-shrink-0" [class.paused]="false"></span>
+        <span class="pip-yt-live-text">
+          En vivo • {{ activeCameraCount() }} {{ activeCameraCount() === 1 ? 'cámara' : 'cámaras' }}
+        </span>
+      </div>
+
+      <!-- Acciones de esquina superior derecha (Centrar, Pausar/Minimizar a Isla, Cerrar) -->
+      <div class="pip-yt-top-actions d-flex align-items-center gap-2 flex-shrink-0">
+        <!-- 1. Botón Re-centrar Cámaras -->
+        <button type="button" class="pip-yt-action-btn" (click)="centerPipCanvas(); $event.stopPropagation()"
+          title="Centrar y ajustar lienzo a todas las cámaras">
+          <span class="icon-svg icon-center-simple" style="width: 15px; height: 15px;"></span>
+        </button>
+
+        <!-- 2. Botón Pausar y Minimizar a Isla Dinámica -->
+        <button type="button" class="pip-yt-action-btn" (click)="togglePause($event)"
+          title="Pausar y minimizar a isla superior">
+          <span class="icon-svg icon-pause-simple" style="width: 15px; height: 15px;"></span>
+        </button>
+
+        <!-- 3. Botón Cerrar PiP -->
+        <button type="button" class="pip-yt-action-btn pip-yt-close-btn" (click)="closePip($event)"
+          title="Cerrar ventana flotante">
+          <span class="icon-svg icon-close-simple" style="width: 15px; height: 15px;"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Espaciador inferior para layout flex -->
+    <div class="pip-yt-bottom-spacer"></div>
+  </div>
+
+  <!-- 3. TIRADORES DE REDIMENSIONAMIENTO (8 PUNTOS) -->
+  <div class="pip-resize-handle edge-top" (mousedown)="onResizeHandleMouseDown($event, 'top')"></div>
+  <div class="pip-resize-handle edge-bottom" (mousedown)="onResizeHandleMouseDown($event, 'bottom')"></div>
+  <div class="pip-resize-handle edge-left" (mousedown)="onResizeHandleMouseDown($event, 'left')"></div>
+  <div class="pip-resize-handle edge-right" (mousedown)="onResizeHandleMouseDown($event, 'right')"></div>
+
+  <div class="pip-resize-handle corner-top-left" (mousedown)="onResizeHandleMouseDown($event, 'top-left')"></div>
+  <div class="pip-resize-handle corner-top-right" (mousedown)="onResizeHandleMouseDown($event, 'top-right')"></div>
+  <div class="pip-resize-handle corner-bottom-left" (mousedown)="onResizeHandleMouseDown($event, 'bottom-left')"></div>
+  <div class="pip-resize-handle corner-bottom-right" (mousedown)="onResizeHandleMouseDown($event, 'bottom-right')">
+  </div>
+</div>
+}
+}

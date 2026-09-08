@@ -11,7 +11,7 @@ import { AnalyticService } from '../../../core/services/analytic.service';
 import { HostService } from '../../../core/services/host.service';
 import { Schedule } from '../../../core/domain/entities/schedule.models';
 import { Analytic } from '../../../core/domain/entities/analytic.models';
-import { Camera } from '../../../core/domain/entities/camera.models';
+import { Camera, CameraMapper } from '../../../core/domain/entities/camera.models';
 import { AppEnvironment } from '../../../core/config/app-environment';
 import { signal } from '@angular/core';
 import { PermissionsService } from '../../../core/services/permissions.service';
@@ -28,6 +28,11 @@ import { IStorageRepository } from '../../../core/domain/repositories/storage.re
 import { StorageHttpRepository } from '../../../data/repositories/storage-http.repository';
 import { IHostRepository } from '../../../core/domain/repositories/host.repository';
 import { HostHttpRepository } from '../../../data/repositories/host-http.repository';
+import { IEventRepository } from '../../../core/domain/repositories/event.repository';
+import { EventHttpRepository } from '../../../data/repositories/event-http.repository';
+import { IAuthRepository } from '../../../core/domain/repositories/auth.repository';
+import { AuthHttpRepository } from '../../../data/repositories/auth-http.repository';
+import { WebsocketService } from '../../../core/services/websocket.service';
 
 describe('Camaras', () => {
   let component: Camaras;
@@ -44,6 +49,15 @@ describe('Camaras', () => {
     resetPermissions: () => {}
   };
 
+  const mockWebsocketService = {
+    isWebRtcActive: vi.fn().mockReturnValue(false),
+    sendWebRtcStart: vi.fn(),
+    sendWebRtcStop: vi.fn(),
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    isConnected: signal(false)
+  };
+
   beforeEach(async () => {
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
@@ -58,6 +72,9 @@ describe('Camaras', () => {
         { provide: IListRepository, useClass: ListHttpRepository },
         { provide: IStorageRepository, useClass: StorageHttpRepository },
         { provide: IHostRepository, useClass: HostHttpRepository },
+        { provide: IEventRepository, useClass: EventHttpRepository },
+        { provide: IAuthRepository, useClass: AuthHttpRepository },
+        { provide: WebsocketService, useValue: mockWebsocketService },
         { provide: PermissionsService, useValue: mockPermissionsService },
         {
           provide: ActivatedRoute,
@@ -160,6 +177,11 @@ describe('Camaras', () => {
         acciones: {}
       }
     ]);
+
+    // Expect Lists request (GET /frontend/lists/)
+    const reqLists = httpMock.expectOne(`${AppEnvironment.apiUrl}/frontend/lists/`);
+    expect(reqLists.request.method).toBe('GET');
+    reqLists.flush([]);
 
     fixture.detectChanges();
     await fixture.whenStable();
@@ -295,11 +317,12 @@ describe('Camaras', () => {
     expect(component.pages()).toEqual([1, 2, 3, 4]);
     expect(component.pagedCameras().length).toBe(3);
     expect(component.pagedCameras()[0].id).toBe('cam-1');
-    expect(component.pagedCameras()[2].id).toBe('cam-2'); // Alphabetical order puts 'Camera 10' in index 1, so 'Camera 2' is in index 2
+    expect(component.pagedCameras()[1].id).toBe('cam-2');
+    expect(component.pagedCameras()[2].id).toBe('cam-3');
 
     component.nextPage();
     expect(component.currentPage()).toBe(2);
-    expect(component.pagedCameras()[0].id).toBe('cam-3');
+    expect(component.pagedCameras()[0].id).toBe('cam-4');
 
     component.setPage(4);
     expect(component.currentPage()).toBe(4);
@@ -368,10 +391,10 @@ describe('Camaras', () => {
     cameraService.cameras.set(mockCameras);
     component.searchTerm.set('');
     component.searchControl.setValue('');
-    component.filterStatus.set('all');
-    component.filterStreamType.set('all');
-    component.filterDecoder.set('all');
-    component.filterAnalyticType.set('all');
+    component.filterStatus.set([]);
+    component.filterStreamType.set([]);
+    component.filterDecoder.set([]);
+    component.filterAnalyticType.set([]);
     expect(component.filteredCameras().length).toBe(2);
 
     // 1. Search by name (Front) - substring matching
@@ -398,28 +421,28 @@ describe('Camaras', () => {
     expect(component.filteredCameras().length).toBe(2);
 
     // 3. Advanced Filter: status = 'inactive' (should match offline)
-    component.filterStatus.set('inactive');
+    component.filterStatus.set(['inactive']);
     expect(component.filteredCameras().length).toBe(1);
     expect(component.filteredCameras()[0].id).toBe('cam-002');
-    component.filterStatus.set('all');
+    component.filterStatus.set([]);
 
     // Advanced Filter: status = 'active' (should match online)
-    component.filterStatus.set('active');
+    component.filterStatus.set(['active']);
     expect(component.filteredCameras().length).toBe(1);
     expect(component.filteredCameras()[0].id).toBe('cam-001');
-    component.filterStatus.set('all');
+    component.filterStatus.set([]);
 
     // 4. Advanced Filter: streamType = 'rtsp'
-    component.filterStreamType.set('rtsp');
+    component.filterStreamType.set(['rtsp']);
     expect(component.filteredCameras().length).toBe(1);
     expect(component.filteredCameras()[0].id).toBe('cam-001');
-    component.filterStreamType.set('all');
+    component.filterStreamType.set([]);
 
     // 5. Advanced Filter: decoder = 'gstreamer'
-    component.filterDecoder.set('gstreamer');
+    component.filterDecoder.set(['gstreamer']);
     expect(component.filteredCameras().length).toBe(1);
     expect(component.filteredCameras()[0].id).toBe('cam-002');
-    component.filterDecoder.set('all');
+    component.filterDecoder.set([]);
 
     // 6. Advanced Filter: analyticType = 'face_recognition'
     const mockAnalytics: Analytic[] = [
@@ -444,10 +467,10 @@ describe('Camaras', () => {
     ];
     analyticService.analytics.set(mockAnalytics);
 
-    component.filterAnalyticType.set('face_recognition');
+    component.filterAnalyticType.set(['face_recognition']);
     expect(component.filteredCameras().length).toBe(1);
     expect(component.filteredCameras()[0].id).toBe('cam-001');
-    component.filterAnalyticType.set('all');
+    component.filterAnalyticType.set([]);
   });
 
   it('should dynamically list available camera statuses and filter cameras by Degraded, Recovering, Pending, Online and Offline', () => {
@@ -466,15 +489,15 @@ describe('Camaras', () => {
     expect(statuses).toContain('Recovering');
     expect(statuses).toContain('Offline');
 
-    component.filterStatus.set('Degraded');
+    component.filterStatus.set(['Degraded']);
     expect(component.filteredCameras().length).toBe(1);
     expect(component.filteredCameras()[0].id).toBe('cam-2');
 
-    component.filterStatus.set('Recovering');
+    component.filterStatus.set(['Recovering']);
     expect(component.filteredCameras().length).toBe(1);
     expect(component.filteredCameras()[0].id).toBe('cam-3');
 
-    component.filterStatus.set('Offline');
+    component.filterStatus.set(['Offline']);
     expect(component.filteredCameras().length).toBe(1);
     expect(component.filteredCameras()[0].id).toBe('cam-4');
   });

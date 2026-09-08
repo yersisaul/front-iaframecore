@@ -6,11 +6,35 @@ import { MetaFilterState, MetaFilterOptions, defaultFilterState, defaultFilterOp
 import { IMetadataRepository } from '../domain/repositories/metadata.repository';
 import { SearchMetadataUseCase } from '../domain/use-cases/search-metadata.use-case';
 
+const DEFAULT_INDICES: MetaIndexInfo[] = [
+  { name: 'personas', count: 0 },
+  { name: 'vehiculos', count: 0 },
+  { name: 'rostros', count: 0 },
+  { name: 'otros', count: 0 }
+];
+
+const INDICES_CACHE_KEY = 'ia_available_indices_cache';
+
+function getInitialIndices(): MetaIndexInfo[] {
+  try {
+    const cached = localStorage.getItem(INDICES_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    // Ignorar errores de acceso a storage
+  }
+  return DEFAULT_INDICES;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class MetadataService {
-  readonly availableIndices = signal<MetaIndexInfo[]>([]);
+  readonly availableIndices = signal<MetaIndexInfo[]>(getInitialIndices());
   readonly activeIndex = signal<MetaIndexName | null>(null);
   readonly isViewActive = signal<boolean>(false);
   readonly records = signal<MetaRecord[]>([]);
@@ -34,9 +58,9 @@ export class MetadataService {
     if (!f) return false;
     return (f.camaras && f.camaras.length > 0) ||
            (f.tipoObjeto && f.tipoObjeto.length > 0) ||
-           !!f.edad ||
-           !!f.genero ||
-           !!(f.reconocimiento && f.reconocimiento.trim()) ||
+           (f.edad && f.edad.length > 0) ||
+           (f.genero && f.genero.length > 0) ||
+           (f.reconocimiento && f.reconocimiento.length > 0) ||
            (f.colores && f.colores.length > 0) ||
            (f.posturas && f.posturas.length > 0) ||
            (f.confiabilidadMin > 0) ||
@@ -49,7 +73,62 @@ export class MetadataService {
            !!f.imageEmbedding;
   }
 
+  incorporateRecordIntoFilterOptions(record: MetaRecord): void {
+    if (!record) return;
+    this.filterOptions.update(opts => {
+      const current = { ...opts };
+      let changed = false;
+
+      if (record.camara && !current.camaras.includes(record.camara)) {
+        current.camaras = [...current.camaras, record.camara].sort();
+        changed = true;
+      }
+
+      if ('tipoObjeto' in record && (record as any).tipoObjeto && !current.tipoObjeto.includes((record as any).tipoObjeto)) {
+        current.tipoObjeto = [...current.tipoObjeto, (record as any).tipoObjeto].sort();
+        changed = true;
+      }
+
+      if ('edad' in record && (record as any).edad && !current.edades.includes((record as any).edad)) {
+        current.edades = [...current.edades, (record as any).edad].sort();
+        changed = true;
+      }
+
+      if ('genero' in record && (record as any).genero && !current.generos.includes((record as any).genero)) {
+        current.generos = [...current.generos, (record as any).genero].sort();
+        changed = true;
+      }
+
+      if ('reconocimiento' in record && (record as any).reconocimiento && !current.reconocimientos.includes((record as any).reconocimiento)) {
+        current.reconocimientos = [...current.reconocimientos, (record as any).reconocimiento].sort();
+        changed = true;
+      }
+
+      if (record.colores && Array.isArray(record.colores)) {
+        record.colores.forEach(c => {
+          if (c.colorText && !current.colores.includes(c.colorText)) {
+            current.colores = [...current.colores, c.colorText].sort();
+            changed = true;
+          }
+        });
+      }
+
+      if ('posturas' in record && (record as any).posturas && Array.isArray((record as any).posturas)) {
+        (record as any).posturas.forEach((p: any) => {
+          if (p.postura && !current.posturas.includes(p.postura)) {
+            current.posturas = [...current.posturas, p.postura].sort();
+            changed = true;
+          }
+        });
+      }
+
+      return changed ? current : opts;
+    });
+  }
+
   addNewRecord(newRecord: MetaRecord): void {
+    this.incorporateRecordIntoFilterOptions(newRecord);
+
     const f = this.filters();
     const activeFiltersExist = this.hasActiveFilters(f);
     const isPaginating = this.currentPage() > 1;
@@ -102,35 +181,55 @@ export class MetadataService {
   ) {}
 
   loadAvailableIndices(): Observable<MetaIndexInfo[]> {
-    this.isLoading.set(true);
     return this.repository.getAvailableIndices().pipe(
       tap(indices => {
-        this.availableIndices.set(indices);
-        this.isLoading.set(false);
+        if (indices && indices.length > 0) {
+          this.availableIndices.set(indices);
+          try {
+            localStorage.setItem(INDICES_CACHE_KEY, JSON.stringify(indices));
+          } catch (e) {
+            // Ignorar
+          }
+        }
       }),
       catchError(err => {
         console.error('Error loading available indices:', err);
-        const fallback: MetaIndexInfo[] = [
-          { name: 'personas', count: 0 },
-          { name: 'vehiculos', count: 0 },
-          { name: 'rostros', count: 0 },
-          { name: 'otros', count: 0 }
-        ];
-        this.availableIndices.set(fallback);
-        this.isLoading.set(false);
-        return of(fallback);
+        return of(this.availableIndices());
       })
     );
   }
 
   incrementIndexCount(indexName: MetaIndexName): void {
     this.availableIndices.update(list => {
-      return list.map(item => {
+      const nextList = list.map(item => {
         if (item.name === indexName) {
           return { ...item, count: item.count + 1 };
         }
         return item;
       });
+      try {
+        localStorage.setItem(INDICES_CACHE_KEY, JSON.stringify(nextList));
+      } catch (e) {
+        // Ignorar
+      }
+      return nextList;
+    });
+  }
+
+  syncIndexCount(indexName: MetaIndexName, count: number): void {
+    this.availableIndices.update(list => {
+      const nextList = list.map(item => {
+        if (item.name === indexName) {
+          return { ...item, count };
+        }
+        return item;
+      });
+      try {
+        localStorage.setItem(INDICES_CACHE_KEY, JSON.stringify(nextList));
+      } catch (e) {
+        // Ignorar
+      }
+      return nextList;
     });
   }
 
@@ -274,9 +373,11 @@ export class MetadataService {
           bufferPrefix.forEach(r => this.markAsNew(r.id));
         }
 
+        const finalCount = Math.max(res.total, finalRecords.length);
         this.records.set(finalRecords);
-        this.totalRecords.set(Math.max(res.total, finalRecords.length));
+        this.totalRecords.set(finalCount);
         this.filterOptions.set(res.filterOptions);
+        this.syncIndexCount(idx, finalCount);
         this.isLoading.set(false);
       },
       error: err => {
@@ -324,9 +425,6 @@ export class MetadataService {
   }
 
   private areFiltersEqual(a: MetaFilterState, b: MetaFilterState): boolean {
-    if (a.edad !== b.edad) return false;
-    if (a.genero !== b.genero) return false;
-    if (a.reconocimiento !== b.reconocimiento) return false;
     if (a.confiabilidadMin !== b.confiabilidadMin) return false;
     if (a.confiabilidadMax !== b.confiabilidadMax) return false;
     if (a.search !== b.search) return false;
@@ -352,6 +450,9 @@ export class MetadataService {
     };
 
     if (!arraysEqual(a.tipoObjeto, b.tipoObjeto)) return false;
+    if (!arraysEqual(a.edad, b.edad)) return false;
+    if (!arraysEqual(a.genero, b.genero)) return false;
+    if (!arraysEqual(a.reconocimiento, b.reconocimiento)) return false;
     if (!arraysEqual(a.colores, b.colores)) return false;
     if (!arraysEqual(a.posturas, b.posturas)) return false;
     if (!arraysEqual(a.camaras, b.camaras)) return false;

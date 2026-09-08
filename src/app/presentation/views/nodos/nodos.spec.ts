@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 
 import { Nodos } from './nodos';
@@ -28,11 +28,19 @@ const MOCK_HOSTS = [
 import { IHostRepository } from '../../../core/domain/repositories/host.repository';
 import { HostHttpRepository } from '../../../data/repositories/host-http.repository';
 import { HostService } from '../../../core/services/host.service';
+import { ICameraRepository } from '../../../core/domain/repositories/camera.repository';
+import { CameraHttpRepository } from '../../../data/repositories/camera-http.repository';
+import { CameraService } from '../../../core/services/camera.service';
+import { PermissionsService } from '../../../core/services/permissions.service';
 
 describe('Nodos', () => {
   let component: Nodos;
   let fixture: ComponentFixture<Nodos>;
   let httpMock: HttpTestingController;
+
+  const mockPermissionsService = {
+    hasPermission: () => true
+  };
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
@@ -43,11 +51,17 @@ describe('Nodos', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: IHostRepository, useClass: HostHttpRepository }
+        { provide: IHostRepository, useClass: HostHttpRepository },
+        { provide: ICameraRepository, useClass: CameraHttpRepository },
+        { provide: PermissionsService, useValue: mockPermissionsService }
       ]
     }).compileComponents();
 
     httpMock = TestBed.inject(HttpTestingController);
+
+    // Mock getAllCameras to prevent HTTP requests in Nodos tests
+    const cameraService = TestBed.inject(CameraService);
+    vi.spyOn(cameraService, 'getAllCameras').mockReturnValue(of([]));
 
     // Mock getHeartbeat to prevent HTTP requests for tests
     const hostService = TestBed.inject(HostService);
@@ -131,17 +145,17 @@ describe('Nodos', () => {
     fixture.detectChanges();
 
     // Only online
-    component.filterStatus.set('active');
+    component.filterStatus.set(['active']);
     expect(component.filteredHosts().length).toBe(1);
     expect(component.filteredHosts()[0].hostname).toBe('linux-server-01');
 
     // Only offline
-    component.filterStatus.set('inactive');
+    component.filterStatus.set(['inactive']);
     expect(component.filteredHosts().length).toBe(1);
     expect(component.filteredHosts()[0].hostname).toBe('windows-server-02');
 
     // All
-    component.filterStatus.set('all');
+    component.filterStatus.set([]);
     expect(component.filteredHosts().length).toBe(2);
   });
 
@@ -151,15 +165,15 @@ describe('Nodos', () => {
     flushHosts();
     fixture.detectChanges();
 
-    component.filterOS.set('Linux');
+    component.filterOS.set(['Linux']);
     expect(component.filteredHosts().length).toBe(1);
     expect(component.filteredHosts()[0].hwInfo?.system).toBe('Linux');
 
-    component.filterOS.set('Windows');
+    component.filterOS.set(['Windows']);
     expect(component.filteredHosts().length).toBe(1);
     expect(component.filteredHosts()[0].hwInfo?.system).toBe('Windows');
 
-    component.filterOS.set('all');
+    component.filterOS.set([]);
     expect(component.filteredHosts().length).toBe(2);
   });
 
@@ -170,12 +184,12 @@ describe('Nodos', () => {
     fixture.detectChanges();
 
     // Linux + online = 1 host
-    component.filterOS.set('Linux');
-    component.filterStatus.set('active');
+    component.filterOS.set(['Linux']);
+    component.filterStatus.set(['active']);
     expect(component.filteredHosts().length).toBe(1);
 
     // Linux + offline = 0 hosts
-    component.filterStatus.set('inactive');
+    component.filterStatus.set(['inactive']);
     expect(component.filteredHosts().length).toBe(0);
   });
 
@@ -202,14 +216,14 @@ describe('Nodos', () => {
     flushHosts();
     fixture.detectChanges();
 
-    component.filterOS.set('Linux');
-    component.filterStatus.set('active');
+    component.filterOS.set(['Linux']);
+    component.filterStatus.set(['active']);
     component.searchTerm.set('linux');
     expect(component.hasActiveFilters()).toBe(true);
 
     component.resetFilters();
-    expect(component.filterOS()).toBe('all');
-    expect(component.filterStatus()).toBe('all');
+    expect(component.filterOS()).toEqual([]);
+    expect(component.filterStatus()).toEqual([]);
     expect(component.searchTerm()).toBe('');
     expect(component.hasActiveFilters()).toBe(false);
     expect(component.filteredHosts().length).toBe(2);

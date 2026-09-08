@@ -367,9 +367,12 @@
 }
 
 @keyframes pulseFirstPoint {
-  0%, 100% {
+
+  0%,
+  100% {
     filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.4));
   }
+
   50% {
     filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.7));
   }
@@ -921,6 +924,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -931,6 +935,7 @@
     opacity: 0;
     transform: scale(0.92);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -938,17 +943,74 @@
 }
 
 @keyframes cautionIconPulse {
-  0% { transform: scale(0.65); }
-  15% { transform: scale(1.28); }
-  30% { transform: scale(1); }
-  45% { transform: scale(1.2); }
-  60% { transform: scale(1); }
-  75% { transform: scale(1.14); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.65);
+  }
+
+  15% {
+    transform: scale(1.28);
+  }
+
+  30% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.2);
+  }
+
+  60% {
+    transform: scale(1);
+  }
+
+  75% {
+    transform: scale(1.14);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .canvas-wrapper.canvas-highlight-error {
   border: 2px solid #f59e0b !important;
   box-shadow: 0 0 16px rgba(245, 158, 11, 0.5), inset 0 0 16px rgba(245, 158, 11, 0.25) !important;
   transition: all 0.3s ease;
+}
+
+/* =========================================================================
+   ESTADO BLOQUEADO DEL LIENZO (PRIORIDAD 3 - SIN CAPTURA ACTIVA)
+   ========================================================================= */
+.canvas-wrapper.canvas-locked {
+  cursor: not-allowed !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+
+.canvas-wrapper.canvas-locked .canvas-svg-layer {
+  pointer-events: none !important;
+}
+
+.canvas-wrapper.canvas-locked .svg-polygon-fill,
+.canvas-wrapper.canvas-locked .svg-analysis-zone-polygon,
+.canvas-wrapper.canvas-locked .svg-line-stroke,
+.canvas-wrapper.canvas-locked .svg-control-point {
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+}
+
+.canvas-wrapper.canvas-locked .svg-point-halo {
+  display: none !important;
+}
+
+.canvas-wrapper.canvas-locked .svg-point-core {
+  opacity: 0.6 !important;
+}
+
+.canvas-wrapper.canvas-locked .svg-edge-split-btn {
+  display: none !important;
+}
+
+.status-dot.locked {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  box-shadow: none !important;
 }

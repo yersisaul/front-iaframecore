@@ -60,26 +60,29 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   readonly containerHeight = signal<number>(450);
   readonly imageAspectRatio = signal<number | null>(null);
 
-  // Resolución Nativa Real de la Captura de Cámara (Por defecto 1920x1080 para 16:9)
+  // Resolución Nativa Real de la Captura de Cámara (Adaptable dinámicamente a la resolución original de la cámara)
   readonly naturalImageWidth = signal<number>(1920);
   readonly naturalImageHeight = signal<number>(1080);
+  readonly hasDeterminedResolution = signal<boolean>(false);
 
   // Conversión entre Pixeles Reales de Imagen (0..naturalWidth / 0..naturalHeight) y Pixeles SVG del Contenedor (0..Width / 0..Height)
   toSvgX(imgX: number): number {
-    const maxW = this.naturalImageWidth() || 1920;
-    const containerW = this.containerWidth() || 800;
+    const maxW = this.naturalImageWidth();
+    const containerW = this.containerWidth();
+    if (!maxW || !containerW) return 0;
     return (imgX / maxW) * containerW;
   }
 
   toSvgY(imgY: number): number {
-    const maxH = this.naturalImageHeight() || 1080;
-    const containerH = this.containerHeight() || 450;
+    const maxH = this.naturalImageHeight();
+    const containerH = this.containerHeight();
+    if (!maxH || !containerH) return 0;
     return (imgY / maxH) * containerH;
   }
 
   toNormX(svgX: number): number {
     const w = this.containerWidth() || 800;
-    const maxW = this.naturalImageWidth() || 1920;
+    const maxW = this.naturalImageWidth();
     const rawX = Math.round((svgX / w) * maxW);
     const snapMargin = Math.round(maxW * 0.02); // Snap magnético a 2% del borde real de imagen
     if (rawX <= snapMargin) return 0;
@@ -89,7 +92,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
 
   toNormY(svgY: number): number {
     const h = this.containerHeight() || 450;
-    const maxH = this.naturalImageHeight() || 1080;
+    const maxH = this.naturalImageHeight();
     const rawY = Math.round((svgY / h) * maxH);
     const snapMargin = Math.round(maxH * 0.02); // Snap magnético a 2% del borde real de imagen
     if (rawY <= snapMargin) return 0;
@@ -110,12 +113,22 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   readonly coreRadius = 6;
   readonly haloRadius = 14;
   readonly labelFontSizeValue = 13;
+  readonly imageUrlSignal = signal<string>('');
 
-  // Historial Undo/Redo
+  readonly effectiveImageUrl = computed(() => {
+    return this.imageUrlSignal() || this.imageUrl || '';
+  });
+
+  readonly imageFailed = signal<boolean>(false);
+
+  // Estado de bloqueo total del lienzo cuando no hay imagen disponible (Prioridad 3)
+  readonly isCanvasLocked = computed<boolean>(() => !this.effectiveImageUrl() || this.imageFailed());
+
+  // Historial Undo/Redo (deshabilitado cuando el lienzo está bloqueado)
   readonly undoStack = signal<CanvasSnapshot[]>([]);
   readonly redoStack = signal<CanvasSnapshot[]>([]);
-  readonly canUndo = computed(() => this.undoStack().length > 0);
-  readonly canRedo = computed(() => this.redoStack().length > 0);
+  readonly canUndo = computed(() => !this.isCanvasLocked() && this.undoStack().length > 0);
+  readonly canRedo = computed(() => !this.isCanvasLocked() && this.redoStack().length > 0);
 
   // Signal reactivo para cambios de tipo de geometría en tiempo real
   readonly currentGeometryType = signal<'polygon' | 'speed_quad' | 'line'>('polygon');
@@ -127,6 +140,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   readonly isLine = computed(() => this.currentGeometryType() === 'line');
 
   readonly activeOpenShape = computed(() => {
+    if (this.isCanvasLocked()) return null;
     const current = this.shapes();
     if (current.length === 0) return null;
     const last = current[current.length - 1];
@@ -134,6 +148,11 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   });
 
   readonly geometryStatusLabel = computed(() => {
+    if (this.isCanvasLocked()) {
+      return this.shapes().length > 0
+        ? `${this.shapes().length} ${this.shapes().length === 1 ? 'área' : 'áreas'} (Solo lectura)`
+        : 'Solo lectura · Sin captura';
+    }
     const gType = this.currentGeometryType();
     const typeName = gType === 'polygon' ? 'Polígono'
       : gType === 'speed_quad' ? 'Cuadrilátero'
@@ -143,19 +162,11 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     const pts = this.totalPointsCount();
     const activeOpen = this.activeOpenShape();
     if (activeOpen) {
-      return `Trazando ${typeName} (${activeOpen.points.length} pts) — Clic en 1er punto para cerrar`;
+      return `Trazando (${activeOpen.points.length} pts) — Clic en 1er punto para cerrar`;
     }
-    if (count === 0) return `${typeName} · Vacío (0/${max})`;
-    return `${typeName} · ${count}/${max} ${gType === 'polygon' ? 'Áreas' : gType === 'speed_quad' ? 'Cuadriláteros' : 'Líneas'} (${pts}pts)`;
+    if (count === 0) return `${typeName} · 0/${max}`;
+    return `${typeName} · ${count}/${max} (${pts} pts)`;
   });
-
-  readonly imageUrlSignal = signal<string>('');
-
-  readonly effectiveImageUrl = computed(() => {
-    return this.imageUrlSignal() || this.imageUrl || '';
-  });
-
-  readonly imageFailed = signal<boolean>(false);
 
   private resizeObserver: ResizeObserver | null = null;
 
@@ -192,18 +203,25 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     }
     if (changes['geometryType']) {
       const newType = this.geometryType || 'polygon';
+      const oldType = changes['geometryType'].previousValue;
       this.currentGeometryType.set(newType);
-      if (!changes['geometryType'].firstChange) {
-        // Reiniciar el lienzo cuando el tipo de analítica o geometría cambie en tiempo real desde el formulario
-        this.shapes.set([]);
-        this.activeDragInfo.set(null);
-        this.draggingGroupInfo.set(null);
-        this.hoverEdgeInfo.set(null);
-        this.selectedShapeIndexes.set(new Set());
-        this.undoStack.set([]);
-        this.redoStack.set([]);
-        this.closeContextMenu();
-        this.emitGeometry();
+      if (!changes['geometryType'].firstChange && oldType && oldType !== newType) {
+        const current = this.shapes();
+        const isCompatible = (newType === 'polygon' && current.some(s => s.points.length >= 3)) ||
+          (newType === 'line' && current.some(s => s.points.length === 2)) ||
+          (newType === 'speed_quad' && current.some(s => s.points.length === 4));
+        if (!isCompatible) {
+          // Reiniciar el lienzo únicamente cuando el tipo de analítica cambie de verdad a un tipo incompatible
+          this.shapes.set([]);
+          this.activeDragInfo.set(null);
+          this.draggingGroupInfo.set(null);
+          this.hoverEdgeInfo.set(null);
+          this.selectedShapeIndexes.set(new Set());
+          this.undoStack.set([]);
+          this.redoStack.set([]);
+          this.closeContextMenu();
+          this.emitGeometry();
+        }
       }
     }
   }
@@ -231,12 +249,37 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     }
   }
 
+  private cachedInitialData: any = null;
+
   onImageLoad(event: Event): void {
     const img = event.target as HTMLImageElement;
     if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
-      this.naturalImageWidth.set(img.naturalWidth);
-      this.naturalImageHeight.set(img.naturalHeight);
-      this.imageAspectRatio.set(img.naturalWidth / img.naturalHeight);
+      const newW = img.naturalWidth;
+      const newH = img.naturalHeight;
+      const oldW = this.naturalImageWidth();
+      const oldH = this.naturalImageHeight();
+
+      this.naturalImageWidth.set(newW);
+      this.naturalImageHeight.set(newH);
+      this.imageAspectRatio.set(newW / newH);
+      this.hasDeterminedResolution.set(true);
+
+      // Si teníamos datos iniciales esperando la resolución real de la cámara, re-aplicarlos con la resolución nativa
+      if (this.cachedInitialData) {
+        this.loadInitialData(this.cachedInitialData);
+      } else if (this.shapes().length > 0 && (oldW !== newW || oldH !== newH)) {
+        // Si el usuario ya había modificado o dibujado puntos, re-escalar proporcionalmente al nuevo tamaño
+        this.shapes.update(shapesList =>
+          shapesList.map(s => ({
+            ...s,
+            points: s.points.map(p => ({
+              x: Math.max(0, Math.min(newW, Math.round((p.x / oldW) * newW))),
+              y: Math.max(0, Math.min(newH, Math.round((p.y / oldH) * newH)))
+            }))
+          }))
+        );
+        this.emitGeometry();
+      }
     }
     this.updateCanvasAspectRatio();
   }
@@ -258,32 +301,83 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
 
   private loadInitialData(data: any): void {
     if (!data) return;
-    if (Array.isArray(data.polygons) && data.polygons.length > 0) {
-      const loaded: CanvasShape[] = data.polygons.map((p: any, idx: number) => {
+    this.cachedInitialData = data;
+
+    const currentW = this.naturalImageWidth() || 1920;
+    const currentH = this.naturalImageHeight() || 1080;
+
+    const parseAndScalePoints = (rawPts: any[]): Point2D[] => {
+      const raw = this.normalizePoints(rawPts);
+      if (raw.length === 0) return [];
+
+      // 1. Detectar si los puntos vienen normalizados 0..1
+      const isNormalized01 = raw.every(p => p.x <= 1.05 && p.y <= 1.05 && p.x >= 0 && p.y >= 0);
+      if (isNormalized01) {
+        return raw.map(p => ({
+          x: Math.max(0, Math.min(currentW, Math.round(p.x * currentW))),
+          y: Math.max(0, Math.min(currentH, Math.round(p.y * currentH)))
+        }));
+      }
+
+      // 2. Detectar si los puntos provienen de la escala previa del sistema (1920x1080 o 3840x2160)
+      const maxX = Math.max(...raw.map(p => p.x), 0);
+      const maxY = Math.max(...raw.map(p => p.y), 0);
+
+      if (maxX > currentW || maxY > currentH) {
+        let refW = 1920;
+        let refH = 1080;
+        if (maxX > 1920 || maxY > 1080) {
+          refW = 3840;
+          refH = 2160;
+        }
+
+        const scaleX = currentW / refW;
+        const scaleY = currentH / refH;
+
+        return raw.map(p => ({
+          x: Math.max(0, Math.min(currentW, Math.round(p.x * scaleX))),
+          y: Math.max(0, Math.min(currentH, Math.round(p.y * scaleY)))
+        }));
+      }
+
+      // 3. Puntos dentro del rango de la resolución de la cámara
+      return raw.map(p => ({
+        x: Math.max(0, Math.min(currentW, Math.round(p.x))),
+        y: Math.max(0, Math.min(currentH, Math.round(p.y)))
+      }));
+    };
+
+    const polyList = data.polygons || data.poligonos || data.speed_quads || data.areas;
+    const lineList = data.lines || data.lineas;
+    const pointsList = data.points || data.puntos;
+
+    if (Array.isArray(polyList) && polyList.length > 0) {
+      const loaded: CanvasShape[] = polyList.map((p: any, idx: number) => {
         const raw = p.original_area || p.outer_area || p.points || [];
         return {
           id: `shape_init_${idx}`,
-          points: this.normalizePoints(raw),
+          points: parseAndScalePoints(raw),
           isClosed: p.isClosed ?? true
         };
       });
       this.shapes.set(loaded);
       this.emitGeometry();
-    } else if (Array.isArray(data.lines) && data.lines.length > 0) {
-      const loaded: CanvasShape[] = data.lines.map((l: any, idx: number) => {
+    } else if (Array.isArray(lineList) && lineList.length > 0) {
+      const loaded: CanvasShape[] = lineList.map((l: any, idx: number) => {
         const raw = l.extreme_points || l.points || l.analysis_zone || [];
+        const pts = parseAndScalePoints(raw);
         return {
           id: `shape_init_${idx}`,
-          points: this.normalizePoints(raw),
-          isClosed: this.normalizePoints(raw).length >= 2
+          points: pts,
+          isClosed: pts.length >= 2
         };
       });
       this.shapes.set(loaded);
       this.emitGeometry();
-    } else if (Array.isArray(data.points) && data.points.length > 0) {
+    } else if (Array.isArray(pointsList) && pointsList.length > 0) {
       this.shapes.set([{
         id: 'shape_init_0',
-        points: this.normalizePoints(data.points),
+        points: parseAndScalePoints(pointsList),
         isClosed: data.isClosed ?? true
       }]);
       this.emitGeometry();
@@ -305,6 +399,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   }
 
   undo(): void {
+    if (this.isCanvasLocked()) return;
     const stack = this.undoStack();
     if (stack.length === 0) return;
 
@@ -333,6 +428,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   }
 
   redo(): void {
+    if (this.isCanvasLocked()) return;
     const stack = this.redoStack();
     if (stack.length === 0) return;
 
@@ -367,9 +463,11 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   onCanvasContextMenu(event: MouseEvent): void {
     event.preventDefault();
     event.stopPropagation();
+    if (this.isCanvasLocked()) return;
   }
 
   private startNewShape(normX: number, normY: number, isHoldDrag: boolean = false): void {
+    if (this.isCanvasLocked()) return;
     const currentShapes = this.shapes();
     if (currentShapes.length >= (this.maxShapes || 10)) {
       return; // Límite máximo de áreas alcanzado
@@ -397,10 +495,12 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   onCanvasDblClick(event: MouseEvent): void {
     event.preventDefault();
     event.stopPropagation();
+    if (this.isCanvasLocked()) return;
   }
 
   onCanvasMouseDown(event: MouseEvent): void {
     event.preventDefault();
+    if (this.isCanvasLocked()) return;
     // Deshabilitar menú de contexto nativo del navegador en clic derecho
     if (event.button === 2) {
       return;
@@ -501,6 +601,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   }
 
   removeLastPoint(): void {
+    if (this.isCanvasLocked()) return;
     const currentShapes = this.shapes();
     if (currentShapes.length === 0) return;
 
@@ -527,6 +628,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   }
 
   clearCanvas(): void {
+    if (this.isCanvasLocked()) return;
     if (this.shapes().length === 0) return;
 
     this.pushUndoSnapshot();
@@ -545,6 +647,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   onShapeContextMenu(shapeIndex: number, event: MouseEvent): void {
     event.preventDefault();
     event.stopPropagation();
+    if (this.isCanvasLocked()) return;
 
     // Si hay una figura activa en trazado, deshabilitar selección y menú contextual en otras áreas
     if (this.activeOpenShape() !== null) return;
@@ -577,6 +680,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       event.stopPropagation();
       event.preventDefault();
     }
+    if (this.isCanvasLocked()) return;
 
     if (shapeIndex < 0 || shapeIndex >= this.shapes().length) return;
 
@@ -594,6 +698,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   }
 
   deleteSelectedShapes(): void {
+    if (this.isCanvasLocked()) return;
     const selectedSet = this.selectedShapeIndexes();
     if (selectedSet.size === 0) return;
 
@@ -609,6 +714,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   }
 
   toggleShapeSelection(shapeIndex: number, event?: MouseEvent): void {
+    if (this.isCanvasLocked()) return;
     if (event?.shiftKey || event?.ctrlKey) {
       this.selectedShapeIndexes.update(set => {
         const copy = new Set(set);
@@ -629,6 +735,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   deletePoint(shapeIndex: number, pointIndex: number, event: MouseEvent): void {
     event.stopPropagation();
     event.preventDefault();
+    if (this.isCanvasLocked()) return;
 
     // En cuadrilátero de velocidad (4 puntos A,B,C,D) o líneas (2 puntos P1,P2), eliminar un punto borra la forma completa
     if (this.isSpeedQuad() || this.isLine()) {
@@ -672,6 +779,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   splitEdge(event: MouseEvent): void {
     event.stopPropagation();
     event.preventDefault();
+    if (this.isCanvasLocked()) return;
 
     const info = this.hoverEdgeInfo();
     if (!info) return;
@@ -697,6 +805,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   // --- Mover Formas Seleccionadas en Grupo (Group Dragging) ---
 
   startDragShape(shapeIndex: number, event: MouseEvent): void {
+    if (this.isCanvasLocked()) return;
     this.closeContextMenu();
 
     // Si se está trazando una nueva área activa (activeOpenShape() !== null), bloquear selección/arrastre de otras áreas
@@ -764,6 +873,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   // --- Drag & Drop de Puntos de Control ---
 
   startDrag(shapeIndex: number, pointIndex: number, event: MouseEvent): void {
+    if (this.isCanvasLocked()) return;
     this.closeContextMenu();
 
     // Si se está dibujando una nueva figura y el punto pertenece a OTRA figura existente, ignorar y colocar punto nuevo
@@ -805,7 +915,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
 
   @HostListener('document:mousemove', ['$event'])
   onMouseMove(event: MouseEvent): void {
-    if (!this.canvasContainer) return;
+    if (this.isCanvasLocked() || !this.canvasContainer) return;
 
     const rect = this.canvasContainer.nativeElement.getBoundingClientRect();
     const clickX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
@@ -997,7 +1107,9 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
 
   getShapeCentroid(shapeIndex: number): Point2D {
     const shape = this.shapes()[shapeIndex];
-    if (!shape || shape.points.length === 0) return { x: 500, y: 500 };
+    const defaultX = Math.round((this.naturalImageWidth() || 1920) / 2);
+    const defaultY = Math.round((this.naturalImageHeight() || 1080) / 2);
+    if (!shape || shape.points.length === 0) return { x: defaultX, y: defaultY };
     const sumX = shape.points.reduce((acc, p) => acc + p.x, 0);
     const sumY = shape.points.reduce((acc, p) => acc + p.y, 0);
     return {
@@ -1010,6 +1122,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
 
   @HostListener('window:keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
+    if (this.isCanvasLocked()) return;
     const key = event.key.toLowerCase();
 
     // Tecla Supr / Delete -> Eliminar áreas seleccionadas
@@ -1055,6 +1168,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
 
   // Genera un cuadrilátero de velocidad centrado y estructurado A-B-C-D por defecto
   generateDefaultSpeedQuad(): void {
+    if (this.isCanvasLocked()) return;
     const maxW = this.naturalImageWidth() || 1920;
     const maxH = this.naturalImageHeight() || 1080;
 
@@ -1453,9 +1567,11 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       const miter = dot > 0.1 ? Math.min(2.5, 1.0 / dot) : 1.0;
 
       const p = originalPoints[i];
+      const maxW = this.naturalImageWidth() || 1920;
+      const maxH = this.naturalImageHeight() || 1080;
       outerPoints.push({
-        x: Math.round(p.x + bx * d * miter),
-        y: Math.round(p.y + by * d * miter)
+        x: Math.max(0, Math.min(maxW, Math.round(p.x + bx * d * miter))),
+        y: Math.max(0, Math.min(maxH, Math.round(p.y + by * d * miter)))
       });
     }
 
@@ -1483,8 +1599,12 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     const vy = p2.y - p1.y;
     const len = Math.hypot(vx, vy);
 
+    const maxW = this.naturalImageWidth() || 1920;
+    const maxH = this.naturalImageHeight() || 1080;
+    const clamp = (val: number, maxVal: number) => Math.max(0, Math.min(maxVal, Math.round(val)));
+
     if (len === 0) {
-      return [{ x: Math.round(mx), y: Math.round(my) }, { x: Math.round(mx), y: Math.round(my) }];
+      return [{ x: clamp(mx, maxW), y: clamp(my, maxH) }, { x: clamp(mx, maxW), y: clamp(my, maxH) }];
     }
 
     const nx = -vy / len;
@@ -1493,12 +1613,12 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     const dist = offsetDistance > 0 ? offsetDistance : 15;
 
     const pA = {
-      x: Math.round(mx + nx * dist),
-      y: Math.round(my + ny * dist)
+      x: clamp(mx + nx * dist, maxW),
+      y: clamp(my + ny * dist, maxH)
     };
     const pB = {
-      x: Math.round(mx - nx * dist),
-      y: Math.round(my - ny * dist)
+      x: clamp(mx - nx * dist, maxW),
+      y: clamp(my - ny * dist, maxH)
     };
 
     return [pA, pB];
@@ -1539,6 +1659,10 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     const vy = p2.y - p1.y;
     const len = Math.hypot(vx, vy);
 
+    const maxW = this.naturalImageWidth() || 1920;
+    const maxH = this.naturalImageHeight() || 1080;
+    const clamp = (val: number, maxVal: number) => Math.max(0, Math.min(maxVal, Math.round(val)));
+
     if (len === 0) return [p1, p1, p2, p2];
 
     const nx = -vy / len;
@@ -1550,20 +1674,20 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     const oy = ny * hw;
 
     const v1 = {
-      x: Math.round(p1.x - ox),
-      y: Math.round(p1.y - oy)
+      x: clamp(p1.x - ox, maxW),
+      y: clamp(p1.y - oy, maxH)
     };
     const v2 = {
-      x: Math.round(p1.x + ox),
-      y: Math.round(p1.y + oy)
+      x: clamp(p1.x + ox, maxW),
+      y: clamp(p1.y + oy, maxH)
     };
     const v3 = {
-      x: Math.round(p2.x + ox),
-      y: Math.round(p2.y + oy)
+      x: clamp(p2.x + ox, maxW),
+      y: clamp(p2.y + oy, maxH)
     };
     const v4 = {
-      x: Math.round(p2.x - ox),
-      y: Math.round(p2.y - oy)
+      x: clamp(p2.x - ox, maxW),
+      y: clamp(p2.y - oy, maxH)
     };
 
     return [v1, v2, v3, v4];
@@ -1571,10 +1695,14 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
 
   emitGeometry(): void {
     const allShapes = this.shapes();
+    const maxW = this.naturalImageWidth() || 1920;
+    const maxH = this.naturalImageHeight() || 1080;
+    const clamp = (val: number, maxVal: number) => Math.max(0, Math.min(maxVal, Math.round(val)));
+
     if (this.geometryType === 'polygon' || this.geometryType === 'speed_quad') {
       const polygons = allShapes.map((s, idx) => {
-        const origArea = s.points.map(p => ({ x: p.x, y: p.y }));
-        const outerArea = this.calculateOuterArea(origArea, this.scaleFactor);
+        const origArea = s.points.map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) }));
+        const outerArea = this.calculateOuterArea(origArea, this.scaleFactor).map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) }));
         const item: any = {
           label: `Polygon${idx + 1}`,
           original_area: origArea,
@@ -1600,9 +1728,9 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
         return {
           camera_id: this.cameraId || '',
           label: `Linea${idx + 1}`,
-          extreme_points: s.points.map(p => ({ x: p.x, y: p.y })),
-          direction_points: this.calculateDirectionPoints(p1, p2, 15),
-          analysis_zone: this.calculateAnalysisZone(p1, p2, halfW)
+          extreme_points: s.points.map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) })),
+          direction_points: this.calculateDirectionPoints(p1, p2, 15).map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) })),
+          analysis_zone: this.calculateAnalysisZone(p1, p2, halfW).map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) }))
         };
       });
 

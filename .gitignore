@@ -48,11 +48,10 @@ graphify-out/
 
 # Environment variables
 .env
-.gitignore
+
+# Scratch & Documentation dumps
+scratch/
+scratch_openapi.json
 schemas.md
 endpoints.md
-
-# Generated configuration files
-src/app/core/config/api-key.config.ts
-src/app/core/config/websocket.config.ts
 provisional-mockups

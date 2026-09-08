@@ -1,7 +1,7 @@
 <div class="filter-actions-group">
-  @if (hasActiveFilters) {
+  @if (hasActiveFilters || hasPendingChanges) {
   <button type="button" (click)="reset.emit()" class="btn-filter-action btn-filter-reset">
-    <span class="icon-svg icon-close" style="width: 13px; height: 13px;"></span>
+    <span class="icon-svg icon-close" style="width: 13px; height: 13px; background-color: currentColor;"></span>
     <span>{{ resetLabel }}</span>
   </button>
   }

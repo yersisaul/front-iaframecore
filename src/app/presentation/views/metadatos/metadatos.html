@@ -1,12 +1,12 @@
 <div #metadataContainer class="metadata-view-container container-fluid py-4 position-relative">
   <!-- Header REFACTORIZADO DRY -->
-  <app-page-header
-    [title]="'Búsqueda de ' + activeIndex()"
+  <app-page-header [title]="'Búsqueda de ' + activeIndex()"
     [subtitle]="'Se encontraron <span class=&quot;fw-semibold text-primary&quot;>' + formatTotalRecords(totalRecords()) + '</span> registros en el índice'">
     <ng-container header-actions>
       <!-- Barra de Búsqueda Unificada y Botón de Filtros Agrupados -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1">
-        <app-search-input [control]="searchControl" placeholder="Buscar metadatos..." inputWidth="180px"></app-search-input>
+        <app-search-input [control]="searchControl" placeholder="Buscar metadatos..."
+          inputWidth="180px"></app-search-input>
 
         <!-- Botón de Búsqueda por Imagen -->
         @if (activeIndex() === 'rostros') {
@@ -46,47 +46,47 @@
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilters().camaras.length > 0" (click)="toggleDropdown('camaras', $event)">
           <span class="icon-svg icon-camara filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Cámaras</span>
-          @if (tempFilters().camaras.length > 0) {
-          <span class="badge bg-primary text-white" style="font-size: 0.7rem; border-radius: 10px;">{{
-            tempFilters().camaras.length }}</span>
-          }
+          <span>Cámaras ({{ tempFilters().camaras.length || 'Todas' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'camaras'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'camaras') {
-        <div class="filter-dropdown-menu dropdown-camaras p-2 scrollable-menu" (click)="$event.stopPropagation()">
-          <!-- Searchbar interno de cámaras -->
-          <div class="camera-search-wrapper px-1 pb-2">
-            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1" style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
+        <div class="filter-dropdown-menu dropdown-camaras p-0" (click)="$event.stopPropagation()">
+          <!-- Searchbar interno de cámaras fijo arriba -->
+          <div class="dropdown-search-header p-2">
+            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
+              style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
-              <input
-                #cameraSearchInput
-                type="text"
-                class="camera-search-input border-0 bg-transparent w-100"
-                placeholder="Buscar cámara..."
-                (input)="cameraSearch.set(cameraSearchInput.value)"
-                (click)="$event.stopPropagation()"
-                autocomplete="off"
+              <input #cameraSearchInput type="text" class="camera-search-input border-0 bg-transparent w-100"
+                placeholder="Buscar cámara..." (input)="cameraSearch.set(cameraSearchInput.value)"
+                (click)="$event.stopPropagation()" autocomplete="off"
                 style="font-size: 0.8rem; outline: none; min-width: 0;" />
               @if (cameraSearch()) {
               <button type="button" class="btn-ghost p-0 d-flex" style="opacity: 0.5; line-height: 1;"
-                (click)="cameraSearchInput.value = ''; cameraSearch.set(''); $event.stopPropagation()" title="Limpiar búsqueda">
+                (click)="cameraSearchInput.value = ''; cameraSearch.set(''); $event.stopPropagation()"
+                title="Limpiar búsqueda">
                 <span style="font-size: 0.75rem;">✕</span>
               </button>
               }
             </div>
           </div>
-          @if (filteredCamarasOptions().length === 0) {
-          <div class="text-muted small text-center py-2 opacity-60">Sin resultados</div>
-          }
-          @for (cam of filteredCamarasOptions(); track cam) {
-          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
-            <input type="checkbox" [checked]="tempFilters().camaras.includes(cam)"
-              (change)="toggleMultiSelectFilter('camaras', cam)" class="form-check-input flex-shrink-0" />
-            <span class="text-truncate" [title]="cam">{{ cam }}</span>
-          </label>
-          }
+          <!-- Opciones scrolleables -->
+          <div class="dropdown-items-scroll scrollable-menu p-2 pt-1">
+            @if (filteredCamarasOptions().length === 0) {
+            <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+            }
+            @for (cam of filteredCamarasOptions(); track cam) {
+            @let isSelected = tempFilters().camaras.includes(cam);
+            <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded"
+              [class.active]="isSelected"
+              (click)="toggleMultiSelectFilter('camaras', cam)">
+              <span class="text-truncate" [title]="cam">{{ cam }}</span>
+              @if (isSelected) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+              }
+            </button>
+            }
+          </div>
         </div>
         }
       </div>
@@ -97,22 +97,25 @@
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
           [class.active]="tempFilters().tipoObjeto.length > 0" (click)="toggleDropdown('tipoObjeto', $event)">
           <span class="icon-svg icon-box filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Tipo de Objeto</span>
-          @if (tempFilters().tipoObjeto.length > 0) {
-          <span class="badge bg-primary text-white" style="font-size: 0.7rem; border-radius: 10px;">{{
-            tempFilters().tipoObjeto.length }}</span>
-          }
+          <span>Tipo de Objeto ({{ tempFilters().tipoObjeto.length || 'Todos' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'tipoObjeto'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'tipoObjeto') {
         <div class="filter-dropdown-menu dropdown-tipo p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @if (tipoObjetoOptions().length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
           @for (obj of tipoObjetoOptions(); track obj) {
-          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
-            <input type="checkbox" [checked]="tempFilters().tipoObjeto.includes(obj)"
-              (change)="toggleMultiSelectFilter('tipoObjeto', obj)" class="form-check-input flex-shrink-0" />
-            <span class="text-truncate text-capitalize">{{ obj }}</span>
-          </label>
+          @let isSelected = tempFilters().tipoObjeto.includes(obj);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
+            [class.active]="isSelected"
+            (click)="toggleMultiSelectFilter('tipoObjeto', obj)">
+            <span class="text-truncate">{{ obj }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
+          </button>
           }
         </div>
         }
@@ -120,28 +123,30 @@
       }
 
       <!-- 6. COLORES -->
-      @if (activeIndex() === 'personas' || activeIndex() === 'rostros' || activeIndex() === 'vehiculos' || activeIndex()
-      === 'otros') {
+      @if (activeIndex() === 'personas' || activeIndex() === 'rostros' || activeIndex() === 'vehiculos' || activeIndex() === 'otros') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
           [class.active]="tempFilters().colores.length > 0" (click)="toggleDropdown('colores', $event)">
           <span class="icon-svg icon-grid filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Colores</span>
-          @if (tempFilters().colores.length > 0) {
-          <span class="badge bg-primary text-white" style="font-size: 0.7rem; border-radius: 10px;">{{
-            tempFilters().colores.length }}</span>
-          }
+          <span>Colores ({{ tempFilters().colores.length || 'Todos' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'colores'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'colores') {
         <div class="filter-dropdown-menu dropdown-colores p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @if (coloresOptions().length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
           @for (col of coloresOptions(); track col) {
-          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
-            <input type="checkbox" [checked]="tempFilters().colores.includes(col)"
-              (change)="toggleMultiSelectFilter('colores', col)" class="form-check-input flex-shrink-0" />
-            <span class="text-truncate text-capitalize">{{ col }}</span>
-          </label>
+          @let isSelected = tempFilters().colores.includes(col);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
+            [class.active]="isSelected"
+            (click)="toggleMultiSelectFilter('colores', col)">
+            <span class="text-truncate">{{ col }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
+          </button>
           }
         </div>
         }
@@ -154,22 +159,25 @@
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
           [class.active]="tempFilters().posturas.length > 0" (click)="toggleDropdown('posturas', $event)">
           <span class="icon-svg icon-user filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Posturas</span>
-          @if (tempFilters().posturas.length > 0) {
-          <span class="badge bg-primary text-white" style="font-size: 0.7rem; border-radius: 10px;">{{
-            tempFilters().posturas.length }}</span>
-          }
+          <span>Posturas ({{ tempFilters().posturas.length || 'Todas' }})</span>
           <span class="icon-svg icon-chevron-down transition-all" style="width: 10px; height: 10px;"
             [class.rotated]="activeDropdown() === 'posturas'"></span>
         </button>
         @if (activeDropdown() === 'posturas') {
         <div class="filter-dropdown-menu dropdown-posturas p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @if (posturasOptions().length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
           @for (pos of posturasOptions(); track pos) {
-          <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-3 rounded cursor-pointer">
-            <input type="checkbox" [checked]="tempFilters().posturas.includes(pos)"
-              (change)="toggleMultiSelectFilter('posturas', pos)" class="form-check-input flex-shrink-0" />
-            <span class="text-truncate text-capitalize">{{ pos }}</span>
-          </label>
+          @let isSelected = tempFilters().posturas.includes(pos);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
+            [class.active]="isSelected"
+            (click)="toggleMultiSelectFilter('posturas', pos)">
+            <span class="text-truncate">{{ pos }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
+          </button>
           }
         </div>
         }
@@ -180,22 +188,26 @@
       @if (activeIndex() === 'personas' || activeIndex() === 'rostros') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
-          [class.active]="tempFilters().edad !== null" (click)="toggleDropdown('edad', $event)">
+          [class.active]="tempFilters().edad.length > 0" (click)="toggleDropdown('edad', $event)">
           <span class="icon-svg icon-clock filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Edad: {{ tempFilters().edad || 'Todos' }}</span>
+          <span>Edad ({{ tempFilters().edad.length || 'Todas' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'edad'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'edad') {
-        <div class="filter-dropdown-menu dropdown-edad p-2" (click)="$event.stopPropagation()">
-          <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilters().edad === null"
-            (click)="selectSingleFilter('edad', null)">
-            Todos
-          </button>
+        <div class="filter-dropdown-menu dropdown-edad p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @if (edadesOptions().length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
           @for (ed of edadesOptions(); track ed) {
-          <button class="dropdown-item py-1.5 px-3 rounded text-capitalize" [class.active]="tempFilters().edad === ed"
-            (click)="selectSingleFilter('edad', ed)">
-            {{ ed }}
+          @let isSelected = tempFilters().edad.includes(ed);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
+            [class.active]="isSelected"
+            (click)="toggleMultiSelectFilter('edad', ed)">
+            <span>{{ ed }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
           }
         </div>
@@ -207,22 +219,26 @@
       @if (activeIndex() === 'personas' || activeIndex() === 'rostros') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
-          [class.active]="tempFilters().genero !== null" (click)="toggleDropdown('genero', $event)">
+          [class.active]="tempFilters().genero.length > 0" (click)="toggleDropdown('genero', $event)">
           <span class="icon-svg icon-user filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Género: {{ tempFilters().genero || 'Todos' }}</span>
+          <span>Género ({{ tempFilters().genero.length || 'Todos' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'genero'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'genero') {
-        <div class="filter-dropdown-menu dropdown-genero p-2" (click)="$event.stopPropagation()">
-          <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilters().genero === null"
-            (click)="selectSingleFilter('genero', null)">
-            Todos
-          </button>
+        <div class="filter-dropdown-menu dropdown-genero p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @if (generosOptions().length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
           @for (gen of generosOptions(); track gen) {
-          <button class="dropdown-item py-1.5 px-3 rounded text-capitalize"
-            [class.active]="tempFilters().genero === gen" (click)="selectSingleFilter('genero', gen)">
-            {{ gen }}
+          @let isSelected = tempFilters().genero.includes(gen);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
+            [class.active]="isSelected"
+            (click)="toggleMultiSelectFilter('genero', gen)">
+            <span>{{ gen }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
           }
         </div>
@@ -234,22 +250,26 @@
       @if (activeIndex() === 'rostros') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
-          [class.active]="tempFilters().reconocimiento !== null" (click)="toggleDropdown('reconocimiento', $event)">
+          [class.active]="tempFilters().reconocimiento.length > 0" (click)="toggleDropdown('reconocimiento', $event)">
           <span class="icon-svg icon-list filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Sujeto: {{ tempFilters().reconocimiento || 'Todos' }}</span>
+          <span>Sujeto ({{ tempFilters().reconocimiento.length || 'Todos' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'reconocimiento'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'reconocimiento') {
-        <div class="filter-dropdown-menu dropdown-reconocimiento p-2" (click)="$event.stopPropagation()">
-          <button class="dropdown-item py-1.5 px-3 rounded" [class.active]="tempFilters().reconocimiento === null"
-            (click)="selectSingleFilter('reconocimiento', null)">
-            Todos
-          </button>
+        <div class="filter-dropdown-menu dropdown-reconocimiento p-2 scrollable-menu" (click)="$event.stopPropagation()">
+          @if (reconocimientosOptions().length === 0) {
+          <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
+          }
           @for (rec of reconocimientosOptions(); track rec) {
-          <button class="dropdown-item py-1.5 px-3 rounded text-capitalize"
-            [class.active]="tempFilters().reconocimiento === rec" (click)="selectSingleFilter('reconocimiento', rec)">
-            {{ rec }}
+          @let isSelected = tempFilters().reconocimiento.includes(rec);
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
+            [class.active]="isSelected"
+            (click)="toggleMultiSelectFilter('reconocimiento', rec)">
+            <span class="text-truncate">{{ rec }}</span>
+            @if (isSelected) {
+            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+            }
           </button>
           }
         </div>
@@ -261,11 +281,12 @@
       @if (activeIndex() === 'vehiculos') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2"
-          [class.active]="tempFilters().reconocimiento !== null" (click)="toggleDropdown('placa', $event)">
+          [class.active]="tempFilters().reconocimiento.length > 0" (click)="toggleDropdown('placa', $event)">
           <span class="icon-svg icon-list filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Placa: {{ tempFilters().reconocimiento || 'Todas' }}</span>
-          @if (tempFilters().reconocimiento) {
-          <span class="ms-1 text-danger font-monospace fw-bold" (click)="clearPlateFilter($event)" title="Quitar filtro de placa" style="font-size: 0.85rem; cursor: pointer;">✕</span>
+          <span>Placa: {{ tempFilters().reconocimiento[0] || 'Todas' }}</span>
+          @if (tempFilters().reconocimiento.length > 0) {
+          <span class="ms-1 text-danger font-monospace fw-bold" (click)="clearPlateFilter($event)"
+            title="Quitar filtro de placa" style="font-size: 0.85rem; cursor: pointer;">✕</span>
           } @else {
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'placa'" style="width: 10px; height: 10px;"></span>
@@ -273,13 +294,9 @@
         </button>
         @if (activeDropdown() === 'placa') {
         <div class="filter-dropdown-menu dropdown-placa p-2" (click)="$event.stopPropagation()">
-          <input type="text"
-            class="form-control form-control-sm font-monospace text-uppercase text-center fw-bold"
-            style="letter-spacing: 2px;"
-            placeholder="XXX-XXX"
-            maxlength="7"
-            [value]="tempFilters().reconocimiento || ''"
-            (input)="onRealtimePlateInput($event)" />
+          <input type="text" class="form-control form-control-sm font-monospace text-uppercase text-center fw-bold"
+            style="letter-spacing: 2px;" placeholder="XXX-XXX" maxlength="7"
+            [value]="tempFilters().reconocimiento[0] || ''" (input)="onRealtimePlateInput($event)" />
         </div>
         }
       </div>
@@ -401,9 +418,12 @@
 
           <!-- Presets -->
           <div class="d-flex flex-wrap gap-2 mb-3 preset-buttons-row">
-            <button type="button" class="preset-btn" (click)="setDatePreset('24h')">24h</button>
-            <button type="button" class="preset-btn" (click)="setDatePreset('7d')">7 días</button>
-            <button type="button" class="preset-btn" (click)="setDatePreset('today')">Hoy</button>
+            <button type="button" class="preset-btn" [class.active]="activeDatePreset() === '24h'"
+              (click)="setDatePreset('24h')">24h</button>
+            <button type="button" class="preset-btn" [class.active]="activeDatePreset() === '7d'"
+              (click)="setDatePreset('7d')">7 días</button>
+            <button type="button" class="preset-btn" [class.active]="activeDatePreset() === 'today'"
+              (click)="setDatePreset('today')">Hoy</button>
             <button type="button" class="preset-btn text-danger-hover" (click)="setDatePreset('clear')">Limpiar</button>
           </div>
 
@@ -626,7 +646,13 @@
         style="border-radius: 12px; font-size: 0.85rem; background-color: var(--primary-light); color: var(--primary); border: 1.5px solid rgba(var(--primary-rgb), 0.15) !important;">
         <div class="d-flex align-items-center gap-2">
           <span class="icon-svg icon-activity animate-pulse" style="width: 16px; height: 16px;"></span>
-          <span class="fw-semibold">Hay {{ bufferedEvents().length }} nuevo(s) metadato(s) disponible(s).</span>
+          <span class="fw-semibold">
+            @if (hasActiveFilters()) {
+            Hay {{ bufferedEvents().length }} nuevo(s) metadato(s) que coinciden con tus filtros activos.
+            } @else {
+            Hay {{ bufferedEvents().length }} nuevo(s) metadato(s) disponible(s).
+            }
+          </span>
         </div>
         <button class="btn btn-sm btn-primary py-1 px-3 fw-bold rounded-pill shadow-sm"
           (click)="applyBufferedEvents()">Ver nuevos metadatos</button>
@@ -635,12 +661,9 @@
 
       <!-- No records found view (REUTILIZABLE DRY) -->
       @if (!isLoading() && records().length === 0) {
-      <app-empty-state
-        title="Sin Resultados"
-        description="No se encontraron metadatos que coincidan con los filtros seleccionados."
-        iconClass="icon-warning"
-        actionText="Restablecer Filtros"
-        (action)="onResetFilters()">
+      <app-empty-state title="Sin Resultados"
+        description="No se encontraron metadatos que coincidan con los filtros seleccionados." iconClass="icon-warning"
+        actionText="Restablecer Filtros" (action)="onResetFilters()">
       </app-empty-state>
       }
 
@@ -662,7 +685,8 @@
 
             @if (record.imagenRemota) {
             <img [src]="record.imagenRemota" (error)="onImageError($event)"
-              class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;" alt="Thumbnail" />
+              class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
+              alt="Thumbnail" />
             }
 
             <!-- Floating Index Type indicator -->
@@ -735,8 +759,7 @@
       <div class="metadata-card-popover" [style.left.px]="mouseX()" [style.top.px]="mouseY()">
         <div class="popover-header d-flex align-items-center justify-content-between">
           <div class="d-flex align-items-center gap-1.5">
-            <span class="icon-svg icon-box text-primary popover-header-icon"
-              style="width: 12px; height: 12px;"></span>
+            <span class="icon-svg icon-box text-primary popover-header-icon" style="width: 12px; height: 12px;"></span>
             <span class="popover-header-title text-muted text-uppercase fw-bold">Atributos</span>
           </div>
           <span class="badge bg-secondary-light text-secondary text-capitalize"
@@ -815,14 +838,9 @@
       }
 
       <!-- Paginación (REUTILIZABLE DRY) -->
-      @if (!tempFilters().imageSearchUrl) {
-      <app-pagination-controls
-        [currentPage]="currentPage()"
-        [totalPages]="totalPages()"
-        [visiblePages]="visiblePages()"
-        (pageChange)="setPage($event)">
+      <app-pagination-controls [currentPage]="currentPage()" [totalPages]="totalPages()" [totalRecords]="totalRecords()"
+        [visiblePages]="visiblePages()" (pageChange)="setPage($event)">
       </app-pagination-controls>
-      }
     </div>
   </div>
 
@@ -834,9 +852,6 @@
       <!-- Modal Header -->
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="fw-bold mb-0 text-body fs-6">Agregar a Lista de Control</h5>
-        <button class="btn-close-premium" (click)="closeAddToListModal()" aria-label="Cerrar modal">
-          <span class="icon-svg icon-close" style="width: 16px; height: 16px;"></span>
-        </button>
       </div>
 
       <!-- Modal Body -->
@@ -883,7 +898,7 @@
         </div>
 
         <!-- Modal Footer Actions -->
-        <div class="d-flex gap-3 border-top pt-3">
+        <div class="d-flex gap-3 pt-3">
           <button class="btn btn-outline-secondary flex-fill py-2 btn-sm fw-semibold" (click)="closeAddToListModal()">
             Cancelar
           </button>

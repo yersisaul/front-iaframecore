@@ -12,12 +12,9 @@ else
   echo "⚠️ Advertencia: JWT_SECRET_KEY no fue proporcionado. Se mantendrá el valor por defecto."
 fi
 
-# 2. Generar configuración de Nginx de forma dinámica
+# 2. Reemplazar manualmente API_HOST y OPENSEARCH_HOST en el template de Nginx
 echo "🔧 Generando configuración de Nginx de forma dinámica..."
-
-envsubst '$API_HOST $MINIO_PUBLIC_URL $OPENSEARCH_HOST' \
-  < /etc/nginx/templates/default.conf.template \
-  > /etc/nginx/conf.d/default.conf
+envsubst '$API_HOST $OPENSEARCH_HOST' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
 
 # 3. Continuar con la ejecución de Nginx
 echo "🚀 Iniciando Nginx..."

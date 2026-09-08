@@ -11,7 +11,7 @@ import { MetadataMapper } from '../mappers/metadata.mapper';
   providedIn: 'root'
 })
 export class StorageHttpRepository implements IStorageRepository {
-  private readonly apiUrl = `${AppEnvironment.apiUrl}/storage/upload`;
+  private readonly apiUrl = `${AppEnvironment.apiUrl}/frontend/extra/upload`;
 
   constructor(private http: HttpClient) {}
 
@@ -23,7 +23,7 @@ export class StorageHttpRepository implements IStorageRepository {
       map(res => {
         const rawUrl = res.url || res.url_img || '';
         return {
-          url: MetadataMapper.sanitizeImageUrl(rawUrl),
+          url: rawUrl,
           embedding: res.embedding || []
         };
       })

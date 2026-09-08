@@ -21,41 +21,27 @@ export class OpenSearchRepository implements IMetadataRepository {
   constructor(private http: HttpClient) {}
 
   getAvailableIndices(): Observable<MetaIndexInfo[]> {
-    return this.http.get<CatIndexResponse[]>(`${AppEnvironment.openSearchBaseUrl}/_cat/indices?format=json`).pipe(
-      switchMap(indices => {
-        const validNames: MetaIndexName[] = ['personas', 'vehiculos', 'rostros', 'otros'];
-        const activeNames = indices
-          .map(i => i.index as MetaIndexName)
-          .filter(name => validNames.includes(name));
-
-        validNames.forEach(name => {
-          if (!activeNames.includes(name)) {
-            activeNames.push(name);
+    const validNames: MetaIndexName[] = ['personas', 'vehiculos', 'rostros', 'otros'];
+    const countRequests = validNames.map(name =>
+      this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/${name}/_search`, {
+        track_total_hits: true,
+        size: 0
+      }).pipe(
+        map(res => {
+          let count = 0;
+          if (res.hits?.total) {
+            count = typeof res.hits.total === 'number' ? res.hits.total : (res.hits.total.value || 0);
           }
-        });
-
-        const countObservables = activeNames.map(name =>
-          this.http.get<{ count: number }>(`${AppEnvironment.openSearchBaseUrl}/${name}/_count`).pipe(
-            map(res => ({ name, count: res.count })),
-            catchError(() => of({ name, count: 0 }))
-          )
-        );
-
-        return forkJoin(countObservables);
-      }),
-      map(mapped => {
-        return mapped.sort((a, b) => b.count - a.count);
-      }),
-      catchError(() => {
-        console.warn('Failed to fetch indices or counts from OpenSearch. Using default list.');
-        return of<MetaIndexInfo[]>([
-          { name: 'personas', count: 0 },
-          { name: 'vehiculos', count: 0 },
-          { name: 'rostros', count: 0 },
-          { name: 'otros', count: 0 }
-        ]);
-      })
+          return { name, count };
+        }),
+        catchError(err => {
+          console.warn(`[OpenSearchRepository] No se pudo consultar _search para índice "${name}":`, err);
+          return of({ name, count: 0 });
+        })
+      )
     );
+
+    return forkJoin(countRequests);
   }
 
   search(
@@ -244,42 +230,53 @@ export class OpenSearchRepository implements IMetadataRepository {
       mustFilters.push(this.buildTermsFilter('tipo_objeto', filters.tipoObjeto));
     }
 
-    if (filters.edad) {
-      mustFilters.push(this.buildTermFilter('edad', filters.edad));
+    if (filters.edad && filters.edad.length > 0) {
+      mustFilters.push(this.buildTermsFilter('edad', filters.edad));
     }
 
-    if (filters.genero) {
-      mustFilters.push(this.buildTermFilter('genero', filters.genero));
+    if (filters.genero && filters.genero.length > 0) {
+      mustFilters.push(this.buildTermsFilter('genero', filters.genero));
     }
 
-    if (filters.reconocimiento && filters.reconocimiento.trim()) {
-      const val = filters.reconocimiento.trim();
-      const valClean = val.replace(/[^A-Za-z0-9]/g, '');
-      const variants = Array.from(new Set([
-        val,
-        val.toLowerCase(),
-        val.toUpperCase(),
-        valClean,
-        valClean.toLowerCase(),
-        valClean.toUpperCase()
-      ])).filter(Boolean);
+    if (filters.reconocimiento && filters.reconocimiento.length > 0) {
+      const allVariants = new Set<string>();
+      const wildcards: any[] = [];
 
-      const shouldClause: any[] = [
-        { terms: { 'reconocimiento': variants } },
-        { terms: { 'reconocimiento.keyword': variants } }
-      ];
+      filters.reconocimiento.forEach(rawVal => {
+        const val = (rawVal || '').trim();
+        if (!val) return;
+        const valClean = val.replace(/[^A-Za-z0-9]/g, '');
+        const variants = [
+          val,
+          val.toLowerCase(),
+          val.toUpperCase(),
+          valClean,
+          valClean.toLowerCase(),
+          valClean.toUpperCase()
+        ].filter(Boolean);
 
-      variants.forEach(v => {
-        shouldClause.push({ wildcard: { 'reconocimiento.keyword': { value: `*${v}*`, case_insensitive: true } } });
-        shouldClause.push({ wildcard: { 'reconocimiento': { value: `*${v}*`, case_insensitive: true } } });
+        variants.forEach(v => {
+          allVariants.add(v);
+          wildcards.push({ wildcard: { 'reconocimiento.keyword': { value: `*${v}*`, case_insensitive: true } } });
+          wildcards.push({ wildcard: { 'reconocimiento': { value: `*${v}*`, case_insensitive: true } } });
+        });
       });
 
-      mustFilters.push({
-        bool: {
-          should: shouldClause,
-          minimum_should_match: 1
-        }
-      });
+      if (allVariants.size > 0) {
+        const variantsArr = Array.from(allVariants);
+        const shouldClause: any[] = [
+          { terms: { 'reconocimiento': variantsArr } },
+          { terms: { 'reconocimiento.keyword': variantsArr } },
+          ...wildcards
+        ];
+
+        mustFilters.push({
+          bool: {
+            should: shouldClause,
+            minimum_should_match: 1
+          }
+        });
+      }
     }
 
     if (filters.colores && filters.colores.length > 0) {
@@ -381,7 +378,27 @@ export class OpenSearchRepository implements IMetadataRepository {
       });
     }
 
-    if (index === 'rostros' && filters.coincidenciaFiltro) {
+    if (index === 'rostros' && filters.coincidenciaFiltro && filters.coincidenciaFiltro !== 'all') {
+      const nonMatchTerms = [
+        '',
+        'desconocido', 'Desconocido', 'DESCONOCIDO',
+        'pendiente', 'Pendiente', 'PENDIENTE',
+        'unknown', 'Unknown', 'UNKNOWN',
+        'none', 'None', 'NONE',
+        'null', 'NULL',
+        'sin coincidencia', 'Sin Coincidencia', 'sin_coincidencia', 'SIN_COINCIDENCIA',
+        'no match', 'No Match', 'no_match', 'NO_MATCH',
+        'n/a', 'N/A', '-'
+      ];
+
+      const nonMatchWildcards = [
+        { wildcard: { 'reconocimiento.keyword': { value: '*desconocid*', case_insensitive: true } } },
+        { wildcard: { 'reconocimiento.keyword': { value: '*pendient*', case_insensitive: true } } },
+        { wildcard: { 'reconocimiento.keyword': { value: '*unknown*', case_insensitive: true } } },
+        { wildcard: { 'reconocimiento': { value: '*desconocid*', case_insensitive: true } } },
+        { wildcard: { 'reconocimiento': { value: '*pendient*', case_insensitive: true } } }
+      ];
+
       if (filters.coincidenciaFiltro === 'coincidencia') {
         mustFilters.push({
           bool: {
@@ -389,8 +406,9 @@ export class OpenSearchRepository implements IMetadataRepository {
               { exists: { field: 'reconocimiento' } }
             ],
             must_not: [
-              { term: { 'reconocimiento.keyword': '' } },
-              { term: { 'reconocimiento': '' } }
+              { terms: { 'reconocimiento.keyword': nonMatchTerms } },
+              { terms: { 'reconocimiento': ['desconocido', 'pendiente', 'unknown', 'none', 'null', 'sin_coincidencia', 'no_match'] } },
+              ...nonMatchWildcards
             ]
           }
         });
@@ -399,8 +417,9 @@ export class OpenSearchRepository implements IMetadataRepository {
           bool: {
             should: [
               { bool: { must_not: { exists: { field: 'reconocimiento' } } } },
-              { term: { 'reconocimiento.keyword': '' } },
-              { term: { 'reconocimiento': '' } }
+              { terms: { 'reconocimiento.keyword': nonMatchTerms } },
+              { terms: { 'reconocimiento': ['desconocido', 'pendiente', 'unknown', 'none', 'null', 'sin_coincidencia', 'no_match'] } },
+              ...nonMatchWildcards
             ],
             minimum_should_match: 1
           }
@@ -412,41 +431,25 @@ export class OpenSearchRepository implements IMetadataRepository {
   }
 
   private buildAggs(index: MetaIndexName): any {
-    const isRostros = index === 'rostros';
     const aggs: any = {};
 
-    aggs.camara_vals = { terms: { field: 'camara.keyword', size: 100 } };
+    aggs.camara_vals = { terms: { field: 'camara', size: 100 } };
     aggs.confiabilidad_stats = { stats: { field: 'confiabilidad' } };
-
-    if (isRostros) {
-      aggs.colores_agg = {
-        nested: { path: 'colores' },
-        aggs: {
-          color_vals: { terms: { field: 'colores.color_text', size: 100 } }
-        }
-      };
-    } else {
-      aggs.colores_vals = { terms: { field: 'colores.color_text.keyword', size: 100 } };
-    }
+    aggs.colores_vals = { terms: { field: 'colores.color_text', size: 100 } };
 
     if (index === 'personas') {
-      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto.keyword', size: 100 } };
-      aggs.edad_vals = { terms: { field: 'edad.keyword', size: 50 } };
-      aggs.genero_vals = { terms: { field: 'genero.keyword', size: 10 } };
-      aggs.posturas_agg = {
-        nested: { path: 'posturas' },
-        aggs: {
-          postura_vals: { terms: { field: 'posturas.postura', size: 100 } }
-        }
-      };
+      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
+      aggs.edad_vals = { terms: { field: 'edad', size: 50 } };
+      aggs.genero_vals = { terms: { field: 'genero', size: 10 } };
+      aggs.postura_vals = { terms: { field: 'posturas.postura', size: 100 } };
     } else if (index === 'vehiculos') {
-      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto.keyword', size: 100 } };
+      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
     } else if (index === 'rostros') {
       aggs.edad_vals = { terms: { field: 'edad', size: 50 } };
       aggs.genero_vals = { terms: { field: 'genero', size: 10 } };
       aggs.reconocimiento_vals = { terms: { field: 'reconocimiento', size: 50 } };
     } else if (index === 'otros') {
-      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto.keyword', size: 100 } };
+      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
     }
 
     return aggs;
@@ -471,12 +474,14 @@ export class OpenSearchRepository implements IMetadataRepository {
     if (aggs.reconocimiento_vals && aggs.reconocimiento_vals.buckets) {
       options.reconocimientos = aggs.reconocimiento_vals.buckets.map((b: any) => b.key);
     }
-    if (aggs.colores_agg && aggs.colores_agg.color_vals && aggs.colores_agg.color_vals.buckets) {
-      options.colores = aggs.colores_agg.color_vals.buckets.map((b: any) => b.key);
-    } else if (aggs.colores_vals && aggs.colores_vals.buckets) {
+    if (aggs.colores_vals && aggs.colores_vals.buckets) {
       options.colores = aggs.colores_vals.buckets.map((b: any) => b.key);
+    } else if (aggs.colores_agg && aggs.colores_agg.color_vals && aggs.colores_agg.color_vals.buckets) {
+      options.colores = aggs.colores_agg.color_vals.buckets.map((b: any) => b.key);
     }
-    if (aggs.posturas_agg && aggs.posturas_agg.postura_vals && aggs.posturas_agg.postura_vals.buckets) {
+    if (aggs.postura_vals && aggs.postura_vals.buckets) {
+      options.posturas = aggs.postura_vals.buckets.map((b: any) => b.key);
+    } else if (aggs.posturas_agg && aggs.posturas_agg.postura_vals && aggs.posturas_agg.postura_vals.buckets) {
       options.posturas = aggs.posturas_agg.postura_vals.buckets.map((b: any) => b.key);
     }
     if (aggs.confiabilidad_stats) {

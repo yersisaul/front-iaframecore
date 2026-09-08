@@ -1,3 +1,3 @@
 export const WebsocketConfig = {
-  wsUrl: 'ws://localhost:8000'
+  wsUrl: 'ws://aa-core.local:8000'
 };

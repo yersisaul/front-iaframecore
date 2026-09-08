@@ -3,9 +3,10 @@ const path = require('path');
 
 const envPath = path.join(__dirname, '.env');
 const configDir = path.join(__dirname, 'src', 'app', 'core', 'config');
-const configPath = path.join(configDir, 'api-key.config.ts');
+const appEnvPath = path.join(configDir, 'app-environment.ts');
 
 function getEnvValue(key) {
+  if (process.env[key]) return process.env[key];
   if (!fs.existsSync(envPath)) return null;
   const content = fs.readFileSync(envPath, 'utf8');
   const lines = content.split('\n');
@@ -20,22 +21,30 @@ function getEnvValue(key) {
   return null;
 }
 
-const jwtKey = getEnvValue('JWT_SECRET_KEY') || 'PLACEHOLDER_JWT_SECRET_KEY';
-const apiTarget = getEnvValue('API_HOST') || 'http://localhost:8000';
-
-if (!jwtKey) {
-  console.error('❌ Error: JWT_SECRET_KEY no está definido en el archivo .env.');
+const apiTarget = getEnvValue('API_HOST');
+if (!apiTarget) {
+  console.error('❌ Error: API_HOST no está definido en el archivo .env ni en las variables de entorno.');
   process.exit(1);
 }
 
-const fileContent = `export const ApiKeyConfig = {
-  apiKey: '${jwtKey}'
-};
-`;
+const jwtKey = getEnvValue('JWT_SECRET_KEY') || '';
+const dashboardPath = getEnvValue('DASHBOARD_DEFAULT_PATH') || '/app/dashboards';
+const normalizedPath = dashboardPath.startsWith('/') ? dashboardPath : '/' + dashboardPath;
 
-const wsTarget = apiTarget.replace(/^http/, 'ws');
-const wsConfigContent = `export const WebsocketConfig = {
-  wsUrl: '${wsTarget}'
+const appEnvContent = `export const AppEnvironment = {
+  production: false,
+  version: '1.0.0',
+  enableBackendWorkarounds: true,
+
+  // Endpoints relativos del Reverse Proxy (Cero IPs o hostnames en TypeScript)
+  apiUrl: '/api',
+  minioBaseUrl: '/minio',
+  openSearchBaseUrl: '/opensearch',
+  wsPath: '/ws/client',
+  dashboardDefaultUrl: '${normalizedPath}',
+
+  // Clave API opcional para desarrollo local (vacía por defecto; la auth real usa el JWT dinámico de sesión)
+  apiKey: '${jwtKey}'
 };
 `;
 
@@ -43,9 +52,5 @@ if (!fs.existsSync(configDir)) {
   fs.mkdirSync(configDir, { recursive: true });
 }
 
-fs.writeFileSync(configPath, fileContent, 'utf8');
-console.log('✅ src/app/core/config/api-key.config.ts generado exitosamente desde .env');
-
-const wsConfigPath = path.join(configDir, 'websocket.config.ts');
-fs.writeFileSync(wsConfigPath, wsConfigContent, 'utf8');
-console.log('✅ src/app/core/config/websocket.config.ts generado exitosamente desde .env');
+fs.writeFileSync(appEnvPath, appEnvContent, 'utf8');
+console.log('✅ src/app/core/config/app-environment.ts actualizado exitosamente desde .env (Cero IPs en TypeScript)');
