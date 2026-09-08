@@ -26,6 +26,13 @@ function getEnvValue(key) {
 const apiTarget = getEnvValue('API_HOST');
 const openSearchTarget = getEnvValue('OPENSEARCH_HOST');
 const minioTarget = getEnvValue('MINIO_PUBLIC_URL') || apiTarget;
+const jwtSecret = getEnvValue('JWT_SECRET_KEY');
+const openSearchUser = getEnvValue('OPENSEARCH_USER');
+const openSearchPassword = getEnvValue('OPENSEARCH_PASSWORD');
+
+const openSearchAuthHeader = (openSearchUser && openSearchPassword)
+  ? 'Basic ' + Buffer.from(`${openSearchUser}:${openSearchPassword}`).toString('base64')
+  : null;
 
 const wsTarget = apiTarget ? apiTarget.replace(/^http/, 'ws') : '';
 
@@ -36,8 +43,8 @@ if (!apiTarget || !openSearchTarget) {
 
 console.log(`=========================================`);
 console.log(`🔌 Cargando proxy desde variables de entorno:`);
-console.log(`   - /api        -> ${apiTarget}`);
-console.log(`   - /opensearch -> ${openSearchTarget}`);
+console.log(`   - /api        -> ${apiTarget} (Auth x-api-key: ${jwtSecret ? 'habilitada' : 'ninguna'})`);
+console.log(`   - /opensearch -> ${openSearchTarget} (Basic Auth: ${openSearchAuthHeader ? 'habilitada (' + openSearchUser + ')' : 'ninguna'})`);
 console.log(`   - /minio      -> ${minioTarget}`);
 console.log(`   - /ws         -> ${wsTarget} (WebSocket)`);
 console.log(`=========================================`);
@@ -56,7 +63,7 @@ const dynamicCorsBypass = {
     if (req.headers.origin) {
       proxyRes.headers['access-control-allow-origin'] = req.headers.origin;
       proxyRes.headers['access-control-allow-credentials'] = 'true';
-      proxyRes.headers['access-control-allow-headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey';
+      proxyRes.headers['access-control-allow-headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, x-api-key, X-API-Key';
       proxyRes.headers['access-control-allow-methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
     }
   }
@@ -68,6 +75,15 @@ module.exports = {
     "target": apiTarget,
     "pathRewrite": {
       "^/api": ""
+    },
+    onProxyReq: (proxyReq, req, res) => {
+      if (req.headers.origin) {
+        proxyReq.setHeader('Origin', req.headers.origin);
+      }
+      if (jwtSecret) {
+        proxyReq.setHeader('x-api-key', jwtSecret);
+        proxyReq.setHeader('X-API-Key', jwtSecret);
+      }
     }
   },
   "/minio": {
@@ -83,7 +99,15 @@ module.exports = {
     "pathRewrite": {
       "^/opensearch": ""
     },
-    "logLevel": "warn"
+    "logLevel": "warn",
+    onProxyReq: (proxyReq, req, res) => {
+      if (req.headers.origin) {
+        proxyReq.setHeader('Origin', req.headers.origin);
+      }
+      if (openSearchAuthHeader) {
+        proxyReq.setHeader('Authorization', openSearchAuthHeader);
+      }
+    }
   },
   "/ws": {
     "target": wsTarget,

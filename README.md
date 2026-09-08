@@ -28,11 +28,15 @@ cp .env.example .env
 ```
 
 ### Variables disponibles en `.env`:
-```ini
-API_HOST_MOCK=http://localhost:3000
-OPENSEARCH_HOST_MOCK=http://localhost:3000
-MINIO_PUBLIC_URL_MOCK=http://localhost:3000
-```
+| Variable | Obligatoria | Descripción |
+| :--- | :---: | :--- |
+| `API_HOST` | Sí | URL base del backend FastAPI (ej. `http://localhost:8000`). El proxy la expone en `/api` y `/ws`. |
+| `OPENSEARCH_HOST` | Sí | URL base del motor OpenSearch (ej. `http://localhost:9200`). El proxy la expone en `/opensearch`. |
+| `MINIO_PUBLIC_URL` | No | URL base del almacenamiento de medios MinIO (ej. `http://localhost:9000`). Expuesta en `/minio`. |
+| `JWT_SECRET_KEY` | Sí | Firma estática / API Key del backend FastAPI. Inyectada automáticamente por el proxy como header `x-api-key`. |
+| `OPENSEARCH_USER` | Recomendada | Usuario con permisos en OpenSearch (ej. `admin`). Usado para inyectar Basic Auth en el proxy. |
+| `OPENSEARCH_PASSWORD` | Recomendada | Contraseña de OpenSearch para la autenticación Basic en el proxy. |
+| `WEBRTC_HOST` | No | Hostname o IP del servidor WebRTC / MediaMTX para streaming de cámaras. |
 
 > [!NOTE]
 > Cada vez que ejecutas `npm start` o `npm run build`, se ejecuta automáticamente `node generate-env.js` para sincronizar las variables necesarias en [app-environment.ts](src/app/core/config/app-environment.ts).
@@ -120,6 +124,9 @@ docker run -d \
   -e API_HOST="http://192.168.1.100:8000" \
   -e OPENSEARCH_HOST="http://192.168.1.100:9200" \
   -e MINIO_PUBLIC_URL="http://192.168.1.100:9000" \
+  -e JWT_SECRET_KEY="tu_clave_secreta_jwt" \
+  -e OPENSEARCH_USER="admin" \
+  -e OPENSEARCH_PASSWORD="tu_clave_opensearch" \
   --restart unless-stopped \
   front-iaframecore:latest
 ```

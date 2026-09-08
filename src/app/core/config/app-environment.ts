@@ -11,5 +11,5 @@ export const AppEnvironment = {
   dashboardDefaultUrl: '/app/dashboards',
 
   // Clave API opcional para desarrollo local (vacía por defecto; la auth real usa el JWT dinámico de sesión)
-  apiKey: ''
+  apiKey: 'jwt_3st_t1c_us3r_k3y'
 };
