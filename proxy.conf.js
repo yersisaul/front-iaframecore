@@ -49,64 +49,88 @@ console.log(`   - /minio      -> ${minioTarget}`);
 console.log(`   - /ws         -> ${wsTarget} (WebSocket)`);
 console.log(`=========================================`);
 
-const dynamicCorsBypass = {
-  changeOrigin: true,
-  secure: false,
-  onProxyReq: (proxyReq, req, res) => {
-    // Si la petición original tiene un Origin, lo mantenemos en la subida para no romper firmas
-    if (req.headers.origin) {
-      proxyReq.setHeader('Origin', req.headers.origin);
-    }
-  },
-  onProxyRes: (proxyRes, req, res) => {
-    // Reescribimos las cabeceras de respuesta al vuelo para que el navegador siempre las acepte
-    if (req.headers.origin) {
-      proxyRes.headers['access-control-allow-origin'] = req.headers.origin;
-      proxyRes.headers['access-control-allow-credentials'] = 'true';
-      proxyRes.headers['access-control-allow-headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, x-api-key, X-API-Key';
-      proxyRes.headers['access-control-allow-methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
-    }
-  }
-};
-
 module.exports = {
   "/api": {
-    ...dynamicCorsBypass,
     "target": apiTarget,
+    "changeOrigin": true,
+    "secure": false,
     "pathRewrite": {
       "^/api": ""
     },
-    onProxyReq: (proxyReq, req, res) => {
-      if (req.headers.origin) {
-        proxyReq.setHeader('Origin', req.headers.origin);
-      }
-      if (jwtSecret) {
-        proxyReq.setHeader('x-api-key', jwtSecret);
-        proxyReq.setHeader('X-API-Key', jwtSecret);
-      }
+    "headers": {
+      ...(jwtSecret ? { "x-api-key": jwtSecret, "X-API-Key": jwtSecret } : {})
+    },
+    configure: (proxy, options) => {
+      proxy.on('proxyReq', (proxyReq, req, res) => {
+        if (req.headers && req.headers.origin) {
+          proxyReq.setHeader('Origin', req.headers.origin);
+        }
+        if (jwtSecret) {
+          proxyReq.setHeader('x-api-key', jwtSecret);
+          proxyReq.setHeader('X-API-Key', jwtSecret);
+        }
+      });
+      proxy.on('proxyRes', (proxyRes, req, res) => {
+        if (req.headers && req.headers.origin) {
+          proxyRes.headers['access-control-allow-origin'] = req.headers.origin;
+          proxyRes.headers['access-control-allow-credentials'] = 'true';
+          proxyRes.headers['access-control-allow-headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, x-api-key, X-API-Key';
+          proxyRes.headers['access-control-allow-methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+        }
+      });
     }
   },
   "/minio": {
-    ...dynamicCorsBypass,
     "target": minioTarget,
+    "changeOrigin": true,
+    "secure": false,
     "pathRewrite": {
       "^/minio": ""
+    },
+    configure: (proxy, options) => {
+      proxy.on('proxyReq', (proxyReq, req, res) => {
+        if (req.headers && req.headers.origin) {
+          proxyReq.setHeader('Origin', req.headers.origin);
+        }
+      });
+      proxy.on('proxyRes', (proxyRes, req, res) => {
+        if (req.headers && req.headers.origin) {
+          proxyRes.headers['access-control-allow-origin'] = req.headers.origin;
+          proxyRes.headers['access-control-allow-credentials'] = 'true';
+          proxyRes.headers['access-control-allow-headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, x-api-key, X-API-Key';
+          proxyRes.headers['access-control-allow-methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+        }
+      });
     }
   },
   "/opensearch": {
-    ...dynamicCorsBypass,
     "target": openSearchTarget,
+    "changeOrigin": true,
+    "secure": false,
     "pathRewrite": {
       "^/opensearch": ""
     },
     "logLevel": "warn",
-    onProxyReq: (proxyReq, req, res) => {
-      if (req.headers.origin) {
-        proxyReq.setHeader('Origin', req.headers.origin);
-      }
-      if (openSearchAuthHeader) {
-        proxyReq.setHeader('Authorization', openSearchAuthHeader);
-      }
+    "headers": {
+      ...(openSearchAuthHeader ? { "Authorization": openSearchAuthHeader } : {})
+    },
+    configure: (proxy, options) => {
+      proxy.on('proxyReq', (proxyReq, req, res) => {
+        if (req.headers && req.headers.origin) {
+          proxyReq.setHeader('Origin', req.headers.origin);
+        }
+        if (openSearchAuthHeader) {
+          proxyReq.setHeader('Authorization', openSearchAuthHeader);
+        }
+      });
+      proxy.on('proxyRes', (proxyRes, req, res) => {
+        if (req.headers && req.headers.origin) {
+          proxyRes.headers['access-control-allow-origin'] = req.headers.origin;
+          proxyRes.headers['access-control-allow-credentials'] = 'true';
+          proxyRes.headers['access-control-allow-headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, x-api-key, X-API-Key';
+          proxyRes.headers['access-control-allow-methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+        }
+      });
     }
   },
   "/ws": {
