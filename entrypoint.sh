@@ -13,8 +13,6 @@ fi
 if [ -n "$JWT_SECRET_KEY" ]; then
   echo "🔑 Configurando inyección de X-API-Key para backend API..."
   export API_KEY_HEADER="proxy_set_header x-api-key \"${JWT_SECRET_KEY}\"; proxy_set_header X-API-Key \"${JWT_SECRET_KEY}\";"
-  # Opcional: reemplazar placeholder si existiera en build estático
-  find /usr/share/nginx/html -type f -name "*.js" -exec sed -i "s/PLACEHOLDER_JWT_SECRET_KEY/$JWT_SECRET_KEY/g" {} + 2>/dev/null || true
 else
   export API_KEY_HEADER=""
 fi

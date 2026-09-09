@@ -1,19 +1,11 @@
-version: '3.8'
-
 services:
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: front-iaframecore:latest
+  # frontend
+  front-iaframecore:
+    image: yersy78/front-iaframecore:1.0
     container_name: front-iaframe-app
     ports:
-      - "${FRONTEND_PORT:-8080}:80"
-    environment:
-      - API_HOST=${API_HOST:-http://localhost:8000}
-      - OPENSEARCH_HOST=${OPENSEARCH_HOST:-http://localhost:9200}
-      - MINIO_PUBLIC_URL=${MINIO_PUBLIC_URL:-http://localhost:9000}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - OPENSEARCH_USER=${OPENSEARCH_USER:-admin}
-      - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
+      - "8001:80"
+    env_file:
+      - .env
+
     restart: always

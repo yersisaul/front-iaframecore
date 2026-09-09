@@ -1,49 +1,44 @@
 const fs = require('fs');
 const path = require('path');
 
-const envPath = path.join(__dirname, '.env');
 const configDir = path.join(__dirname, 'src', 'app', 'core', 'config');
 const appEnvPath = path.join(configDir, 'app-environment.ts');
 
 function getEnvValue(key) {
-  if (process.env[key]) return process.env[key];
-  if (!fs.existsSync(envPath)) return null;
-  const content = fs.readFileSync(envPath, 'utf8');
-  const lines = content.split('\n');
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const parts = trimmed.split('=');
-    if (parts[0].trim() === key) {
-      return parts.slice(1).join('=').trim().replace(/^['"]|['"]$/g, '');
-    }
+  if (process.env[key]) {
+    return process.env[key];
   }
+
   return null;
 }
 
-const apiTarget = getEnvValue('API_HOST');
-if (!apiTarget) {
-  console.error('❌ Error: API_HOST no está definido en el archivo .env ni en las variables de entorno.');
-  process.exit(1);
-}
+// Este valor NO debe ser necesario durante el build.
+// Las URLs reales se resolverán en runtime mediante Nginx.
+const dashboardPath =
+  getEnvValue('DASHBOARD_DEFAULT_PATH') || '/app/dashboards';
 
-const dashboardPath = getEnvValue('DASHBOARD_DEFAULT_PATH') || '/app/dashboards';
-const normalizedPath = dashboardPath.startsWith('/') ? dashboardPath : '/' + dashboardPath;
+const normalizedPath = dashboardPath.startsWith('/')
+  ? dashboardPath
+  : '/' + dashboardPath;
 
 const appEnvContent = `export const AppEnvironment = {
-  production: false,
+  production: true,
   version: '1.0.0',
+
   enableBackendWorkarounds: true,
 
-  // Endpoints relativos del Reverse Proxy (Cero IPs o hostnames en TypeScript)
+  // Todas las URLs pasan por el reverse proxy de Nginx.
+  // NO colocar hosts/IPs de clientes aquí.
   apiUrl: '/api',
   minioBaseUrl: '/minio',
   openSearchBaseUrl: '/opensearch',
   wsPath: '/ws/client',
+
   dashboardDefaultUrl: '${normalizedPath}',
 
-  // Clave API administrada de forma segura por el Reverse Proxy (proxy.conf.js en dev, Nginx en prod)
+  // La API Key se inyecta exclusivamente por Nginx.
   apiKey: ''
+
 };
 `;
 
@@ -52,4 +47,11 @@ if (!fs.existsSync(configDir)) {
 }
 
 fs.writeFileSync(appEnvPath, appEnvContent, 'utf8');
-console.log('✅ src/app/core/config/app-environment.ts actualizado exitosamente desde .env (Cero IPs en TypeScript)');
+
+console.log(
+  '✅ app-environment.ts generado correctamente.'
+);
+
+console.log(
+  'ℹ️ Las URLs del cliente serán configuradas por Nginx en runtime.'
+);
