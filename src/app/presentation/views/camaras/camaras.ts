@@ -28,12 +28,13 @@ import { CameraDetailDrawerComponent } from '../../shared/camera-detail-drawer/c
 import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
 import { HeaderStatsSubtitleComponent } from '../../shared/header-stats-subtitle/header-stats-subtitle.component';
+import { CreateCameraModalComponent } from '../../shared/create-camera-modal/create-camera-modal.component';
 import { exportToCsv, exportToXlsx, ExportColumn } from '../../../core/utils/export-utils';
 
 @Component({
   selector: 'app-camaras',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, CameraDetailDrawerComponent, FilterActionsComponent, CustomSelectComponent, HeaderStatsSubtitleComponent],
+  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, CameraDetailDrawerComponent, FilterActionsComponent, CustomSelectComponent, HeaderStatsSubtitleComponent, CreateCameraModalComponent],
   templateUrl: './camaras.html',
   styleUrl: './camaras.css'
 })
@@ -75,8 +76,24 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
 
   readonly showLicenseModal = signal<boolean>(false);
+  readonly showCreateCameraModal = signal<boolean>(false);
   readonly licenseScrolledToBottom = signal<boolean>(false);
   readonly viewMode = signal<'cards' | 'list'>('cards');
+
+  openCreateCameraModal(): void {
+    this.showCreateCameraModal.set(true);
+  }
+
+  closeCreateCameraModal(): void {
+    this.showCreateCameraModal.set(false);
+  }
+
+  onCameraCreated(camera: Camera): void {
+    const currentHostFp = this.hostId();
+    if (!currentHostFp || currentHostFp === camera.hostFingerprint) {
+      this.cameraService.markAsNew(camera.id);
+    }
+  }
   readonly sortBy = signal<'name' | 'host'>('name');
   readonly sortDirection = signal<'asc' | 'desc'>('asc');
 
@@ -261,7 +278,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const v = this.columnVisibility();
     const list: { key: 'stream' | 'decoder' | 'coords'; label: string }[] = [];
     if (!v.stream) list.push({ key: 'stream', label: 'Stream' });
-    if (!v.decoder) list.push({ key: 'decoder', label: 'Decodificador' });
+    if (!v.decoder) list.push({ key: 'decoder', label: 'Decoder' });
     if (!v.coords) list.push({ key: 'coords', label: 'Coordenadas' });
     return list;
   });
@@ -1331,7 +1348,8 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  openDeleteModal(camera: Camera): void {
+  openDeleteModal(camera: Camera, event?: Event): void {
+    if (event) event.stopPropagation();
     this.cameraToDelete.set(camera);
     this.showDeleteModal.set(true);
   }
@@ -1871,7 +1889,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       { header: 'IP del Nodo', key: 'hostIp' },
       { header: 'Fingerprint Nodo', key: 'hostFingerprint' },
       { header: 'Tipo Stream', key: 'streamType' },
-      { header: 'Decodificador', key: 'decoder' },
+      { header: 'Decoder', key: 'decoder' },
       { header: 'Latitud', key: 'lat' },
       { header: 'Longitud', key: 'lon' },
       { header: 'Analíticas Activas', key: 'analytics' }
@@ -1912,7 +1930,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       { header: 'IP del Nodo', key: 'hostIp' },
       { header: 'Fingerprint Nodo', key: 'hostFingerprint' },
       { header: 'Tipo Stream', key: 'streamType' },
-      { header: 'Decodificador', key: 'decoder' },
+      { header: 'Decoder', key: 'decoder' },
       { header: 'Latitud', key: 'lat' },
       { header: 'Longitud', key: 'lon' },
       { header: 'Analíticas Activas', key: 'analytics' }
@@ -1941,5 +1959,65 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const hostName = this.currentHost()?.hostname || 'nodo';
     const filename = this.hostId() ? `reporte_camaras_${hostName}.csv` : 'reporte_todas_las_camaras.csv';
     exportToCsv(filename, columns, data);
+  }
+
+  // ── 2 Capas Lógicas para Título de Cámara en Tarjeta ────────────────────────
+  onCameraCardMouseEnter(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const headerBlock = target.classList.contains('host-header-block')
+      ? target
+      : target.querySelector('.host-header-block') as HTMLElement | null;
+    if (!headerBlock) return;
+
+    const titleEl = headerBlock.querySelector('.host-title') as HTMLElement | null;
+    const iconEl = headerBlock.querySelector('.os-avatar-icon') as HTMLElement | null;
+
+    if (!titleEl) return;
+
+    // Al hacer hover en la tarjeta, revelamos el botón eliminar y colapsamos los badges
+    headerBlock.classList.add('host-title-expand-space');
+
+    // Ancho útil disponible hasta el botón de eliminar (28px ancho + margen de 4px + gaps)
+    const iconWidth = iconEl ? iconEl.offsetWidth : 20;
+    const deleteBtnWidth = 32;
+    const availableFullWidth = headerBlock.clientWidth - iconWidth - deleteBtnWidth - 16;
+
+    if (titleEl.scrollWidth > availableFullWidth) {
+      // Si el nombre desborda el espacio hasta el botón -> desplazamiento exacto
+      const shift = Math.ceil(titleEl.scrollWidth - availableFullWidth);
+      titleEl.style.setProperty('--marquee-shift', `-${shift}px`);
+      headerBlock.classList.add('host-title-needs-marquee');
+    } else {
+      // Entra completo en el ancho expandido -> mostrar completo estático sin marquee
+      titleEl.style.removeProperty('--marquee-shift');
+      headerBlock.classList.remove('host-title-needs-marquee');
+    }
+  }
+
+  onCameraCardMouseLeave(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const headerBlock = target.classList.contains('host-header-block')
+      ? target
+      : target.querySelector('.host-header-block') as HTMLElement | null;
+    if (headerBlock) {
+      headerBlock.classList.remove('host-title-expand-space', 'host-title-needs-marquee');
+      const titleEl = headerBlock.querySelector('.host-title') as HTMLElement | null;
+      if (titleEl) {
+        titleEl.style.removeProperty('--marquee-shift');
+      }
+    }
+  }
+
+  // Alias para retrocompatibilidad
+  onCameraTitleMouseEnter(event: MouseEvent): void {
+    this.onCameraCardMouseEnter(event);
+  }
+
+  onCameraTitleMouseLeave(event: MouseEvent): void {
+    this.onCameraCardMouseLeave(event);
   }
 }

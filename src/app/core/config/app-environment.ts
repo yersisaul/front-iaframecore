@@ -1,15 +1,19 @@
 export const AppEnvironment = {
-  production: false,
+  production: true,
   version: '1.0.0',
+
   enableBackendWorkarounds: true,
 
-  // Endpoints relativos del Reverse Proxy (Cero IPs o hostnames en TypeScript)
+  // Todas las URLs pasan por el reverse proxy de Nginx.
+  // NO colocar hosts/IPs de clientes aquí.
   apiUrl: '/api',
   minioBaseUrl: '/minio',
   openSearchBaseUrl: '/opensearch',
   wsPath: '/ws/client',
+
   dashboardDefaultUrl: '/app/dashboards',
 
-  // Clave API administrada de forma segura por el Reverse Proxy (proxy.conf.js en dev, Nginx en prod)
+  // La API Key se inyecta exclusivamente por Nginx.
   apiKey: ''
+
 };

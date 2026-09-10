@@ -323,7 +323,7 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
   }
 
   /**
-   * Obtiene la posición y dimensiones exactas del lienzo del Visor Táctico (.monitoring-grid-container)
+   * Obtiene la posición y dimensiones exactas del lienzo del Monitoreo (.monitoring-grid-container)
    * para limitar el crecimiento del PiP exactamente al marco del lienzo de monitoreo de cámaras.
    */
   getTargetGridRect(): { left: number; top: number; width: number; height: number } {
@@ -342,7 +342,7 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
     const paddingLeft = 24; // px (container-fluid padding left)
     const headerTopTotal = 94; // px (pt-4: 24px + view-header: 46px + mb-4: 24px)
     const bottomTotal = 72; // px (timeline: 52px + gap: 12px + pb-2: 8px)
-    
+
     // Panel lateral derecho de eventos (30% del ancho disponible, mínimo 352px, máximo 512px)
     const rightPanelWidth = Math.min(512, Math.max(352, (mainRect.width - 48) * 0.30));
     const layoutGap = 14; // px (gap: 0.85rem)
@@ -382,10 +382,10 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
     // 1. Posición y tamaño exacto actual del PiP medidos en tiempo real
     const startRect = pipEl.getBoundingClientRect();
 
-    // 2. Área objetivo exacta del lienzo del Visor Táctico (.monitoring-grid-container)
+    // 2. Área objetivo exacta del lienzo del Monitoreo (.monitoring-grid-container)
     const targetRect = this.getTargetGridRect();
 
-    // 3. Zoom y Pan del PiP que se conservan idénticos en el Visor Táctico
+    // 3. Zoom y Pan del PiP que se conservan idénticos en el Monitoreo
     const pipCurrentZoom = Math.max(0.05, this.pipZoom());
     const pipCurrentPanX = this.pipPanX();
     const pipCurrentPanY = this.pipPanY();
@@ -418,7 +418,7 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
       });
     });
 
-    // 6. Al finalizar la animación (420ms), completar la navegación hacia el visor táctico
+    // 6. Al finalizar la animación (420ms), completar la navegación hacia el Monitoreo
     setTimeout(() => {
       this.stateService.navigateToMonitoring();
       setTimeout(() => {
@@ -728,7 +728,7 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
     const colsVal = Math.max(1, this.cols());
     const rowsVal = Math.max(1, this.rows());
 
-    // Al expandir hacia el Visor Táctico, incluir las dimensiones de los expansores de fila y columna
+    // Al expandir hacia el Monitoreo, incluir las dimensiones de los expansores de fila y columna
     const extDim = this.getExtenderDimensions();
     const expanderW = this.isExpanding() ? extDim.width : 0;
     const expanderH = this.isExpanding() ? extDim.height : 0;

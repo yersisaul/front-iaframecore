@@ -1,0 +1,715 @@
+/* ══════════════════════════════════════════════════════════════
+   MODAL PREMIUM: CREAR CÁMARA (DISEÑO REACTIVO EN UNIDADES RELATIVAS)
+   ══════════════════════════════════════════════════════════════ */
+
+.modal-premium-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(0.5rem);
+  -webkit-backdrop-filter: blur(0.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1060;
+  padding: clamp(0.5rem, 2vw, 1.5rem);
+  animation: fadeInModal 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-premium-card.create-camera-card {
+  width: min(94vw, 56rem);
+  height: 85vh;
+  max-height: 90vh;
+  background: var(--bg-card, #13171f);
+  border: 0.0625rem solid rgba(255, 255, 255, 0.09);
+  border-radius: clamp(0.875rem, 2vw, 1.25rem);
+  box-shadow: 0 1.5rem 3.75rem -0.9375rem rgba(0, 0, 0, 0.75), 0 0 0 0.0625rem rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1rem, 2.5vw, 1.75rem);
+  animation: scaleUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleUpModal {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Cabecera del Modal */
+.modal-premium-header {
+  flex-shrink: 0;
+}
+
+.modal-header-icon-wrap.icon-camera-theme {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  background: rgba(var(--primary-rgb), 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.modal-header-icon-wrap.icon-camera-theme .icon-svg {
+  background-color: var(--primary) !important;
+}
+
+.btn-close-modal {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 0.0625rem solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-close-modal:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
+.border-bottom-subtle {
+  border-bottom: 0.0625rem solid rgba(255, 255, 255, 0.06);
+}
+
+.border-top-subtle {
+  border-top: 0.0625rem solid rgba(255, 255, 255, 0.06);
+}
+
+/* Alerta personalizada de error */
+.alert-danger-custom {
+  background: rgba(239, 68, 68, 0.12);
+  border: 0.0625rem solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  flex-shrink: 0;
+}
+
+.alert-danger-custom .icon-svg {
+  background-color: #ef4444;
+}
+
+.modal-form-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Scroll interior del cuerpo */
+.modal-scroll-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.375rem;
+}
+
+.modal-scroll-body::-webkit-scrollbar {
+  width: 0.375rem;
+}
+
+.modal-scroll-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-scroll-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 6rem;
+}
+
+.modal-scroll-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Secciones internas */
+.form-section-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 0.0625rem solid rgba(255, 255, 255, 0.05);
+  border-radius: 0.625rem;
+  transition: border-color 0.2s ease;
+}
+
+.form-section-card:hover {
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+.section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.section-num {
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background: rgba(var(--primary-rgb), 0.16);
+  color: var(--primary);
+  font-size: 0.65rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Inputs */
+.premium-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+}
+
+.premium-input-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.input-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input-icon-wrapper .input-icon {
+  position: absolute;
+  left: 0.75rem;
+  pointer-events: none;
+  background-color: rgba(255, 255, 255, 0.4);
+  transition: background-color 0.2s ease;
+  z-index: 2;
+}
+
+.premium-input-control {
+  width: 100%;
+  height: 2.375rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 0.0625rem solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.625rem;
+  color: #ffffff;
+  font-size: 0.82rem;
+  padding: 0 0.75rem;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.input-icon-wrapper .premium-input-control {
+  padding-left: 2.25rem;
+}
+
+.premium-input-control.input-has-suffix {
+  padding-right: 2.25rem;
+}
+
+.input-icon-wrapper:focus-within .input-icon {
+  background-color: var(--primary);
+}
+
+.premium-input-control:focus {
+  border-color: var(--primary);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 0.1875rem rgba(var(--primary-rgb), 0.18);
+}
+
+.premium-input-control::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Ocultar spinners en inputs numéricos */
+.premium-input-control[type="number"]::-webkit-outer-spin-button,
+.premium-input-control[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+.premium-input-control[type="number"],
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+
+.clear-badge-btn {
+  font-size: 0.72rem;
+  color: var(--text-muted, #94a3b8);
+  padding: 0.125rem 0.3125rem;
+  border-radius: 0.25rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clear-badge-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.btn-field-icon-suffix {
+  position: absolute;
+  right: 0.625rem;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+}
+
+.btn-field-icon-suffix:hover {
+  color: #ffffff;
+}
+
+.btn-field-icon-suffix .icon-svg {
+  background-color: currentColor !important;
+}
+
+.premium-error-msg {
+  font-size: 0.72rem;
+  color: #fbbf24;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.125rem;
+}
+
+/* Estado de Advertencia / Campo Obligatorio Incompleto o Inválido (Caution Amarillo) */
+.premium-input-control.is-invalid-warning,
+.dropdown-field-trigger.is-invalid-warning {
+  border-color: #f59e0b !important;
+  background-color: rgba(245, 158, 11, 0.08) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.premium-input-control.is-invalid-warning:focus,
+.premium-input-control.is-invalid-warning:focus-visible,
+.dropdown-field-trigger.is-invalid-warning:focus,
+.dropdown-field-trigger.is-invalid-warning:focus-visible,
+.dropdown-field-trigger.is-invalid-warning.active {
+  border-color: #fbbf24 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.dropdown-field-trigger.is-invalid-warning:hover {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  border-color: #f59e0b !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.input-icon-wrapper .input-icon.icon-warning,
+.dropdown-field-trigger .filter-icon.icon-warning {
+  background-color: #f59e0b !important;
+  opacity: 1 !important;
+}
+
+.form-hint-text {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DROPDOWNS CON DISEÑO IDÉNTICO A LOS FILTROS
+   ══════════════════════════════════════════════════════════════ */
+
+.dropdown-field-trigger {
+  width: 100%;
+  height: 2.375rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 0.0625rem solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.625rem;
+  color: #ffffff;
+  font-size: 0.82rem;
+  padding: 0 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.dropdown-field-trigger:hover {
+  background: rgba(0, 0, 0, 0.45);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.dropdown-field-trigger.active,
+.dropdown-field-trigger:focus {
+  border-color: var(--primary);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 0.1875rem rgba(var(--primary-rgb), 0.18);
+}
+
+.dropdown-field-trigger .filter-icon {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-field-trigger:hover .filter-icon,
+.dropdown-field-trigger.active .filter-icon {
+  background-color: var(--primary) !important;
+}
+
+.dropdown-chevron {
+  background-color: rgba(255, 255, 255, 0.45) !important;
+  transition: transform 0.2s ease;
+}
+
+.dropdown-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+.modal-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  width: 100%;
+  z-index: 1090;
+  background: var(--bg-filter-dropdown-menu, #1e293b) !important;
+  border: 0.0625rem solid var(--border-filter-dropdown-menu, rgba(255, 255, 255, 0.08)) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 0.9375rem 2.1875rem -0.3125rem rgba(0, 0, 0, 0.7), 0 0 0 0.0625rem rgba(255, 255, 255, 0.04) !important;
+  animation: dropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+  max-height: min(15.625rem, 35vh);
+  padding: 0.375rem !important;
+  gap: 0.125rem !important;
+}
+
+/* Dropup para selectores inferiores (Resolución y Decodificador) */
+.modal-dropdown-menu.dropup-menu {
+  top: auto !important;
+  bottom: calc(100% + 0.375rem) !important;
+  box-shadow: 0 -0.9375rem 2.1875rem -0.3125rem rgba(0, 0, 0, 0.7), 0 0 0 0.0625rem rgba(255, 255, 255, 0.08) !important;
+  animation: dropupFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes dropupFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(0.375rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-search-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--bg-filter-dropdown-menu, #1e293b) !important;
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+}
+
+.camera-search-input-row {
+  background: var(--bg-surface, #ffffff) !important;
+  border: 0.0625rem solid var(--border-color, #e2e8f0) !important;
+  border-radius: 0.5rem !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+[data-bs-theme="dark"] .camera-search-input-row,
+[data-theme="dark"] .camera-search-input-row,
+.dark .camera-search-input-row {
+  background: #2d3e56 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.camera-search-input-row:focus-within {
+  border-color: var(--primary) !important;
+  background: var(--bg-surface, #ffffff) !important;
+  box-shadow: 0 0 0 0.125rem rgba(var(--primary-rgb), 0.12) !important;
+}
+
+[data-bs-theme="dark"] .camera-search-input-row:focus-within,
+[data-theme="dark"] .camera-search-input-row:focus-within,
+.dark .camera-search-input-row:focus-within {
+  background: #2d3e56 !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 0.125rem rgba(var(--primary-rgb), 0.25) !important;
+}
+
+.camera-search-input {
+  color: var(--text-primary) !important;
+  font-size: 0.8rem !important;
+}
+
+.camera-search-input::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.65;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-0.375rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-items-scroll {
+  max-height: min(12.5rem, 25vh);
+  overflow-y: auto;
+}
+
+.modal-dropdown-menu .dropdown-item {
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.modal-dropdown-menu .dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.modal-dropdown-menu .dropdown-item.active {
+  background: rgba(var(--primary-rgb), 0.15) !important;
+  color: var(--primary) !important;
+  font-weight: 600;
+}
+
+.modal-dropdown-menu .dropdown-item.active .text-muted {
+  color: rgba(var(--primary-rgb), 0.7) !important;
+}
+
+.host-status-dot {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  background-color: #64748b;
+  flex-shrink: 0;
+}
+
+.host-status-dot.online {
+  background-color: #10b981;
+  box-shadow: 0 0 0.375rem rgba(16, 185, 129, 0.5);
+}
+
+/* Campos ONVIF */
+.onvif-fields-wrapper {
+  background: rgba(0, 0, 0, 0.2);
+  border: 0.0625rem dashed rgba(255, 255, 255, 0.1);
+  border-radius: 0.625rem;
+}
+
+/* Footer de Acciones del Modal (50% / 50%) */
+.modal-premium-actions {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: clamp(0.5rem, 1.5vw, 0.875rem);
+  width: 100%;
+  flex-shrink: 0;
+  margin-top: 0.875rem;
+}
+
+.modal-premium-actions .btn-modal-cancel,
+.modal-premium-actions .btn-modal-confirm {
+  flex: 1 1 0;
+  width: 50%;
+  height: clamp(2.5rem, 5vh, 2.75rem) !important;
+  padding: 0.5rem 1.25rem !important;
+  border-radius: 0.625rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-sizing: border-box;
+}
+
+/* Botón Cancelar del Modal */
+.btn-modal-cancel {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 0.0625rem solid rgba(255, 255, 255, 0.12) !important;
+  color: var(--text-secondary, #94a3b8) !important;
+}
+
+.btn-modal-cancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+}
+
+.btn-modal-cancel:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* Botón Confirmar / Crear Cámara del Modal */
+.btn-modal-confirm {
+  background: var(--primary, #2b7fff) !important;
+  border: 0.0625rem solid var(--primary, #2b7fff) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0.25rem 0.875rem rgba(var(--primary-rgb, 43, 127, 255), 0.28) !important;
+}
+
+.btn-modal-confirm:hover:not(:disabled) {
+  background: var(--primary-hover, #155dfc) !important;
+  border-color: var(--primary-hover, #155dfc) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0.375rem 1.25rem rgba(var(--primary-rgb, 43, 127, 255), 0.4) !important;
+  transform: translateY(-0.0625rem);
+}
+
+.btn-modal-confirm:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 0.125rem 0.5rem rgba(var(--primary-rgb, 43, 127, 255), 0.25) !important;
+}
+
+.btn-modal-confirm:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn-modal-confirm .icon-svg {
+  background-color: #ffffff !important;
+}
+
+.premium-button-spinner {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 0.125rem solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  margin-right: 0.375rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeInModal 0.2s ease-in-out;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   UTILIDADES DE ICONOS EN UNIDADES RELATIVAS (EM / REM)
+   ══════════════════════════════════════════════════════════════ */
+.icon-modal-header {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.icon-alert-msg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.icon-input-prefix {
+  width: 0.9375rem;
+  height: 0.9375rem;
+}
+
+.icon-search-prefix {
+  width: 0.8125rem;
+  height: 0.8125rem;
+}
+
+.icon-dropdown-chevron {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.icon-badge-check {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.icon-btn-action {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MEDIA QUERIES RELATIVAS (RESPONSIVE VIEWPORTS)
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 48rem) {
+  .modal-premium-card.create-camera-card {
+    padding: 1.125rem;
+    border-radius: 0.875rem;
+  }
+}
+
+@media (max-width: 36rem) {
+  .modal-premium-overlay {
+    padding: 0.5rem;
+  }
+
+  .modal-premium-card.create-camera-card {
+    width: 100%;
+    max-height: 96vh;
+    padding: 1rem 0.75rem;
+    border-radius: 0.75rem;
+  }
+
+  .modal-header-icon-wrap.icon-camera-theme {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+  }
+
+  .modal-premium-actions {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+}

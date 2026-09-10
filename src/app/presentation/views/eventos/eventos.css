@@ -126,6 +126,79 @@
   transform: scale(1.06);
 }
 
+/* --- Cabecera de Cámara y Desplazamiento Reactivo con Marquee --- */
+.card-header-camera {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+.card-title-container {
+  overflow: hidden;
+  min-width: 0;
+  width: 100%;
+}
+
+.timestamp-row {
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.2s ease,
+    margin 0.25s ease;
+  white-space: nowrap;
+}
+
+/* En hover de la tarjeta: el timestamp colapsa a la derecha y el título de cámara toma todo el ancho */
+.event-card:hover .timestamp-row,
+.card-header-camera.camera-title-expand-space .timestamp-row {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  flex: 0 0 0 !important;
+  opacity: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none;
+}
+
+.event-card:hover .card-title,
+.card-header-camera.camera-title-expand-space .card-title {
+  display: inline-block !important;
+  max-width: none !important;
+  width: max-content !important;
+}
+
+/* Máscara de desvanecimiento suave solo si el título necesita marquee */
+.card-header-camera.camera-title-needs-marquee .card-title-container {
+  mask-image: linear-gradient(90deg,
+      #000 0%,
+      #000 calc(100% - 16px),
+      transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg,
+      #000 0%,
+      #000 calc(100% - 16px),
+      transparent 100%);
+}
+
+/* CAPA 2: Si aún con todo el espacio expandido el texto sigue siendo insuficiente, se activa el marquee */
+.card-header-camera.camera-title-needs-marquee .card-title {
+  text-overflow: clip !important;
+  overflow: visible !important;
+  animation: marquee-title 3.5s linear infinite alternate;
+}
+
+@keyframes marquee-title {
+  0%,
+  15% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  85%,
+  100% {
+    transform: translate3d(var(--marquee-shift, calc(-100% + 100cqw)), 0, 0);
+  }
+}
+
 /* Floating Popover */
 .metadata-card-popover {
   position: fixed !important;

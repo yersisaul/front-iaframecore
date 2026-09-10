@@ -24,55 +24,6 @@
         </div>
       </div>
 
-      @if (isEditingCamera()) {
-      <!-- Formulario de Edición -->
-      <div class="edit-camera-form-container mb-4 shadow-sm" style="animation: slideDown 0.25s ease-out;">
-        <h6 class="text-uppercase fw-bold text-muted mb-3" style="font-size: 0.68rem; letter-spacing: 0.08em;">Editar
-          Configuración</h6>
-
-        <div class="mb-3">
-          <label class="form-label text-muted small fw-semibold">Nombre de la Cámara</label>
-          <input type="text" class="form-control" [class.is-invalid]="isNameInvalid" [(ngModel)]="editCameraName"
-            placeholder="Ingrese el nombre de la cámara" />
-          @if (isNameInvalid) {
-          <div class="invalid-feedback">
-            El nombre de la cámara es obligatorio.
-          </div>
-          }
-        </div>
-        <div class="row g-2 mb-3">
-          <div class="col-6">
-            <label class="form-label text-muted small fw-semibold">Latitud</label>
-            <input type="number" step="any" min="-90" max="90" class="form-control" [class.is-invalid]="isLatInvalid"
-              [(ngModel)]="editCameraLat" placeholder="Latitud" />
-            @if (isLatInvalid) {
-            <div class="invalid-feedback">
-              Rango: -90 a 90.
-            </div>
-            }
-          </div>
-          <div class="col-6">
-            <label class="form-label text-muted small fw-semibold">Longitud</label>
-            <input type="number" step="any" min="-180" max="180" class="form-control" [class.is-invalid]="isLonInvalid"
-              [(ngModel)]="editCameraLon" placeholder="Longitud" />
-            @if (isLonInvalid) {
-            <div class="invalid-feedback">
-              Rango: -180 a 180.
-            </div>
-            }
-          </div>
-        </div>
-        <div class="d-flex gap-3 mt-4 pt-3 w-100">
-          <button type="button" class="btn btn-clear-filters flex-fill py-2.5" (click)="cancelEditingCamera()">
-            Cancelar
-          </button>
-          <button type="button" class="btn btn-apply-filters flex-fill py-2.5" (click)="saveCameraInfo(cam)"
-            [disabled]="isFormInvalid">
-            Guardar
-          </button>
-        </div>
-      </div>
-      } @else {
       <!-- Tarjeta de Información de la Cámara -->
       <div class="card p-3 mb-4"
         style="background-color: var(--bg-card); border: 1px solid var(--border-color); box-shadow: var(--card-shadow); border-radius: var(--radius-lg);">
@@ -85,27 +36,21 @@
           </div>
 
           <!-- Contenedor del nombre y el botón de editar -->
-          <div class="d-flex align-items-center gap-2 overflow-hidden" style="flex: 1;">
-            <h5 class="fw-bold mb-0 text-truncate text-body" style="font-size: 1.05rem;" [title]="cam.name">
-              {{ cam.name }}
-            </h5>
+          <div class="d-flex align-items-center gap-2 overflow-hidden" style="flex: 1; min-width: 0;">
+            <div #cameraTitleContainer class="drawer-camera-title-container" [class.has-marquee]="isTitleOverflowing()">
+              <h5 #cameraTitleEl class="drawer-camera-title-text fw-bold mb-0 text-body" style="font-size: 1.05rem;"
+                [title]="cam.name">
+                {{ cam.name }}
+              </h5>
+            </div>
             @if (permissionsService.hasPermission('Cámaras', 'editar')) {
-            <button class="btn-ghost d-flex align-items-center justify-content-center"
-              style="width: 1.75rem; height: 1.75rem; border-radius: 50%; padding: 0; flex-shrink: 0;"
-              (click)="startEditingCamera(cam)" title="Editar Información">
+            <button class="btn-ghost d-flex align-items-center justify-content-center flex-shrink-0"
+              style="width: 1.75rem; height: 1.75rem; border-radius: 50%; padding: 0;" (click)="openEditModal()"
+              title="Editar Información">
               <span class="icon-svg icon-edit" style="width: 1rem; height: 1rem;"></span>
             </button>
             }
           </div>
-
-          <!-- Botón de eliminar (al lado derecho del todo) -->
-          @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
-          <button class="btn-ghost d-flex align-items-center justify-content-center text-danger"
-            style="width: 1.875rem; height: 1.875rem; border-radius: 50%; padding: 0; flex-shrink: 0;"
-            (click)="openDeleteModal(cam)" title="Eliminar Cámara">
-            <span class="icon-svg icon-trash" style="width: 1rem; height: 1rem;"></span>
-          </button>
-          }
         </div>
 
         <!-- Fila de Detalles Técnicos en Lista (Estilo Vista de Licencias con SVG Iconos) -->
@@ -129,7 +74,8 @@
             }
           </div>
 
-          @if (cam.nxId && ((cam.decoder || '').toLowerCase().includes('nx') || (cam.streamType || '').toLowerCase().includes('nx'))) {
+          @if (cam.nxId && ((cam.decoder || '').toLowerCase().includes('nx') || (cam.streamType ||
+          '').toLowerCase().includes('nx'))) {
           <!-- NX ID -->
           <div class="spec-row d-flex justify-content-between align-items-center"
             [class.copied-flash]="copiedRowId() === cam.id + '-drawer-nxid'"
@@ -176,7 +122,7 @@
             <span class="spec-lbl d-inline-flex align-items-center">
               <span class="icon-svg icon-settings me-2"
                 style="width: 1rem; height: 1rem; background-color: currentColor;"></span>
-              DECODIFICADOR
+              DECODER
             </span>
             @if (copiedRowId() === cam.id + '-drawer-decoder') {
             <span class="copied-badge text-success fw-bold ms-auto"
@@ -227,7 +173,6 @@
           </div>
         </div>
       </div>
-      }
 
       <!-- Analíticas de IA asignadas a esta cámara -->
       <div class="ai-control-panel-drawer mb-4">
@@ -466,8 +411,7 @@
           <!-- Lienzo Canvas Fijo en la Columna Izquierda -->
           <div class="canvas-col flex-fill d-flex align-items-center overflow-hidden">
             <app-analytic-canvas class="w-100 h-100 d-flex align-items-center overflow-hidden"
-              [cameraId]="camera?.id || ''"
-              [highlightError]="activeErrorTarget() === 'canvas'"
+              [cameraId]="camera?.id || ''" [highlightError]="activeErrorTarget() === 'canvas'"
               [strDirection]="analyticFormState()?.specific_params?.str_direction || 'Bidireccional'"
               [scaleFactor]="analyticFormState()?.detection_params?.scale_area || 1.2"
               [zoneWidth]="analyticFormState()?.detection_params?.zona_analisis || 40"
@@ -522,10 +466,8 @@
 
             <!-- Formulario Dinámico de Parámetros de IA (Fase 3) -->
             <app-analytic-params-form [availableModels]="availableModels()"
-              [initialValues]="selectedAnalyticForConfig()"
-              [highlightError]="activeErrorTarget() === 'classes'"
-              [highlightErrorTarget]="activeErrorTarget()"
-              (formChanged)="onAnalyticFormChanged($event)"
+              [initialValues]="selectedAnalyticForConfig()" [highlightError]="activeErrorTarget() === 'classes'"
+              [highlightErrorTarget]="activeErrorTarget()" (formChanged)="onAnalyticFormChanged($event)"
               (geometryTypeChanged)="onGeometryTypeChanged($event)">
             </app-analytic-params-form>
 
@@ -584,8 +526,7 @@
 
             <!-- Constructor de Reglas de Acción & Triggers (Sección 5) -->
             <app-analytic-actions-builder [cameraId]="camera?.id || ''"
-              [initialActions]="selectedAnalyticForConfig()?.acciones"
-              [highlightErrors]="hasAttemptedSubmitAnalytic()"
+              [initialActions]="selectedAnalyticForConfig()?.acciones" [highlightErrors]="hasAttemptedSubmitAnalytic()"
               (actionsChanged)="onActionsChanged($event)">
             </app-analytic-actions-builder>
 
@@ -613,3 +554,13 @@
   </div>
 </div>
 }
+
+<!-- Modal de Edición de Cámara (Reutiliza CreateCameraModalComponent en modo 'edit') -->
+<app-create-camera-modal
+  [show]="showEditModal()"
+  [mode]="'edit'"
+  [camera]="camera"
+  [hosts]="allHosts()"
+  (close)="closeEditModal()"
+  (cameraUpdated)="onCameraUpdatedFromModal($event)">
+</app-create-camera-modal>

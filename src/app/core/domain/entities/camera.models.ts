@@ -18,6 +18,14 @@ export interface Camera {
   streamUrl?: string;
   url?: string;
   nxId?: string;
+  forcedResolution?: string;
+  forcedFps?: number;
+  compatibilityMode?: boolean;
+  ipAddress?: string;
+  user?: string;
+  password?: string;
+  httpPort?: number;
+  selectedStream?: number;
 }
 
 export interface CameraDTO {
@@ -33,6 +41,63 @@ export interface CameraDTO {
   };
   created_at?: string | null;
   nx_id?: string;
+  stream_url?: string;
+  forced_resolution?: string;
+  forced_fps?: number;
+  compatibility_mode?: boolean;
+  ip_address?: string;
+  user?: string;
+  password?: string;
+  http_port?: number;
+  selected_stream?: number;
+}
+
+export type StreamType = 'Onvif' | 'rtsp' | 'rtmp' | 'nx';
+export type DecoderType = 'opencv' | 'ffmpeg';
+
+export interface CameraRegisterRequest {
+  camera_id?: string | null;
+  camera_name: string;
+  fingerprint_host: string;
+  stream_type: StreamType;
+  decoder?: DecoderType | null;
+  location?: {
+    lat: number;
+    lon: number;
+  } | null;
+  stream_url?: string | null;
+  nx_id?: string | null;
+  forced_resolution?: string | null;
+  forced_fps?: number | null;
+  compatibility_mode?: boolean;
+  ip_address?: string | null;
+  user?: string | null;
+  password?: string | null;
+  http_port?: number | null;
+  streams?: Array<Record<string, any>> | null;
+  selected_stream?: number | null;
+}
+
+export interface CameraUpdateRequest {
+  camera_name?: string;
+  fingerprint_host?: string;
+  stream_type?: StreamType | string;
+  decoder?: DecoderType | string | null;
+  location?: {
+    lat: number;
+    lon: number;
+  } | null;
+  stream_url?: string | null;
+  nx_id?: string | null;
+  forced_resolution?: string | null;
+  forced_fps?: number | null;
+  compatibility_mode?: boolean;
+  ip_address?: string | null;
+  user?: string | null;
+  password?: string | null;
+  http_port?: number | null;
+  streams?: Array<Record<string, any>> | null;
+  selected_stream?: number | null;
 }
 
 export class CameraMapper {
@@ -46,7 +111,18 @@ export class CameraMapper {
       decoder: dto.decoder || '',
       location: dto.location || { lat: 0, lon: 0 },
       createdAt: dto.created_at ? parseUtcDate(dto.created_at) : null,
-      nxId: dto.nx_id || dto.nxId || undefined
+      nxId: dto.nx_id || dto.nxId || undefined,
+      streamUrl: dto.stream_url || dto.streamUrl || dto.rtsp_url || dto.rtspUrl || dto.url || undefined,
+      rtspUrl: dto.rtsp_url || dto.rtspUrl || dto.stream_url || dto.streamUrl || undefined,
+      forcedResolution: dto.forced_resolution || dto.forcedResolution || undefined,
+      forcedFps: dto.forced_fps !== undefined ? dto.forced_fps : dto.forcedFps,
+      compatibilityMode: dto.compatibility_mode ?? dto.compatibilityMode ?? false,
+      ipAddress: dto.ip_address || dto.ipAddress || undefined,
+      user: dto.user || undefined,
+      password: dto.password || undefined,
+      httpPort: dto.http_port !== undefined ? dto.http_port : dto.httpPort,
+      selectedStream: dto.selected_stream !== undefined ? dto.selected_stream : dto.selectedStream
     };
   }
 }
+

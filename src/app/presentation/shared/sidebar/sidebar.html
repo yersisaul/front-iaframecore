@@ -133,30 +133,31 @@
       </ul>
     </li>
 
-    <!-- 5.5. Monitoreo / Visor Táctico -->
+    <!-- 5.5. Monitoreo / Monitoreo -->
     <li class="nav-item mb-2">
       <a routerLink="/dashboard/monitoreo" routerLinkActive="active"
         class="nav-link text-body fw-500 d-flex align-items-center rounded"
         [class.justify-content-center]="isCollapsed()"
-        [title]="isCollapsed() ? (unseenMonitoringEventsCount() > 0 ? 'Visor Táctico (' + unseenMonitoringEventsCount() + ')' : 'Visor Táctico') : ''">
+        [title]="isCollapsed() ? (unseenMonitoringEventsCount() > 0 ? 'Monitoreo (' + unseenMonitoringEventsCount() + ')' : 'Monitoreo') : ''">
         <div class="active-indicator"></div>
         <div class="position-relative d-inline-flex align-items-center justify-content-center flex-shrink-0"
           [class.me-3]="!isCollapsed()">
           <span class="icon-svg icon-grid nav-icon" style="width: 18px; height: 18px;"></span>
           @if (unseenMonitoringEventsCount() > 0 && isCollapsed()) {
-            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
-              style="margin-top: 2px; margin-left: -2px;">
-              <span class="visually-hidden">Nuevos eventos</span>
-            </span>
+          <span
+            class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
+            style="margin-top: 2px; margin-left: -2px;">
+            <span class="visually-hidden">Nuevos eventos</span>
+          </span>
           }
         </div>
-        <span [class.d-none]="isCollapsed()" class="text-truncate flex-grow-1">Visor Táctico</span>
+        <span [class.d-none]="isCollapsed()" class="text-truncate flex-grow-1">Monitoreo</span>
 
         @if (unseenMonitoringEventsCount() > 0 && !isCollapsed()) {
-          <span class="badge rounded-pill bg-danger text-white fw-bold ms-auto px-2 py-0.5"
-            style="font-size: 0.7rem; letter-spacing: -0.02em; box-shadow: 0 0 10px rgba(239, 68, 68, 0.45);">
-            {{ unseenMonitoringEventsCount() > 99 ? '99+' : unseenMonitoringEventsCount() }}
-          </span>
+        <span class="badge rounded-pill bg-danger text-white fw-bold ms-auto px-2 py-0.5"
+          style="font-size: 0.7rem; letter-spacing: -0.02em; box-shadow: 0 0 10px rgba(239, 68, 68, 0.45);">
+          {{ unseenMonitoringEventsCount() > 99 ? '99+' : unseenMonitoringEventsCount() }}
+        </span>
         }
       </a>
     </li>

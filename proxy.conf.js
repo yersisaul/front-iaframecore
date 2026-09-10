@@ -124,6 +124,9 @@ module.exports = {
         }
       });
       proxy.on('proxyRes', (proxyRes, req, res) => {
+        // Evitar que el navegador muestre la ventana emergente de Basic Auth si OpenSearch devuelve 401
+        delete proxyRes.headers['www-authenticate'];
+
         if (req.headers && req.headers.origin) {
           proxyRes.headers['access-control-allow-origin'] = req.headers.origin;
           proxyRes.headers['access-control-allow-credentials'] = 'true';

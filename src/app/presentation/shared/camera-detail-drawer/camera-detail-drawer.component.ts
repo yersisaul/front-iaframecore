@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, signal, HostListener, OnChanges, OnDestroy, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, computed, HostListener, OnChanges, OnDestroy, AfterViewInit, SimpleChanges, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -19,6 +19,7 @@ import { Schedule } from '../../../core/domain/entities/schedule.models';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
 import { getCameraEffectiveStatus, getCameraStatusCssClass, getCameraStatusColor } from '../../../core/utils/camera-status.utils';
 import { ConfirmDeleteModalComponent } from '../confirm-delete-modal/confirm-delete-modal.component';
+import { CreateCameraModalComponent } from '../create-camera-modal/create-camera-modal.component';
 import { AnalyticCanvasComponent } from './components/analytic-canvas/analytic-canvas.component';
 import { AnalyticParamsFormComponent } from './components/analytic-params-form/analytic-params-form.component';
 import { AnalyticActionsBuilderComponent } from './components/analytic-actions-builder/analytic-actions-builder.component';
@@ -32,6 +33,7 @@ import { AnalyticActionsBuilderComponent } from './components/analytic-actions-b
     ReactiveFormsModule,
     RouterLink,
     ConfirmDeleteModalComponent,
+    CreateCameraModalComponent,
     AnalyticCanvasComponent,
     AnalyticParamsFormComponent,
     AnalyticActionsBuilderComponent
@@ -39,8 +41,13 @@ import { AnalyticActionsBuilderComponent } from './components/analytic-actions-b
   templateUrl: './camera-detail-drawer.component.html',
   styleUrl: './camera-detail-drawer.component.css'
 })
-export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
+export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterViewInit {
   @ViewChild(AnalyticParamsFormComponent) paramsFormComponent?: AnalyticParamsFormComponent;
+  @ViewChild('cameraTitleContainer') cameraTitleContainer?: ElementRef<HTMLElement>;
+  @ViewChild('cameraTitleEl') cameraTitleEl?: ElementRef<HTMLElement>;
+
+  readonly isTitleOverflowing = signal<boolean>(false);
+  private titleResizeObserver?: ResizeObserver;
 
   get resolvedHostFingerprint(): string {
     if (this.camera?.hostFingerprint) return this.camera.hostFingerprint;
@@ -62,6 +69,35 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
     return '';
   }
 
+  ngAfterViewInit(): void {
+    this.setupTitleObserver();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.checkTitleOverflow();
+  }
+
+  private setupTitleObserver(): void {
+    if (typeof ResizeObserver !== 'undefined' && this.cameraTitleContainer?.nativeElement) {
+      this.titleResizeObserver?.disconnect();
+      this.titleResizeObserver = new ResizeObserver(() => {
+        this.checkTitleOverflow();
+      });
+      this.titleResizeObserver.observe(this.cameraTitleContainer.nativeElement);
+    }
+    this.checkTitleOverflow();
+  }
+
+  checkTitleOverflow(): void {
+    if (this.cameraTitleEl && this.cameraTitleContainer) {
+      const titleEl = this.cameraTitleEl.nativeElement;
+      const containerEl = this.cameraTitleContainer.nativeElement;
+      const isOverflowing = titleEl.scrollWidth > containerEl.clientWidth + 1;
+      this.isTitleOverflowing.set(isOverflowing);
+    }
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     const showJustOpened = !!(changes['show'] && changes['show'].currentValue && !changes['show'].previousValue);
     const cameraJustChanged = !!(changes['camera'] && (
@@ -75,6 +111,9 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
       this.analyticService.isViewActive.set(true);
       this.scheduleService.isViewActive.set(true);
       this.hostService.isViewActive.set(true);
+
+      setTimeout(() => this.checkTitleOverflow(), 60);
+      setTimeout(() => this.checkTitleOverflow(), 300);
 
       if (showJustOpened || cameraJustChanged || hostJustChanged) {
         this.lastEventImageUrl.set('');
@@ -95,6 +134,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.titleResizeObserver?.disconnect();
     this.cleanupWebRtcForDrawer();
   }
 
@@ -880,11 +920,9 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
   readonly analyticActiveStatusIds = this.analyticService.activeStatusIds;
   readonly analyticInactiveStatusIds = this.analyticService.inactiveStatusIds;
 
-  // Estado local del drawer
-  readonly isEditingCamera = signal<boolean>(false);
-  editCameraName = '';
-  editCameraLat = 0;
-  editCameraLon = 0;
+  // Modal de edición de cámara (Reutiliza CreateCameraModalComponent)
+  readonly showEditModal = signal<boolean>(false);
+  readonly allHosts = computed(() => this.hostService.allHosts());
 
   readonly expandedAnalyticIds = signal<Set<string>>(new Set());
   readonly activeAddScheduleDropdown = signal<string | null>(null);
@@ -953,74 +991,23 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy {
   }
 
   closeDrawer(): void {
-    this.isEditingCamera.set(false);
+    this.showEditModal.set(false);
     this.closeAnalyticConfigDrawer();
     this.close.emit();
   }
 
-  startEditingCamera(cam: Camera): void {
-    this.editCameraName = cam.name;
-    this.editCameraLat = cam.location?.lat ?? 0;
-    this.editCameraLon = cam.location?.lon ?? 0;
-    this.isEditingCamera.set(true);
+  openEditModal(): void {
+    this.showEditModal.set(true);
   }
 
-  cancelEditingCamera(): void {
-    this.isEditingCamera.set(false);
+  closeEditModal(): void {
+    this.showEditModal.set(false);
   }
 
-  get isNameInvalid(): boolean {
-    return !this.editCameraName || this.editCameraName.trim() === '';
-  }
-
-  get isLatInvalid(): boolean {
-    if (this.editCameraLat === null || this.editCameraLat === undefined || isNaN(this.editCameraLat)) {
-      return true;
-    }
-    return this.editCameraLat < -90 || this.editCameraLat > 90;
-  }
-
-  get isLonInvalid(): boolean {
-    if (this.editCameraLon === null || this.editCameraLon === undefined || isNaN(this.editCameraLon)) {
-      return true;
-    }
-    return this.editCameraLon < -180 || this.editCameraLon > 180;
-  }
-
-  get isFormInvalid(): boolean {
-    return this.isNameInvalid || this.isLatInvalid || this.isLonInvalid;
-  }
-
-  saveCameraInfo(cam: Camera): void {
-    if (this.isFormInvalid) {
-      alert('Por favor, corrija los errores en el formulario antes de guardar.');
-      return;
-    }
-
-    const body = {
-      camera_name: this.editCameraName.trim(),
-      location: {
-        lat: Number(this.editCameraLat),
-        lon: Number(this.editCameraLon)
-      }
-    };
-
-    this.cameraService.updateCamera(cam.id, body).subscribe({
-      next: () => {
-        this.isEditingCamera.set(false);
-        this.cameraUpdated.emit(cam);
-      },
-      error: (err) => {
-        if (err?.status >= 400 && err?.status < 500) {
-          console.error('Error updating camera:', err);
-          alert('Error al guardar la información de la cámara. Por favor, intente de nuevo.');
-        } else {
-          console.warn('[CameraDetailDrawer] update 5xx swallowed:', err?.status);
-          this.isEditingCamera.set(false);
-          this.cameraUpdated.emit(cam);
-        }
-      }
-    });
+  onCameraUpdatedFromModal(updatedCam: Camera): void {
+    this.camera = updatedCam;
+    this.cameraUpdated.emit(updatedCam);
+    this.closeEditModal();
   }
 
   openDeleteModal(cam: Camera): void {

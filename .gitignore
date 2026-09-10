@@ -5,6 +5,7 @@
 /tmp
 /out-tsc
 /bazel-out
+/arch
 
 # Node
 /node_modules
@@ -55,3 +56,4 @@ scratch_openapi.json
 schemas.md
 endpoints.md
 provisional-mockups
+.agents

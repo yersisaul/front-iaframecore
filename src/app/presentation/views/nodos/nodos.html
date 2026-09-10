@@ -93,7 +93,8 @@
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilterStatus().length > 0" (click)="toggleDropdown('status', $event)">
-          <span class="status-dot" [class]="tempFilterStatus().length === 1 ? getStatusCssClass(tempFilterStatus()[0]) : 'all'"></span>
+          <span class="status-dot"
+            [class]="tempFilterStatus().length === 1 ? getStatusCssClass(tempFilterStatus()[0]) : 'all'"></span>
           <span>
             Estado ({{ tempFilterStatus().length || 'Todos' }})
           </span>
@@ -110,7 +111,8 @@
           }
           @for (st of filterOptions().status; track st) {
           @let isSelected = tempFilterStatus().includes(st);
-          <button type="button" class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center justify-content-between"
+          <button type="button"
+            class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center justify-content-between"
             [class.active]="isSelected" (click)="toggleFilterValue('status', st, $event)">
             <div class="d-flex align-items-center gap-2">
               <span class="status-dot" [class]="getStatusCssClass(st)"></span>
@@ -295,7 +297,9 @@
       [class.host-card--new]="hostService.newHostIds().has(host.fingerprint)"
       [class.host-card--updated]="hostService.updatedHostIds().has(host.fingerprint)"
       [class.host-card--deleting]="hostService.deletingHostIds().has(host.fingerprint)"
-      (click)="goToCameras(host.fingerprint)">
+      (click)="goToCameras(host.fingerprint)"
+      (mouseenter)="onHostCardMouseEnter($event)"
+      (mouseleave)="onHostCardMouseLeave($event)">
       <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
         <div>
           <!-- Cabecera de la Tarjeta: OS Icon + Hostname + Versión y Actividad -->
@@ -311,22 +315,31 @@
               <span class="icon-svg os-avatar-icon icon-nodos flex-shrink-0"></span>
               }
               <div class="host-title-container min-w-0 flex-grow-1 d-flex align-items-center">
-                <h5 class="host-title fw-bold mb-0 text-truncate">
+                <h5 class="host-title fw-bold mb-0">
                   {{ host.hostname }}
                 </h5>
               </div>
             </div>
 
-            <div class="host-header-right d-inline-flex align-items-center gap-1.5 flex-shrink-0 ms-auto">
-              <!-- Estado de Actividad visualmente renovado -->
-              <span class="status-badge flex-shrink-0"
-                [class.status-badge-online]="host.status === 'active' || host.status === 'online'"
-                [class.status-badge-offline]="host.status !== 'active' && host.status !== 'online'">
-                {{ (host.status === 'active' || host.status === 'online') ? 'Online' : 'Offline' }}
-              </span>
-              <!-- Versión visualmente renovada -->
-              @if (host.version) {
-              <span class="version-tag flex-shrink-0">v{{ host.version }}</span>
+            <div class="host-header-right d-inline-flex align-items-center flex-shrink-0 ms-auto">
+              <!-- Badges informativos (Online/Offline y Versión) -->
+              <div class="host-header-badges d-inline-flex align-items-center gap-2 flex-shrink-0">
+                <span class="status-badge flex-shrink-0"
+                  [class.status-badge-online]="host.status === 'active' || host.status === 'online'"
+                  [class.status-badge-offline]="host.status !== 'active' && host.status !== 'online'">
+                  {{ (host.status === 'active' || host.status === 'online') ? 'Online' : 'Offline' }}
+                </span>
+                @if (host.version) {
+                <span class="version-tag flex-shrink-0">v{{ host.version }}</span>
+                }
+              </div>
+
+              <!-- Botón Eliminar reactivo en hover -->
+              @if (permissionsService.hasPermission('Hosts', 'eliminar')) {
+              <button type="button" class="btn-card-delete flex-shrink-0" title="Eliminar nodo"
+                (click)="openDeleteHostModal(host, $event)">
+                <span class="icon-svg icon-trash"></span>
+              </button>
               }
             </div>
           </div>
@@ -380,21 +393,6 @@
               } @else {
               <span class="spec-val font-monospace text-truncate text-end">
                 {{ hw?.system }} &ndash; {{ hw?.release }}
-              </span>
-              }
-            </div>
-            <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-mac'"
-              (click)="copyRowContent(hw?.mac || '', host.fingerprint + '-mac'); $event.stopPropagation()">
-              <span class="spec-lbl d-inline-flex align-items-center">
-                <span class="icon-svg icon-box me-2"
-                  style="width: 14px; height: 14px; background-color: currentColor;"></span>
-                MAC
-              </span>
-              @if (copiedRowId() === host.fingerprint + '-mac') {
-              <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
-              } @else {
-              <span class="spec-val font-monospace text-truncate text-end">
-                {{ hw?.mac }}
               </span>
               }
             </div>
@@ -472,17 +470,17 @@
 
           <!-- Bloque GPU (actualizado con métricas del heartbeat) -->
           @if (host.gpuInfo; as gpu) {
-          <div class="resource-panel gpu-panel">
+          <div class="resource-panel gpu-panel" (mouseenter)="onGpuMouseEnter($event)"
+            (mouseleave)="onGpuMouseLeave($event)">
             <div class="resource-panel-header">
               <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0;">
                 <span class="icon-svg resource-icon icon-gpu"></span>
                 <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
                   <span class="resource-lbl">GPU</span>
-                  <div class="gpu-title-container">
-                    <span class="resource-name" [title]="(gpu?.gpu || '') + ' ' + (gpu?.model || '')">
-                      {{ gpu?.model }}
-                    </span>
-                  </div>
+                  <span class="resource-name text-truncate" [title]="(gpu?.gpu || '') + ' ' + (gpu?.model || '')">
+                    {{ gpu?.model }}
+                  </span>
+
                 </div>
               </div>
               <div class="resource-stats">
@@ -574,17 +572,27 @@
             [class.host-card--new]="hostService.newHostIds().has(host.fingerprint)"
             [class.host-card--updated]="hostService.updatedHostIds().has(host.fingerprint)"
             [class.host-card--deleting]="hostService.deletingHostIds().has(host.fingerprint)"
+            [class.has-delete-permission]="permissionsService.hasPermission('Hosts', 'eliminar')"
             (click)="goToCameras(host.fingerprint)">
-            <!-- Estado -->
+            <!-- Estado: Se convierte en botón completo de eliminar al hacer hover en la fila -->
             <td class="col-status text-center">
-              <span class="d-inline-flex align-items-center justify-content-center gap-2">
-                <span class="status-dot" [class.online]="host.status === 'active' || host.status === 'online'"></span>
-                <span class="fw-semibold" [class.text-success]="host.status === 'active' || host.status === 'online'"
-                  [class.text-danger]="host.status !== 'active' && host.status !== 'online'"
-                  style="font-size: 0.88rem;">
-                  {{ (host.status === 'active' || host.status === 'online') ? 'Online' : 'Offline' }}
+              <div class="table-status-cell-inner">
+                <span class="table-status-content d-inline-flex align-items-center justify-content-center gap-2">
+                  <span class="status-dot" [class.online]="host.status === 'active' || host.status === 'online'"></span>
+                  <span class="fw-semibold" [class.text-success]="host.status === 'active' || host.status === 'online'"
+                    [class.text-danger]="host.status !== 'active' && host.status !== 'online'"
+                    style="font-size: 0.88rem;">
+                    {{ (host.status === 'active' || host.status === 'online') ? 'Online' : 'Offline' }}
+                  </span>
                 </span>
-              </span>
+
+                @if (permissionsService.hasPermission('Hosts', 'eliminar')) {
+                <button type="button" class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
+                  (click)="$event.stopPropagation(); openDeleteHostModal(host, $event)" title="Eliminar nodo" aria-label="Eliminar nodo">
+                  <span class="icon-svg icon-trash"></span>
+                </button>
+                }
+              </div>
             </td>
             <!-- Hostname -->
             <td class="col-hostname">
@@ -914,4 +922,11 @@
     </div>
   </div>
   }
+
+  <!-- Modal de Confirmación: Eliminar Nodo (REUTILIZABLE DRY) -->
+  <app-confirm-delete-modal [show]="showDeleteHostModal()" title="Eliminar Nodo"
+    [itemName]="hostToDelete()?.hostname || ''" messagePrefix="¿Estás seguro de que deseas eliminar el nodo "
+    messageSuffix="? Esta acción desconectará y eliminará de forma permanente el nodo y todas sus cámaras asociadas."
+    [isDeleting]="isDeletingHost()" (confirm)="confirmDeleteHost()" (cancel)="closeDeleteHostModal()">
+  </app-confirm-delete-modal>
 </div>

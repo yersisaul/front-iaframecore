@@ -8,11 +8,8 @@
   <app-page-header [showSidebarToggle]="!hostId()"
     [title]="hostId() ? 'Cámaras del Nodo' + (currentHost()?.hostname ? ' &quot;' + currentHost()?.hostname + '&quot;' : '') : 'Todas las Cámaras'">
 
-    <app-header-stats-subtitle header-subtitle
-      [cameras]="filteredCameras()"
-      [analytics]="filteredAnalyticsList()"
-      [allHosts]="allHosts()"
-      [contextSuffix]="hostId() ? 'en este nodo.' : 'en el sistema.'">
+    <app-header-stats-subtitle header-subtitle [cameras]="filteredCameras()" [analytics]="filteredAnalyticsList()"
+      [allHosts]="allHosts()" [contextSuffix]="hostId() ? 'en este nodo.' : 'en el sistema.'">
     </app-header-stats-subtitle>
 
     <!-- Botón Volver a Nodos cuando está en modo nodo -->
@@ -28,6 +25,17 @@
     <ng-container header-actions>
       <!-- Tabs de Vista (Tarjetas / Lista) REFACTORIZADO DRY -->
       <app-view-mode-toggle [viewMode]="viewMode()" (viewModeChange)="setViewMode($event)"></app-view-mode-toggle>
+
+      <!-- Botón Armónico de Licencia (Pill primario elegante, hermano de Exportar) -->
+      @if (hostId()) {
+      @if (license()) {
+      <button type="button" class="btn btn-header-license d-flex align-items-center gap-2" (click)="openLicenseModal()"
+        title="Ver licencia y cuotas del nodo" aria-label="Licencia del Nodo">
+        <span class="icon-svg icon-info" style="width: 15px; height: 15px; background-color: currentColor;"></span>
+        <span>Licencias y Cuotas</span>
+      </button>
+      }
+      }
 
       <!-- Botón de Exportar Verde Oscuro (Siempre Visible) -->
       <div class="dropdown d-inline-block position-relative">
@@ -50,21 +58,12 @@
         }
       </div>
 
-      @if (hostId()) {
-      @if (license()) {
-      <button class="btn-header-primary" (click)="openLicenseModal()">
-        <span class="icon-svg icon-shield" style="width: 15px; height: 15px;"></span>
-        <span>Licencia y Cuotas</span>
+      <!-- Botón Crear Cámara (A la derecha del todo, a la derecha de Exportar) -->
+      <button class="btn-header-primary btn-create-camera d-flex align-items-center gap-2"
+        (click)="openCreateCameraModal()" title="Crear nueva cámara" aria-label="Crear Nueva Cámara">
+        <span class="icon-svg icon-plus" style="width: 14px; height: 14px;"></span>
+        <span>Crear Cámara</span>
       </button>
-      }
-
-      @if (permissionsService.hasPermission('Hosts', 'eliminar')) {
-      <button class="btn-delete-host ms-2" (click)="openDeleteHostModal()">
-        <span class="icon-svg icon-trash" style="width: 15px; height: 15px;"></span>
-        <span>Eliminar Nodo</span>
-      </button>
-      }
-      }
     </ng-container>
 
     <!-- Ranura para Fila 2 (Búsqueda + Filtros + Paginación) tanto para Nodo como para Todas las Cámaras -->
@@ -116,7 +115,8 @@
       <div class="filter-dropdown-wrapper position-relative">
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilterStatus().length > 0" (click)="toggleDropdown('status', $event)">
-          <span class="status-dot" [class]="tempFilterStatus().length === 1 ? getStatusCssClass(tempFilterStatus()[0]) : 'all'"></span>
+          <span class="status-dot"
+            [class]="tempFilterStatus().length === 1 ? getStatusCssClass(tempFilterStatus()[0]) : 'all'"></span>
           <span>
             Estado ({{ tempFilterStatus().length || 'Todos' }})
           </span>
@@ -164,18 +164,18 @@
             [class.rotated]="activeDropdown() === 'host'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'host') {
-        <div class="filter-dropdown-menu dropdown-host p-0" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-host" (click)="$event.stopPropagation()">
           <!-- Searchbar interno de Nodos fijo arriba -->
-          <div class="dropdown-search-header p-2">
-            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1" style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
+          <div class="dropdown-search-header">
+            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
+              style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
-              <input #nodeSearchInput type="text" class="node-search-input border-0 bg-transparent w-100"
+              <input #nodeSearchInput type="text" class="camera-search-input border-0 bg-transparent w-100"
                 placeholder="Buscar nodo..." (input)="hostSearch.set(nodeSearchInput.value)"
                 (click)="$event.stopPropagation()" autocomplete="off"
                 style="font-size: 0.8rem; outline: none; min-width: 0;" />
               @if (hostSearch()) {
-              <button type="button" class="btn-ghost p-0 d-flex border-0 bg-transparent"
-                style="opacity: 0.5; line-height: 1;"
+              <button type="button" class="btn-ghost p-0 d-flex" style="opacity: 0.5; line-height: 1;"
                 (click)="nodeSearchInput.value = ''; hostSearch.set(''); $event.stopPropagation()"
                 title="Limpiar búsqueda">
                 <span style="font-size: 0.75rem;">✕</span>
@@ -237,7 +237,7 @@
         <button type="button" class="btn btn-filter-dropdown d-flex align-items-center gap-2"
           [class.active]="tempFilterDecoder().length > 0" (click)="toggleDropdown('decoder', $event)">
           <span class="icon-svg icon-settings filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>Decodificador ({{ tempFilterDecoder().length || 'Todos' }})</span>
+          <span>Decoder ({{ tempFilterDecoder().length || 'Todos' }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'decoder'" style="width: 10px; height: 10px;"></span>
         </button>
@@ -363,7 +363,8 @@
       [class.card-crud-updated]="cameraUpdatedIds().has(camera.id)"
       [class.card-crud-deleting]="cameraDeletingIds().has(camera.id)"
       [class.card-crud-status-active]="cameraActiveStatusIds().has(camera.id)"
-      [class.card-crud-status-inactive]="cameraInactiveStatusIds().has(camera.id)" (click)="openAiPanel(camera)">
+      [class.card-crud-status-inactive]="cameraInactiveStatusIds().has(camera.id)" (click)="openAiPanel(camera)"
+      (mouseenter)="onCameraCardMouseEnter($event)" (mouseleave)="onCameraCardMouseLeave($event)">
       <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
         <div>
           <!-- Cabecera: Icono + Nombre + Decoder + Estado -->
@@ -371,21 +372,30 @@
             <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0" style="overflow: hidden;">
               <span class="icon-svg os-avatar-icon icon-camara flex-shrink-0"></span>
               <div class="host-title-container min-w-0 flex-grow-1 d-flex align-items-center">
-                <h5 class="host-title fw-bold mb-0 text-truncate" [title]="camera.name">
+                <h5 class="host-title fw-bold mb-0" [title]="camera.name">
                   {{ camera.name }}
                 </h5>
               </div>
             </div>
 
-            <div class="host-header-right d-inline-flex align-items-center gap-1.5 flex-shrink-0 ms-auto">
-              <!-- Estado de Actividad -->
-              <span class="status-badge flex-shrink-0"
-                [class]="'status-badge status-badge-' + getCameraStatusClass(camera)">
-                {{ getCameraStatusLabel(camera) }}
-              </span>
-              <!-- Decoder -->
-              @if (camera.decoder) {
-              <span class="version-tag flex-shrink-0">{{ camera.decoder | uppercase }}</span>
+            <div class="host-header-right d-inline-flex align-items-center flex-shrink-0 ms-auto">
+              <!-- Badges informativos (Estado y Decoder) -->
+              <div class="host-header-badges d-inline-flex align-items-center gap-2 flex-shrink-0">
+                <span class="status-badge flex-shrink-0"
+                  [class]="'status-badge status-badge-' + getCameraStatusClass(camera)">
+                  {{ getCameraStatusLabel(camera) }}
+                </span>
+                @if (camera.decoder) {
+                <span class="version-tag flex-shrink-0">{{ camera.decoder | uppercase }}</span>
+                }
+              </div>
+
+              <!-- Botón Eliminar reactivo en hover -->
+              @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
+              <button type="button" class="btn-card-delete flex-shrink-0" title="Eliminar cámara"
+                (click)="openDeleteModal(camera, $event)">
+                <span class="icon-svg icon-trash"></span>
+              </button>
               }
             </div>
           </div>
@@ -554,7 +564,7 @@
             <th scope="col" class="col-decoder text-muted small fw-bold text-center">
               <button type="button" class="btn-th-column-toggle" (click)="hideColumn('decoder', $event)"
                 title="Ocultar columna Decodificador">
-                <span class="col-label-text">DECODIFICADOR</span>
+                <span class="col-label-text">DECODER</span>
                 <span class="col-label-hover-icon">
                   <span class="icon-svg icon-trash"></span>
                 </span>
@@ -617,16 +627,29 @@
             [class.card-crud-updated]="cameraUpdatedIds().has(camera.id)"
             [class.card-crud-deleting]="cameraDeletingIds().has(camera.id)"
             [class.card-crud-status-active]="cameraActiveStatusIds().has(camera.id)"
-            [class.card-crud-status-inactive]="cameraInactiveStatusIds().has(camera.id)" (click)="openAiPanel(camera)">
-            <!-- Estado -->
+            [class.card-crud-status-inactive]="cameraInactiveStatusIds().has(camera.id)"
+            [class.has-delete-permission]="permissionsService.hasPermission('Cámaras', 'eliminar')"
+            (click)="openAiPanel(camera)">
+            <!-- Estado con Reemplazo de Eliminar en Hover (Opción 1) -->
             <td class="col-status text-center">
-              <span class="d-inline-flex align-items-center justify-content-center gap-2">
-                <span [class]="'status-dot ' + getCameraStatusClass(camera)"></span>
-                <span class="fw-semibold" style="font-size: 0.88rem;"
-                  [class]="'fw-semibold status-text-' + getCameraStatusClass(camera)">
-                  {{ getCameraStatusLabel(camera) }}
+              <div class="table-status-action-wrapper">
+                <span class="table-status-badge d-inline-flex align-items-center justify-content-center gap-2">
+                  <span [class]="'status-dot ' + getCameraStatusClass(camera)"></span>
+                  <span class="fw-semibold" style="font-size: 0.88rem;"
+                    [class]="'fw-semibold status-text-' + getCameraStatusClass(camera)">
+                    {{ getCameraStatusLabel(camera) }}
+                  </span>
                 </span>
-              </span>
+
+                @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
+                <button type="button"
+                  class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
+                  (click)="$event.stopPropagation(); openDeleteModal(camera, $event)" title="Eliminar cámara"
+                  aria-label="Eliminar cámara">
+                  <span class="icon-svg icon-trash"></span>
+                </button>
+                }
+              </div>
             </td>
             <!-- Nombre -->
             <td class="col-camera-name">
@@ -1038,3 +1061,16 @@
     messageSuffix="? Esta acción eliminará de forma permanente el nodo y todas sus cámaras asociadas. Esta acción no se puede deshacer."
     [isDeleting]="isDeletingHost()" (confirm)="confirmDeleteHost()" (cancel)="closeDeleteHostModal()">
   </app-confirm-delete-modal>
+
+  <!-- Modal de Confirmación: Eliminar Cámara (REUTILIZABLE DRY) -->
+  <app-confirm-delete-modal [show]="showDeleteModal()" title="Eliminar Cámara" [itemName]="cameraToDelete()?.name || ''"
+    messagePrefix="¿Estás seguro de que deseas eliminar la cámara "
+    messageSuffix="? Esta acción eliminará permanentemente la cámara y sus analíticas asociadas."
+    [isDeleting]="isDeletingCamera()" (confirm)="confirmDeleteCamera()" (cancel)="closeDeleteModal()">
+  </app-confirm-delete-modal>
+
+  <!-- Modal de Creación de Cámara (REUTILIZABLE DRY) -->
+  <app-create-camera-modal [show]="showCreateCameraModal()" [preselectedHostId]="hostId()"
+    [preselectedHostName]="currentHost()?.hostname || ''" [hosts]="allHosts()"
+    (close)="closeCreateCameraModal()" (cameraCreated)="onCameraCreated($event)">
+  </app-create-camera-modal>

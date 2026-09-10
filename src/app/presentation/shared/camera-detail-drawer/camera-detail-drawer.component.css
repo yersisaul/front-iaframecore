@@ -50,6 +50,56 @@
   animation: fadeIn .25s ease-out forwards;
 }
 
+/* --- Marquee Permanente para Título de Cámara en Drawer --- */
+.drawer-camera-title-container {
+  flex: 1 1 0%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.drawer-camera-title-text {
+  display: inline-block;
+  width: 100%;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.drawer-camera-title-container.has-marquee {
+  mask-image: linear-gradient(90deg,
+      #000 0%,
+      #000 calc(100% - 16px),
+      transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg,
+      #000 0%,
+      #000 calc(100% - 16px),
+      transparent 100%);
+}
+
+.drawer-camera-title-container.has-marquee .drawer-camera-title-text {
+  width: max-content !important;
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  animation: drawerTitleMarquee 4s linear infinite alternate;
+}
+
+@keyframes drawerTitleMarquee {
+  0%,
+  15% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  85%,
+  100% {
+    transform: translate3d(min(0px, calc(-100% + 100cqw)), 0, 0);
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

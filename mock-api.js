@@ -1228,8 +1228,7 @@ const server = http.createServer((req, res) => {
       if (cameraId !== 'update' && cameraId !== 'delete') {
         const index = dbCameras.findIndex(c => c.camera_id === cameraId);
         if (index !== -1) {
-          if (parsedBody.camera_name) dbCameras[index].camera_name = parsedBody.camera_name;
-          if (parsedBody.location) dbCameras[index].location = parsedBody.location;
+          dbCameras[index] = { ...dbCameras[index], ...parsedBody };
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify(dbCameras[index]));
         } else {

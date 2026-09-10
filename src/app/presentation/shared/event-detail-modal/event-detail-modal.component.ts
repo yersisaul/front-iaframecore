@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, HostListener, ViewChild, ElementRef, OnDestroy, inject, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, HostListener, ViewChild, ElementRef, OnDestroy, inject, OnChanges, SimpleChanges, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EventRecord } from '../../../core/domain/entities/event.models';
 import { copyToClipboard as utilCopyToClipboard } from '../../../core/utils/clipboard.util';
@@ -11,8 +11,14 @@ import { FacialMatchService, FacialMatchInfo } from '../../../core/services/faci
   templateUrl: './event-detail-modal.component.html',
   styleUrl: './event-detail-modal.component.css'
 })
-export class EventDetailModalComponent implements OnDestroy, OnChanges {
+export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterViewInit {
   private facialMatchService = inject(FacialMatchService);
+
+  @ViewChild('cameraTitleContainer') cameraTitleContainer?: ElementRef<HTMLElement>;
+  @ViewChild('cameraTitleEl') cameraTitleEl?: ElementRef<HTMLElement>;
+
+  readonly isTitleOverflowing = signal<boolean>(false);
+  private titleResizeObserver?: ResizeObserver;
 
   @Input() event: EventRecord | null = null;
   @Output() close = new EventEmitter<void>();
@@ -27,6 +33,35 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges {
   readonly isMatchLoading = signal<boolean>(false);
   readonly focusedComparisonCard = signal<'detection' | 'reference' | null>(null);
 
+  ngAfterViewInit(): void {
+    this.setupTitleObserver();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.checkTitleOverflow();
+  }
+
+  private setupTitleObserver(): void {
+    if (typeof ResizeObserver !== 'undefined' && this.cameraTitleContainer?.nativeElement) {
+      this.titleResizeObserver?.disconnect();
+      this.titleResizeObserver = new ResizeObserver(() => {
+        this.checkTitleOverflow();
+      });
+      this.titleResizeObserver.observe(this.cameraTitleContainer.nativeElement);
+    }
+    this.checkTitleOverflow();
+  }
+
+  checkTitleOverflow(): void {
+    if (this.cameraTitleEl && this.cameraTitleContainer) {
+      const titleEl = this.cameraTitleEl.nativeElement;
+      const containerEl = this.cameraTitleContainer.nativeElement;
+      const isOverflowing = titleEl.scrollWidth > containerEl.clientWidth + 1;
+      this.isTitleOverflowing.set(isOverflowing);
+    }
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['event'] && this.event) {
       this.hasImageError.set(false);
@@ -35,6 +70,9 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges {
       this.activeMediaType.set('image');
       this.mediaAspectRatio.set(null);
       this.focusedComparisonCard.set(null);
+
+      setTimeout(() => this.checkTitleOverflow(), 60);
+      setTimeout(() => this.checkTitleOverflow(), 300);
 
       if (this.isComparisonAvailable(this.event)) {
         this.isMatchLoading.set(true);
@@ -113,6 +151,7 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges {
   }
 
   ngOnDestroy(): void {
+    this.titleResizeObserver?.disconnect();
     if (this.boundImgWrapper) {
       this.boundImgWrapper.removeEventListener('wheel', this.handleWheel);
       this.boundImgWrapper = null;

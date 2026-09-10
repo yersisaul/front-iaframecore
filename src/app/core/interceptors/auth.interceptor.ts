@@ -8,11 +8,18 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   const isApiRequest = isInternal && (
     req.url.startsWith(AppEnvironment.apiUrl) || 
-    req.url.includes('/api/') ||
+    req.url.includes('/api/')
+  );
+  const isOpenSearchRequest = isInternal && (
     req.url.startsWith(AppEnvironment.openSearchBaseUrl) ||
     req.url.includes(AppEnvironment.openSearchBaseUrl + '/')
   );
   const isLoginRequest = req.url.includes('/auth/login');
+
+  // Las peticiones a OpenSearch no deben llevar el Bearer token JWT ni x-api-key del backend
+  if (isOpenSearchRequest) {
+    return next(req);
+  }
 
 
   if (isApiRequest) {

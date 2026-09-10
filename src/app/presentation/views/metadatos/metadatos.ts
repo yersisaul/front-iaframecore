@@ -1012,8 +1012,47 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  onCardMouseLeave(): void {
+  onCardMouseEnter(event: MouseEvent): void {
+    const card = event.currentTarget as HTMLElement | null;
+    if (!card) return;
+
+    const headerBlock = card.querySelector('.card-header-camera') as HTMLElement | null;
+    if (!headerBlock) return;
+
+    const titleEl = headerBlock.querySelector('.card-title') as HTMLElement | null;
+    if (!titleEl) return;
+
+    // Al hacer hover en la tarjeta, colapsamos el timestamp y expandimos el título
+    headerBlock.classList.add('camera-title-expand-space');
+
+    // Ancho útil disponible (todo el ancho del encabezado sin el timestamp)
+    const availableFullWidth = headerBlock.clientWidth;
+
+    if (titleEl.scrollWidth > availableFullWidth) {
+      // Si el nombre de la cámara desborda el espacio completo -> marquee exacto
+      const shift = Math.ceil(titleEl.scrollWidth - availableFullWidth);
+      titleEl.style.setProperty('--marquee-shift', `-${shift}px`);
+      headerBlock.classList.add('camera-title-needs-marquee');
+    } else {
+      // Si entra completo estático en el ancho disponible -> sin marquee
+      titleEl.style.removeProperty('--marquee-shift');
+      headerBlock.classList.remove('camera-title-needs-marquee');
+    }
+  }
+
+  onCardMouseLeave(event?: MouseEvent): void {
     this.activeHoverCardId.set(null);
+    if (event?.currentTarget) {
+      const card = event.currentTarget as HTMLElement;
+      const headerBlock = card.querySelector('.card-header-camera') as HTMLElement | null;
+      if (headerBlock) {
+        headerBlock.classList.remove('camera-title-expand-space', 'camera-title-needs-marquee');
+        const titleEl = headerBlock.querySelector('.card-title') as HTMLElement | null;
+        if (titleEl) {
+          titleEl.style.removeProperty('--marquee-shift');
+        }
+      }
+    }
   }
 
   toggleSidebar(): void {

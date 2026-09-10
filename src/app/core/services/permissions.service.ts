@@ -291,7 +291,7 @@ export class PermissionsService {
       'roles.create', 'roles.read', 'roles.update', 'roles.delete',
       'users.create', 'users.read', 'users.update', 'users.delete',
       'hosts.read', 'hosts.update', 'hosts.delete',
-      'cameras.read', 'cameras.update', 'cameras.delete',
+      'cameras.create', 'cameras.read', 'cameras.update', 'cameras.delete',
       'analytics.create', 'analytics.read', 'analytics.update', 'analytics.delete',
       'schedules.create', 'schedules.read', 'schedules.update', 'schedules.delete',
       'lists.create', 'lists.read', 'lists.update', 'lists.delete',

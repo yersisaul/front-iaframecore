@@ -981,10 +981,23 @@ body {
 .form-control,
 input[type="text"],
 input[type="password"],
-input[type="email"] {
+input[type="email"],
+input[type="number"] {
   background-color: var(--bg-surface) !important;
   border-color: var(--border-color) !important;
   color: var(--text-primary) !important;
+}
+
+/* Ocultar visualmente flechas de incremento/decremento (stepper/spinners) en inputs numéricos */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
 }
 
 .form-control:focus {
@@ -1184,6 +1197,8 @@ body:not(.dark) .form-select option {
   border: 1px solid var(--border-filter-dropdown-menu) !important;
   box-shadow: var(--card-shadow-hover);
   border-radius: 12px !important;
+  gap: 2px !important;
+  padding: 6px !important
 }
 
 [data-bs-theme="dark"] .dropdown-menu,
@@ -1244,6 +1259,16 @@ body:not(.dark) .form-select option {
   background: #2d3e56 !important;
   border-color: var(--primary) !important;
   box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.25) !important;
+}
+
+.camera-search-input {
+  color: var(--text-primary) !important;
+  font-size: 0.8rem !important;
+}
+
+.camera-search-input::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.65;
 }
 
 .dropdown-item {
@@ -1803,6 +1828,11 @@ body:not(.dark) .form-select option {
 .icon-arrow-right {
   -webkit-mask-image: url('/assets/icons/global/arrow-right.svg');
   mask-image: url('/assets/icons/global/arrow-right.svg');
+}
+
+.icon-info {
+  -webkit-mask-image: url('/assets/icons/global/info.svg');
+  mask-image: url('/assets/icons/global/info.svg');
 }
 
 .icon-info-circle {
@@ -2432,6 +2462,205 @@ main,
 
 .status-text-offline {
   color: #ef4444 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CELDA DE ESTADO: SE CONVIERTE EN BOTÓN COMPLETO DE ELIMINAR EN HOVER DE FILA
+   ═══════════════════════════════════════════════════════════════ */
+.nm-table td.col-status {
+  padding: 0 !important;
+  vertical-align: middle !important;
+  height: 100% !important;
+  overflow: visible !important;
+}
+
+.table-status-cell-inner,
+.table-status-action-wrapper {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.table-status-content,
+.table-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 6px;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.btn-cell-delete,
+.btn-table-delete {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 3.5px !important;
+  right: 0 !important;
+  width: calc(100% - 3.5px) !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  border: none !important;
+  outline: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: transparent !important;
+  color: var(--text-muted, #94a3b8) !important;
+  cursor: pointer !important;
+  opacity: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.2s ease;
+  z-index: 2;
+}
+
+/* ── Halo de luz en hover: ignora los límites de la celda y flota por encima ── */
+.btn-cell-delete::before,
+.btn-table-delete::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) scale(0.6) !important;
+  width: 84px !important;
+  height: 84px !important;
+  border-radius: 50% !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  z-index: 0 !important;
+  transition: opacity 0.22s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.btn-cell-delete .icon-trash,
+.btn-table-delete .icon-trash {
+  position: relative !important;
+  z-index: 1 !important;
+  width: 1.15rem;
+  height: 1.15rem;
+  background-color: currentColor;
+  opacity: 0.7;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.2s ease,
+    filter 0.2s ease,
+    color 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* ── Al hacer hover sobre CUALQUIER PARTE de la fila (.nm-table-tr) ── */
+.nm-table-tr.has-delete-permission:hover .table-status-content,
+.nm-table-tr.has-delete-permission:hover .table-status-badge,
+.nm-table-tr:has(.btn-cell-delete):hover .table-status-content,
+.nm-table-tr:has(.btn-cell-delete):hover .table-status-badge,
+.nm-table-tr:has(.btn-table-delete):hover .table-status-content,
+.nm-table-tr:has(.btn-table-delete):hover .table-status-badge {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.85);
+}
+
+.nm-table-tr.has-delete-permission:hover .btn-cell-delete,
+.nm-table-tr.has-delete-permission:hover .btn-table-delete,
+.nm-table-tr:has(.btn-cell-delete):hover .btn-cell-delete,
+.nm-table-tr:has(.btn-cell-delete):hover .btn-table-delete,
+.nm-table-tr:has(.btn-table-delete):hover .btn-cell-delete,
+.nm-table-tr:has(.btn-table-delete):hover .btn-table-delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Hover directo sobre el botón de eliminar: el halo se expande flotando libremente ── */
+.btn-cell-delete:hover,
+.btn-table-delete:hover {
+  background-color: transparent !important;
+  color: #ef4444 !important;
+  box-shadow: none !important;
+}
+
+.btn-cell-delete:hover::before,
+.btn-table-delete:hover::before {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(1) !important;
+  background: radial-gradient(circle at center, rgba(239, 68, 68, 0.16) 0%, rgba(239, 68, 68, 0.05) 45%, transparent 75%) !important;
+}
+
+.btn-cell-delete:hover .icon-trash,
+.btn-table-delete:hover .icon-trash {
+  opacity: 1;
+  transform: scale(1.1) translateY(-1px);
+  filter: drop-shadow(0 2px 8px rgba(239, 68, 68, 0.45));
+}
+
+.btn-cell-delete:active,
+.btn-table-delete:active {
+  background-color: transparent !important;
+  color: #dc2626 !important;
+}
+
+.btn-cell-delete:active::before,
+.btn-table-delete:active::before {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(0.92) !important;
+  background: radial-gradient(circle at center, rgba(239, 68, 68, 0.26) 0%, rgba(239, 68, 68, 0.08) 50%, transparent 80%) !important;
+}
+
+.btn-cell-delete:active .icon-trash,
+.btn-table-delete:active .icon-trash {
+  transform: scale(0.94);
+  filter: drop-shadow(0 1px 2px rgba(239, 68, 68, 0.3));
+}
+
+/* ── Modo Oscuro ── */
+[data-bs-theme="dark"] .btn-cell-delete,
+[data-bs-theme="dark"] .btn-table-delete {
+  background-color: transparent !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+[data-bs-theme="dark"] .btn-cell-delete:hover,
+[data-bs-theme="dark"] .btn-table-delete:hover {
+  background-color: transparent !important;
+  color: #ff7575 !important;
+  box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] .btn-cell-delete:hover::before,
+[data-bs-theme="dark"] .btn-table-delete:hover::before {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(1) !important;
+  background: radial-gradient(circle at center, rgba(248, 113, 113, 0.22) 0%, rgba(248, 113, 113, 0.06) 45%, transparent 75%) !important;
+}
+
+[data-bs-theme="dark"] .btn-cell-delete:hover .icon-trash,
+[data-bs-theme="dark"] .btn-table-delete:hover .icon-trash {
+  filter: drop-shadow(0 2px 10px rgba(248, 113, 113, 0.55));
+}
+
+[data-bs-theme="dark"] .btn-cell-delete:active,
+[data-bs-theme="dark"] .btn-table-delete:active {
+  background-color: transparent !important;
+  color: #ffa4a4 !important;
+}
+
+[data-bs-theme="dark"] .btn-cell-delete:active::before,
+[data-bs-theme="dark"] .btn-table-delete:active::before {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(0.92) !important;
+  background: radial-gradient(circle at center, rgba(248, 113, 113, 0.32) 0%, rgba(248, 113, 113, 0.1) 50%, transparent 80%) !important;
 }
 
 /* =========================================================================

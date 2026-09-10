@@ -51,9 +51,9 @@
             [class.rotated]="activeDropdown() === 'camaras'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'camaras') {
-        <div class="filter-dropdown-menu dropdown-camaras p-0" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-camaras" (click)="$event.stopPropagation()">
           <!-- Searchbar interno de cámaras fijo arriba -->
-          <div class="dropdown-search-header p-2">
+          <div class="dropdown-search-header">
             <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
               style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
@@ -77,9 +77,9 @@
             }
             @for (cam of filteredCamarasOptions(); track cam) {
             @let isSelected = tempFilters().camaras.includes(cam);
-            <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded"
-              [class.active]="isSelected"
-              (click)="toggleMultiSelectFilter('camaras', cam)">
+            <button type="button"
+              class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded"
+              [class.active]="isSelected" (click)="toggleMultiSelectFilter('camaras', cam)">
               <span class="text-truncate" [title]="cam">{{ cam }}</span>
               @if (isSelected) {
               <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
@@ -108,9 +108,9 @@
           }
           @for (obj of tipoObjetoOptions(); track obj) {
           @let isSelected = tempFilters().tipoObjeto.includes(obj);
-          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
-            [class.active]="isSelected"
-            (click)="toggleMultiSelectFilter('tipoObjeto', obj)">
+          <button type="button"
+            class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
+            [class.active]="isSelected" (click)="toggleMultiSelectFilter('tipoObjeto', obj)">
             <span class="text-truncate">{{ obj }}</span>
             @if (isSelected) {
             <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
@@ -123,7 +123,8 @@
       }
 
       <!-- 6. COLORES -->
-      @if (activeIndex() === 'personas' || activeIndex() === 'rostros' || activeIndex() === 'vehiculos' || activeIndex() === 'otros') {
+      @if (activeIndex() === 'personas' || activeIndex() === 'rostros' || activeIndex() === 'vehiculos' || activeIndex()
+      === 'otros') {
       <div class="filter-dropdown-wrapper position-relative">
         <button class="btn btn-filter-dropdown d-flex align-items-center gap-2 text-capitalize"
           [class.active]="tempFilters().colores.length > 0" (click)="toggleDropdown('colores', $event)">
@@ -139,9 +140,9 @@
           }
           @for (col of coloresOptions(); track col) {
           @let isSelected = tempFilters().colores.includes(col);
-          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
-            [class.active]="isSelected"
-            (click)="toggleMultiSelectFilter('colores', col)">
+          <button type="button"
+            class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
+            [class.active]="isSelected" (click)="toggleMultiSelectFilter('colores', col)">
             <span class="text-truncate">{{ col }}</span>
             @if (isSelected) {
             <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
@@ -170,9 +171,9 @@
           }
           @for (pos of posturasOptions(); track pos) {
           @let isSelected = tempFilters().posturas.includes(pos);
-          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
-            [class.active]="isSelected"
-            (click)="toggleMultiSelectFilter('posturas', pos)">
+          <button type="button"
+            class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
+            [class.active]="isSelected" (click)="toggleMultiSelectFilter('posturas', pos)">
             <span class="text-truncate">{{ pos }}</span>
             @if (isSelected) {
             <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
@@ -201,9 +202,9 @@
           }
           @for (ed of edadesOptions(); track ed) {
           @let isSelected = tempFilters().edad.includes(ed);
-          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
-            [class.active]="isSelected"
-            (click)="toggleMultiSelectFilter('edad', ed)">
+          <button type="button"
+            class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
+            [class.active]="isSelected" (click)="toggleMultiSelectFilter('edad', ed)">
             <span>{{ ed }}</span>
             @if (isSelected) {
             <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
@@ -232,9 +233,9 @@
           }
           @for (gen of generosOptions(); track gen) {
           @let isSelected = tempFilters().genero.includes(gen);
-          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
-            [class.active]="isSelected"
-            (click)="toggleMultiSelectFilter('genero', gen)">
+          <button type="button"
+            class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
+            [class.active]="isSelected" (click)="toggleMultiSelectFilter('genero', gen)">
             <span>{{ gen }}</span>
             @if (isSelected) {
             <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
@@ -257,15 +258,16 @@
             [class.rotated]="activeDropdown() === 'reconocimiento'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'reconocimiento') {
-        <div class="filter-dropdown-menu dropdown-reconocimiento p-2 scrollable-menu" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-reconocimiento p-2 scrollable-menu"
+          (click)="$event.stopPropagation()">
           @if (reconocimientosOptions().length === 0) {
           <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }
           @for (rec of reconocimientosOptions(); track rec) {
           @let isSelected = tempFilters().reconocimiento.includes(rec);
-          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
-            [class.active]="isSelected"
-            (click)="toggleMultiSelectFilter('reconocimiento', rec)">
+          <button type="button"
+            class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded text-capitalize"
+            [class.active]="isSelected" (click)="toggleMultiSelectFilter('reconocimiento', rec)">
             <span class="text-truncate">{{ rec }}</span>
             @if (isSelected) {
             <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
@@ -673,7 +675,8 @@
         @for (record of records(); track record.id) {
         <div class="card metadata-card border-0 shadow-sm rounded-3 position-relative"
           [class.metadata-card--live-new]="newRecordIds().has(record.id)" style="overflow: visible !important;"
-          (mousemove)="onCardMouseMove($event, record.id)" (mouseleave)="onCardMouseLeave()">
+          (mouseenter)="onCardMouseEnter($event)" (mousemove)="onCardMouseMove($event, record.id)"
+          (mouseleave)="onCardMouseLeave($event)">
 
           <!-- Image section with overlay -->
           <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center">
@@ -719,11 +722,16 @@
           <!-- Card Body details -->
           <div class="card-body p-3 d-flex flex-column justify-content-between">
             <div>
-              <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
-                <h6 class="card-title fw-bold mb-0 text-truncate" [title]="record.camara" style="max-width: 60%;">
-                  {{ record.camara }}
-                </h6>
-                <div class="timestamp-row text-muted small mb-0 d-flex align-items-center gap-1 text-end flex-shrink-0">
+              <!-- Cabecera: Nombre de Cámara y Timestamp -->
+              <div class="card-header-camera d-flex justify-content-between align-items-center mb-2 gap-2">
+                <div class="card-title-container min-w-0 flex-grow-1 d-flex align-items-center"
+                  style="overflow: hidden;">
+                  <h6 class="card-title fw-bold mb-0 text-truncate" [title]="record.camara">
+                    {{ record.camara }}
+                  </h6>
+                </div>
+                <div
+                  class="timestamp-row text-muted small mb-0 d-flex align-items-center gap-1 text-end flex-shrink-0 ms-auto">
                   <span class="icon-svg icon-clock flex-shrink-0" style="width: 11px; height: 11px;"></span>
                   <span style="font-size: 0.72rem;">{{ formatDate(record.timestamp) }}</span>
                 </div>

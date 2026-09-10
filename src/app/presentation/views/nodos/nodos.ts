@@ -23,11 +23,12 @@ import { ViewModeToggleComponent } from '../../shared/view-mode-toggle/view-mode
 import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
+import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
 import { exportToCsv, exportToXlsx, ExportColumn } from '../../../core/utils/export-utils';
 
 @Component({
   selector: 'app-nodos',
-  imports: [CommonModule, ReactiveFormsModule, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, FilterActionsComponent, EmptyStateComponent, CustomSelectComponent],
+  imports: [CommonModule, ReactiveFormsModule, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, ViewModeToggleComponent, FilterActionsComponent, EmptyStateComponent, CustomSelectComponent, ConfirmDeleteModalComponent],
   templateUrl: './nodos.html',
   styleUrl: './nodos.css',
 })
@@ -42,6 +43,40 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('nodosContainer', { static: false }) nodosContainer!: ElementRef<HTMLDivElement>;
 
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
+
+  // ── Modal de Confirmación: Eliminar Nodo ─────────────────────────────────────
+  readonly showDeleteHostModal = signal<boolean>(false);
+  readonly hostToDelete = signal<Host | null>(null);
+  readonly isDeletingHost = signal<boolean>(false);
+
+  openDeleteHostModal(host: Host, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.hostToDelete.set(host);
+    this.showDeleteHostModal.set(true);
+  }
+
+  closeDeleteHostModal(): void {
+    this.hostToDelete.set(null);
+    this.showDeleteHostModal.set(false);
+  }
+
+  confirmDeleteHost(): void {
+    const host = this.hostToDelete();
+    if (!host) return;
+
+    this.isDeletingHost.set(true);
+    this.hostService.deleteHost(host.fingerprint).subscribe({
+      next: () => {
+        this.isDeletingHost.set(false);
+        this.closeDeleteHostModal();
+      },
+      error: (err) => {
+        console.error('Error deleting host:', err);
+        this.isDeletingHost.set(false);
+        this.closeDeleteHostModal();
+      }
+    });
+  }
 
   // ── Pagination ──────────────────────────────────────────────────────────────
   readonly columns = signal(this.getInitialColumns());
@@ -775,6 +810,117 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     const minutes = pad(d.getMinutes());
     const seconds = pad(d.getSeconds());
     return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+  }
+
+  // ── 2 Capas Lógicas para Título de GPU en Tarjeta ───────────────────────────
+  onGpuMouseEnter(event: MouseEvent): void {
+    const panel = event.currentTarget as HTMLElement | null;
+    if (!panel) return;
+
+    const nameEl = panel.querySelector('.resource-name') as HTMLElement | null;
+    const statsEl = panel.querySelector('.resource-stats') as HTMLElement | null;
+    const headerEl = panel.querySelector('.resource-panel-header') as HTMLElement | null;
+    const iconEl = panel.querySelector('.resource-icon') as HTMLElement | null;
+
+    if (!nameEl || !statsEl || !headerEl) return;
+
+    // Capa 1: ¿El texto desborda el espacio normal asignado?
+    const isOverflowingNormal = nameEl.scrollWidth > (nameEl.clientWidth + 2);
+
+    if (!isOverflowingNormal) {
+      // El texto entra completo: no se ocultan métricas ni hay marquee
+      panel.classList.remove('gpu-expand-space', 'gpu-needs-marquee');
+      return;
+    }
+
+    // El texto desborda el espacio normal -> ocultamos métricas de la derecha
+    panel.classList.add('gpu-expand-space');
+
+    // Capa 2: ¿Sigue siendo insuficiente el espacio tras colapsar las métricas?
+    const iconWidth = iconEl ? iconEl.offsetWidth : 20;
+    const availableFullWidth = headerEl.clientWidth - iconWidth - 20;
+
+    if (nameEl.scrollWidth > availableFullWidth) {
+      // Incluso con todo el ancho disponible desborda -> calcular desplazamiento exacto hasta el borde derecho
+      const shift = Math.ceil(nameEl.scrollWidth - availableFullWidth);
+      nameEl.style.setProperty('--marquee-shift', `-${shift}px`);
+      panel.classList.add('gpu-needs-marquee');
+    } else {
+      // Entra completo en el ancho expandido -> mostrar completo estático sin marquee
+      nameEl.style.removeProperty('--marquee-shift');
+      panel.classList.remove('gpu-needs-marquee');
+    }
+  }
+
+  onGpuMouseLeave(event: MouseEvent): void {
+    const panel = event.currentTarget as HTMLElement | null;
+    if (panel) {
+      panel.classList.remove('gpu-expand-space', 'gpu-needs-marquee');
+      const nameEl = panel.querySelector('.resource-name') as HTMLElement | null;
+      if (nameEl) {
+        nameEl.style.removeProperty('--marquee-shift');
+      }
+    }
+  }
+
+  // ── 2 Capas Lógicas para Título del Nodo (Hostname) y Botón Eliminar en Tarjeta ──────
+  onHostCardMouseEnter(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const headerBlock = target.classList.contains('host-header-block')
+      ? target
+      : target.querySelector('.host-header-block') as HTMLElement | null;
+    if (!headerBlock) return;
+
+    const titleEl = headerBlock.querySelector('.host-title') as HTMLElement | null;
+    const iconEl = headerBlock.querySelector('.os-avatar-icon') as HTMLElement | null;
+
+    if (!titleEl) return;
+
+    // Al hacer hover en la tarjeta, revelamos el botón eliminar y colapsamos los badges
+    headerBlock.classList.add('host-title-expand-space');
+
+    // Ancho útil disponible hasta el botón de eliminar (28px ancho + margen de 4px + gaps)
+    const iconWidth = iconEl ? iconEl.offsetWidth : 20;
+    const deleteBtnWidth = 32;
+    const availableFullWidth = headerBlock.clientWidth - iconWidth - deleteBtnWidth - 16;
+
+    if (titleEl.scrollWidth > availableFullWidth) {
+      // Si el nombre desborda el espacio hasta el botón -> desplazamiento exacto
+      const shift = Math.ceil(titleEl.scrollWidth - availableFullWidth);
+      titleEl.style.setProperty('--marquee-shift', `-${shift}px`);
+      headerBlock.classList.add('host-title-needs-marquee');
+    } else {
+      // Entra completo en el ancho expandido -> mostrar completo estático sin marquee
+      titleEl.style.removeProperty('--marquee-shift');
+      headerBlock.classList.remove('host-title-needs-marquee');
+    }
+  }
+
+  onHostCardMouseLeave(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const headerBlock = target.classList.contains('host-header-block')
+      ? target
+      : target.querySelector('.host-header-block') as HTMLElement | null;
+    if (headerBlock) {
+      headerBlock.classList.remove('host-title-expand-space', 'host-title-needs-marquee');
+      const titleEl = headerBlock.querySelector('.host-title') as HTMLElement | null;
+      if (titleEl) {
+        titleEl.style.removeProperty('--marquee-shift');
+      }
+    }
+  }
+
+  // Alias para retrocompatibilidad
+  onHostTitleMouseEnter(event: MouseEvent): void {
+    this.onHostCardMouseEnter(event);
+  }
+
+  onHostTitleMouseLeave(event: MouseEvent): void {
+    this.onHostCardMouseLeave(event);
   }
 
   // ── Exportación a Excel (XLSX) y CSV ──────────────────────────────────────────

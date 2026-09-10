@@ -1,6 +1,9 @@
 services:
   # frontend
   front-iaframecore:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: yersy78/front-iaframecore:1.0
     container_name: front-iaframe-app
     ports:

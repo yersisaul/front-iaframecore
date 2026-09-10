@@ -199,11 +199,14 @@
             title="Cámara de origen">
             <span class="icon-svg icon-camara camera-icon-svg"></span>
           </div>
-          <div class="d-flex align-items-center gap-2 overflow-hidden flex-fill">
-            <h5 class="fw-bold mb-0 text-truncate text-body" style="font-size: 1.05rem;"
-              [title]="selectedEvent.nombreCamara">
-              {{ selectedEvent.nombreCamara }}
-            </h5>
+          <div class="d-flex align-items-center gap-2 overflow-hidden flex-fill" style="min-width: 0;">
+            <div #cameraTitleContainer class="drawer-camera-title-container"
+              [class.has-marquee]="isTitleOverflowing()">
+              <h5 #cameraTitleEl class="drawer-camera-title-text fw-bold mb-0 text-body" style="font-size: 1.05rem;"
+                [title]="selectedEvent.nombreCamara">
+                {{ selectedEvent.nombreCamara }}
+              </h5>
+            </div>
           </div>
         </div>
 
