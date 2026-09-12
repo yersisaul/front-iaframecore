@@ -659,6 +659,7 @@
   max-width: none !important;
   overflow: visible !important;
   text-overflow: clip !important;
+  padding-right: 20px !important;
   will-change: transform;
   animation: listOptionMarquee 3.8s linear infinite alternate;
 }

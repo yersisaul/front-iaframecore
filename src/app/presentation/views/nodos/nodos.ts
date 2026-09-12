@@ -842,7 +842,9 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
 
     if (nameEl.scrollWidth > availableFullWidth) {
       // Incluso con todo el ancho disponible desborda -> calcular desplazamiento exacto hasta el borde derecho
-      const shift = Math.ceil(nameEl.scrollWidth - availableFullWidth);
+      // Offset de 24px para que la última letra pase completamente el gradiente de fade-out
+      const fadeOffset = 24;
+      const shift = Math.ceil(nameEl.scrollWidth - availableFullWidth) + fadeOffset;
       nameEl.style.setProperty('--marquee-shift', `-${shift}px`);
       panel.classList.add('gpu-needs-marquee');
     } else {
@@ -888,7 +890,9 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
 
     if (titleEl.scrollWidth > availableFullWidth) {
       // Si el nombre desborda el espacio hasta el botón -> desplazamiento exacto
-      const shift = Math.ceil(titleEl.scrollWidth - availableFullWidth);
+      // Offset de 24px para que la última letra pase completamente el gradiente de fade-out
+      const fadeOffset = 24;
+      const shift = Math.ceil(titleEl.scrollWidth - availableFullWidth) + fadeOffset;
       titleEl.style.setProperty('--marquee-shift', `-${shift}px`);
       headerBlock.classList.add('host-title-needs-marquee');
     } else {

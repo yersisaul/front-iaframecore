@@ -1030,7 +1030,9 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
 
     if (titleEl.scrollWidth > availableFullWidth) {
       // Si el nombre de la cámara desborda el espacio completo -> marquee exacto
-      const shift = Math.ceil(titleEl.scrollWidth - availableFullWidth);
+      // Offset de 24px para que la última letra pase completamente el gradiente de fade-out
+      const fadeOffset = 24;
+      const shift = Math.ceil(titleEl.scrollWidth - availableFullWidth) + fadeOffset;
       titleEl.style.setProperty('--marquee-shift', `-${shift}px`);
       headerBlock.classList.add('camera-title-needs-marquee');
     } else {

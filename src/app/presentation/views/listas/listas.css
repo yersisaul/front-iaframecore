@@ -1674,6 +1674,7 @@
   max-width: none !important;
   overflow: visible !important;
   text-overflow: clip !important;
+  padding-right: 20px !important;
   animation: metaMarquee 3.5s linear infinite alternate;
 }
 

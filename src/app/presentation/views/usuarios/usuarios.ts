@@ -631,7 +631,10 @@ export class Usuarios implements OnInit, OnDestroy {
   }
 
   // Delete User Operations
-  openDeleteModal(user: User): void {
+  openDeleteModal(user: User, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
     this.selectedUser.set(user);
     this.showDeleteModal.set(true);
   }
@@ -639,6 +642,82 @@ export class Usuarios implements OnInit, OnDestroy {
   closeDeleteModal(): void {
     this.showDeleteModal.set(false);
     this.selectedUser.set(null);
+  }
+
+  onUserCardMouseEnter(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const headerBlock = target.classList.contains('user-header-block')
+      ? target
+      : target.querySelector('.user-header-block') as HTMLElement | null;
+    if (!headerBlock) return;
+
+    const nameEl = headerBlock.querySelector('.user-name-marquee-text') as HTMLElement | null;
+    const emailEl = headerBlock.querySelector('.user-email-marquee-text') as HTMLElement | null;
+    const avatarEl = headerBlock.querySelector('.avatar-initials-wrap') as HTMLElement | null;
+    const deleteBtn = headerBlock.querySelector('.btn-card-delete') as HTMLElement | null;
+
+    if (!nameEl && !emailEl) return;
+
+    // Al hacer hover en la tarjeta, revelamos el botón eliminar y colapsamos el role badge
+    headerBlock.classList.add('user-title-expand-space');
+
+    const avatarWidth = avatarEl ? avatarEl.offsetWidth : 48;
+    const deleteBtnWidth = deleteBtn ? 32 : 0;
+    // Ancho útil disponible desde el avatar hasta el botón de eliminar (con gaps y padding)
+    const availableFullWidth = headerBlock.clientWidth - avatarWidth - deleteBtnWidth - 24;
+
+    let needsMarquee = false;
+    const fadeOffset = 24;
+
+    if (nameEl && nameEl.scrollWidth > availableFullWidth) {
+      const shift = Math.ceil(nameEl.scrollWidth - availableFullWidth) + fadeOffset;
+      nameEl.style.setProperty('--marquee-shift', `-${shift}px`);
+      nameEl.classList.add('animate-marquee');
+      needsMarquee = true;
+    } else if (nameEl) {
+      nameEl.style.removeProperty('--marquee-shift');
+      nameEl.classList.remove('animate-marquee');
+    }
+
+    if (emailEl && emailEl.scrollWidth > availableFullWidth) {
+      const shift = Math.ceil(emailEl.scrollWidth - availableFullWidth) + fadeOffset;
+      emailEl.style.setProperty('--marquee-shift', `-${shift}px`);
+      emailEl.classList.add('animate-marquee');
+      needsMarquee = true;
+    } else if (emailEl) {
+      emailEl.style.removeProperty('--marquee-shift');
+      emailEl.classList.remove('animate-marquee');
+    }
+
+    if (needsMarquee) {
+      headerBlock.classList.add('user-title-needs-marquee');
+    } else {
+      headerBlock.classList.remove('user-title-needs-marquee');
+    }
+  }
+
+  onUserCardMouseLeave(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const headerBlock = target.classList.contains('user-header-block')
+      ? target
+      : target.querySelector('.user-header-block') as HTMLElement | null;
+    if (headerBlock) {
+      headerBlock.classList.remove('user-title-expand-space', 'user-title-needs-marquee');
+      const nameEl = headerBlock.querySelector('.user-name-marquee-text') as HTMLElement | null;
+      const emailEl = headerBlock.querySelector('.user-email-marquee-text') as HTMLElement | null;
+      if (nameEl) {
+        nameEl.style.removeProperty('--marquee-shift');
+        nameEl.classList.remove('animate-marquee');
+      }
+      if (emailEl) {
+        emailEl.style.removeProperty('--marquee-shift');
+        emailEl.classList.remove('animate-marquee');
+      }
+    }
   }
 
   deleteUser(): void {

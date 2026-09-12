@@ -486,6 +486,7 @@
   text-align: left !important;
   overflow: visible !important;
   text-overflow: clip !important;
+  padding-right: 24px !important;
   animation: toolbarTitleMarquee 3.5s linear infinite alternate;
 }
 
@@ -499,6 +500,7 @@
   text-align: left !important;
   overflow: visible !important;
   text-overflow: clip !important;
+  padding-right: 24px !important;
   animation: toolbarDescMarquee 3.5s linear infinite alternate;
 }
 

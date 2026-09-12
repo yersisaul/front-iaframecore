@@ -80,10 +80,8 @@
         @if (activeDropdown() === 'rol') {
         <div class="filter-dropdown-menu dropdown-rol" (click)="$event.stopPropagation()">
           <!-- Opción: Todos -->
-          <button type="button"
-            class="dropdown-item d-flex align-items-center justify-content-between"
-            [class.active]="!appliedRoleFilter()"
-            (click)="selectRoleFilter(null, $event)">
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between"
+            [class.active]="!appliedRoleFilter()" (click)="selectRoleFilter(null, $event)">
             <div class="d-flex align-items-center gap-2">
               <span class="status-dot status-dot-all"></span>
               <span>Todos</span>
@@ -101,10 +99,8 @@
           }
           @for (rol of activeUserRoles(); track rol) {
           @let isSelected = appliedRoleFilter() === rol;
-          <button type="button"
-            class="dropdown-item d-flex align-items-center justify-content-between"
-            [class.active]="isSelected"
-            (click)="selectRoleFilter(rol, $event)">
+          <button type="button" class="dropdown-item d-flex align-items-center justify-content-between"
+            [class.active]="isSelected" (click)="selectRoleFilter(rol, $event)">
             <div class="d-flex align-items-center gap-2">
               <span class="status-dot" [style.background-color]="getRoleDotColor(rol)"></span>
               <span class="text-capitalize">{{ rol.toLowerCase() }}</span>
@@ -138,108 +134,117 @@
   @if (activeTab() === 'usuarios' && permissionsService.hasPermission('Usuarios', 'ver')) {
   <!-- Main Bento Grid Layout of Users -->
   <div class="users-grid mb-4">
-      @if (isLoading()) {
-      <div class="col-12 text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Cargando usuarios...</span>
-        </div>
+    @if (isLoading()) {
+    <div class="col-12 text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando usuarios...</span>
       </div>
-      } @else if (errorMessage()) {
-      <div class="col-12 text-center py-5 text-danger fw-semibold">
-        <span class="icon-svg icon-info-circle me-2" style="width: 24px; height: 24px;"></span>
-        {{ errorMessage() }}
-      </div>
-      } @else if (filteredUsers().length === 0) {
-      <div class="col-12">
-        <app-empty-state title="No se encontraron usuarios"
-          description="No se encontraron cuentas de acceso que coincidan con la búsqueda o filtro activo."
-          iconClass="icon-usuarios" actionText="Restablecer Filtros"
-          [showAction]="hasActiveFilters()" (action)="onResetFilters()">
-        </app-empty-state>
-      </div>
-      } @else {
-      @for (user of filteredUsers(); track user.id) {
-      <div class="card user-card h-100" [ngStyle]="getRoleStyle(user.role)"
-        [class.user-card--new]="userService.newRecordIds().has(user.id)"
-        [class.user-card--updated]="userService.updatedRecordIds().has(user.id)"
-        [class.user-card--deleting]="userService.deletingRecordIds().has(user.id)">
-        <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
-          <div>
-            <!-- Header: Avatar Initials + Role Badge -->
-            <div class="user-header-block d-flex align-items-center justify-content-between pb-3 mb-3">
-              <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 me-2">
-                <div
-                  class="avatar-initials-wrap d-flex align-items-center justify-content-center fw-bold fs-5 flex-shrink-0">
-                  {{ (user.firstName?.[0] || user.name?.[0] || 'U') | uppercase }}{{ (user.lastName?.[0] || '') |
-                  uppercase }}
-                </div>
-                <div class="user-meta-marquee-wrapper min-w-0 flex-grow-1">
-                  <div class="user-name-marquee-container min-w-0">
-                    <h5 class="user-name user-name-marquee-text fw-bold mb-0" [title]="user.name">
-                      {{ user.name || 'Sin nombre' }}
-                    </h5>
-                  </div>
-                  <div class="user-email-marquee-container min-w-0">
-                    <span class="user-email user-email-marquee-text text-muted small d-block" [title]="user.email">
-                      {{ user.email }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <span class="role-badge flex-shrink-0">
-                {{ user.role | uppercase }}
-              </span>
-            </div>
-
-            <!-- Identity Stats Grid -->
-            <div class="user-info-block d-flex flex-column gap-2 mb-3">
-              <div class="info-row d-flex justify-content-between align-items-center">
-                <span class="info-label flex-shrink-0 me-2">UUID</span>
-                <div class="info-val-container min-w-0 ms-auto text-end">
-                  <span class="info-value font-monospace text-truncate d-block" [title]="user.id">
-                    {{ user.id }}
-                  </span>
-                </div>
-              </div>
-              <div class="info-row d-flex justify-content-between align-items-center">
-                <span class="info-label flex-shrink-0 me-2">Fecha Creación</span>
-                <div class="info-val-container min-w-0 ms-auto text-end">
-                  <span class="info-value font-monospace text-truncate d-block">
-                    {{ user.createdAt | date:'dd/MM/yyyy HH:mm:ss' }} UTC
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Action Controls Group -->
-          <div class="actions-group d-flex justify-content-end gap-2 mt-2">
-            @if (permissionsService.hasPermission('Usuarios', 'editar')) {
-            <!-- Editar datos -->
-            <button class="btn-action-icon btn-action-edit" (click)="openEditModal(user)" title="Editar Usuario"
-              aria-label="Editar Usuario">
-              <span class="icon-svg icon-edit" style="width: 14px; height: 14px;"></span>
-            </button>
-            <!-- Cambiar clave -->
-            <button class="btn-action-icon btn-action-password" (click)="openPasswordModal(user)"
-              title="Cambiar Contraseña" aria-label="Cambiar Contraseña">
-              <span class="icon-svg icon-lock" style="width: 14px; height: 14px;"></span>
-            </button>
-            }
-            @if (permissionsService.hasPermission('Usuarios', 'eliminar')) {
-            <!-- Eliminar -->
-            <button class="btn-action-icon btn-action-delete" (click)="openDeleteModal(user)" title="Eliminar Usuario"
-              aria-label="Eliminar Usuario">
-              <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-            </button>
-            }
-          </div>
-        </div>
-      </div>
-      }
-      }
     </div>
+    } @else if (errorMessage()) {
+    <div class="col-12 text-center py-5 text-danger fw-semibold">
+      <span class="icon-svg icon-info-circle me-2" style="width: 24px; height: 24px;"></span>
+      {{ errorMessage() }}
+    </div>
+    } @else if (filteredUsers().length === 0) {
+    <div class="col-12">
+      <app-empty-state title="No se encontraron usuarios"
+        description="No se encontraron cuentas de acceso que coincidan con la búsqueda o filtro activo."
+        iconClass="icon-usuarios" actionText="Restablecer Filtros" [showAction]="hasActiveFilters()"
+        (action)="onResetFilters()">
+      </app-empty-state>
+    </div>
+    } @else {
+    @for (user of filteredUsers(); track user.id) {
+    <div class="card user-card h-100" [ngStyle]="getRoleStyle(user.role)"
+      [class.user-card--new]="userService.newRecordIds().has(user.id)"
+      [class.user-card--updated]="userService.updatedRecordIds().has(user.id)"
+      [class.user-card--deleting]="userService.deletingRecordIds().has(user.id)"
+      (mouseenter)="onUserCardMouseEnter($event)" (mouseleave)="onUserCardMouseLeave($event)">
+      <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
+        <div>
+          <!-- Header: Avatar Initials + Role Badge / Delete Button -->
+          <div class="user-header-block d-flex align-items-center justify-content-between pb-3 mb-3">
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 me-2" style="overflow: hidden;">
+              <div
+                class="avatar-initials-wrap d-flex align-items-center justify-content-center fw-bold fs-5 flex-shrink-0">
+                {{ (user.firstName?.[0] || user.name?.[0] || 'U') | uppercase }}{{ (user.lastName?.[0] || '') |
+                uppercase }}
+              </div>
+              <div class="user-meta-marquee-wrapper min-w-0 flex-grow-1">
+                <div class="user-name-marquee-container min-w-0">
+                  <h5 class="user-name user-name-marquee-text fw-bold mb-0" [title]="user.name">
+                    {{ user.name || 'Sin nombre' }}
+                  </h5>
+                </div>
+                <div class="user-email-marquee-container min-w-0">
+                  <span class="user-email user-email-marquee-text text-muted small" [title]="user.email">
+                    {{ user.email }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="user-header-right d-inline-flex align-items-center flex-shrink-0 ms-auto">
+              <!-- Badges informativos (Rol) -->
+              <div class="user-header-badges d-inline-flex align-items-center gap-2 flex-shrink-0">
+                <span class="role-badge flex-shrink-0">
+                  {{ user.role | uppercase }}
+                </span>
+              </div>
+
+              <!-- Botón Eliminar reactivo en hover -->
+              @if (permissionsService.hasPermission('Usuarios', 'eliminar')) {
+              <button type="button" class="btn-card-delete flex-shrink-0" title="Eliminar usuario"
+                (click)="openDeleteModal(user, $event)">
+                <span class="icon-svg icon-trash"></span>
+              </button>
+              }
+            </div>
+          </div>
+
+          <!-- Identity Stats Grid -->
+          <div class="user-info-block d-flex flex-column gap-2 mb-3">
+            <div class="info-row d-flex justify-content-between align-items-center">
+              <span class="info-label flex-shrink-0 me-2">UUID</span>
+              <div class="info-val-container min-w-0 ms-auto text-end">
+                <span class="info-value font-monospace text-truncate d-block" [title]="user.id">
+                  {{ user.id }}
+                </span>
+              </div>
+            </div>
+            <div class="info-row d-flex justify-content-between align-items-center">
+              <span class="info-label flex-shrink-0 me-2">Fecha Creación</span>
+              <div class="info-val-container min-w-0 ms-auto text-end">
+                <span class="info-value font-monospace text-truncate d-block">
+                  {{ user.createdAt | date:'dd/MM/yyyy HH:mm:ss' }} UTC
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Controls Group (50% / 50%) -->
+        @if (permissionsService.hasPermission('Usuarios', 'editar')) {
+        <div class="user-card-actions-group">
+          <!-- Editar datos -->
+          <button type="button" class="btn-user-card-action btn-user-card-edit" (click)="openEditModal(user); $event.stopPropagation()"
+            title="Editar Usuario" aria-label="Editar Usuario">
+            <span class="icon-svg icon-edit"></span>
+            <span class="btn-label">Editar</span>
+          </button>
+          <!-- Cambiar clave -->
+          <button type="button" class="btn-user-card-action btn-user-card-password" (click)="openPasswordModal(user); $event.stopPropagation()"
+            title="Actualizar Contraseña" aria-label="Actualizar Contraseña">
+            <span class="icon-svg icon-lock"></span>
+            <span class="btn-label">Contraseña</span>
+          </button>
+        </div>
+        }
+      </div>
+    </div>
+    }
+    }
+  </div>
   }
 
   <!-- TAB: ROLES Y PERMISOS -->
@@ -522,7 +527,7 @@
         </div>
 
         <!-- Footer Actions -->
-        <div class="modal-premium-actions d-flex gap-3 mt-4 pt-3">
+        <div class="modal-premium-actions">
           <button type="button" class="btn-premium-cancel" (click)="closeEditModal()" [disabled]="isSaving()">
             Cancelar
           </button>
@@ -607,7 +612,8 @@
             <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
             <input [type]="showConfirmPassword() ? 'text' : 'password'" class="premium-input-control"
               formControlName="confirmPassword" placeholder="Repita la nueva contraseña" />
-            <button type="button" class="btn-field-icon-suffix transition-all" (click)="toggleConfirmPasswordVisibility()"
+            <button type="button" class="btn-field-icon-suffix transition-all"
+              (click)="toggleConfirmPasswordVisibility()"
               [title]="showConfirmPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
               @if (showConfirmPassword()) {
               <span class="icon-svg icon-eye" style="width: 16px; height: 16px;"></span>
@@ -622,7 +628,7 @@
         </div>
 
         <!-- Footer Actions -->
-        <div class="modal-premium-actions d-flex gap-3 mt-4 pt-3">
+        <div class="modal-premium-actions">
           <button type="button" class="btn-premium-cancel" (click)="closePasswordModal()" [disabled]="isSaving()">
             Cancelar
           </button>
@@ -715,7 +721,8 @@
             <span class="icon-svg icon-lock input-icon" style="width: 16px; height: 16px;"></span>
             <input [type]="showRegisterPassword() ? 'text' : 'password'" class="premium-input-control"
               formControlName="password" placeholder="Mínimo 6 caracteres" />
-            <button type="button" class="btn-field-icon-suffix transition-all" (click)="toggleRegisterPasswordVisibility()"
+            <button type="button" class="btn-field-icon-suffix transition-all"
+              (click)="toggleRegisterPasswordVisibility()"
               [title]="showRegisterPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
               @if (showRegisterPassword()) {
               <span class="icon-svg icon-eye" style="width: 16px; height: 16px;"></span>
@@ -745,12 +752,11 @@
         </div>
 
         <!-- Footer Actions -->
-        <div class="modal-premium-actions d-flex gap-3 mt-4 pt-3">
+        <div class="modal-premium-actions">
           <button type="button" class="btn-premium-cancel" (click)="closeRegisterModal()" [disabled]="isSaving()">
             Cancelar
           </button>
-          <button type="submit" class="btn-premium-confirm-edit" style="background: var(--primary) !important;"
-            [disabled]="registerForm.invalid || isSaving()">
+          <button type="submit" class="btn-premium-confirm-register" [disabled]="registerForm.invalid || isSaving()">
             @if (isSaving()) {
             <span class="premium-button-spinner"></span>
             <span>Registrando...</span>
@@ -814,12 +820,11 @@
 
 
         <!-- Footer Actions -->
-        <div class="modal-premium-actions d-flex gap-3 mt-4 pt-3">
+        <div class="modal-premium-actions">
           <button type="button" class="btn-premium-cancel" (click)="closeCreateRoleModal()" [disabled]="isSaving()">
             Cancelar
           </button>
-          <button type="submit" class="btn-premium-confirm-edit" style="background: var(--primary) !important;"
-            [disabled]="createRoleForm.invalid || isSaving()">
+          <button type="submit" class="btn-premium-confirm-edit" [disabled]="createRoleForm.invalid || isSaving()">
             @if (isSaving()) {
             <span class="premium-button-spinner"></span>
             <span>Creando...</span>

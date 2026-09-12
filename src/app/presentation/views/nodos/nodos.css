@@ -265,6 +265,7 @@
 
 /* CAPA 2: Si aún con todo el espacio expandido el texto sigue siendo insuficiente, se activa el marquee */
 .host-header-block.host-title-needs-marquee .host-title {
+  padding-right: 24px !important;
   text-overflow: clip !important;
   overflow: visible !important;
   animation: marquee-title 3.5s linear infinite alternate;
@@ -649,6 +650,7 @@
 
 /* CAPA 2: Solo si aún con todo el espacio expandido el texto sigue siendo insuficiente, se activa el marquee */
 .gpu-panel.gpu-needs-marquee .resource-name {
+  padding-right: 24px !important;
   text-overflow: clip !important;
   animation: marquee-gpu 4s linear infinite alternate;
 }
@@ -2463,6 +2465,7 @@ option {
   max-width: none !important;
   overflow: visible !important;
   text-overflow: clip !important;
+  padding-right: 24px !important;
   animation: marquee-host-table-name 3.5s linear infinite alternate;
 }
 

@@ -182,6 +182,7 @@
 
 /* CAPA 2: Si aún con todo el espacio expandido el texto sigue siendo insuficiente, se activa el marquee */
 .card-header-camera.camera-title-needs-marquee .card-title {
+  padding-right: 24px !important;
   text-overflow: clip !important;
   overflow: visible !important;
   animation: marquee-title 3.5s linear infinite alternate;

@@ -1986,7 +1986,9 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
     if (titleEl.scrollWidth > availableFullWidth) {
       // Si el nombre desborda el espacio hasta el botón -> desplazamiento exacto
-      const shift = Math.ceil(titleEl.scrollWidth - availableFullWidth);
+      // Offset de 24px para que la última letra pase completamente el gradiente de fade-out
+      const fadeOffset = 24;
+      const shift = Math.ceil(titleEl.scrollWidth - availableFullWidth) + fadeOffset;
       titleEl.style.setProperty('--marquee-shift', `-${shift}px`);
       headerBlock.classList.add('host-title-needs-marquee');
     } else {
