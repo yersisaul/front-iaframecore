@@ -47,7 +47,7 @@
           <!-- Searchbar interno de cámaras fijo arriba -->
           <div class="dropdown-search-header">
             <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
-              style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
+              style="background: #171717 !important; border: 1px solid var(--border-color, #e2e8f0);">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
               <input #cameraSearchInput type="text" class="camera-search-input border-0 bg-transparent w-100"
                 placeholder="Buscar cámara..." (input)="cameraSearch.set(cameraSearchInput.value)"
@@ -151,11 +151,11 @@
             [class.rotated]="activeDropdown() === 'listas'"></span>
         </button>
         @if (activeDropdown() === 'listas') {
-        <div class="filter-dropdown-menu dropdown-listas p-0" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-listas" (click)="$event.stopPropagation()">
           <!-- Searchbar interno de listas fijo arriba -->
           <div class="dropdown-search-header">
             <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
-              style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
+              style="background: #171717 !important; border: 1px solid var(--border-color, #e2e8f0);">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
               <input #listaSearchInput type="text" class="camera-search-input border-0 bg-transparent w-100"
                 placeholder="Buscar lista..." [value]="listaSearch()"
@@ -204,7 +204,7 @@
           <!-- Searchbar interno de sujetos fijo arriba -->
           <div class="dropdown-search-header">
             <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
-              style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
+              style="background: #171717 !important; border: 1px solid var(--border-color, #e2e8f0);">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
               <input #sujetoSearchInput type="text" class="camera-search-input border-0 bg-transparent w-100"
                 placeholder="Buscar sujeto..." [value]="sujetoSearch()"

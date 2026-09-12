@@ -822,9 +822,15 @@ export class AnalyticParamsFormComponent implements OnChanges {
       return type === 'RF' ? '-- Seleccionar Listas RF --' : '-- Seleccionar Listas LPR --';
     }
     const allLists = this.watchlists();
+    const rawClasses = this.initialValues?.detection_classes || this.initialValues?.detectionClasses;
     const names = selectedIds.map(id => {
       const found = allLists.find(l => l.list_id === id);
-      return found ? found.name : id;
+      if (found) return found.name;
+      if (Array.isArray(rawClasses)) {
+        const matchingRaw = rawClasses.find((r: any) => (r?.list_id || r?.listId) === id);
+        if (matchingRaw?.class_name) return matchingRaw.class_name;
+      }
+      return id;
     });
     return names.join(', ');
   }
@@ -1039,33 +1045,22 @@ export class AnalyticParamsFormComponent implements OnChanges {
       this.emitFormValues();
     });
 
-    // Auto-resolución reactiva de selectedListIds si watchlists cargan después de initialValues
+    // Auto-resolución reactiva de selectedListIds a partir de initialValues
     effect(() => {
-      const lists = this.watchlists();
-      const selType = this.selectedType();
       const currentListIds = this.selectedListIds();
+      const selType = this.selectedType();
 
-      if (currentListIds.length === 0 && (selType === 'face_recognition' || selType === 'license_plate_recognition') && this.initialValues && lists.length > 0) {
+      if (currentListIds.length === 0 && (selType === 'face_recognition' || selType === 'license_plate_recognition') && this.initialValues) {
         const rawClasses = this.initialValues.detection_classes || this.initialValues.detectionClasses;
         const restoredIds: string[] = [];
 
         if (Array.isArray(rawClasses) && rawClasses.length > 0) {
           rawClasses.forEach((item: any) => {
             if (item && typeof item === 'object') {
-              if (item.list_id || item.listId) {
-                const lid = String(item.list_id || item.listId);
-                if (!restoredIds.includes(lid)) restoredIds.push(lid);
-              } else {
-                const name = String(item.class_name || item.className || '').trim().toLowerCase();
-                if (name) {
-                  const found = lists.find(l => l.name.toLowerCase() === name);
-                  if (found && !restoredIds.includes(found.list_id)) restoredIds.push(found.list_id);
-                }
+              const lid = String(item.list_id || item.listId || '');
+              if (lid && !restoredIds.includes(lid)) {
+                restoredIds.push(lid);
               }
-            } else if (typeof item === 'string') {
-              const name = item.trim().toLowerCase();
-              const found = lists.find(l => l.name.toLowerCase() === name);
-              if (found && !restoredIds.includes(found.list_id)) restoredIds.push(found.list_id);
             }
           });
         }
@@ -1232,25 +1227,15 @@ export class AnalyticParamsFormComponent implements OnChanges {
       if (Array.isArray(rawClasses) && rawClasses.length > 0) {
         rawClasses.forEach((item: any) => {
           if (item && typeof item === 'object') {
-            if (item.list_id || item.listId) {
-              const lid = String(item.list_id || item.listId);
-              if (!restoredListIds.includes(lid)) restoredListIds.push(lid);
-            } else {
-              const name = String(item.class_name || item.className || '').trim().toLowerCase();
-              if (name) {
-                const found = allLists.find(l => l.name.toLowerCase() === name);
-                if (found && !restoredListIds.includes(found.list_id)) restoredListIds.push(found.list_id);
-              }
+            const lid = String(item.list_id || item.listId || '');
+            if (lid && !restoredListIds.includes(lid)) {
+              restoredListIds.push(lid);
             }
-          } else if (typeof item === 'string') {
-            const name = item.trim().toLowerCase();
-            const found = allLists.find(l => l.name.toLowerCase() === name);
-            if (found && !restoredListIds.includes(found.list_id)) restoredListIds.push(found.list_id);
           }
         });
       }
 
-      // Fallback para analíticas legacy con list_id en parameters
+      // Fallback para analíticas con list_id en parameters
       if (restoredListIds.length === 0 && params['list_id']) {
         restoredListIds.push(String(params['list_id']));
       }

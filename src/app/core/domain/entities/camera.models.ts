@@ -1,8 +1,8 @@
 import { parseUtcDate } from '../../utils/date-utils';
 
 export interface CameraLocation {
-  lat: number;
-  lon: number;
+  lat: number | string;
+  lon: number | string;
 }
 
 export interface Camera {
@@ -36,8 +36,8 @@ export interface CameraDTO {
   status: string;
   decoder: string;
   location: {
-    lat: number;
-    lon: number;
+    lat: number | string;
+    lon: number | string;
   };
   created_at?: string | null;
   nx_id?: string;
@@ -62,8 +62,8 @@ export interface CameraRegisterRequest {
   stream_type: StreamType;
   decoder?: DecoderType | null;
   location?: {
-    lat: number;
-    lon: number;
+    lat: string | number;
+    lon: string | number;
   } | null;
   stream_url?: string | null;
   nx_id?: string | null;
@@ -84,8 +84,8 @@ export interface CameraUpdateRequest {
   stream_type?: StreamType | string;
   decoder?: DecoderType | string | null;
   location?: {
-    lat: number;
-    lon: number;
+    lat: string | number;
+    lon: string | number;
   } | null;
   stream_url?: string | null;
   nx_id?: string | null;

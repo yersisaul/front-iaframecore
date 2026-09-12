@@ -616,6 +616,25 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
     console.log('📦 Payload JSON Completo Transmitido:', JSON.stringify(payload, null, 2));
     console.groupEnd();
 
+    // ── DEBUGGER ESPECÍFICO DE ACCIONES: ENVIADAS AL BACKEND ──
+    console.group('%c🚀 [DEBUG ACCIONES ENVIADAS]', 'background: #2563eb; color: #fff; font-weight: bold; font-size: 11px; padding: 3px 8px; border-radius: 4px;');
+    console.log('📌 Endpoint:', `${methodStr} ${endpointUrl}`);
+    if (payload.acciones && Object.keys(payload.acciones).length > 0) {
+      console.table(
+        Object.entries(payload.acciones).map(([key, val]: [string, any]) => ({
+          'Key': key,
+          'Tipo Backend': val?.tipo,
+          'Estado': val?.accion?.estado || '-',
+          'Analítica Objetivo': val?.accion?.analitica || '-',
+          'Detalle Acción': JSON.stringify(val?.accion)
+        }))
+      );
+      console.log('📦 Payload acciones transmitido:', payload.acciones);
+    } else {
+      console.log('ℹ️ Sin acciones automatizadas configuradas en esta analítica.');
+    }
+    console.groupEnd();
+
     const request$ = editingAnalytic
       ? this.analyticService.updateAnalytic(editingAnalytic.id, payload)
       : this.analyticService.registerAnalytic(payload);
@@ -626,17 +645,42 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
         console.log('📥 Respuesta del Backend:', res);
         console.groupEnd();
 
+        // ── DEBUGGER ESPECÍFICO DE ACCIONES: CONFIRMADAS POR EL BACKEND ──
+        console.group('%c📥 [DEBUG ACCIONES CONFIRMADAS]', 'background: #059669; color: #fff; font-weight: bold; font-size: 11px; padding: 3px 8px; border-radius: 4px;');
+        const returnedAcciones = res?.acciones || res?.data?.acciones || res?.analytic?.acciones || res?.parameters?.acciones;
+        if (returnedAcciones && Object.keys(returnedAcciones).length > 0) {
+          console.table(
+            Object.entries(returnedAcciones).map(([key, val]: [string, any]) => ({
+              'Key': key,
+              'Tipo Backend': val?.tipo,
+              'Estado': val?.accion?.estado || '-',
+              'Analítica Objetivo': val?.accion?.analitica || '-',
+              'Detalle Acción': JSON.stringify(val?.accion)
+            }))
+          );
+          console.log('⚡ Acciones confirmadas en backend:', returnedAcciones);
+        } else {
+          console.log('ℹ️ Petición exitosa. Respuesta recibida del backend:', res);
+        }
+        console.groupEnd();
+
         this.isSubmittingAnalytic.set(false);
         this.closeAnalyticConfigDrawer();
 
         const analyticId = editingAnalytic?.id || res?.analytic_id || res?.id || res?.data?.analytic_id;
         if (analyticId) {
-          if (selectedSchedObj) {
-            this.toggleScheduleAssociation(selectedSchedObj, analyticId, true);
-          } else {
-            const currentScheds = this.getSchedulesForAnalytic(analyticId);
+          const currentScheds = this.getSchedulesForAnalytic(analyticId);
+          const currentSchedId = currentScheds.length > 0 ? currentScheds[0].id : null;
+          const newSchedId = selectedSchedObj ? selectedSchedObj.id : null;
+
+          if (currentSchedId !== newSchedId) {
             for (const oldSched of currentScheds) {
-              this.toggleScheduleAssociation(oldSched, analyticId, false);
+              if (!selectedSchedObj || oldSched.id !== selectedSchedObj.id) {
+                this.toggleScheduleAssociation(oldSched, analyticId, false);
+              }
+            }
+            if (selectedSchedObj) {
+              this.toggleScheduleAssociation(selectedSchedObj, analyticId, true);
             }
           }
         }
@@ -1203,6 +1247,22 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
       rawType === 'face_recognition' ||
       rawType === 'license_plate_recognition';
 
+    // Si la analítica tiene detection_classes con list_id (RF o LPR), resolver el nombre oficial de la lista
+    if (analytic.detection_classes && analytic.detection_classes.length > 0) {
+      const allLists = this.listService.lists();
+      const names = analytic.detection_classes.map(dc => {
+        if (dc.list_id) {
+          const found = allLists.find(l => l.list_id === dc.list_id);
+          if (found && found.name) return found.name;
+        }
+        return dc.class_name;
+      }).filter(Boolean);
+      if (names.length > 0) {
+        const slice = names.slice(0, 3).join(', ');
+        return `${slice}${names.length > 3 ? '...' : ''}`;
+      }
+    }
+
     // Si la analítica tiene detectionClasses (ej. clases YOLO o nombre de lista de control), retornarlas
     if (analytic.detectionClasses && analytic.detectionClasses.length > 0) {
       const classesSlice = analytic.detectionClasses.slice(0, 3).join(', ');
@@ -1327,18 +1387,6 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
           analyticIds: newAnalyticIds
         };
         this.scheduleService.addOrUpdateScheduleLocal(updatedSchedule);
-
-        if (associate) {
-          const targetStatus: 'active' | 'inactive' = this.scheduleService.isScheduleActive(schedule) ? 'active' : 'inactive';
-          this.analyticService.updateAnalyticStatus(analyticId, targetStatus).subscribe({
-            next: () => {
-              this.analyticService.updateAnalyticStatusLocal(analyticId, targetStatus);
-            },
-            error: (err) => {
-              console.error('[CameraDetailDrawerComponent] updateAnalyticStatus on associate failed:', err);
-            }
-          });
-        }
       },
       error: (err) => {
         console.error('[CameraDetailDrawerComponent] toggleScheduleAssociation failed:', err);

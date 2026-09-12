@@ -8,8 +8,8 @@
       </label>
     </div>
 
-    <!-- Dropdown Angular Signal para Añadir Acción (100% Funcional) -->
-    <div class="position-relative">
+    <!-- Dropdown Angular Signal para Añadir Acción (Detección de espacio vertical arriba/abajo) -->
+    <div class="position-relative" [class.z-3]="isDropdownOpen()">
       <button type="button" class="btn-header-primary btn-action-add-trigger py-1 px-3"
         (click)="toggleDropdown($event)">
         <span class="icon-svg icon-plus icon-micro"
@@ -19,8 +19,9 @@
 
       @if (isDropdownOpen()) {
       <ul
-        class="dropdown-menu actions-dropdown-menu dropdown-menu-end show shadow-lg rounded-3 p-1 border position-absolute end-0 mt-1 z-3"
-        (click)="$event.stopPropagation()">
+        class="dropdown-menu actions-dropdown-menu dropdown-menu-end show shadow-lg rounded-3 p-1 border position-absolute end-0 z-3"
+        [class.actions-dropdown-up]="dropdownPlacement() === 'up'"
+        [class.actions-dropdown-down]="dropdownPlacement() === 'down'" (click)="$event.stopPropagation()">
         @for (item of actionTypes; track item.type) {
         <li>
           <a class="dropdown-menu-item cursor-pointer px-3 py-2 text-paragraph-sm d-block text-body text-decoration-none rounded-2"
@@ -61,7 +62,7 @@
       <!-- Contenido y Textos del Card -->
       <div class="action-card-content flex-grow-1 min-w-0">
         <!-- Encabezado de la Tarjeta (Tipo de Acción + Eliminar) -->
-        <div class="action-card-header d-flex align-items-center justify-content-between mb-2 ps-2">
+        <div class="action-card-header d-flex align-items-center justify-content-between ps-2">
           <span class="font-bold text-paragraph-sm text-body text-truncate select-none">{{ actionItem.tipo }}</span>
 
           <button type="button"
@@ -73,55 +74,53 @@
 
         <!-- Formularios Específicos por Tipo de Acción -->
         @if (actionItem.tipo.startsWith('Activar analisis') || actionItem.tipo.startsWith('Desactivar analisis')) {
-        <div class="mt-2">
+        <div class="mt-2 w-100 min-w-0">
           @if (!actionItem.accion.analitica) {
           <button type="button"
             class="btn-target-selector-trigger w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border transition-all cursor-pointer select-none"
-            [class.is-warning]="highlightErrors"
-            (click)="openAnalyticSelectModal(actionItem)"
+            [class.is-warning]="highlightErrors" (click)="openAnalyticSelectModal(actionItem)"
             [title]="highlightErrors ? 'Selección requerida: Elige la analítica objetivo' : 'Seleccionar analítica objetivo'">
-            <div class="d-flex align-items-center gap-2 min-w-0">
+            <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1 overflow-hidden me-2">
               <div
                 class="target-trigger-icon-box d-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
                 [class.is-warning]="highlightErrors">
-                <span class="icon-svg"
-                  [class.icon-warning]="highlightErrors"
-                  [class.icon-activity]="!highlightErrors"
+                <span class="icon-svg" [class.icon-warning]="highlightErrors" [class.icon-activity]="!highlightErrors"
                   style="width: 14px; height: 14px;"></span>
               </div>
-              <span class="target-trigger-placeholder font-medium text-truncate"
-                [class.text-warning]="highlightErrors"
+              <span class="target-trigger-placeholder font-medium text-truncate" [class.text-warning]="highlightErrors"
                 [class.font-semibold]="highlightErrors">
                 Seleccionar analítica objetivo...
               </span>
             </div>
             <span class="icon-svg icon-chevron-down chevron-rotate-right flex-shrink-0"
-              [class.text-warning]="highlightErrors"
-              [class.text-muted]="!highlightErrors"
+              [class.text-warning]="highlightErrors" [class.text-muted]="!highlightErrors"
               style="width: 12px; height: 12px;"></span>
           </button>
           } @else {
           <div
             class="btn-target-selector-trigger is-selected w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border transition-all cursor-pointer select-none"
-            (click)="openAnalyticSelectModal(actionItem)" title="Clic para cambiar analítica objetivo">
-            <div class="d-flex align-items-center gap-2 min-w-0">
+            (click)="openAnalyticSelectModal(actionItem)"
+            [title]="getSelectedAnalyticMeta(actionItem) || 'Clic para cambiar analítica objetivo'">
+            <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1 overflow-hidden me-2">
               <div
                 class="target-trigger-icon-box is-active d-flex align-items-center justify-content-center rounded-2 flex-shrink-0">
                 <span class="icon-svg icon-activity text-primary" style="width: 15px; height: 15px;"></span>
               </div>
-              <div class="min-w-0">
-                <span class="fw-bold text-body text-truncate d-block" style="font-size: 0.825rem; line-height: 1.25;">
+              <div class="min-w-0 flex-grow-1 overflow-hidden">
+                <span class="fw-bold text-body text-truncate d-block" style="font-size: 0.825rem; line-height: 1.25;"
+                  [title]="getSelectedAnalyticLabel(actionItem)">
                   {{ getSelectedAnalyticLabel(actionItem) }}
                 </span>
                 @if (getSelectedAnalyticCamera(actionItem)) {
-                <span class="text-muted small text-truncate d-block" style="font-size: 0.72rem; line-height: 1.2;">
+                <span class="text-muted small text-truncate d-block" style="font-size: 0.72rem; line-height: 1.2;"
+                  [title]="getSelectedAnalyticCamera(actionItem)">
                   {{ getSelectedAnalyticCamera(actionItem) }}
                 </span>
                 }
               </div>
             </div>
 
-            <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-2">
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
               <span class="target-change-badge d-flex align-items-center justify-content-center rounded-circle"
                 title="Cambiar analítica">
                 <span class="icon-svg icon-refresh"
@@ -139,8 +138,7 @@
             Sistema)</label>
 
           <!-- Toggle Pill homologado con event-detail-modal.component.html -->
-          <div
-            class="media-toggle-pill-wrapper p-1 rounded-pill d-flex align-items-center gap-1.5 border shadow-xs mb-2">
+          <div class="media-toggle-pill-wrapper p-1 rounded-pill d-flex align-items-center gap-2 border shadow-xs mb-2">
             <button type="button"
               class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center gap-2 py-1.5 px-3 rounded-pill transition-all"
               [class.active]="getVoiceMode(actionItem) === 'default'" (click)="setVoiceMode(actionItem, 'default')">
@@ -154,7 +152,7 @@
           </div>
 
           @if (getVoiceMode(actionItem) === 'custom') {
-          <textarea class="form-control text-paragraph-sm rounded-3 mt-2" rows="2"
+          <textarea class="form-control text-paragraph-sm rounded-3 mt-3" rows="2"
             [(ngModel)]="actionItem.accion.contenido" (ngModelChange)="emitActions()"
             placeholder="Ingrese el texto personalizado a sintetizar por voz..."></textarea>
           } @else {
@@ -173,16 +171,17 @@
         }
 
         @if (actionItem.tipo.startsWith('Enviar a API')) {
-        <div class="row g-2.5 mt-1 align-inputs-bottom">
-          <div class="col-md-8">
+        <div class="row g-2.5 mt-1">
+          <div class="col-12">
             <label class="form-label text-muted small font-semibold mb-1 ps-2">Endpoint Webhook URL</label>
             <input type="url" class="form-control text-paragraph-sm font-monospace rounded-3"
               [(ngModel)]="actionItem.accion.endpoint" (ngModelChange)="emitActions()" placeholder="https://..." />
           </div>
-          <div class="col-md-4">
+          <div class="col-12">
             <label class="form-label text-muted small font-semibold mb-1 ps-2">ID Tipo Reporte</label>
             <input type="text" class="form-control text-paragraph-sm font-monospace rounded-3"
-              [(ngModel)]="actionItem.accion.id_report_type" (ngModelChange)="emitActions()" />
+              [(ngModel)]="actionItem.accion.id_report_type" (ngModelChange)="emitActions()"
+              placeholder="Ej. rep-001" />
           </div>
         </div>
         }

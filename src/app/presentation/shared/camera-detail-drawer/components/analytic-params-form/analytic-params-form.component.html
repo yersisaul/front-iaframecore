@@ -1178,26 +1178,31 @@
         </button>
 
         @if (isListsDropdownOpen()) {
-        <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+        <div class="classes-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
           (click)="$event.stopPropagation()">
           <div class="multiselect-options-list pe-1" style="max-height: 16rem;">
             @for (l of getListsForType('RF'); track l.list_id) {
             @let isSelected = isListSelected(l.list_id);
             <div
-              class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+              class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer w-100 min-w-0"
               [class.is-selected]="isSelected"
+              [title]="l.description ? (l.name + ' — ' + l.description) : l.name"
               (click)="toggleListSelection(l.list_id)">
-              <div class="d-flex align-items-center gap-2 min-w-0 me-2">
+              <div class="d-flex align-items-center gap-2 min-w-0 flex-fill me-2 overflow-hidden">
                 <span class="icon-svg icon-user text-muted flex-shrink-0" style="width: 15px; height: 15px;"></span>
-                <div class="min-w-0">
-                  <span class="option-name font-semibold text-body text-truncate d-block">{{ l.name }}</span>
+                <div class="min-w-0 flex-fill overflow-hidden list-meta-container">
+                  <div class="list-name-marquee-container min-w-0">
+                    <span class="option-name list-marquee-text font-semibold text-body d-block" [title]="l.name">{{ l.name }}</span>
+                  </div>
                   @if (l.description) {
-                  <span class="text-muted text-micro text-truncate d-block">{{ l.description }}</span>
+                  <div class="list-desc-marquee-container min-w-0">
+                    <span class="list-desc list-marquee-text text-muted text-micro d-block" [title]="l.description">{{ l.description }}</span>
+                  </div>
                   }
                 </div>
               </div>
               @if (isSelected) {
-              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              <span class="icon-svg icon-check text-primary flex-shrink-0 ms-auto" style="width: 14px; height: 14px;"></span>
               }
             </div>
             }
@@ -1290,26 +1295,31 @@
       </button>
 
       @if (isListsDropdownOpen()) {
-      <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+      <div class="classes-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
         (click)="$event.stopPropagation()">
         <div class="multiselect-options-list pe-1" style="max-height: 16rem;">
           @for (l of getListsForType('LPR'); track l.list_id) {
           @let isSelected = isListSelected(l.list_id);
           <div
-            class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+            class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer w-100 min-w-0"
             [class.is-selected]="isSelected"
+            [title]="l.description ? (l.name + ' — ' + l.description) : l.name"
             (click)="toggleListSelection(l.list_id)">
-            <div class="d-flex align-items-center gap-2 min-w-0 me-2">
+            <div class="d-flex align-items-center gap-2 min-w-0 flex-fill me-2 overflow-hidden">
               <span class="icon-svg icon-car text-muted flex-shrink-0" style="width: 15px; height: 15px;"></span>
-              <div class="min-w-0">
-                <span class="option-name font-semibold text-body text-truncate d-block">{{ l.name }}</span>
+              <div class="min-w-0 flex-fill overflow-hidden list-meta-container">
+                <div class="list-name-marquee-container min-w-0">
+                  <span class="option-name list-marquee-text font-semibold text-body d-block" [title]="l.name">{{ l.name }}</span>
+                </div>
                 @if (l.description) {
-                <span class="text-muted text-micro text-truncate d-block">{{ l.description }}</span>
+                <div class="list-desc-marquee-container min-w-0">
+                  <span class="list-desc list-marquee-text text-muted text-micro d-block" [title]="l.description">{{ l.description }}</span>
+                </div>
                 }
               </div>
             </div>
             @if (isSelected) {
-            <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+            <span class="icon-svg icon-check text-primary flex-shrink-0 ms-auto" style="width: 14px; height: 14px;"></span>
             }
           </div>
           }

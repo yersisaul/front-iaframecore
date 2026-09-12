@@ -1284,8 +1284,8 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   startEditingCamera(camera: Camera): void {
     this.editCameraName = camera.name;
-    this.editCameraLat = camera.location?.lat ?? 0;
-    this.editCameraLon = camera.location?.lon ?? 0;
+    this.editCameraLat = Number(camera.location?.lat ?? 0);
+    this.editCameraLon = Number(camera.location?.lon ?? 0);
     this.isEditingCamera.set(true);
   }
 
@@ -1324,8 +1324,8 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const body = {
       camera_name: this.editCameraName.trim(),
       location: {
-        lat: Number(this.editCameraLat),
-        lon: Number(this.editCameraLon)
+        lat: String(this.editCameraLat).trim(),
+        lon: String(this.editCameraLon).trim()
       }
     };
 

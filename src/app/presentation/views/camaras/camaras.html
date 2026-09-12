@@ -168,7 +168,7 @@
           <!-- Searchbar interno de Nodos fijo arriba -->
           <div class="dropdown-search-header">
             <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
-              style="background: var(--bg-secondary, rgba(0,0,0,0.04)); border: 1px solid var(--border-color, #e2e8f0);">
+              style="background: #171717 !important; border: 1px solid var(--border-color, #e2e8f0);">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
               <input #nodeSearchInput type="text" class="camera-search-input border-0 bg-transparent w-100"
                 placeholder="Buscar nodo..." (input)="hostSearch.set(nodeSearchInput.value)"
@@ -469,7 +469,7 @@
               <span class="spec-lbl d-inline-flex align-items-center">
                 <span class="icon-svg icon-wifi me-2"
                   style="width: 14px; height: 14px; background-color: currentColor;"></span>
-                STREAM
+                Stream
               </span>
               @if (copiedRowId() === camera.id + '-streamType') {
               <span class="copied-badge text-success fw-bold ms-auto">¡Copiado!</span>
@@ -1071,6 +1071,6 @@
 
   <!-- Modal de Creación de Cámara (REUTILIZABLE DRY) -->
   <app-create-camera-modal [show]="showCreateCameraModal()" [preselectedHostId]="hostId()"
-    [preselectedHostName]="currentHost()?.hostname || ''" [hosts]="allHosts()"
-    (close)="closeCreateCameraModal()" (cameraCreated)="onCameraCreated($event)">
+    [preselectedHostName]="currentHost()?.hostname || ''" [hosts]="allHosts()" (close)="closeCreateCameraModal()"
+    (cameraCreated)="onCameraCreated($event)">
   </app-create-camera-modal>

@@ -1289,13 +1289,30 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // ---- RUTA: PATCH /frontend/analytics/update_status/{analytic_id} o POST /frontend/analytics/update_status/{analytic_id} (legacy) ----
-    const updateAnalyticMatch = pathname.match(/^\/frontend\/analytics\/update_status\/([^\/]+)$/);
+    // ---- RUTA: PATCH /frontend/analytics/{analytic_id} o PATCH /frontend/analytics/update_status/{analytic_id} (legacy) ----
+    const updateAnalyticMatch = pathname.match(/^\/frontend\/analytics\/update_status\/([^\/]+)$/) || 
+                                (req.method === 'PATCH' ? pathname.match(/^\/frontend\/analytics\/([^\/]+)$/) : null);
     if (updateAnalyticMatch && (req.method === 'PATCH' || req.method === 'POST')) {
       const analyticId = updateAnalyticMatch[1];
       const index = dbAnalytics.findIndex(a => a.analytic_id === analyticId);
       if (index !== -1) {
         dbAnalytics[index].analytic_status = parsedBody.status || 'inactive';
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(dbAnalytics[index]));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Analítica no encontrada' }));
+      }
+      return;
+    }
+
+    // ---- RUTA: PUT /frontend/analytics/{analytic_id} ----
+    const putAnalyticMatch = pathname.match(/^\/frontend\/analytics\/([^\/]+)$/);
+    if (putAnalyticMatch && req.method === 'PUT') {
+      const analyticId = putAnalyticMatch[1];
+      const index = dbAnalytics.findIndex(a => a.analytic_id === analyticId);
+      if (index !== -1) {
+        dbAnalytics[index] = { ...dbAnalytics[index], ...parsedBody, analytic_id: analyticId };
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(dbAnalytics[index]));
       } else {

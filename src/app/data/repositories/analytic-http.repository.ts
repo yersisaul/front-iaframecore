@@ -56,8 +56,8 @@ export class AnalyticHttpRepository implements IAnalyticRepository {
   }
 
   updateStatus(analyticId: string, status: 'active' | 'inactive'): Observable<any> {
-    // PATCH /frontend/analytics/update_status/{analytic_id}
-    return this.http.patch(`${this.apiUrl}/update_status/${analyticId}`, {
+    // PATCH /frontend/analytics/{analytic_id}
+    return this.http.patch(`${this.apiUrl}/${analyticId}`, {
       status: status
     }).pipe(
       catchError(err => {

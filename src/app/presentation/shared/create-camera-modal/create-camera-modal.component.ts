@@ -1,9 +1,10 @@
 import {
-  Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges,
-  inject, signal, computed, HostListener
+  Component, Input, Output, EventEmitter, OnInit, OnChanges, OnDestroy, SimpleChanges,
+  inject, signal, computed, HostListener, ViewChild, ElementRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import * as L from 'leaflet';
 import { CameraService } from '../../../core/services/camera.service';
 import { Host } from '../../../core/domain/entities/host.models';
 import { Camera, CameraRegisterRequest, CameraUpdateRequest, StreamType, DecoderType } from '../../../core/domain/entities/camera.models';
@@ -14,6 +15,9 @@ export interface StreamTypeOption {
   description: string;
 }
 
+export const DEFAULT_LATITUDE = '-12.126308';
+export const DEFAULT_LONGITUDE = '-76.975727';
+
 @Component({
   selector: 'app-create-camera-modal',
   standalone: true,
@@ -21,7 +25,7 @@ export interface StreamTypeOption {
   templateUrl: './create-camera-modal.component.html',
   styleUrl: './create-camera-modal.component.css'
 })
-export class CreateCameraModalComponent implements OnInit, OnChanges {
+export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy {
   private fb = inject(FormBuilder);
   private cameraService = inject(CameraService);
 
@@ -92,6 +96,20 @@ export class CreateCameraModalComponent implements OnInit, OnChanges {
 
   cameraForm!: FormGroup;
 
+  @ViewChild('mapContainer') mapContainer?: ElementRef<HTMLDivElement>;
+  private map: L.Map | null = null;
+  private marker: L.Marker | null = null;
+  private mapInitTimeout: ReturnType<typeof setTimeout> | null = null;
+  private resizeObserver: ResizeObserver | null = null;
+  private isUpdatingCoordsInternally = false;
+
+  get hasSelectedCoordinates(): boolean {
+    const lat = this.cameraForm?.get('lat')?.value;
+    const lon = this.cameraForm?.get('lon')?.value;
+    return lat !== null && lat !== '' && !isNaN(Number(lat)) &&
+           lon !== null && lon !== '' && !isNaN(Number(lon));
+  }
+
   private backdropMouseDownTarget: EventTarget | null = null;
 
   ngOnInit(): void {
@@ -99,20 +117,33 @@ export class CreateCameraModalComponent implements OnInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['show'] && this.show) {
-      if (this.mode === 'edit' && this.camera) {
-        this.populateForm(this.camera);
+    if (changes['show']) {
+      if (this.show) {
+        if (this.mode === 'edit' && this.camera) {
+          this.populateForm(this.camera);
+        } else {
+          this.resetForm();
+        }
+        this.scheduleMapInit();
       } else {
-        this.resetForm();
+        this.destroyMap();
       }
     } else if (changes['camera'] && this.show && this.mode === 'edit' && this.camera) {
       this.populateForm(this.camera);
+      this.scheduleMapInit();
     }
     if (changes['preselectedHostId'] && this.cameraForm && this.mode === 'create') {
       if (this.preselectedHostId) {
         this.cameraForm.patchValue({ fingerprint_host: this.preselectedHostId });
       }
     }
+  }
+
+  ngOnDestroy(): void {
+    if (this.mapInitTimeout) {
+      clearTimeout(this.mapInitTimeout);
+    }
+    this.destroyMap();
   }
 
   private populateForm(cam: Camera): void {
@@ -179,8 +210,8 @@ export class CreateCameraModalComponent implements OnInit, OnChanges {
       fingerprint_host: [initialHost, Validators.required],
       stream_type: ['', Validators.required],
       stream_url: [''],
-      lat: [null, [Validators.required, this.numericValidator]],
-      lon: [null, [Validators.required, this.numericValidator]],
+      lat: [DEFAULT_LATITUDE, [Validators.required, this.numericValidator, Validators.min(-90), Validators.max(90)]],
+      lon: [DEFAULT_LONGITUDE, [Validators.required, this.numericValidator, Validators.min(-180), Validators.max(180)]],
       // ONVIF
       ip_address: [''],
       http_port: [null, [Validators.min(1), Validators.max(65535)]],
@@ -201,6 +232,47 @@ export class CreateCameraModalComponent implements OnInit, OnChanges {
     this.cameraForm.get('stream_type')?.valueChanges.subscribe(type => {
       this.updateConditionalValidators((type || '') as StreamType);
     });
+
+    // Escuchar cambios de decoder para limpiar parámetros de FFmpeg
+    this.cameraForm.get('decoder')?.valueChanges.subscribe(dec => {
+      if (dec !== 'ffmpeg') {
+        this.cameraForm.get('forced_resolution')?.setValue('', { emitEvent: false });
+        this.cameraForm.get('forced_fps')?.setValue(null, { emitEvent: false });
+        this.clearFieldAlert('forced_fps');
+        this.clearFieldAlert('forced_resolution');
+      }
+    });
+
+    // Escuchar cambios manuales de lat y lon para sincronizar marcador en el mapa
+    this.cameraForm.get('lat')?.valueChanges.subscribe(() => {
+      if (!this.isUpdatingCoordsInternally) {
+        this.syncMarkerFromInputs();
+      }
+    });
+    this.cameraForm.get('lon')?.valueChanges.subscribe(() => {
+      if (!this.isUpdatingCoordsInternally) {
+        this.syncMarkerFromInputs();
+      }
+    });
+  }
+
+  onCoordinateInput(field: 'lat' | 'lon'): void {
+    const ctrl = this.cameraForm.get(field);
+    if (!ctrl) return;
+    const raw = ctrl.value;
+    if (raw === null || raw === '' || raw === undefined) return;
+
+    const num = Number(raw);
+    if (isNaN(num)) return;
+
+    const min = field === 'lat' ? -90 : -180;
+    const max = field === 'lat' ? 90 : 180;
+
+    if (num > max) {
+      ctrl.setValue(max);
+    } else if (num < min) {
+      ctrl.setValue(min);
+    }
   }
 
   private updateConditionalValidators(type: StreamType | ''): void {
@@ -246,8 +318,8 @@ export class CreateCameraModalComponent implements OnInit, OnChanges {
       fingerprint_host: initialHost,
       stream_type: '',
       stream_url: '',
-      lat: null,
-      lon: null,
+      lat: DEFAULT_LATITUDE,
+      lon: DEFAULT_LONGITUDE,
       ip_address: '',
       http_port: null,
       user: '',
@@ -266,6 +338,7 @@ export class CreateCameraModalComponent implements OnInit, OnChanges {
     this.showPassword.set(false);
     this.activeDropdown.set(null);
     this.hostSearch.set('');
+    this.destroyMap();
   }
 
   get currentStreamType(): StreamType | '' {
@@ -299,6 +372,10 @@ export class CreateCameraModalComponent implements OnInit, OnChanges {
     const val = this.cameraForm?.get('decoder')?.value;
     const opt = this.decoderOptions.find(o => o.value === val);
     return opt ? opt.label : 'Seleccionar decodificador...';
+  }
+
+  get isFfmpegDecoder(): boolean {
+    return this.cameraForm?.get('decoder')?.value === 'ffmpeg';
   }
 
   toggleDropdown(name: 'host' | 'streamType' | 'resolution' | 'decoder', event?: MouseEvent): void {
@@ -339,10 +416,17 @@ export class CreateCameraModalComponent implements OnInit, OnChanges {
   selectDecoder(decoder: DecoderType | '', event?: MouseEvent): void {
     event?.stopPropagation();
     const curr = this.cameraForm.get('decoder')?.value;
-    this.cameraForm.get('decoder')?.setValue(curr === decoder ? '' : decoder);
+    const next = curr === decoder ? '' : decoder;
+    this.cameraForm.get('decoder')?.setValue(next);
     this.cameraForm.get('decoder')?.markAsDirty();
     this.cameraForm.get('decoder')?.updateValueAndValidity();
     this.clearFieldAlert('decoder');
+    if (next !== 'ffmpeg') {
+      this.cameraForm.get('forced_resolution')?.setValue('');
+      this.cameraForm.get('forced_fps')?.setValue(null);
+      this.clearFieldAlert('forced_fps');
+      this.clearFieldAlert('forced_resolution');
+    }
     this.closeDropdowns();
   }
 
@@ -421,8 +505,8 @@ export class CreateCameraModalComponent implements OnInit, OnChanges {
         fingerprint_host: f.fingerprint_host,
         stream_type: streamType,
         location: {
-          lat: Number(f.lat),
-          lon: Number(f.lon)
+          lat: String(f.lat).trim(),
+          lon: String(f.lon).trim()
         },
         decoder: f.decoder || 'opencv',
         compatibility_mode: false
@@ -497,8 +581,8 @@ export class CreateCameraModalComponent implements OnInit, OnChanges {
       fingerprint_host: f.fingerprint_host,
       stream_type: streamType,
       location: {
-        lat: Number(f.lat),
-        lon: Number(f.lon)
+        lat: String(f.lat).trim(),
+        lon: String(f.lon).trim()
       },
       decoder: f.decoder || 'opencv',
       compatibility_mode: false
@@ -551,6 +635,186 @@ export class CreateCameraModalComponent implements OnInit, OnChanges {
     });
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // GESTIÓN DEL MAPA LEAFLET & GEOLOCALIZACIÓN
+  // ─────────────────────────────────────────────────────────────
+  private scheduleMapInit(): void {
+    if (this.mapInitTimeout) {
+      clearTimeout(this.mapInitTimeout);
+    }
+    // Esperar a que concluya la animación CSS del modal (slideUpModal dura 260ms)
+    this.mapInitTimeout = setTimeout(() => {
+      this.initMap();
+    }, 280);
+  }
+
+  private initMap(): void {
+    if (!this.mapContainer?.nativeElement || !this.show) return;
+
+    if (this.map) {
+      this.destroyMap();
+    }
+
+    const hasCoords = this.hasSelectedCoordinates;
+    // Centrar en coordenadas seleccionadas o en las coordenadas por defecto
+    const initialLat = hasCoords ? Math.max(-90, Math.min(90, Number(this.cameraForm.get('lat')?.value))) : Number(DEFAULT_LATITUDE);
+    const initialLon = hasCoords ? Math.max(-180, Math.min(180, Number(this.cameraForm.get('lon')?.value))) : Number(DEFAULT_LONGITUDE);
+    const initialZoom = hasCoords ? 14 : 14;
+
+    // Límites estrictos del mapa para evitar coordenadas fuera de rango y duplicación infinita
+    const maxWorldBounds = L.latLngBounds(L.latLng(-85.0511, -180), L.latLng(85.0511, 180));
+
+    try {
+      this.map = L.map(this.mapContainer.nativeElement, {
+        center: [initialLat, initialLon],
+        zoom: initialZoom,
+        minZoom: 2,
+        maxBounds: maxWorldBounds,
+        maxBoundsViscosity: 1.0,
+        worldCopyJump: false,
+        zoomControl: true,
+        attributionControl: false
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap',
+        bounds: maxWorldBounds,
+        noWrap: true
+      }).addTo(this.map);
+
+      if (hasCoords) {
+        this.setMapMarker(initialLat, initialLon, false);
+      }
+
+      this.map.on('click', (e: L.LeafletMouseEvent) => {
+        const wrapped = e.latlng.wrap();
+        const clampedLat = Math.max(-90, Math.min(90, Number(wrapped.lat.toFixed(6))));
+        const clampedLon = Math.max(-180, Math.min(180, Number(wrapped.lng.toFixed(6))));
+        this.updateCoordinatesFromMap(clampedLat, clampedLon);
+      });
+
+      // Asegurar redibujado preciso del tamaño del contenedor
+      setTimeout(() => {
+        this.map?.invalidateSize();
+      }, 100);
+      setTimeout(() => {
+        this.map?.invalidateSize();
+      }, 350);
+
+      // Observador de cambios de tamaño del contenedor
+      if (typeof ResizeObserver !== 'undefined' && this.mapContainer?.nativeElement) {
+        this.resizeObserver = new ResizeObserver(() => {
+          this.map?.invalidateSize();
+        });
+        this.resizeObserver.observe(this.mapContainer.nativeElement);
+      }
+    } catch (err) {
+      console.error('Error initializing Leaflet map:', err);
+    }
+  }
+
+  private setMapMarker(lat: number, lon: number, panTo: boolean = true): void {
+    if (!this.map) return;
+
+    // Pin SVG de alta precisión donde la punta inferior está en (14, 36)
+    const customIcon = L.divIcon({
+      className: 'custom-camera-map-pin',
+      html: `
+        <svg viewBox="0 0 28 36" width="28" height="36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 0C6.268 0 0 6.268 0 14c0 9.8 12.6 21.2 13.2 21.7a1.2 1.2 0 0 0 1.6 0C15.4 35.2 28 23.8 28 14 28 6.268 21.732 0 14 0z" fill="#6366f1"/>
+          <circle cx="14" cy="13" r="4.5" fill="#ffffff"/>
+        </svg>
+      `,
+      iconSize: [28, 36],
+      iconAnchor: [14, 36],
+      popupAnchor: [0, -36]
+    });
+
+    if (this.marker) {
+      this.marker.setLatLng([lat, lon]);
+    } else {
+      this.marker = L.marker([lat, lon], {
+        icon: customIcon,
+        draggable: true
+      }).addTo(this.map);
+
+      this.marker.on('drag', (event) => {
+        const pos = event.target.getLatLng();
+        const wrapped = pos.wrap();
+        const clampedLat = Math.max(-90, Math.min(90, pos.lat));
+        const clampedLon = Math.max(-180, Math.min(180, wrapped.lng));
+        if (pos.lat !== clampedLat || pos.lng !== clampedLon) {
+          event.target.setLatLng([clampedLat, clampedLon]);
+        }
+      });
+
+      this.marker.on('dragend', (event) => {
+        const pos = event.target.getLatLng();
+        const wrapped = pos.wrap();
+        const clampedLat = Math.max(-90, Math.min(90, Number(wrapped.lat.toFixed(6))));
+        const clampedLon = Math.max(-180, Math.min(180, Number(wrapped.lng.toFixed(6))));
+        event.target.setLatLng([clampedLat, clampedLon]);
+        this.updateCoordinatesFromMap(clampedLat, clampedLon);
+      });
+    }
+
+    if (panTo) {
+      const currentZoom = this.map.getZoom();
+      const targetZoom = currentZoom < 10 ? 14 : currentZoom;
+      this.map.setView([lat, lon], targetZoom, { animate: true });
+    }
+  }
+
+  private updateCoordinatesFromMap(lat: number, lon: number): void {
+    this.isUpdatingCoordsInternally = true;
+    this.cameraForm.patchValue({
+      lat: lat,
+      lon: lon
+    });
+    this.clearFieldAlert('lat');
+    this.clearFieldAlert('lon');
+    this.setMapMarker(lat, lon, false);
+    this.isUpdatingCoordsInternally = false;
+  }
+
+  private syncMarkerFromInputs(): void {
+    if (!this.map) return;
+    const latVal = this.cameraForm.get('lat')?.value;
+    const lonVal = this.cameraForm.get('lon')?.value;
+
+    if (latVal !== null && latVal !== '' && !isNaN(Number(latVal)) &&
+        lonVal !== null && lonVal !== '' && !isNaN(Number(lonVal))) {
+      const lat = Number(latVal);
+      const lon = Number(lonVal);
+      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+        this.setMapMarker(lat, lon, true);
+        return;
+      }
+    }
+
+    if (this.marker) {
+      this.marker.remove();
+      this.marker = null;
+    }
+  }
+
+  private destroyMap(): void {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+    if (this.marker) {
+      this.marker.remove();
+      this.marker = null;
+    }
+    if (this.map) {
+      this.map.off();
+      this.map.remove();
+      this.map = null;
+    }
+  }
+
   // Validadores auxiliares
   private numericValidator(control: AbstractControl): ValidationErrors | null {
     if (control.value === null || control.value === undefined || control.value === '') {
@@ -560,12 +824,26 @@ export class CreateCameraModalComponent implements OnInit, OnChanges {
     return isNaN(val) ? { numeric: true } : null;
   }
 
+  onFpsKeydown(event: KeyboardEvent): void {
+    // Bloquear punto, coma, exponentes y signos para permitir solo enteros
+    if (['.', ',', 'e', 'E', '+', '-'].includes(event.key)) {
+      event.preventDefault();
+    }
+  }
+
+  onFpsPaste(event: ClipboardEvent): void {
+    const text = event.clipboardData?.getData('text') || '';
+    if (!/^\d+$/.test(text.trim())) {
+      event.preventDefault();
+    }
+  }
+
   private fpsValidator(control: AbstractControl): ValidationErrors | null {
     if (control.value === null || control.value === undefined || control.value === '') {
       return null;
     }
     const val = Number(control.value);
-    if (isNaN(val) || val < 5 || val > 15) {
+    if (isNaN(val) || !Number.isInteger(val) || val < 5 || val > 15) {
       return { fpsRange: true };
     }
     return null;

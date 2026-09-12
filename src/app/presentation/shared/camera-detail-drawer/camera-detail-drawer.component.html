@@ -255,7 +255,7 @@
             @if (isAnalyticDetailsExpanded(analytic.id)) {
             <div class="analytic-details-expanded" style="animation: slideDown 0.2s ease-out;">
               <!-- Lista vertical de horarios asociados -->
-              <div class="d-flex flex-column gap-2 mb-3">
+              <div class="d-flex flex-column gap-2">
                 @for (sched of getSchedulesForAnalytic(analytic.id); track sched.id) {
                 <!-- Tarjeta de Horario estilo Bento -->
                 <div class="schedule-bento-card freq-{{ sched.frequency }}"
@@ -556,11 +556,6 @@
 }
 
 <!-- Modal de Edición de Cámara (Reutiliza CreateCameraModalComponent en modo 'edit') -->
-<app-create-camera-modal
-  [show]="showEditModal()"
-  [mode]="'edit'"
-  [camera]="camera"
-  [hosts]="allHosts()"
-  (close)="closeEditModal()"
-  (cameraUpdated)="onCameraUpdatedFromModal($event)">
+<app-create-camera-modal [show]="showEditModal()" [mode]="'edit'" [camera]="camera" [hosts]="allHosts()"
+  (close)="closeEditModal()" (cameraUpdated)="onCameraUpdatedFromModal($event)">
 </app-create-camera-modal>

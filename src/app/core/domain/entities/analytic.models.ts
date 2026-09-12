@@ -29,6 +29,7 @@ export interface Analytic {
   targetCameraIds: string[];
   targetCameraNames: string[];
   detectionClasses: string[];
+  detection_classes?: AnalyticDetectionClass[];
   parameters?: Record<string, any>;
   geometricObjects?: Record<string, any>;
   acciones?: Record<string, any>;
@@ -50,6 +51,7 @@ export class AnalyticMapper {
         }
         return String(d || '').trim();
       }).filter(name => Boolean(name)),
+      detection_classes: dto.detection_classes || [],
       parameters: dto.parameters || {},
       geometricObjects: dto.geometric_objects || {},
       acciones: dto.acciones || {},

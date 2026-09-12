@@ -567,6 +567,7 @@
 .multiselect-options-list {
   max-height: 15rem;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -592,6 +593,14 @@
   margin-bottom: 0.2rem;
   transition: all 0.16s ease;
   user-select: none;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.multiselect-option-item .text-truncate {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .multiselect-option-item:hover {
@@ -615,6 +624,53 @@
 .multiselect-option-item.is-selected .option-name {
   color: var(--primary) !important;
   font-weight: 700 !important;
+}
+
+/* MARQUEE DINÁMICO INDEPENDIENTE EN HOVER PARA LISTAS DE CONTROL */
+.list-meta-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.list-name-marquee-container,
+.list-desc-marquee-container {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.list-marquee-text {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.multiselect-option-item:hover .list-name-marquee-container .list-marquee-text,
+.multiselect-option-item:hover .list-desc-marquee-container .list-marquee-text {
+  width: max-content !important;
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  will-change: transform;
+  animation: listOptionMarquee 3.8s linear infinite alternate;
+}
+
+@keyframes listOptionMarquee {
+  0%, 18% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  82%, 100% {
+    transform: translate3d(min(0px, calc(-100% + 100cqw)), 0, 0);
+  }
 }
 
 .option-id-badge {

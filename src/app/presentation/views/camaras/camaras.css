@@ -1919,7 +1919,7 @@ code.code-badge {
 
 .camera-search-input-row,
 .node-search-input-row {
-  background: var(--bg-surface, #ffffff) !important;
+  background: var(--bg-secondary, rgba(0, 0, 0, 0.04)) !important;
   border: 1px solid var(--border-color, #e2e8f0) !important;
   border-radius: 8px !important;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;

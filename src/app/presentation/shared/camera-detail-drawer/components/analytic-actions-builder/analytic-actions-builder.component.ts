@@ -48,36 +48,32 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
     }
 
     const items: ActionItem[] = [];
-    if (Array.isArray(raw)) {
-      raw.forEach((item: any, idx: number) => {
-        if (item && item.tipo) {
-          let tipo = item.tipo;
-          if (tipo.includes('Habilitar/Deshabilitar')) {
-            tipo = item.accion?.estado === 'active' ? 'Activar analisis-00' : 'Desactivar analisis-00';
-          }
-          items.push({
-            idIndex: String(idx),
-            tipo: tipo,
-            accion: item.accion || {}
-          });
+    const processItem = (val: any, idx: number) => {
+      if (val && val.tipo) {
+        let tipo = val.tipo;
+        const accion = { ...(val.accion || {}) };
+        if (tipo.includes('Habilitar/Deshabilitar')) {
+          const isAct = accion.estado === 'active';
+          tipo = isAct ? 'Activar analisis' : 'Desactivar analisis';
+          accion.estado = isAct ? 'active' : 'inactive';
+        } else if (tipo.startsWith('Activar analisis')) {
+          accion.estado = 'active';
+        } else if (tipo.startsWith('Desactivar analisis')) {
+          accion.estado = 'inactive';
         }
-      });
+        items.push({
+          idIndex: String(idx),
+          tipo: tipo,
+          accion: accion
+        });
+      }
+    };
+
+    if (Array.isArray(raw)) {
+      raw.forEach((item: any, idx: number) => processItem(item, idx));
     } else {
       const keys = Object.keys(raw);
-      keys.forEach((k, idx) => {
-        const val = raw[k];
-        if (val && val.tipo) {
-          let tipo = val.tipo;
-          if (tipo.includes('Habilitar/Deshabilitar')) {
-            tipo = val.accion?.estado === 'active' ? 'Activar analisis-00' : 'Desactivar analisis-00';
-          }
-          items.push({
-            idIndex: String(idx),
-            tipo: tipo,
-            accion: val.accion || {}
-          });
-        }
-      });
+      keys.forEach((k, idx) => processItem(raw[k], idx));
     }
 
     this.actionsList.set(this.recalculateActionSequence(items));
@@ -86,6 +82,7 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
 
   readonly actionsList = signal<ActionItem[]>([]);
   readonly isDropdownOpen = signal<boolean>(false);
+  readonly dropdownPlacement = signal<'down' | 'up'>('down');
   readonly draggedIndex = signal<number | null>(null);
   readonly previewTargetIndex = signal<number | null>(null);
   readonly draggedCardHeight = signal<number>(0);
@@ -244,28 +241,44 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
   toggleDropdown(event: MouseEvent): void {
     event.stopPropagation();
     const willOpen = !this.isDropdownOpen();
-    this.isDropdownOpen.set(willOpen);
     if (willOpen) {
-      setTimeout(() => {
-        this.scrollToShowDropdown();
-      }, 50);
+      this.calculateDropdownPlacement();
+    }
+    this.isDropdownOpen.set(willOpen);
+  }
+
+  private calculateDropdownPlacement(): void {
+    const triggerEl = this.elementRef.nativeElement.querySelector('.btn-action-add-trigger') as HTMLElement | null;
+    if (!triggerEl) {
+      this.dropdownPlacement.set('down');
+      return;
+    }
+
+    const triggerRect = triggerEl.getBoundingClientRect();
+    const scrollContainer = this.elementRef.nativeElement.closest('.drawer-scroll-area') as HTMLElement | null;
+
+    // Límites verticales dentro del área de scroll o del viewport
+    const boundaryTop = scrollContainer ? scrollContainer.getBoundingClientRect().top : 0;
+    const boundaryBottom = scrollContainer ? scrollContainer.getBoundingClientRect().bottom : window.innerHeight;
+
+    const spaceBelow = boundaryBottom - triggerRect.bottom;
+    const spaceAbove = triggerRect.top - boundaryTop;
+
+    // Altura aproximada requerida para desplegar las 8 opciones (~280px)
+    const requiredSpace = 280;
+
+    // Si el espacio inferior es insuficiente (< 280px) y arriba hay más espacio que abajo, abrir hacia arriba
+    if (spaceBelow < requiredSpace && spaceAbove > spaceBelow) {
+      this.dropdownPlacement.set('up');
+    } else {
+      this.dropdownPlacement.set('down');
     }
   }
 
-  private scrollToShowDropdown(): void {
-    const dropdownEl = this.elementRef.nativeElement.querySelector('.actions-dropdown-menu') as HTMLElement | null;
-    const scrollContainer = this.elementRef.nativeElement.closest('.drawer-scroll-area') as HTMLElement | null;
-    if (!dropdownEl || !scrollContainer) return;
-
-    const containerRect = scrollContainer.getBoundingClientRect();
-    const dropdownRect = dropdownEl.getBoundingClientRect();
-    const overflowBottom = dropdownRect.bottom - containerRect.bottom;
-
-    if (overflowBottom > -20) {
-      scrollContainer.scrollBy({
-        top: overflowBottom + 36,
-        behavior: 'smooth'
-      });
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    if (this.isDropdownOpen()) {
+      this.calculateDropdownPlacement();
     }
   }
 
@@ -305,23 +318,23 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
   /**
    * Extrae el nombre base de la acción eliminando sufijos numéricos existentes (-0, -00, -01, etc.)
    */
-  getBaseType(tipo: string): string {
+  getBaseType(tipo: string, estado?: string): string {
     if (!tipo) return '';
     let clean = tipo.replace(/-\d+$/, '').trim();
     if (clean.startsWith('Habilitar/Deshabilitar')) {
-      return 'Desactivar analisis';
+      return estado === 'active' ? 'Activar analisis' : 'Desactivar analisis';
     }
     return clean;
   }
 
   /**
    * Recalcula la secuencia de acciones asignando a cada tipo su sufijo numérico (-00, -01, -02...)
-   * según la cantidad de veces que dicho tipo específico se ha repetido en la secuencia actual.
+   * En el frontend, 'Activar analisis' y 'Desactivar analisis' tienen conteos independientes.
    */
   recalculateActionSequence(items: ActionItem[]): ActionItem[] {
     const typeCounters: Record<string, number> = {};
     return items.map((item, idx) => {
-      const base = this.getBaseType(item.tipo);
+      const base = this.getBaseType(item.tipo, item.accion?.estado);
       const currentCount = typeCounters[base] || 0;
       typeCounters[base] = currentCount + 1;
       const suffix = String(currentCount).padStart(2, '0');
@@ -390,16 +403,53 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
 
   emitActions(): void {
     const resultObj: any = {};
+    let enableDisableIndex = 0;
+
     this.actionsList().forEach(item => {
       const cleanAccion = { ...item.accion };
       delete cleanAccion._voiceMode;
       delete cleanAccion._targetAnalyticType;
       delete cleanAccion._targetCameraName;
+
+      let backendTipo = item.tipo;
+
+      if (
+        item.tipo.startsWith('Activar analisis') ||
+        item.tipo.startsWith('Desactivar analisis') ||
+        item.tipo.startsWith('Habilitar/Deshabilitar')
+      ) {
+        const isActivation = item.tipo.startsWith('Activar analisis') || cleanAccion.estado === 'active';
+        cleanAccion.estado = isActivation ? 'active' : 'inactive';
+
+        const seqSuffix = String(enableDisableIndex).padStart(2, '0');
+        backendTipo = `Habilitar/Deshabilitar Analisis-${seqSuffix}`;
+        enableDisableIndex++;
+      }
+
       resultObj[item.idIndex] = {
-        tipo: item.tipo,
+        tipo: backendTipo,
         accion: cleanAccion
       };
     });
+
+    console.groupCollapsed(
+      '%c⚡ [DEBUG ACTIONS BUILDER] Mapeo Frontend ➔ Backend',
+      'background: #6366f1; color: white; font-weight: bold; font-size: 11px; padding: 2px 6px; border-radius: 3px;'
+    );
+    if (this.actionsList().length > 0) {
+      console.table(
+        this.actionsList().map(item => ({
+          'Frontend (Visual)': item.tipo,
+          'Backend (Tipo)': resultObj[item.idIndex]?.tipo,
+          'Estado': resultObj[item.idIndex]?.accion?.estado || '-',
+          'Analítica Target': resultObj[item.idIndex]?.accion?.analitica || '-',
+          'Detalle Acción': JSON.stringify(resultObj[item.idIndex]?.accion)
+        }))
+      );
+    }
+    console.log('📤 Objeto payload.acciones generado:', resultObj);
+    console.groupEnd();
+
     this.actionsChanged.emit(resultObj);
   }
 
@@ -497,7 +547,7 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
       // Filtro por texto de búsqueda: busca por nodo o por cámara
       if (query) {
         const matchesHost = (host.hostname || '').toLowerCase().includes(query) ||
-                            (host.fingerprint || '').toLowerCase().includes(query);
+          (host.fingerprint || '').toLowerCase().includes(query);
         if (!matchesHost) {
           hostCameras = hostCameras.filter(c =>
             (c.name && c.name.toLowerCase().includes(query)) ||
@@ -574,7 +624,7 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
       const hosts = this.hostService.allHosts();
       cameras = cameras.filter(c => {
         const matchesCam = (c.name && c.name.toLowerCase().includes(query)) ||
-                           (c.id && c.id.toLowerCase().includes(query));
+          (c.id && c.id.toLowerCase().includes(query));
         if (matchesCam) return true;
         const host = hosts.find(h => h.fingerprint === c.hostFingerprint || (h.id && (c as any).hostId === h.id));
         return host ? (host.hostname || '').toLowerCase().includes(query) : false;
