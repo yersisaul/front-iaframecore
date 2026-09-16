@@ -19,11 +19,8 @@ fi
 
 # 3. Reemplazar variables dinámicas en el template de Nginx
 echo "🔧 Generando configuración de Nginx de forma dinámica..."
-if [ -z "$MINIO_PUBLIC_URL" ]; then
-  export MINIO_PUBLIC_URL="$API_HOST"
-fi
 
-envsubst '$API_HOST $OPENSEARCH_HOST $MINIO_PUBLIC_URL $OPENSEARCH_AUTH_HEADER $API_KEY_HEADER' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
+envsubst '$API_HOST $OPENSEARCH_HOST $OPENSEARCH_AUTH_HEADER $API_KEY_HEADER' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
 
 # 4. Continuar con la ejecución de Nginx
 echo "🚀 Iniciando Nginx..."

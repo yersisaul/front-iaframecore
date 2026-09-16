@@ -32,7 +32,6 @@ cp .env.example .env
 | :--- | :---: | :--- |
 | `API_HOST` | Sí | URL base del backend FastAPI (ej. `http://localhost:8000`). El proxy la expone en `/api` y `/ws`. |
 | `OPENSEARCH_HOST` | Sí | URL base del motor OpenSearch (ej. `http://localhost:9200`). El proxy la expone en `/opensearch`. |
-| `MINIO_PUBLIC_URL` | No | URL base del almacenamiento de medios MinIO (ej. `http://localhost:9000`). Expuesta en `/minio`. |
 | `JWT_SECRET_KEY` | Sí | Firma estática / API Key del backend FastAPI. Inyectada automáticamente por el proxy como header `x-api-key`. |
 | `OPENSEARCH_USER` | Recomendada | Usuario con permisos en OpenSearch (ej. `admin`). Usado para inyectar Basic Auth en el proxy. |
 | `OPENSEARCH_PASSWORD` | Recomendada | Contraseña de OpenSearch para la autenticación Basic en el proxy. |
@@ -123,7 +122,6 @@ docker run -d \
   -p 80:80 \
   -e API_HOST="http://192.168.1.100:8000" \
   -e OPENSEARCH_HOST="http://192.168.1.100:9200" \
-  -e MINIO_PUBLIC_URL="http://192.168.1.100:9000" \
   -e JWT_SECRET_KEY="tu_clave_secreta_jwt" \
   -e OPENSEARCH_USER="admin" \
   -e OPENSEARCH_PASSWORD="tu_clave_opensearch" \

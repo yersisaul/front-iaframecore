@@ -38,7 +38,7 @@
   <!-- Texto Explicativo en su propia línea debajo del encabezado -->
   @if (actionsList().length === 0) {
   <span class="text-muted text-nano d-block mb-1 mt-2">
-    Sin respuestas automatizadas vinculadas. Presiona + Añadir Acción para agregar triggers.
+    Presiona + Añadir Acción para agregar triggers.
   </span>
   }
 
@@ -66,9 +66,8 @@
           <span class="font-bold text-paragraph-sm text-body text-truncate select-none">{{ actionItem.tipo }}</span>
 
           <button type="button"
-            class="btn-ghost remove-action-btn d-flex align-items-center justify-content-center flex-shrink-0"
-            (click)="removeAction(idx)" title="Eliminar Acción">
-            <span class="icon-svg icon-trash text-danger icon-micro"></span>
+            class="icon-svg icon-trash remove-action-btn flex-shrink-0"
+            (click)="removeAction(idx)" title="Eliminar Acción" aria-label="Eliminar acción">
           </button>
         </div>
 

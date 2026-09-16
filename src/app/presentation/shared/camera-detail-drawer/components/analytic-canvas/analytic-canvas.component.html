@@ -290,52 +290,10 @@
     }
     }
 
-    <!-- Floating Toolbar Premium (Arriba Derecha) -->
-    <div class="canvas-floating-toolbar" (click)="$event.stopPropagation()" (mousedown)="$event.stopPropagation()">
-      <!-- Grupo: Preset Cuadrilátero A-B-C-D -->
-      @if (isSpeedQuad()) {
-      <div class="toolbar-group">
-        <button class="btn-canvas-tool btn-preset-tool" [disabled]="isCanvasLocked()"
-          (click)="generateDefaultSpeedQuad()" (mousedown)="$event.stopPropagation()"
-          title="Generar Cuadrilátero A-B-C-D Centrado por Defecto">
-          <span class="icon-svg icon-grid toolbar-icon"></span>
-          <span class="preset-tool-text">Preset A-B-C-D</span>
-        </button>
-      </div>
-      }
-
-      <!-- Grupo: Undo / Redo -->
-      <div class="toolbar-group">
-        <button class="btn-canvas-tool" [disabled]="!canUndo()" (click)="undo()" (mousedown)="$event.stopPropagation()"
-          title="Deshacer (Ctrl+Z)">
-          <span class="icon-svg icon-undo toolbar-icon"></span>
-        </button>
-        <button class="btn-canvas-tool" [disabled]="!canRedo()" (click)="redo()" (mousedown)="$event.stopPropagation()"
-          title="Rehacer (Ctrl+Shift+Z)">
-          <span class="icon-svg icon-redo toolbar-icon"></span>
-        </button>
-      </div>
-
-      <!-- Grupo: Limpiar Canvas -->
-      <div class="toolbar-group">
-        <button class="btn-canvas-tool btn-danger-tool" [disabled]="isCanvasLocked() || totalPointsCount() === 0"
-          (click)="clearCanvas()" (mousedown)="$event.stopPropagation()" title="Limpiar todas las áreas trazadas">
-          <span class="icon-svg icon-trash toolbar-icon"></span>
-        </button>
-      </div>
-
-      <!-- Indicador de Estado -->
-      <div class="toolbar-status-badge">
-        <span class="status-dot" [class.locked]="isCanvasLocked()"
-          [class.closed]="!isCanvasLocked() && totalShapesCount() > 0"
-          [class.empty]="!isCanvasLocked() && totalShapesCount() === 0"></span>
-        <span class="status-text">{{ geometryStatusLabel() }}</span>
-      </div>
-    </div>
-
-    <!-- Minibar Contextual Flotante de Atajos y Leyendas de Ayuda (Quick Help Bar) -->
-    <div class="canvas-quick-help-bar d-inline-flex align-items-center select-none" (click)="$event.stopPropagation()"
-      (mousedown)="$event.stopPropagation()">
+    <!-- Minibar Contextual Flotante de Atajos y Leyendas de Ayuda (Quick Help Bar) con Desvanecimiento por Proximidad -->
+    <div #quickHelpBar class="canvas-quick-help-bar d-inline-flex align-items-center select-none"
+      [class.canvas-quick-help-bar--dodge]="isHelpBarDodgeActive()"
+      (click)="$event.stopPropagation()" (mousedown)="$event.stopPropagation()">
       @if (isCanvasLocked()) {
       <span class="help-item opacity-75">
         {{ shapes().length > 0 ? 'Geometría en modo solo lectura · Parámetros editables en el panel derecho' : 'Trazado

@@ -285,20 +285,27 @@
 }
 
 .remove-action-btn {
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 50%;
-  background: transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0.0625rem solid transparent;
-  transition: all 0.2s ease;
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border: none;
+  background-color: var(--danger, #ef4444);
+  color: var(--danger, #ef4444);
+  cursor: pointer;
+  display: inline-block;
+  opacity: 0.75;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
 }
 
 .remove-action-btn:hover {
-  background-color: var(--bg-danger-light, rgba(220, 38, 38, 0.1));
-  border-color: rgba(220, 38, 38, 0.2);
+  opacity: 1;
+  transform: scale(1.15);
+  background-color: #dc2626;
+  color: #dc2626;
+}
+
+.remove-action-btn:active {
+  transform: scale(0.92);
 }
 
 .dropdown-menu-item:hover {

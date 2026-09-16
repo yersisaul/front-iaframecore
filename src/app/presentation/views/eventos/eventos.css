@@ -189,6 +189,7 @@
 }
 
 @keyframes marquee-title {
+
   0%,
   15% {
     transform: translate3d(0, 0, 0);

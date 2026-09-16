@@ -101,9 +101,8 @@
 }
 
 .user-card:hover {
-  transform: translateY(-2px);
   border-color: var(--role-color, var(--primary)) !important;
-  box-shadow: 0 8px 24px var(--role-bg, rgba(var(--primary-rgb), .12));
+  box-shadow: 0 10px 32px color-mix(in srgb, var(--role-color, var(--primary)) 28%, transparent) !important;
 }
 
 /* AVATAR */
@@ -1862,18 +1861,85 @@ input:checked+.switch-slider:before {
   background-color: rgba(13, 110, 253, 0.12) !important;
 }
 
-/* Hide delete button by default, show it on hover */
-.role-card-item .role-delete-btn {
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s ease-in-out;
-  transform: scale(0.9);
+/* ── BOTÓN ELIMINAR ROL DIRECTO SVG (SIN CONTENEDOR, DESPLEGABLE EN HOVER) ── */
+
+:host {
+  /* Separación configurable entre el botón de eliminar rol y el badge de permisos */
+  --role-delete-gap: 1.35rem;
 }
 
-.role-card-item:hover .role-delete-btn {
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1);
+.role-btn-action,
+span.role-btn-action,
+button.role-btn-action {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-block !important;
+  border: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background-color: currentColor !important;
+  background-image: none !important;
+  color: var(--text-muted, #94a3b8);
+  box-shadow: none !important;
+  cursor: pointer;
+  width: 0;
+  max-width: 0;
+  min-width: 0;
+  height: 15px;
+  min-height: 15px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  flex-shrink: 0;
+  vertical-align: middle;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.2s ease,
+    margin 0.25s ease,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 0.2s ease,
+    filter 0.2s ease;
+}
+
+/* En hover de la tarjeta de rol se despliega a la izquierda del badge */
+.role-card-item:hover .role-btn-action {
+  width: 15px !important;
+  min-width: 15px !important;
+  max-width: 15px !important;
+  height: 15px !important;
+  opacity: 0.8 !important;
+  pointer-events: auto !important;
+  margin-right: var(--role-delete-gap, 1.35rem) !important;
+  visibility: visible !important;
+}
+
+/* Hover específico para eliminar rol */
+.role-btn-delete:hover {
+  opacity: 1 !important;
+  color: var(--text-danger, #ef4444) !important;
+  transform: scale(1.22) translateY(-1px);
+  filter: drop-shadow(0 2px 8px rgba(239, 68, 68, 0.5));
+}
+
+.role-btn-action:active {
+  transform: scale(0.92);
+}
+
+/* Modos oscuros adaptativos */
+:host-context([data-bs-theme="dark"]) .role-btn-action,
+:host-context([data-theme="dark"]) .role-btn-action,
+:host-context(.dark) .role-btn-action,
+[data-bs-theme="dark"] .role-btn-action {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+:host-context([data-bs-theme="dark"]) .role-btn-delete:hover,
+:host-context([data-theme="dark"]) .role-btn-delete:hover,
+:host-context(.dark) .role-btn-delete:hover,
+[data-bs-theme="dark"] .role-btn-delete:hover {
+  color: #f87171 !important;
+  filter: drop-shadow(0 2px 10px rgba(248, 113, 113, 0.6));
 }
 
 /* Badge de cantidad de permisos del rol en la lista (Idéntico a .permission-code-badge) */

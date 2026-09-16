@@ -184,13 +184,13 @@
             </div>
           </div>
           <!-- Opciones scrolleables -->
-          <div class="dropdown-items-scroll scrollable-menu p-2 pt-1">
+          <div class="dropdown-items-scroll scrollable-menu p-1">
             @if (filteredHostOptions().length === 0) {
             <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
             }
             @for (h of filteredHostOptions(); track h.fingerprint) {
             @let isSelected = tempFilterHost().includes(h.fingerprint);
-            <button type="button" class="dropdown-item d-flex align-items-center justify-content-between"
+            <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded"
               [class.active]="isSelected" (click)="toggleFilterValue('host', h.fingerprint, $event)">
               <span class="text-truncate">{{ h.name }}</span>
               @if (isSelected) {

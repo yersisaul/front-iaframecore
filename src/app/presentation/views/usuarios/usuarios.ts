@@ -95,6 +95,9 @@ export class Usuarios implements OnInit, OnDestroy {
       const resource = parts[0];
       const action = parts[1];
 
+      // Ocultar el recurso 'files': se gestiona internamente, no en la UI
+      if (resource === 'files') return;
+
       if (!groupsMap.has(resource)) {
         groupsMap.set(resource, { read: null, others: [] });
       }
@@ -769,7 +772,10 @@ export class Usuarios implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('Error deleting role:', err);
-        const errMsg = err.error?.detail || 'No se pudo eliminar el rol.';
+        const rawMsg: string = err.error?.detail || '';
+        const errMsg = rawMsg.toLowerCase().includes('assigned to one or more users')
+          ? 'No se puede eliminar el rol porque está asignado a uno o más usuarios.'
+          : rawMsg || 'No se pudo eliminar el rol.';
         this.showToast(errMsg, 'error');
         this.isDeletingRole.set(false);
       }
@@ -970,6 +976,12 @@ export class Usuarios implements OnInit, OnDestroy {
       ? `${cleanDesc} || disabled:${disabledVirtuals.join(',')}`
       : cleanDesc;
 
+    // Garantizar que files.read siempre se envíe como activo (no visible en la UI)
+    const filesReadPerm = this.permissionsService.availablePermissions().find(p => p.codigo.toLowerCase() === 'files.read');
+    if (filesReadPerm) {
+      physicalPermisos.add(filesReadPerm.permiso_id);
+    }
+
     const physicalPermisosList = Array.from(physicalPermisos);
 
     // Guardar en el backend inmediatamente en tiempo real
@@ -1055,6 +1067,10 @@ export class Usuarios implements OnInit, OnDestroy {
     const rolesReadPerm = allPerms.find(p => p.codigo.toLowerCase() === 'roles.read');
     if (usersReadPerm) permissions.push(usersReadPerm.permiso_id);
     if (rolesReadPerm) permissions.push(rolesReadPerm.permiso_id);
+
+    // Garantizar que files.read siempre se envíe como activo (no visible en la UI)
+    const filesReadPerm = allPerms.find(p => p.codigo.toLowerCase() === 'files.read');
+    if (filesReadPerm) permissions.push(filesReadPerm.permiso_id);
 
     this.permissionsService.createRole(nombre, descripcion, permissions).subscribe({
       next: () => {

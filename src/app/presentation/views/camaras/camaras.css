@@ -111,7 +111,7 @@
 }
 
 .host-card .card-body {
-  padding: 1.35rem !important;
+  padding: 0.875rem !important;
 }
 
 [data-bs-theme="dark"] .host-card {
@@ -119,9 +119,8 @@
 }
 
 .host-card:hover {
-  transform: translateY(-2px);
   border-color: var(--color-online, #10b981) !important;
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2) !important;
+  box-shadow: 0 10px 32px rgba(16, 185, 129, 0.28) !important;
 }
 
 [data-bs-theme="dark"] .host-card:hover {

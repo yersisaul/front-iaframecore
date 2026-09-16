@@ -6,7 +6,7 @@
 <!-- Componente 1: Workspace Izquierdo de Imagen Centrada (3/4 del Ancho de Pantalla) -->
 <div class="event-image-workspace" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)">
   <div class="event-image-container">
-    @if (selectedEvent.urlImg || selectedEvent.urlVideo) {
+    @if (selectedEvent.imgMinioObjectName || selectedEvent.videoMinioObjectName || selectedEvent.urlImg || selectedEvent.urlVideo) {
     <!-- Contenedor Unificado Permanente del Workspace (Mantiene el DOM vivo para transiciones continuas de redimensionamiento) -->
     <div class="unified-media-stage d-flex flex-column align-items-center justify-content-center w-100 h-100"
       [class.mode-image]="activeMediaType() === 'image'" [class.mode-video]="activeMediaType() === 'video'"
@@ -20,12 +20,9 @@
         <!-- 1. Tarjeta Principal (Detección en Cámara / Video / Imagen) -->
         <div class="stage-media-card primary-media-card position-relative"
           [class.card-is-focused]="focusedComparisonCard() === 'detection'"
-          [style.aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null"
-          [style.--media-aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : null"
-          [title]="activeMediaType() === 'comparison' ? (focusedComparisonCard() === 'detection' ? 'Click para restaurar vista dividida' : 'Click para maximizar captura de cámara') : ''"
+          [title]="focusedComparisonCard() === 'detection' ? 'Click para restaurar vista dividida' : (activeMediaType() === 'comparison' ? 'Click para maximizar captura' : '')"
           (click)="activeMediaType() === 'comparison' ? toggleComparisonFocus('detection', $event) : null">
 
-          <!-- Badge superior visible sólo en modo comparativa -->
           <div class="comparison-card-badge detection-badge">
             <span class="icon-svg icon-camara card-badge-icon"></span>
             <span>Detección en Cámara</span>
@@ -36,8 +33,8 @@
             (click)="activeMediaType() === 'image' ? toggleZoom($event) : null">
 
             @if (activeMediaType() === 'video') {
-            @if (selectedEvent.urlVideo && !hasVideoError()) {
-            <video [src]="selectedEvent.urlVideo" (loadedmetadata)="onVideoLoadedMetadata($event)"
+            @if ((resolvedVideoUrl() || selectedEvent.videoMinioObjectName || selectedEvent.urlVideo) && !hasVideoError()) {
+            <video [src]="resolvedVideoUrl() || selectedEvent.urlVideo" (loadedmetadata)="onVideoLoadedMetadata($event)"
               (error)="onVideoError($event)" class="stage-media-element video-element select-none" controls autoplay
               loop></video>
             } @else {
@@ -53,15 +50,15 @@
             </div>
             }
             } @else {
-            @if (selectedEvent.urlImg && !hasImageError()) {
-            <img [src]="selectedEvent.urlImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
+            @if ((resolvedImageUrl() || selectedEvent.imgMinioObjectName || selectedEvent.urlImg) && !hasImageError()) {
+            <img [src]="resolvedImageUrl() || selectedEvent.urlImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
               class="stage-media-element img-element select-none" alt="Captura del evento" />
 
             <!-- Lente Lupa Magnifier (Sólo en modo Imagen normal) -->
             @if (activeMediaType() === 'image' && isZoomed()) {
             <div class="magnifier-lens" [style.left.px]="zoomX()" [style.top.px]="zoomY()"
               [style.width.px]="zoomLensDiameter()" [style.height.px]="zoomLensDiameter()"
-              [style.background-image]="'url(' + selectedEvent.urlImg + ')'"
+              [style.background-image]="'url(' + (resolvedImageUrl() || selectedEvent.urlImg) + ')'"
               [style.background-position]="zoomBgX() + 'px ' + zoomBgY() + 'px'"
               [style.background-size]="zoomBgWidth() + 'px ' + zoomBgHeight() + 'px'">
             </div>

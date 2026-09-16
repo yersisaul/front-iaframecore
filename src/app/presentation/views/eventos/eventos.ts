@@ -23,11 +23,12 @@ import { CustomSelectComponent } from '../../shared/custom-select/custom-select.
 import { ListService } from '../../../core/services/list.service';
 import { IEventRepository } from '../../../core/domain/repositories/event.repository';
 import { EventSubjectItem } from '../../../core/domain/entities/event.models';
+import { MediaUrlPipe } from '../../shared/pipes/media-url.pipe';
 
 @Component({
   selector: 'app-eventos',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, EventDetailModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, FilterActionsComponent, CustomSelectComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, EventDetailModalComponent, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, FilterActionsComponent, CustomSelectComponent, MediaUrlPipe],
   templateUrl: './eventos.html',
   styleUrl: './eventos.css'
 })

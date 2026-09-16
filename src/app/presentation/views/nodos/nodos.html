@@ -297,10 +297,9 @@
       [class.host-card--new]="hostService.newHostIds().has(host.fingerprint)"
       [class.host-card--updated]="hostService.updatedHostIds().has(host.fingerprint)"
       [class.host-card--deleting]="hostService.deletingHostIds().has(host.fingerprint)"
-      (click)="goToCameras(host.fingerprint)"
-      (mouseenter)="onHostCardMouseEnter($event)"
+      (click)="goToCameras(host.fingerprint)" (mouseenter)="onHostCardMouseEnter($event)"
       (mouseleave)="onHostCardMouseLeave($event)">
-      <div class="card-body p-4 d-flex flex-column justify-content-between h-100">
+      <div class="card-body d-flex flex-column justify-content-between h-100">
         <div>
           <!-- Cabecera de la Tarjeta: OS Icon + Hostname + Versión y Actividad -->
           <div class="host-header-block d-flex align-items-center justify-content-between" style="gap: 12px;">
@@ -350,7 +349,7 @@
               [class.copied-flash]="copiedRowId() === host.fingerprint + '-fingerprint'"
               (click)="copyRowContent(host.fingerprint, host.fingerprint + '-fingerprint'); $event.stopPropagation()">
               <span class="spec-lbl d-inline-flex align-items-center flex-shrink-0">
-                <span class="icon-svg icon-fingerprint me-2"
+                <span class="icon-svg icon-fingerprint me-1"
                   style="width: 14px; height: 14px; background-color: currentColor;"></span>
                 Fingerprint
               </span>
@@ -367,7 +366,7 @@
             <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-ipAddress'"
               (click)="copyRowContent(host.ipAddress, host.fingerprint + '-ipAddress'); $event.stopPropagation()">
               <span class="spec-lbl d-inline-flex align-items-center">
-                <span class="icon-svg icon-wifi me-2"
+                <span class="icon-svg icon-wifi me-1"
                   style="width: 14px; height: 14px; background-color: currentColor;"></span>
                 DIRECCIÓN IP
               </span>
@@ -384,7 +383,7 @@
             <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-system'"
               (click)="copyRowContent(hw?.system + ' ' + hw?.release, host.fingerprint + '-system'); $event.stopPropagation()">
               <span class="spec-lbl d-inline-flex align-items-center">
-                <span class="icon-svg icon-cpu me-2"
+                <span class="icon-svg icon-cpu me-1"
                   style="width: 14px; height: 14px; background-color: currentColor;"></span>
                 OS
               </span>
@@ -400,7 +399,7 @@
             <div class="spec-row" [class.copied-flash]="copiedRowId() === host.fingerprint + '-lastSeen'"
               (click)="copyRowContent(formatLastSeen(host.metrics?.lastSeen), host.fingerprint + '-lastSeen'); $event.stopPropagation()">
               <span class="spec-lbl d-inline-flex align-items-center">
-                <span class="icon-svg icon-clock me-2"
+                <span class="icon-svg icon-clock me-1"
                   style="width: 14px; height: 14px; background-color: currentColor;"></span>
                 Últ. vez
               </span>
@@ -587,8 +586,10 @@
                 </span>
 
                 @if (permissionsService.hasPermission('Hosts', 'eliminar')) {
-                <button type="button" class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
-                  (click)="$event.stopPropagation(); openDeleteHostModal(host, $event)" title="Eliminar nodo" aria-label="Eliminar nodo">
+                <button type="button"
+                  class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
+                  (click)="$event.stopPropagation(); openDeleteHostModal(host, $event)" title="Eliminar nodo"
+                  aria-label="Eliminar nodo">
                   <span class="icon-svg icon-trash"></span>
                 </button>
                 }

@@ -400,7 +400,7 @@
           'clase' : 'clases' }}</span>
       </div>
       <div class="class-times-list">
-        @for (classIdx of selectedClassIndexes(); track classIdx; let idx = $index) {
+        @for (classIdx of selectedClassIndexes(); track $index; let idx = $index) {
         @let classObj = getClassObj(classIdx);
         <div class="class-time-row d-flex align-items-center justify-content-between transition-all"
           [attr.data-class-index]="idx"
@@ -430,7 +430,7 @@
           <!-- Input de Tiempo en Segundos -->
           <div class="input-group flex-shrink-0" style="width: 7.5rem;">
             <input type="number" min="1" step="1" class="form-control text-paragraph-sm rounded-start-3"
-              [value]="getClassTime(classIdx)" (input)="updateClassTime(classIdx, $event)" placeholder="1" />
+              [value]="getClassTime(idx)" (input)="updateClassTime(idx, $event)" placeholder="1" />
             <span class="input-group-text text-micro font-monospace bg-light">seg</span>
           </div>
         </div>
@@ -451,20 +451,43 @@
 
     <div class="d-flex flex-column gap-3 pt-1">
       <!-- tipo_de_tracker -->
-      <div class="slider-field-group"
+      <div class="slider-field-group position-relative"
         title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">
         <div class="d-flex justify-content-between align-items-center mb-1">
           <span class="slider-field-label"
             title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">Algoritmo
             de Rastreo (Tracker)</span>
         </div>
-        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="selectedTracker()"
-          (ngModelChange)="selectedTracker.set($event)"
-          title="Algoritmos de tracking: 'Sort' es el más básico y requiere menos recursos, 'Oc-Sort' es un punto intermedio, mientras que 'Bot-Sort' es mejor para aplicaciones más complejas pero consume más recursos.">
-          <option value="Sort">Sort (Básico y Ligero)</option>
-          <option value="Oc-Sort">Oc-Sort (Intermedio)</option>
-          <option value="Bot-Sort">Bot-Sort (Complejo y Robusto)</option>
-        </select>
+        <button type="button"
+          class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+          [class.active]="isTrackerDropdownOpen()" [class.is-open]="isTrackerDropdownOpen()"
+          [title]="getTrackerLabel()" (click)="toggleTrackerDropdown($event)">
+          <span class="text-truncate font-semibold text-start flex-fill me-2" style="font-size: 0.8125rem;">
+            {{ getTrackerLabel() }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+            [class.rotated]="isTrackerDropdownOpen()" [class.rotate-180]="isTrackerDropdownOpen()"
+            style="width: 0.8125rem; height: 0.8125rem;"></span>
+        </button>
+        @if (isTrackerDropdownOpen()) {
+        <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+          style="z-index: 1060;" (click)="$event.stopPropagation()">
+          <div class="multiselect-options-list pe-1" style="max-height: 14rem;">
+            @for (opt of trackerOptions; track opt.value) {
+            <div class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+              [class.is-selected]="selectedTracker() === opt.value"
+              (click)="selectTracker(opt.value, $event)">
+              <span class="option-name font-semibold text-body me-2 text-nowrap">
+                {{ opt.label }}
+              </span>
+              @if (selectedTracker() === opt.value) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+          </div>
+        </div>
+        }
       </div>
 
       <!-- metadatos (si / no) -->
@@ -658,27 +681,40 @@
         </div>
         }
       </div>
-      <div class="col-6">
+      <div class="col-6 position-relative">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Código o tono de color del objeto del que se quiera validar la presencia para generar eventos.">Filtro
           de Color</label>
-        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="colorFiltro()"
-          (ngModelChange)="colorFiltro.set($event)"
-          title="Código o tono de color del objeto del que se quiera validar la presencia para generar eventos.">
-          <option value="Sin color">Sin filtro de color</option>
-          <option value="rojo">Rojo</option>
-          <option value="rosado">Rosado</option>
-          <option value="azul">Azul</option>
-          <option value="celeste">Celeste</option>
-          <option value="verde">Verde</option>
-          <option value="amarillo">Amarillo</option>
-          <option value="anaranjado">Anaranjado</option>
-          <option value="negro">Negro</option>
-          <option value="blanco">Blanco</option>
-          <option value="gris claro">Gris Claro</option>
-          <option value="gris oscuro">Gris Oscuro</option>
-          <option value="marron">Marrón</option>
-        </select>
+        <button type="button"
+          class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+          [class.active]="isColorFiltroDropdownOpen()" [class.is-open]="isColorFiltroDropdownOpen()"
+          [title]="getColorFiltroLabel()" (click)="toggleColorFiltroDropdown($event)">
+          <span class="text-truncate font-semibold text-start flex-fill me-2" style="font-size: 0.8125rem;">
+            {{ getColorFiltroLabel() }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+            [class.rotated]="isColorFiltroDropdownOpen()" [class.rotate-180]="isColorFiltroDropdownOpen()"
+            style="width: 0.8125rem; height: 0.8125rem;"></span>
+        </button>
+        @if (isColorFiltroDropdownOpen()) {
+        <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+          style="z-index: 1060;" (click)="$event.stopPropagation()">
+          <div class="multiselect-options-list pe-1" style="max-height: 14rem;">
+            @for (opt of colorFiltroOptions; track opt.value) {
+            <div class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+              [class.is-selected]="colorFiltro() === opt.value"
+              (click)="selectColorFiltro(opt.value, $event)">
+              <span class="option-name font-semibold text-body me-2 text-nowrap">
+                {{ opt.label }}
+              </span>
+              @if (colorFiltro() === opt.value) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+          </div>
+        </div>
+        }
       </div>
     </div>
     }
@@ -736,32 +772,75 @@
     <!-- 4. Personas con Objetos -->
     @if (selectedType() === 'persons_with_objects') {
     <div class="row g-3 align-inputs-bottom">
-      <div class="col-6">
+      <div class="col-6 position-relative">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Seleccionar la parte del cuerpo donde se debe validar el objeto seleccionado (Cabeza, Rostro, Manos, Pies, Rodillas, Pecho/Espalda, Cintura).">Parte
           del Cuerpo a Validar</label>
-        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="parteDeCuerpo()"
-          (ngModelChange)="parteDeCuerpo.set($event)"
-          title="Seleccionar la parte del cuerpo donde se debe validar el objeto seleccionado (Cabeza, Rostro, Manos, Pies, Rodillas, Pecho/Espalda, Cintura).">
-          <option value="Cabeza">Cabeza</option>
-          <option value="Rostro">Rostro</option>
-          <option value="Manos">Manos</option>
-          <option value="Pies">Pies</option>
-          <option value="Rodillas">Rodillas</option>
-          <option value="Pecho/Espalda">Pecho/Espalda</option>
-          <option value="Cintura">Cintura</option>
-        </select>
+        <button type="button"
+          class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+          [class.active]="isParteCuerpoDropdownOpen()" [class.is-open]="isParteCuerpoDropdownOpen()"
+          [title]="getParteCuerpoLabel()" (click)="toggleParteCuerpoDropdown($event)">
+          <span class="text-truncate font-semibold text-start flex-fill me-2" style="font-size: 0.8125rem;">
+            {{ getParteCuerpoLabel() }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+            [class.rotated]="isParteCuerpoDropdownOpen()" [class.rotate-180]="isParteCuerpoDropdownOpen()"
+            style="width: 0.8125rem; height: 0.8125rem;"></span>
+        </button>
+        @if (isParteCuerpoDropdownOpen()) {
+        <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+          style="z-index: 1060;" (click)="$event.stopPropagation()">
+          <div class="multiselect-options-list pe-1" style="max-height: 14rem;">
+            @for (opt of parteCuerpoOptions; track opt.value) {
+            <div class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+              [class.is-selected]="parteDeCuerpo() === opt.value"
+              (click)="selectParteCuerpo(opt.value, $event)">
+              <span class="option-name font-semibold text-body me-2 text-nowrap">
+                {{ opt.label }}
+              </span>
+              @if (parteDeCuerpo() === opt.value) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+          </div>
+        </div>
+        }
       </div>
-      <div class="col-6">
+      <div class="col-6 position-relative">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Seleccionar si la persona debe o no debe tener el objeto para generar un evento (Con objeto / Sin objeto).">Condición
           de Pertenencia</label>
-        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="pertenenciaObjeto()"
-          (ngModelChange)="pertenenciaObjeto.set($event)"
-          title="Seleccionar si la persona debe o no debe tener el objeto para generar un evento (Con objeto / Sin objeto).">
-          <option value="Con objeto">Con objeto</option>
-          <option value="Sin objeto">Sin objeto</option>
-        </select>
+        <button type="button"
+          class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+          [class.active]="isPertenenciaDropdownOpen()" [class.is-open]="isPertenenciaDropdownOpen()"
+          [title]="getPertenenciaLabel()" (click)="togglePertenenciaDropdown($event)">
+          <span class="text-truncate font-semibold text-start flex-fill me-2" style="font-size: 0.8125rem;">
+            {{ getPertenenciaLabel() }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+            [class.rotated]="isPertenenciaDropdownOpen()" [class.rotate-180]="isPertenenciaDropdownOpen()"
+            style="width: 0.8125rem; height: 0.8125rem;"></span>
+        </button>
+        @if (isPertenenciaDropdownOpen()) {
+        <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+          style="z-index: 1060;" (click)="$event.stopPropagation()">
+          <div class="multiselect-options-list pe-1" style="max-height: 14rem;">
+            @for (opt of pertenenciaOptions; track opt.value) {
+            <div class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+              [class.is-selected]="pertenenciaObjeto() === opt.value"
+              (click)="selectPertenencia(opt.value, $event)">
+              <span class="option-name font-semibold text-body me-2 text-nowrap">
+                {{ opt.label }}
+              </span>
+              @if (pertenenciaObjeto() === opt.value) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+          </div>
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
@@ -1122,16 +1201,40 @@
         </div>
         }
       </div>
-      <div class="col-4">
+      <div class="col-4 position-relative">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Parámetro que permite seleccionar la condición que dispara los eventos cuando se cumple o no la secuencia de los micromovimientos (Cumple / No cumple).">Condición
           de Disparo</label>
-        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="condicionEventoComportamiento()"
-          (ngModelChange)="condicionEventoComportamiento.set($event)"
-          title="Parámetro que permite seleccionar la condición que dispara los eventos cuando se cumple o no la secuencia de los micromovimientos (Cumple / No cumple).">
-          <option value="Cumple">Cumple</option>
-          <option value="No cumple">No cumple</option>
-        </select>
+        <button type="button"
+          class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+          [class.active]="isCondicionDropdownOpen()" [class.is-open]="isCondicionDropdownOpen()"
+          [title]="getCondicionLabel()" (click)="toggleCondicionDropdown($event)">
+          <span class="text-truncate font-semibold text-start flex-fill me-2" style="font-size: 0.8125rem;">
+            {{ getCondicionLabel() }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+            [class.rotated]="isCondicionDropdownOpen()" [class.rotate-180]="isCondicionDropdownOpen()"
+            style="width: 0.8125rem; height: 0.8125rem;"></span>
+        </button>
+        @if (isCondicionDropdownOpen()) {
+        <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+          style="z-index: 1060;" (click)="$event.stopPropagation()">
+          <div class="multiselect-options-list pe-1" style="max-height: 14rem;">
+            @for (opt of condicionOptions; track opt.value) {
+            <div class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+              [class.is-selected]="condicionEventoComportamiento() === opt.value"
+              (click)="selectCondicion(opt.value, $event)">
+              <span class="option-name font-semibold text-body me-2 text-nowrap">
+                {{ opt.label }}
+              </span>
+              @if (condicionEventoComportamiento() === opt.value) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+          </div>
+        </div>
+        }
       </div>
       <div class="col-4">
         <label class="form-label text-muted small font-semibold mb-1"
@@ -1343,39 +1446,75 @@
     <!-- 14. Cruce de Línea -->
     @if (selectedType() === 'line_crossing') {
     <div class="row g-3 align-inputs-bottom">
-      <div class="col-6">
+      <div class="col-6 position-relative">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Dirección del objeto al cruzar la línea de análisis (Bidireccional, De A a B, De B a A).">Dirección de
           Detección</label>
-        <select class="form-select text-paragraph-sm font-semibold rounded-3" [ngModel]="strDirection()"
-          (ngModelChange)="strDirection.set($event)"
-          title="Dirección del objeto al cruzar la línea de análisis (Bidireccional, De A a B, De B a A).">
-          <option value="Bidireccional">Bidireccional</option>
-          <option value="De A a B">De A a B</option>
-          <option value="De B a A">De B a A</option>
-        </select>
+        <button type="button"
+          class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+          [class.active]="isDirectionDropdownOpen()" [class.is-open]="isDirectionDropdownOpen()"
+          [title]="getDirectionLabel()" (click)="toggleDirectionDropdown($event)">
+          <span class="text-truncate font-semibold text-start flex-fill me-2" style="font-size: 0.8125rem;">
+            {{ getDirectionLabel() }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+            [class.rotated]="isDirectionDropdownOpen()" [class.rotate-180]="isDirectionDropdownOpen()"
+            style="width: 0.8125rem; height: 0.8125rem;"></span>
+        </button>
+        @if (isDirectionDropdownOpen()) {
+        <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+          style="z-index: 1060;" (click)="$event.stopPropagation()">
+          <div class="multiselect-options-list pe-1" style="max-height: 14rem;">
+            @for (opt of directionOptions; track opt.value) {
+            <div class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+              [class.is-selected]="strDirection() === opt.value"
+              (click)="selectDirection(opt.value, $event)">
+              <span class="option-name font-semibold text-body me-2 text-nowrap">
+                {{ opt.label }}
+              </span>
+              @if (strDirection() === opt.value) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+          </div>
+        </div>
+        }
       </div>
-      <div class="col-6">
+      <div class="col-6 position-relative">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Código RGB o tono de color del objeto del que se quiera validar el cruce para generar eventos.">Filtro
           de Color</label>
-        <select class="form-select text-paragraph-sm rounded-3" [ngModel]="colorFiltro()"
-          (ngModelChange)="colorFiltro.set($event)"
-          title="Código RGB o tono de color del objeto del que se quiera validar el cruce para generar eventos.">
-          <option value="Sin color">Sin filtro de color</option>
-          <option value="rojo">Rojo</option>
-          <option value="rosado">Rosado</option>
-          <option value="azul">Azul</option>
-          <option value="celeste">Celeste</option>
-          <option value="verde">Verde</option>
-          <option value="amarillo">Amarillo</option>
-          <option value="anaranjado">Anaranjado</option>
-          <option value="negro">Negro</option>
-          <option value="blanco">Blanco</option>
-          <option value="gris claro">Gris Claro</option>
-          <option value="gris oscuro">Gris Oscuro</option>
-          <option value="marron">Marrón</option>
-        </select>
+        <button type="button"
+          class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+          [class.active]="isColorFiltroDropdownOpen()" [class.is-open]="isColorFiltroDropdownOpen()"
+          [title]="getColorFiltroLabel()" (click)="toggleColorFiltroDropdown($event)">
+          <span class="text-truncate font-semibold text-start flex-fill me-2" style="font-size: 0.8125rem;">
+            {{ getColorFiltroLabel() }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+            [class.rotated]="isColorFiltroDropdownOpen()" [class.rotate-180]="isColorFiltroDropdownOpen()"
+            style="width: 0.8125rem; height: 0.8125rem;"></span>
+        </button>
+        @if (isColorFiltroDropdownOpen()) {
+        <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+          style="z-index: 1060;" (click)="$event.stopPropagation()">
+          <div class="multiselect-options-list pe-1" style="max-height: 14rem;">
+            @for (opt of colorFiltroOptions; track opt.value) {
+            <div class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+              [class.is-selected]="colorFiltro() === opt.value"
+              (click)="selectColorFiltro(opt.value, $event)">
+              <span class="option-name font-semibold text-body me-2 text-nowrap">
+                {{ opt.label }}
+              </span>
+              @if (colorFiltro() === opt.value) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+          </div>
+        </div>
+        }
       </div>
     </div>
     }
@@ -1383,16 +1522,39 @@
     <!-- 15. Control de Aforo -->
     @if (selectedType() === 'capacity_control') {
     <div class="row g-3 align-inputs-bottom">
-      <div class="col-6">
+      <div class="col-6 position-relative">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Dirección en la que se cuenta el ingreso o salida de personas.">Dirección de Conteo</label>
-        <select class="form-select text-paragraph-sm font-semibold rounded-3" [ngModel]="strDirection()"
-          (ngModelChange)="strDirection.set($event)"
-          title="Dirección en la que se cuenta el ingreso o salida de personas.">
-          <option value="Bidireccional">Bidireccional</option>
-          <option value="De A a B">De A a B</option>
-          <option value="De B a A">De B a A</option>
-        </select>
+        <button type="button"
+          class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+          [class.active]="isDirectionDropdownOpen()" [class.is-open]="isDirectionDropdownOpen()"
+          [title]="getDirectionLabel()" (click)="toggleDirectionDropdown($event)">
+          <span class="text-truncate font-semibold text-start flex-fill me-2" style="font-size: 0.8125rem;">
+            {{ getDirectionLabel() }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+            [class.rotated]="isDirectionDropdownOpen()" [class.rotate-180]="isDirectionDropdownOpen()"
+            style="width: 0.8125rem; height: 0.8125rem;"></span>
+        </button>
+        @if (isDirectionDropdownOpen()) {
+        <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+          style="z-index: 1060;" (click)="$event.stopPropagation()">
+          <div class="multiselect-options-list pe-1" style="max-height: 14rem;">
+            @for (opt of directionOptions; track opt.value) {
+            <div class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+              [class.is-selected]="strDirection() === opt.value"
+              (click)="selectDirection(opt.value, $event)">
+              <span class="option-name font-semibold text-body me-2 text-nowrap">
+                {{ opt.label }}
+              </span>
+              @if (strDirection() === opt.value) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+          </div>
+        </div>
+        }
       </div>
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
@@ -1436,15 +1598,39 @@
     <!-- 16. Análisis de Tráfico -->
     @if (selectedType() === 'traffic_analysis') {
     <div class="row g-3 align-inputs-bottom">
-      <div class="col-12">
+      <div class="col-12 position-relative">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Dirección de flujo vehicular a monitorear.">Dirección de Detección</label>
-        <select class="form-select text-paragraph-sm font-semibold rounded-3" [ngModel]="strDirection()"
-          (ngModelChange)="strDirection.set($event)" title="Dirección de flujo vehicular a monitorear.">
-          <option value="Bidireccional">Bidireccional</option>
-          <option value="De A a B">De A a B</option>
-          <option value="De B a A">De B a A</option>
-        </select>
+        <button type="button"
+          class="btn btn-filter-dropdown w-100 min-w-0 overflow-hidden d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+          [class.active]="isDirectionDropdownOpen()" [class.is-open]="isDirectionDropdownOpen()"
+          [title]="getDirectionLabel()" (click)="toggleDirectionDropdown($event)">
+          <span class="text-truncate font-semibold text-start flex-fill me-2" style="font-size: 0.8125rem;">
+            {{ getDirectionLabel() }}
+          </span>
+          <span class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 trigger-chevron"
+            [class.rotated]="isDirectionDropdownOpen()" [class.rotate-180]="isDirectionDropdownOpen()"
+            style="width: 0.8125rem; height: 0.8125rem;"></span>
+        </button>
+        @if (isDirectionDropdownOpen()) {
+        <div class="classes-dropdown-menu type-dropdown-menu shadow-xl p-2 rounded-4 position-absolute w-100 bg-surface border"
+          style="z-index: 1060;" (click)="$event.stopPropagation()">
+          <div class="multiselect-options-list pe-1" style="max-height: 14rem;">
+            @for (opt of directionOptions; track opt.value) {
+            <div class="multiselect-option-item rounded-3 py-2 px-3 d-flex align-items-center justify-content-between text-paragraph-sm cursor-pointer"
+              [class.is-selected]="strDirection() === opt.value"
+              (click)="selectDirection(opt.value, $event)">
+              <span class="option-name font-semibold text-body me-2 text-nowrap">
+                {{ opt.label }}
+              </span>
+              @if (strDirection() === opt.value) {
+              <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 14px; height: 14px;"></span>
+              }
+            </div>
+            }
+          </div>
+        </div>
+        }
       </div>
     </div>
     }

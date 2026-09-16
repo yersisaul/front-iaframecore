@@ -40,29 +40,37 @@
             class="list-item-row d-flex align-items-center justify-content-between p-3 rounded-3 border transition-all"
             [class.active-list]="selectedListId() === lst.list_id" [class.card-crud-new]="listNewIds().has(lst.list_id)"
             [class.card-crud-updated]="listUpdatedIds().has(lst.list_id)"
-            [class.card-crud-deleting]="listDeletingIds().has(lst.list_id)" (click)="onListSelected(lst.list_id)">
-            <div class="d-flex align-items-center gap-3 w-100-min-0">
-              <span class="submenu-dot" [class.rostros]="listType() === 'face_recognition'"
+            [class.card-crud-deleting]="listDeletingIds().has(lst.list_id)" (click)="onListSelected(lst.list_id)"
+            (mouseenter)="onListCardMouseEnter($event)" (mouseleave)="onListCardMouseLeave($event)">
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1">
+              <span class="submenu-dot flex-shrink-0" [class.rostros]="listType() === 'face_recognition'"
                 [class.vehiculos]="listType() === 'plate_recognition'"></span>
-              <div class="text-truncate w-100-min-0">
-                <span class="fw-semibold text-body d-block text-truncate fs-normal-label">{{ lst.name }}</span>
-                <span class="text-muted small text-truncate d-block fs-tiny-label" [title]="lst.description">{{
-                  lst.description || 'Sin descripción' }}</span>
+              <div class="list-meta-marquee-wrapper min-w-0 flex-grow-1">
+                <div class="list-name-marquee-container min-w-0">
+                  <span class="fw-semibold text-body d-block list-name-marquee-text fs-normal-label"
+                    [title]="lst.name">{{ lst.name }}</span>
+                </div>
+                <div class="list-desc-marquee-container min-w-0">
+                  <span class="text-muted small d-block list-desc-marquee-text fs-tiny-label"
+                    [title]="lst.description">{{
+                    lst.description || 'Sin descripción' }}</span>
+                </div>
               </div>
             </div>
 
-            <div class="d-flex align-items-center gap-1 list-item-actions">
+            <!-- Controles de acción directos SVG desplegables en hover -->
+            <div class="list-card-actions d-flex align-items-center flex-shrink-0">
               @if (permissionsService.hasPermission('Listas', 'editar')) {
-              <button class="btn-ghost p-1.5 text-primary-hover rounded-3 edit-list-btn"
-                (click)="openListModal('edit', lst, $event)" title="Editar Lista">
-                <span class="icon-svg icon-edit" style="width: 14px; height: 14px;"></span>
-              </button>
+              <span role="button" tabindex="0" class="icon-svg icon-edit list-btn-action list-btn-edit"
+                (click)="openListModal('edit', lst, $event)" (keydown.enter)="openListModal('edit', lst, $event)"
+                (keydown.space)="openListModal('edit', lst, $event)" title="Editar Lista">
+              </span>
               }
               @if (permissionsService.hasPermission('Listas', 'eliminar')) {
-              <button class="btn-ghost p-1.5 text-danger-hover rounded-3 delete-list-btn"
-                (click)="onDeleteWatchlist(lst.list_id, $event)" title="Eliminar Lista">
-                <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-              </button>
+              <span role="button" tabindex="0" class="icon-svg icon-trash list-btn-action list-btn-delete"
+                (click)="onDeleteWatchlist(lst.list_id, $event)" (keydown.enter)="onDeleteWatchlist(lst.list_id, $event)"
+                (keydown.space)="onDeleteWatchlist(lst.list_id, $event)" title="Eliminar Lista">
+              </span>
               }
             </div>
           </div>
@@ -95,12 +103,6 @@
               <div class="d-flex align-items-center gap-2 w-100-min-0">
                 <h4 class="fw-bold text-body mb-0 text-truncate fs-heading-medium" [title]="list.name">{{ list.name }}
                 </h4>
-                @if (permissionsService.hasPermission('Listas', 'editar')) {
-                <button class="btn-ghost p-1 text-primary-hover rounded-3" (click)="openListModal('edit', list, $event)"
-                  title="Editar Lista">
-                  <span class="icon-svg icon-edit text-muted opacity-60" style="width: 14px; height: 14px;"></span>
-                </button>
-                }
               </div>
               <p class="text-muted small mb-0 mt-0.5 fs-paragraph-tiny">
                 Se encontraron <span class="fw-semibold text-primary">{{ filteredListDetails().length }}</span>
@@ -300,12 +302,12 @@
               [class.card-crud-deleting]="listDeletingIds().has(detail.detail_id)"
               (click)="selectSubjectDetail(detail.detail_id); $event.stopPropagation()">
 
-              <!-- Floating Count Badge (Top-Left) -->
-              <span class="subject-card-badge position-absolute d-flex align-items-center gap-1">
-                <span class="icon-svg icon-target badge-icon"
-                  style="width: 10px; height: 10px; background-color: currentColor;"></span>
-                <span>{{ subjectDetections()[detail.detail_id]?.count || 0 }}</span>
-              </span>
+              <!-- Floating Sightings Count (Top-Left, No Container) -->
+              <div class="subject-card-sightings position-absolute d-flex align-items-center gap-1.5"
+                title="Cantidad de avistamientos">
+                <span class="icon-svg icon-eye subject-sightings-icon"></span>
+                <span class="subject-sightings-count font-monospace">{{ subjectDetections()[detail.detail_id]?.count || 0 }}</span>
+              </div>
 
               <!-- Selection Checkbox (Top-Right) -->
               @if (permissionsService.hasPermission('Detalles Listas', 'eliminar')) {
@@ -473,11 +475,12 @@
                   <div class="identity-meta-body min-w-0">
                     <span class="identity-meta-label">ID Registro</span>
                     @if (copiedRowId() === activeDetail.detail_id + '-id') {
-                    <span class="copied-badge text-success fw-bold font-monospace" style="font-size: 0.8rem;">¡Copiado!</span>
+                    <span class="copied-badge text-success fw-bold font-monospace"
+                      style="font-size: 0.8rem;">¡Copiado!</span>
                     } @else {
                     <div class="identity-meta-val-container">
-                      <span class="identity-meta-value font-monospace"
-                        [title]="activeDetail.detail_id">{{ activeDetail.detail_id }}</span>
+                      <span class="identity-meta-value font-monospace" [title]="activeDetail.detail_id">{{
+                        activeDetail.detail_id }}</span>
                     </div>
                     }
                   </div>
@@ -493,14 +496,17 @@
                   </div>
                   <div class="identity-meta-body d-flex align-items-center justify-content-between min-w-0 gap-2">
                     <div class="min-w-0 flex-grow-1">
-                      <span class="identity-meta-label">{{ listType() === 'face_recognition' ? 'Nombre del Sujeto' : 'Placa Registrada' }}</span>
+                      <span class="identity-meta-label">{{ listType() === 'face_recognition' ? 'Nombre del Sujeto' :
+                        'Placa Registrada' }}</span>
                       <div class="identity-meta-val-container">
                         @if (listType() === 'face_recognition') {
-                        <span class="identity-meta-value fw-bold" [title]="activeDetail.nombre_asociado || 'Sin Nombre'">
+                        <span class="identity-meta-value fw-bold"
+                          [title]="activeDetail.nombre_asociado || 'Sin Nombre'">
                           {{ activeDetail.nombre_asociado || 'Sin Nombre' }}
                         </span>
                         } @else {
-                        <span class="identity-meta-value fw-bold font-monospace" [title]="activeDetail.metadata?.text_placa || 'DESCONOCIDA'">
+                        <span class="identity-meta-value fw-bold font-monospace"
+                          [title]="activeDetail.metadata?.text_placa || 'DESCONOCIDA'">
                           {{ activeDetail.metadata?.text_placa || 'DESCONOCIDA' }}
                         </span>
                         }
@@ -685,11 +691,11 @@
 
       @if (hit.imagen) {
       <div class="sighting-preview-img-container w-100 h-100 position-relative cursor-pointer"
-        (click)="openFullscreenImage(hit.imagen, $event)"
-        title="Clic para ver en pantalla completa">
+        (click)="openFullscreenImage(hit.imagen, $event)" title="Clic para ver en pantalla completa">
         <img [src]="hit.imagen" (error)="onImageError($event)" class="sighting-preview-img" alt="Avistamiento" />
         <div class="sighting-preview-zoom-overlay">
-          <span class="icon-svg icon-fullscreen" style="width: 20px; height: 20px; background-color: currentColor;"></span>
+          <span class="icon-svg icon-fullscreen"
+            style="width: 20px; height: 20px; background-color: currentColor;"></span>
           <span class="zoom-text">Pantalla Completa</span>
         </div>
       </div>
@@ -765,7 +771,8 @@
           </div>
           <div class="sighting-preview-field">
             <span class="sp-label">ID Evento</span>
-            <span class="sp-value font-monospace text-truncate d-block" [title]="hit.eventId || hit.id">{{ hit.eventId || hit.id }}</span>
+            <span class="sp-value font-monospace text-truncate d-block" [title]="hit.eventId || hit.id">{{ hit.eventId
+              || hit.id }}</span>
           </div>
         </div>
 

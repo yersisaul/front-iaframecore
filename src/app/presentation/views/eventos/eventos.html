@@ -63,7 +63,7 @@
             </div>
           </div>
           <!-- Opciones scrolleables -->
-          <div class="dropdown-items-scroll scrollable-menu p-2 pt-1">
+          <div class="dropdown-items-scroll scrollable-menu p-1">
             @if (filteredCamarasOptions().length === 0) {
             <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
             }
@@ -170,7 +170,7 @@
             </div>
           </div>
           <!-- Opciones scrolleables -->
-          <div class="dropdown-items-scroll scrollable-menu p-2 pt-1">
+          <div class="dropdown-items-scroll scrollable-menu p-1">
             @if (filteredListasOptions().length === 0) {
             <div class="text-muted small text-center py-2 opacity-60">Sin listas registradas</div>
             }
@@ -219,7 +219,7 @@
             </div>
           </div>
           <!-- Opciones scrolleables -->
-          <div class="dropdown-items-scroll scrollable-menu p-2 pt-1">
+          <div class="dropdown-items-scroll scrollable-menu p-1">
             @if (filteredSujetosOptions().length === 0) {
             <div class="text-muted small text-center py-2 opacity-60">Sin sujetos registrados</div>
             }
@@ -501,10 +501,13 @@
               <span class="icon-svg icon-magnify magnify-icon" style="width: 32px; height: 32px;"></span>
             </div>
 
-            @if (record.urlImg) {
-            <img [src]="record.urlImg" (error)="onImageError($event)"
+            @if (record.imgMinioObjectName || record.urlImg) {
+            @let resolvedImgUrl = (record.imgMinioObjectName || record.urlImg) | mediaUrl | async;
+            @if (resolvedImgUrl) {
+            <img [src]="resolvedImgUrl" (error)="onImageError($event)"
               class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
               alt="Event Thumbnail" />
+            }
             }
 
             <!-- Floating Analytic Type Badge -->
@@ -584,7 +587,7 @@
               }
 
               <!-- Badges de Métricas Contextuales por Analítica (Diseño equilibrado con alto contraste y sin estridencia) -->
-              <div class="d-flex flex-wrap gap-2 mt-3 align-items-center">
+              <div class="d-flex flex-wrap gap-2 pt-2 align-items-center">
                 <!-- Sentido de Cruce de Línea -->
                 @if (record.direccion) {
                 @let isEntrada = record.direccion.toLowerCase().includes('entrada');

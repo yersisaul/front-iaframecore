@@ -11,6 +11,7 @@ import { ListService } from '../../../core/services/list.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { WebsocketService } from '../../../core/services/websocket.service';
 import { WebRtcService } from '../../../core/services/webrtc.service';
+import { MediaFileService } from '../../../core/services/media-file.service';
 import { IEventRepository } from '../../../core/domain/repositories/event.repository';
 
 import { Camera } from '../../../core/domain/entities/camera.models';
@@ -145,6 +146,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
   private eventRepository = inject(IEventRepository);
   private websocketService = inject(WebsocketService);
   private webRtcService = inject(WebRtcService);
+  private mediaFileService = inject(MediaFileService);
   private listService = inject(ListService);
   public permissionsService = inject(PermissionsService);
 
@@ -183,6 +185,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
   readonly validationMessageType = signal<'warning' | 'danger' | 'success'>('warning');
   readonly activeErrorTarget = signal<'classes' | 'canvas' | 'prueba_movimiento' | string | null>(null);
   readonly hasAttemptedSubmitAnalytic = signal<boolean>(false);
+  readonly hasUserModifiedCanvas = signal<boolean>(false);
   private notificationTimeoutId: any = null;
 
   triggerErrorHighlight(target: 'classes' | 'canvas' | 'prueba_movimiento' | string): void {
@@ -344,10 +347,10 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
 
   openCreateAnalytic(): void {
     this.liveWebRtcFrameUrl.set('');
-    this.lastEventImageUrl.set('');
     this.selectedAnalyticForConfig.set(null);
     this.selectedScheduleId.set(null);
     this.hasAttemptedSubmitAnalytic.set(false);
+    this.hasUserModifiedCanvas.set(false);
     this.clearNotification();
     this.canvasGeometryType.set('polygon'); // Reset a Polígono por defecto para nueva analítica
     this.drawnGeometryData.set(null);
@@ -420,6 +423,9 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
 
   onGeometryChanged(data: any): void {
     this.drawnGeometryData.set(data);
+    if (data?.hasUserModified) {
+      this.hasUserModifiedCanvas.set(true);
+    }
   }
 
   readonly maxAreas = signal<number>(10);
@@ -540,26 +546,31 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
     const currentZoneWidth = formState?.detection_params?.zona_analisis ?? formState?.specific_params?.zona_analisis ?? 40;
     const halfW = Number(currentZoneWidth) / 2;
 
-    const rawGeo = this.drawnGeometryData();
-    const cleanGeometricObjects = {
-      polygons: Array.isArray(rawGeo?.polygons) ? rawGeo.polygons.map((p: any) => {
-        const cleaned = { ...p };
-        delete cleaned.camera_id;
-        return cleaned;
-      }) : [],
-      lines: Array.isArray(rawGeo?.lines) ? rawGeo.lines.map((l: any) => {
-        const pts = l.extreme_points || l.points || [];
-        const p1 = pts[0] || { x: 0, y: 0 };
-        const p2 = pts[1] || p1;
-        const freshAnalysisZone = this.calculateAnalysisZone(p1, p2, halfW);
+    let cleanGeometricObjects: any;
+    if (editingAnalytic && !this.hasUserModifiedCanvas() && editingAnalytic.geometricObjects) {
+      cleanGeometricObjects = editingAnalytic.geometricObjects;
+    } else {
+      const rawGeo = this.drawnGeometryData();
+      cleanGeometricObjects = {
+        polygons: Array.isArray(rawGeo?.polygons) ? rawGeo.polygons.map((p: any) => {
+          const cleaned = { ...p };
+          delete cleaned.camera_id;
+          return cleaned;
+        }) : [],
+        lines: Array.isArray(rawGeo?.lines) ? rawGeo.lines.map((l: any) => {
+          const pts = l.extreme_points || l.points || [];
+          const p1 = pts[0] || { x: 0, y: 0 };
+          const p2 = pts[1] || p1;
+          const freshAnalysisZone = this.calculateAnalysisZone(p1, p2, halfW);
 
-        return {
-          ...l,
-          camera_id: l.camera_id || this.camera?.id || '',
-          analysis_zone: freshAnalysisZone
-        };
-      }) : []
-    };
+          return {
+            ...l,
+            camera_id: l.camera_id || this.camera?.id || '',
+            analysis_zone: freshAnalysisZone
+          };
+        }) : []
+      };
+    }
 
     // Calcular estado inicial inteligente según horario
     let calculatedStatus: 'active' | 'inactive';
@@ -571,6 +582,19 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
       calculatedStatus = 'active';
     }
 
+    const analyticParameters: any = {
+      Modelo: formState?.model || formState?.specific_params?.['Modelo'] || 'dependencias/weights/objetc_detection/yolo26m.pt',
+      ...formState?.tracker,
+      ...formState?.detection_params,
+      ...formState?.specific_params,
+    };
+
+    delete analyticParameters.scale_area;
+
+    if (selectedSchedObj && selectedSchedName && selectedSchedName.trim().toLowerCase() !== 'sin horario') {
+      analyticParameters.horario = selectedSchedName;
+    }
+
     const payload: any = {
       camera_id: this.camera?.id || '',
       fingerprint_host: hostFp,
@@ -578,13 +602,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
       analytic_type: formState?.analytic_type || 'Objeto en area',
       analytic_status: calculatedStatus,
       detection_classes: classes,
-      parameters: {
-        Modelo: formState?.model || formState?.specific_params?.['Modelo'] || 'dependencias/weights/objetc_detection/yolo26m.pt',
-        ...formState?.tracker,
-        ...formState?.detection_params,
-        ...formState?.specific_params,
-        horario: selectedSchedName
-      },
+      parameters: analyticParameters,
       geometric_objects: cleanGeometricObjects,
       acciones: this.analyticActionsState() || {}
     };
@@ -756,20 +774,29 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
   }
 
   fetchLastEventImage(): void {
-    if (!this.camera?.name) return;
+    if (!this.camera?.name && !this.camera?.id) return;
+    const camNames = [this.camera.name, this.camera.id].filter((v): v is string => !!v && v.trim().length > 0);
+
     this.eventRepository.search({
       search: '',
-      camaras: [this.camera.name],
+      camaras: camNames,
       analiticas: [],
       objetos: [],
       timestampDesde: null,
       timestampHasta: null
-    }, 1, 5).subscribe({
+    }, 1, 10).subscribe({
       next: (res) => {
         if (res.records && res.records.length > 0) {
-          const withImg = res.records.find(r => !!r.urlImg);
-          if (withImg && withImg.urlImg) {
-            this.lastEventImageUrl.set(withImg.urlImg);
+          const withImg = res.records.find(r => !!(r.imgMinioObjectName || r.urlImg));
+          if (withImg) {
+            const rawTarget = withImg.imgMinioObjectName || withImg.urlImg;
+            if (rawTarget) {
+              this.mediaFileService.getFileUrl(rawTarget).subscribe(resolvedUrl => {
+                if (resolvedUrl) {
+                  this.lastEventImageUrl.set(resolvedUrl);
+                }
+              });
+            }
           }
         }
       },
@@ -777,6 +804,17 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
         console.warn('[CameraDetailDrawer] No se pudo consultar la captura del último evento:', err);
       }
     });
+
+    // Fallback inmediato si el objeto cámara ya contiene una imagen/snapshot
+    const cam = this.camera as any;
+    const fallbackRaw = cam?.lastSnapshotUrl || cam?.snapshotUrl || cam?.urlImg || cam?.snapshot || cam?.lastEventImg;
+    if (fallbackRaw && !this.lastEventImageUrl()) {
+      this.mediaFileService.getFileUrl(fallbackRaw).subscribe(resolvedUrl => {
+        if (resolvedUrl && !this.lastEventImageUrl()) {
+          this.lastEventImageUrl.set(resolvedUrl);
+        }
+      });
+    }
   }
 
   /**
@@ -889,9 +927,9 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
 
   openEditAnalytic(analytic: Analytic): void {
     this.liveWebRtcFrameUrl.set('');
-    this.lastEventImageUrl.set('');
     this.selectedAnalyticForConfig.set(analytic);
     this.hasAttemptedSubmitAnalytic.set(false);
+    this.hasUserModifiedCanvas.set(false);
     this.clearNotification();
 
     // Pre-seleccionar horario asociado localmente o coincidente por parámetro de analítica
@@ -954,6 +992,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
     this.showAnalyticConfigDrawer.set(false);
     this.selectedAnalyticForConfig.set(null);
     this.hasAttemptedSubmitAnalytic.set(false);
+    this.hasUserModifiedCanvas.set(false);
     this.clearNotification();
   }
 

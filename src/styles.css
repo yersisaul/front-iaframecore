@@ -1233,6 +1233,9 @@ body:not(.dark) .form-select option {
   max-height: 280px;
   overflow-y: auto;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .camera-search-input-row {
@@ -2118,6 +2121,72 @@ main,
   height: 0 !important;
 }
 
+/* ── Global Accessible & Styled Scrollbars for Content Containers ── */
+.custom-scrollbar,
+.drawer-scroll-area,
+.modal-body-content {
+  overflow-y: auto !important;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent !important;
+  -ms-overflow-style: auto !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar,
+.drawer-scroll-area::-webkit-scrollbar,
+.modal-body-content::-webkit-scrollbar {
+  display: block !important;
+  width: 6px !important;
+  height: 6px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track,
+.drawer-scroll-area::-webkit-scrollbar-track,
+.modal-body-content::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.drawer-scroll-area::-webkit-scrollbar-thumb,
+.modal-body-content::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.4) !important;
+  border-radius: 9999px !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.drawer-scroll-area::-webkit-scrollbar-thumb:hover,
+.modal-body-content::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(59, 130, 246, 0.8) !important;
+}
+
+[data-bs-theme="dark"] .custom-scrollbar,
+[data-bs-theme="dark"] .drawer-scroll-area,
+[data-bs-theme="dark"] .modal-body-content,
+.dark .custom-scrollbar,
+.dark .drawer-scroll-area,
+.dark .modal-body-content {
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent !important;
+}
+
+[data-bs-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb,
+[data-bs-theme="dark"] .drawer-scroll-area::-webkit-scrollbar-thumb,
+[data-bs-theme="dark"] .modal-body-content::-webkit-scrollbar-thumb,
+.dark .custom-scrollbar::-webkit-scrollbar-thumb,
+.dark .drawer-scroll-area::-webkit-scrollbar-thumb,
+.dark .modal-body-content::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+[data-bs-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb:hover,
+[data-bs-theme="dark"] .drawer-scroll-area::-webkit-scrollbar-thumb:hover,
+[data-bs-theme="dark"] .modal-body-content::-webkit-scrollbar-thumb:hover,
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.dark .drawer-scroll-area::-webkit-scrollbar-thumb:hover,
+.dark .modal-body-content::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(96, 165, 250, 0.9) !important;
+}
+
 /* ── Global Premium Primary Header Button Style ── */
 .btn-header-primary,
 .btn-migrate-config {
@@ -2688,4 +2757,12 @@ body.zen-mode-active .monitoreo-view-container {
   padding: 0 !important;
   height: 100vh !important;
   max-height: 100vh !important;
+}
+
+/* Global timeline dragging state */
+body.is-timeline-dragging,
+body.is-timeline-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }

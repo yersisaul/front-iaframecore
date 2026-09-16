@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { EventRecord } from '../../../core/domain/entities/event.models';
 import { copyToClipboard as utilCopyToClipboard } from '../../../core/utils/clipboard.util';
 import { FacialMatchService, FacialMatchInfo } from '../../../core/services/facial-match.service';
+import { MediaFileService } from '../../../core/services/media-file.service';
 
 @Component({
   selector: 'app-event-detail-modal',
@@ -13,6 +14,10 @@ import { FacialMatchService, FacialMatchInfo } from '../../../core/services/faci
 })
 export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterViewInit {
   private facialMatchService = inject(FacialMatchService);
+  private mediaFileService = inject(MediaFileService);
+
+  readonly resolvedImageUrl = signal<string>('');
+  readonly resolvedVideoUrl = signal<string>('');
 
   @ViewChild('cameraTitleContainer') cameraTitleContainer?: ElementRef<HTMLElement>;
   @ViewChild('cameraTitleEl') cameraTitleEl?: ElementRef<HTMLElement>;
@@ -73,6 +78,24 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
 
       setTimeout(() => this.checkTitleOverflow(), 60);
       setTimeout(() => this.checkTitleOverflow(), 300);
+
+      const imgTarget = this.event.imgMinioObjectName || this.event.urlImg;
+      if (imgTarget) {
+        this.mediaFileService.getFileUrl(imgTarget).subscribe(url => {
+          this.resolvedImageUrl.set(url);
+        });
+      } else {
+        this.resolvedImageUrl.set('');
+      }
+
+      const videoTarget = this.event.videoMinioObjectName || this.event.urlVideo;
+      if (videoTarget) {
+        this.mediaFileService.getFileUrl(videoTarget).subscribe(url => {
+          this.resolvedVideoUrl.set(url);
+        });
+      } else {
+        this.resolvedVideoUrl.set('');
+      }
 
       if (this.isComparisonAvailable(this.event)) {
         this.isMatchLoading.set(true);
@@ -244,8 +267,8 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
       // Comprobar si hay un medio activo válido visible en el workspace
       const isVideoMode = this.activeMediaType() === 'video';
       const isComparisonMode = this.activeMediaType() === 'comparison';
-      const hasValidVideo = !!this.event?.urlVideo && !this.hasVideoError();
-      const hasValidImage = !!this.event?.urlImg && !this.hasImageError();
+      const hasValidVideo = !!(this.resolvedVideoUrl() || this.event?.videoMinioObjectName || this.event?.urlVideo) && !this.hasVideoError();
+      const hasValidImage = !!(this.resolvedImageUrl() || this.event?.imgMinioObjectName || this.event?.urlImg) && !this.hasImageError();
 
       const hasActiveMedia = isComparisonMode
         ? (hasValidImage || hasValidVideo)
@@ -279,6 +302,8 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
     this.activeMediaType.set('image');
     this.mediaAspectRatio.set(null);
     this.focusedComparisonCard.set(null);
+    this.resolvedImageUrl.set('');
+    this.resolvedVideoUrl.set('');
     this.close.emit();
   }
 

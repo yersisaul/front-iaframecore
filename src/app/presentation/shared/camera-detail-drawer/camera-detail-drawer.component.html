@@ -219,31 +219,36 @@
                   }
                 </div>
               </div>
-              <!-- Contenedor de acciones en cabecera: Switch, Editar, Eliminar y Chevron Toggle -->
-              <div class="d-flex align-items-center gap-2">
+              <!-- Contenedor de acciones en cabecera: Acciones en Hover, Switch y Chevron Toggle -->
+              <div class="d-flex align-items-center gap-3">
+                <!-- Acciones en Hover (Editar / Eliminar) a la izquierda del switch -->
+                <div class="analytic-card-hover-actions d-flex align-items-center gap-3">
+                  <!-- Botón Editar Analítica -->
+                  @if (permissionsService.hasPermission('Analíticas', 'editar')) {
+                  <button type="button"
+                    class="icon-svg icon-edit cam-direct-icon-btn cam-icon-btn-edit flex-shrink-0"
+                    (click)="openEditAnalytic(analytic); $event.stopPropagation()"
+                    title="Editar Configuración de Analítica" aria-label="Editar analítica">
+                  </button>
+                  }
+                  <!-- Botón Eliminar Analítica -->
+                  @if (permissionsService.hasPermission('Analíticas', 'eliminar')) {
+                  <button type="button"
+                    class="icon-svg icon-trash cam-direct-icon-btn cam-icon-btn-delete flex-shrink-0"
+                    (click)="openDeleteAnalyticModal(analytic); $event.stopPropagation()" title="Eliminar Analítica"
+                    aria-label="Eliminar analítica">
+                  </button>
+                  }
+                </div>
+
                 <!-- Control de estado por switch -->
-                <div class="form-check form-switch m-0 d-flex align-items-center" (click)="$event.stopPropagation()">
-                  <input class="form-check-input" type="checkbox" role="switch" [id]="'switch-' + analytic.id"
+                <div class="form-check form-switch m-0 p-0 d-flex align-items-center" (click)="$event.stopPropagation()">
+                  <input class="form-check-input ms-0" type="checkbox" role="switch" [id]="'switch-' + analytic.id"
                     [checked]="analytic.status === 'active'"
                     [disabled]="!permissionsService.hasPermission('Analíticas', 'activar_desactivar')"
                     (change)="toggleAnalyticStatus(analytic)">
                 </div>
-                <!-- Botón Editar Analítica -->
-                @if (permissionsService.hasPermission('Analíticas', 'editar')) {
-                <button class="cam-icon-btn cam-icon-btn-edit d-flex align-items-center justify-content-center"
-                  (click)="openEditAnalytic(analytic); $event.stopPropagation()"
-                  title="Editar Configuración de Analítica" aria-label="Editar analítica">
-                  <span class="icon-svg icon-edit"></span>
-                </button>
-                }
-                <!-- Botón Eliminar Analítica -->
-                @if (permissionsService.hasPermission('Analíticas', 'eliminar')) {
-                <button class="cam-icon-btn cam-icon-btn-delete d-flex align-items-center justify-content-center"
-                  (click)="openDeleteAnalyticModal(analytic); $event.stopPropagation()" title="Eliminar Analítica"
-                  aria-label="Eliminar analítica">
-                  <span class="icon-svg icon-trash"></span>
-                </button>
-                }
+
                 <!-- Chevron decorativo para indicar expansión -->
                 <div class="btn-toggle-details transition-all d-flex align-items-center justify-content-center"
                   [class.open]="isAnalyticDetailsExpanded(analytic.id)">
@@ -290,7 +295,7 @@
 
               <!-- Botón/Dropdown para añadir horario (únicamente visible si no hay ningún horario asociado) -->
               @if (getSchedulesForAnalytic(analytic.id).length === 0) {
-              <div class="position-relative w-100 d-block">
+              <div class="position-relative w-100 d-block pt-2">
                 @if (permissionsService.hasPermission('Analíticas', 'editar')) {
                 <button class="btn-add-schedule-dashed" (click)="toggleAddScheduleDropdown(analytic.id, $event)">
                   <span class="icon-svg icon-plus" style="width: 0.8125rem; height: 0.8125rem;"></span>
@@ -370,50 +375,87 @@
 
           <!-- CABECERA DE LA COLUMNA IZQUIERDA (MINIMALISTA ULTRA-CLEAN SIN BORDER-BOTTOM) -->
           <div class="analytic-column-header d-flex align-items-center justify-content-between mb-4 flex-shrink-0">
-            <!-- Izquierda: Avatar e Ícono + Título Único -->
+            <!-- Izquierda: Ícono Dinámico de Cámara + Título Único + Badge Fingerprint -->
             <div class="d-flex align-items-center gap-3 overflow-hidden me-3">
-              <div class="analytic-header-avatar d-flex align-items-center justify-content-center flex-shrink-0">
-                <span class="icon-svg icon-camara header-avatar-icon"></span>
-              </div>
+              <span class="icon-svg icon-camara header-dynamic-camera-icon flex-shrink-0"
+                [style.color]="getCameraStatusColorStyle(camera)" [title]="getCameraStatusLabel(camera)"></span>
 
-              <h5 class="analytic-header-title mb-0 text-truncate">
-                {{ camera?.name || 'Cámara' }} - {{ selectedAnalyticForConfig() ? 'Editar Analítica' : 'Nueva Analítica'
-                }}
-              </h5>
+              <div class="d-flex flex-column justify-content-center overflow-hidden">
+                <h5 class="analytic-header-title mb-0 text-truncate">
+                  {{ camera?.name || 'Cámara' }} - {{ selectedAnalyticForConfig() ? 'Editar Analítica' : 'Nueva
+                  Analítica'
+                  }}
+                </h5>
+                @if (selectedAnalyticForConfig()?.id) {
+                <div class="d-flex align-items-center mt-2">
+                  <button type="button" class="analytic-id-badge d-inline-flex align-items-center gap-1"
+                    [class.copied-active]="copiedRowId() === selectedAnalyticForConfig()!.id + '-analytic-id'"
+                    (click)="copyRowContent(selectedAnalyticForConfig()!.id, selectedAnalyticForConfig()!.id + '-analytic-id'); $event.stopPropagation()"
+                    title="Copiar ID de la analítica">
+                    <span class="icon-svg icon-fingerprint badge-icon"></span>
+                    @if (copiedRowId() === selectedAnalyticForConfig()!.id + '-analytic-id') {
+                    <span class="badge-feedback-text text-success fw-bold">¡Copiado!</span>
+                    } @else {
+                    <span class="badge-text font-monospace text-truncate">{{ selectedAnalyticForConfig()!.id }}</span>
+                    <span class="icon-svg icon-copy badge-copy-icon"></span>
+                    }
+                  </button>
+                </div>
+                }
+              </div>
             </div>
 
-            <!-- Derecha de la Cabecera Izquierda: Chip PILL de ID / Fingerprint de la Analítica (Redondeado y Copiable) -->
-            @if (selectedAnalyticForConfig()?.id; as analyticId) {
-            <div class="vms-meta-chip vms-meta-chip--node vms-meta-chip--interactive rounded-pill cursor-pointer"
-              [class.copied-flash]="copiedRowId() === 'subdrawer-analytic-id'"
-              (click)="copyRowContent(analyticId, 'subdrawer-analytic-id'); $event.stopPropagation()"
-              title="Clic para copiar ID de la analítica">
-
-              <!-- Capa 1: ID / Fingerprint de la analítica (Mantiene el ancho natural constante en el flujo) -->
-              <div class="chip-content-layer d-inline-flex align-items-center gap-2"
-                [style.visibility]="copiedRowId() === 'subdrawer-analytic-id' ? 'hidden' : 'visible'">
-                <span class="icon-svg icon-fingerprint chip-icon"></span>
-                <span class="chip-label font-monospace">{{ analyticId }}</span>
-              </div>
-
-              <!-- Capa 2: Feedback ¡Copiado! (Superpuesto sin alterar las dimensiones) -->
-              @if (copiedRowId() === 'subdrawer-analytic-id') {
-              <div
-                class="chip-content-layer chip-copied-overlay d-inline-flex align-items-center justify-content-center gap-1.5 text-success">
-                <span class="icon-svg icon-check chip-icon"></span>
-                <span class="copied-badge font-monospace fw-bold" style="font-size: 0.8125rem;">¡Copiado!</span>
+            <!-- Derecha de la Cabecera Izquierda: Barra de Herramientas del Lienzo -->
+            <div class="canvas-header-toolbar d-inline-flex align-items-center" (click)="$event.stopPropagation()">
+              <!-- Grupo: Preset Cuadrilátero A-B-C-D -->
+              @if (canvasRef.isSpeedQuad()) {
+              <div class="toolbar-group">
+                <button class="btn-canvas-tool btn-preset-tool" [disabled]="canvasRef.isCanvasLocked()"
+                  (click)="canvasRef.generateDefaultSpeedQuad()"
+                  title="Generar Cuadrilátero A-B-C-D Centrado por Defecto">
+                  <span class="icon-svg icon-grid toolbar-icon"></span>
+                  <span class="preset-tool-text">Preset A-B-C-D</span>
+                </button>
               </div>
               }
+
+              <!-- Grupo: Undo / Redo -->
+              <div class="toolbar-group">
+                <button class="btn-canvas-tool" [disabled]="!canvasRef.canUndo()" (click)="canvasRef.undo()"
+                  title="Deshacer (Ctrl+Z)">
+                  <span class="icon-svg icon-undo toolbar-icon"></span>
+                </button>
+                <button class="btn-canvas-tool" [disabled]="!canvasRef.canRedo()" (click)="canvasRef.redo()"
+                  title="Rehacer (Ctrl+Shift+Z)">
+                  <span class="icon-svg icon-redo toolbar-icon"></span>
+                </button>
+              </div>
+
+              <!-- Grupo: Limpiar Canvas -->
+              <div class="toolbar-group">
+                <button class="btn-canvas-tool btn-danger-tool"
+                  [disabled]="canvasRef.isCanvasLocked() || canvasRef.totalPointsCount() === 0"
+                  (click)="canvasRef.clearCanvas()" title="Limpiar todas las áreas trazadas">
+                  <span class="icon-svg icon-trash toolbar-icon"></span>
+                </button>
+              </div>
+
+              <!-- Indicador de Estado Geométrico -->
+              <div class="toolbar-status-badge">
+                <span class="status-dot" [class.locked]="canvasRef.isCanvasLocked()"
+                  [class.closed]="!canvasRef.isCanvasLocked() && canvasRef.totalShapesCount() > 0"
+                  [class.empty]="!canvasRef.isCanvasLocked() && canvasRef.totalShapesCount() === 0"></span>
+                <span class="status-text">{{ canvasRef.geometryStatusLabel() }}</span>
+              </div>
             </div>
-            }
           </div>
 
           <!-- Lienzo Canvas Fijo en la Columna Izquierda -->
           <div class="canvas-col flex-fill d-flex align-items-center overflow-hidden">
-            <app-analytic-canvas class="w-100 h-100 d-flex align-items-center overflow-hidden"
+            <app-analytic-canvas #canvasRef class="w-100 h-100 d-flex align-items-center overflow-hidden"
               [cameraId]="camera?.id || ''" [highlightError]="activeErrorTarget() === 'canvas'"
               [strDirection]="analyticFormState()?.specific_params?.str_direction || 'Bidireccional'"
-              [scaleFactor]="analyticFormState()?.detection_params?.scale_area || 1.2"
+              [scaleFactor]="analyticFormState()?.detection_params?.['Escala'] || analyticFormState()?.detection_params?.scale_area || 1.2"
               [zoneWidth]="analyticFormState()?.detection_params?.zona_analisis || 40"
               [speedDistAB]="analyticFormState()?.specific_params?.distancia_a_b || 14"
               [speedDistBC]="analyticFormState()?.specific_params?.distancia_b_c || 60" [imageUrl]="cameraSnapshotUrl"

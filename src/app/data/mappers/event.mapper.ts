@@ -73,9 +73,9 @@ export class EventMapper {
       if (source.event_id && typeof source.event_id === 'string' && source.event_id.trim()) {
         return source.event_id.trim();
       }
-      const url = source.url_img || source.url_video;
-      if (url && typeof url === 'string') {
-        const filename = url.split('/').pop()?.split('?')[0] || '';
+      const mediaName = source.img_minio_object_name || source.video_minio_object_name;
+      if (mediaName && typeof mediaName === 'string') {
+        const filename = mediaName.split('/').pop()?.split('?')[0] || '';
         const lastDot = filename.lastIndexOf('.');
         const clean = lastDot > 0 ? filename.substring(0, lastDot) : filename;
         if (clean) return clean;
@@ -112,6 +112,9 @@ export class EventMapper {
       matchDetail.subjectName = sujeto;
     }
 
+    const imgMinioObjectName = src.img_minio_object_name || null;
+    const videoMinioObjectName = src.video_minio_object_name || null;
+
     return {
       id: resolvedId,
       eventId: src.event_id || resolvedId,
@@ -127,8 +130,10 @@ export class EventMapper {
       objeto,
       sujeto,
       detalleEvento: src.detalle_evento || '',
-      urlImg: MetadataMapper.sanitizeImageUrl(src.url_img),
-      urlVideo: src.url_video ? MetadataMapper.sanitizeImageUrl(src.url_video) : null,
+      imgMinioObjectName,
+      videoMinioObjectName,
+      urlImg: imgMinioObjectName || '',
+      urlVideo: videoMinioObjectName || null,
       conteoAforo: typeof src.conteo_aforo === 'number' ? src.conteo_aforo : null,
       tiempoPermanencia: typeof src.tiempo_permanencia === 'number' ? src.tiempo_permanencia : null,
       objetosEnArea: typeof src.objetos_en_area === 'number' ? src.objetos_en_area : null,
@@ -136,7 +141,7 @@ export class EventMapper {
       direccion: src.direccion || null,
       idReportType: src.id_report_type || null,
       matchDetail,
-      urlImgMatch: src.url_img_match || src.url_img_referencia ? MetadataMapper.sanitizeImageUrl(src.url_img_match || src.url_img_referencia) : null,
+      urlImgMatch: src.match_img_minio_object_name || null,
       porcentajeSimilitud,
       grupoLista: matchDetail?.listName || src.grupo_lista || src.lista_nombre || null,
       confiabilidad

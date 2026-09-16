@@ -1,0 +1,150 @@
+<!-- =========================================================================
+     LÍNEA DE TIEMPO / TIMELINE CONTROLS (SHARED COMPONENT - DRY)
+     ========================================================================= -->
+<div class="timeline-player-card card border-0 position-relative" (contextmenu)="$event.preventDefault()">
+  <div class="d-flex flex-column gap-0.5">
+
+    <!-- Fila 1: Pista de Tiempo & Regla Scrolleable y Arrastrable con Ratón -->
+    <div class="timeline-slider-wrapper position-relative" [class.is-dragging]="isDraggingTimeline()"
+      [class.is-seeking]="isSeekingNeedle()" (mousedown)="onTimelineMouseDown($event)"
+      (wheel)="onTimelineWheel($event)" (mousemove)="onTimelineMouseMove($event)"
+      (mouseleave)="onTimelineMouseLeave()" (contextmenu)="$event.preventDefault()">
+
+      <div class="timeline-ruler-track w-100 position-relative">
+        <!-- Línea horizontal de tiempo de fondo -->
+        <div class="timeline-axis-line"></div>
+
+        <!-- Relleno de Progreso Transcurrido -->
+        <div class="timeline-progress-fill" [style.width.%]="playheadLeftPct()"></div>
+
+        <!-- Marcas horarias -->
+        @for (mark of timelineRuleMarks(); track mark.id) {
+        <div class="timeline-ruler-hash" [style.left.%]="mark.leftPct">
+          <span class="timeline-ruler-time small font-monospace text-muted"
+            [style.transform]="mark.leftPct < 5 ? 'translateX(0%)' : (mark.leftPct > 95 ? 'translateX(-100%)' : 'translateX(-50%)')">{{
+            mark.timeLabel }}</span>
+        </div>
+        }
+
+        <!-- Banderas / Eventos Registrados (Smart Agrupamiento / Clustering) -->
+        <div class="timeline-flags-container">
+          @for (flag of visibleTimelineFlags(); track flag.event.id) {
+          <div class="vms-flag-item" [style.left.%]="flag.leftPct" [style.--flag-color]="flag.color"
+            [style.background-color]="flag.color" [class.is-selected]="isFlagSelected(flag)"
+            [class.has-count]="flag.count > 1" (mousedown)="$event.stopPropagation()"
+            (click)="onFlagClicked(flag.event, flag.count, $event)"
+            [title]="flag.count > 1 ? flag.count + ' eventos en este punto (Clic para ampliar y activar)' : flag.event.nombreCamara + ' - ' + (flag.event.analitica || 'Evento')">
+            @if (flag.count > 1) {
+            <span class="vms-flag-count-label">{{ flag.count }}</span>
+            }
+          </div>
+          }
+        </div>
+
+        <!-- Playhead / Aguja de Precisión Roja (Siempre Visible) -->
+        <div class="timeline-playhead" [style.left.%]="playheadLeftPct()">
+          <div class="playhead-line"></div>
+          <div class="playhead-handle"></div>
+        </div>
+
+        <!-- Pista interactiva de tiempo (Clic Izquierdo = Aguja, Clic Derecho / Rueda = Arrastrar/Desplazar) -->
+        <div class="timeline-interactive-track position-absolute w-100 h-100"
+          style="top: 0; left: 0; z-index: 20;" (mousedown)="onTimelineMouseDown($event)"
+          (wheel)="onTimelineWheel($event)" (mousemove)="onTimelineMouseMove($event)"
+          (mouseleave)="onTimelineMouseLeave()" (auxclick)="$event.preventDefault()"
+          (contextmenu)="$event.preventDefault()">
+        </div>
+      </div>
+
+      <!-- Lente / Tooltip de Previsualización Flotante al Pasar el Cursor (Al frente de todo) -->
+      @if (timelineHoverInfo().visible) {
+      <div class="timeline-hover-tooltip" [style.left.%]="timelineHoverInfo().leftPct">
+        <span class="tooltip-time font-monospace">{{ timelineHoverInfo().timeLabel }}</span>
+        @if (timelineHoverInfo().eventCount > 0) {
+        <span class="tooltip-events-badge">{{ timelineHoverInfo().eventCount }} alertas</span>
+        }
+      </div>
+      }
+    </div>
+
+    <!-- Fila 2: Consola de Mandos VMS Dinámica (Centro Fijado Absoluto) -->
+    <div
+      class="timeline-controls-row d-flex align-items-center justify-content-between position-relative pt-1.5 pb-1">
+      <!-- Bloque 1 (Izquierda): Horario (HH:MM:SS) + Badge EN VIVO a su Derecha -->
+      <div class="d-flex align-items-center gap-2">
+        <div class="vms-time-dock d-flex align-items-center">
+          <span class="icon-svg icon-clock vms-time-icon" title="Hora Actual"></span>
+          <input #hourInput type="text" maxlength="2" class="digital-clock-segment" [value]="hoursSegmentStr()"
+            (input)="onHoursSegmentInput($any($event.target).value, minuteInput)"
+            (keydown)="onSegmentKeydown($event, hoursSegmentStr(), undefined, minuteInput)"
+            (focus)="onSegmentFocus(); $any($event.target).select()" (blur)="onSegmentBlur('h')"
+            (keyup.enter)="$any($event.target).blur()" placeholder="00" title="Hora (00-23)">
+          <span class="digital-clock-colon">:</span>
+          <input #minuteInput type="text" maxlength="2" class="digital-clock-segment"
+            [value]="minutesSegmentStr()" (input)="onMinutesSegmentInput($any($event.target).value, secondInput)"
+            (keydown)="onSegmentKeydown($event, minutesSegmentStr(), hourInput, secondInput)"
+            (focus)="onSegmentFocus(); $any($event.target).select()" (blur)="onSegmentBlur('m')"
+            (keyup.enter)="$any($event.target).blur()" placeholder="00" title="Minuto (00-59)">
+          <span class="digital-clock-colon">:</span>
+          <input #secondInput type="text" maxlength="2" class="digital-clock-segment"
+            [value]="secondsSegmentStr()" (input)="onSecondsSegmentInput($any($event.target).value)"
+            (keydown)="onSegmentKeydown($event, secondsSegmentStr(), minuteInput, undefined)"
+            (focus)="onSegmentFocus(); $any($event.target).select()" (blur)="onSegmentBlur('s')"
+            (keyup.enter)="$any($event.target).blur()" placeholder="00" title="Segundo (00-59)">
+        </div>
+
+        <!-- Badge Indicador de Estado "En vivo" (Cápsula VMS Ultra-Premium) -->
+        <div class="vms-live-badge d-flex align-items-center gap-2" [class.is-live]="playbackMode === 'live'">
+          <span class="live-dot-pulse" [class.red]="playbackMode !== 'live'"></span>
+          <span class="fw-bold font-monospace">{{ timeOffsetLabel() }}</span>
+        </div>
+      </div>
+
+      <!-- Bloque 2 (Centro Fijado Absoluto): Cápsula de Transporte Unificada -->
+      <div class="vms-transport-dock d-flex align-items-center">
+        <button class="vms-transport-btn" (click)="backwardEvent()" title="Evento Anterior">
+          <span class="icon-svg icon-chevron-left vms-transport-icon"></span>
+        </button>
+
+        <button class="vms-transport-btn vms-transport-play-btn" (click)="togglePlayPause()"
+          [title]="paused ? 'Reanudar' : 'Pausar reproductor'">
+          @if (paused) {
+          <span class="icon-svg icon-play-simple vms-transport-icon"></span>
+          } @else {
+          <span class="icon-svg icon-pause-simple vms-transport-icon"></span>
+          }
+        </button>
+
+        <button class="vms-transport-btn" [disabled]="playbackMode === 'live'" (click)="forwardEvent()"
+          title="Siguiente Evento">
+          <span class="icon-svg icon-chevron-right vms-transport-icon"></span>
+        </button>
+      </div>
+
+      <!-- Bloque 3 (Derecha): Selector Exclusivo de Fecha Histórica (Cápsula VMS Ultra-Premium) -->
+      <div class="d-flex align-items-center ms-auto">
+        <div class="vms-date-dock d-flex align-items-center">
+          <span class="icon-svg icon-calendar vms-date-icon" title="Fecha de Búsqueda"></span>
+          <input #dayInput type="text" maxlength="2" class="digital-clock-segment" [value]="dateDayStr()"
+            (input)="onDaySegmentInput($any($event.target).value, monthInput)"
+            (keydown)="onDateSegmentKeydown($event, dateDayStr(), undefined, monthInput)"
+            (focus)="onDateSegmentFocus(); $any($event.target).select()" (blur)="onDateSegmentBlur('d')"
+            (keyup.enter)="$any($event.target).blur()" placeholder="DD" title="Día (01-31)">
+          <span class="digital-clock-colon">/</span>
+          <input #monthInput type="text" maxlength="2" class="digital-clock-segment" [value]="dateMonthStr()"
+            (input)="onMonthSegmentInput($any($event.target).value, yearInput)"
+            (keydown)="onDateSegmentKeydown($event, dateMonthStr(), dayInput, yearInput)"
+            (focus)="onDateSegmentFocus(); $any($event.target).select()" (blur)="onDateSegmentBlur('m')"
+            (keyup.enter)="$any($event.target).blur()" placeholder="MM" title="Mes (01-12)">
+          <span class="digital-clock-colon">/</span>
+          <input #yearInput type="text" maxlength="4" class="digital-clock-segment date-year-segment"
+            [value]="dateYearStr()" (input)="onYearSegmentInput($any($event.target).value)"
+            (keydown)="onDateSegmentKeydown($event, dateYearStr(), monthInput, undefined)"
+            (focus)="onDateSegmentFocus(); $any($event.target).select()" (blur)="onDateSegmentBlur('y')"
+            (keyup.enter)="$any($event.target).blur()" placeholder="AAAA" title="Año (AAAA)">
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

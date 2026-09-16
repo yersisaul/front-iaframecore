@@ -1518,4 +1518,82 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     this.fullscreenImgUrl.set(null);
   }
 
+  onListCardMouseEnter(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const row = target.classList.contains('list-item-row')
+      ? target
+      : (target.closest('.list-item-row') as HTMLElement | null);
+    if (!row) return;
+
+    row.classList.add('list-card-hovered');
+
+    const nameEl = row.querySelector('.list-name-marquee-text') as HTMLElement | null;
+    const descEl = row.querySelector('.list-desc-marquee-text') as HTMLElement | null;
+    const dotEl = row.querySelector('.submenu-dot') as HTMLElement | null;
+    const actionButtons = row.querySelectorAll('.list-btn-action');
+
+    if (!nameEl && !descEl) return;
+
+    const dotWidth = dotEl ? dotEl.offsetWidth : 8;
+    const numButtons = actionButtons.length;
+    // Cada botón SVG mide 16px de ancho + gap de 24px + margen desde el texto (20px)
+    const actionsWidth = numButtons > 0 ? (numButtons * 16 + (numButtons - 1) * 24 + 20) : 0;
+    // Padding horizontal (p-3: ~32px) + gap dot a texto (~16px)
+    const fixedSpacing = 48;
+    const availableFullWidth = row.clientWidth - dotWidth - actionsWidth - fixedSpacing;
+
+    let needsMarquee = false;
+    const fadeOffset = 20;
+
+    if (nameEl && nameEl.scrollWidth > availableFullWidth) {
+      const shift = Math.ceil(nameEl.scrollWidth - availableFullWidth) + fadeOffset;
+      nameEl.style.setProperty('--marquee-shift', `-${shift}px`);
+      nameEl.classList.add('animate-marquee');
+      needsMarquee = true;
+    } else if (nameEl) {
+      nameEl.style.removeProperty('--marquee-shift');
+      nameEl.classList.remove('animate-marquee');
+    }
+
+    if (descEl && descEl.scrollWidth > availableFullWidth) {
+      const shift = Math.ceil(descEl.scrollWidth - availableFullWidth) + fadeOffset;
+      descEl.style.setProperty('--marquee-shift', `-${shift}px`);
+      descEl.classList.add('animate-marquee');
+      needsMarquee = true;
+    } else if (descEl) {
+      descEl.style.removeProperty('--marquee-shift');
+      descEl.classList.remove('animate-marquee');
+    }
+
+    if (needsMarquee) {
+      row.classList.add('list-card-needs-marquee');
+    } else {
+      row.classList.remove('list-card-needs-marquee');
+    }
+  }
+
+  onListCardMouseLeave(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const row = target.classList.contains('list-item-row')
+      ? target
+      : (target.closest('.list-item-row') as HTMLElement | null);
+    if (!row) return;
+
+    row.classList.remove('list-card-hovered', 'list-card-needs-marquee');
+    const nameEl = row.querySelector('.list-name-marquee-text') as HTMLElement | null;
+    const descEl = row.querySelector('.list-desc-marquee-text') as HTMLElement | null;
+    if (nameEl) {
+      nameEl.style.removeProperty('--marquee-shift');
+      nameEl.classList.remove('animate-marquee');
+    }
+    if (descEl) {
+      descEl.style.removeProperty('--marquee-shift');
+      descEl.classList.remove('animate-marquee');
+    }
+  }
+
 }
