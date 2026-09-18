@@ -7,14 +7,12 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { CameraService } from '../../../core/services/camera.service';
 import { HostService } from '../../../core/services/host.service';
 import { AnalyticService } from '../../../core/services/analytic.service';
-import { ScheduleService } from '../../../core/services/schedule.service';
 import { EventService } from '../../../core/services/event.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { WebsocketConnectionService } from '../../../core/services/websocket-connection.service';
 import { WebsocketService } from '../../../core/services/websocket.service';
 import { IEventRepository } from '../../../core/domain/repositories/event.repository';
-import { WebRtcService } from '../../../core/services/webrtc.service';
 
 import { Camera } from '../../../core/domain/entities/camera.models';
 import { Host } from '../../../core/domain/entities/host.models';
@@ -27,30 +25,35 @@ import { EventDetailModalComponent } from '../../shared/event-detail-modal/event
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
 import { CameraDetailDrawerComponent } from '../../shared/camera-detail-drawer/camera-detail-drawer.component';
+import { CameraGridCanvasComponent } from '../../shared/camera-grid-canvas/camera-grid-canvas.component';
+import { CameraSelectionModalComponent } from '../../shared/camera-selection-modal/camera-selection-modal.component';
+import { MonitoringTimelineComponent } from '../../shared/monitoring-timeline/monitoring-timeline.component';
+import { MonitoringEventsSidebarComponent } from '../../shared/monitoring-events-sidebar/monitoring-events-sidebar.component';
+import { MediaUrlPipe } from '../../shared/pipes/media-url.pipe';
 
 import { MonitoringStateService, GridSlot, CanvasStateSnapshot } from '../../../core/services/monitoring-state.service';
+import { MonitoringStreamService } from '../../../core/services/monitoring-stream.service';
 export type { GridSlot, CanvasStateSnapshot };
 
 @Component({
   selector: 'app-monitoreo',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, EventDetailModalComponent, PageHeaderComponent, SearchInputComponent, CameraDetailDrawerComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, EventDetailModalComponent, PageHeaderComponent, SearchInputComponent, CameraDetailDrawerComponent, CameraGridCanvasComponent, CameraSelectionModalComponent, MonitoringTimelineComponent, MonitoringEventsSidebarComponent, MediaUrlPipe],
   templateUrl: './monitoreo.html',
   styleUrl: './monitoreo.css'
 })
 export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   public monitoringStateService = inject(MonitoringStateService);
+  public streamService = inject(MonitoringStreamService);
   private cameraService = inject(CameraService);
   private hostService = inject(HostService);
-  private analyticService = inject(AnalyticService);
-  private scheduleService = inject(ScheduleService);
+  public analyticService = inject(AnalyticService);
   private eventService = inject(EventService);
   private sidebarService = inject(SidebarService);
   private wsConnectionService = inject(WebsocketConnectionService);
   private websocketService = inject(WebsocketService);
   private eventRepository = inject(IEventRepository);
   public permissionsService = inject(PermissionsService);
-  private webRtcService = inject(WebRtcService);
   private cdr = inject(ChangeDetectorRef);
 
   // Camera Detail Drawer State (Shared Component)
@@ -98,7 +101,93 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly isCanvasActive = signal<boolean>(true);
   readonly isCanvasAnimating = signal<boolean>(false);
   private canvasAnimationTimeout: any = null;
+  private marqueeZoomRaf: number | null = null;
   readonly isCanvasMode = computed(() => this.gridSlots().some(s => s.camera !== null));
+
+  /**
+   * Factor de escala compensado (Semantic Zoom HUD) para evitar que los controles,
+   * textos, iconos SVG y botones crezcan desmedidamente con zoom in o se vuelvan
+   * ilegibles/inoperables con zoom out.
+   */
+  readonly uiCompensatedScale = computed<number>(() => {
+    if (!this.isCanvasMode()) return 1.0;
+    const z = this.canvasZoom();
+    if (!z || z <= 0.01) return 1.0;
+
+    if (z >= 1.0) {
+      // Zoom In: atenuación fuerte para mantener el HUD casi constante en pantalla (~1.1x máx a 5x zoom)
+      const scale = 1 / Math.pow(z, 0.82);
+      return Math.max(0.24, Math.min(1.0, scale));
+    } else {
+      // Zoom Out: atenuación moderada con tope ergonómico para cuadrículas amplias
+      const scale = 1 / Math.pow(z, 0.45);
+      return Math.max(1.0, Math.min(1.85, scale));
+    }
+  });
+
+  /**
+   * Factor de escala compensado específico para el dock vertical de acciones (.feed-actions-vertical-dock):
+   * - En Zoom In (z >= 1.0): Aplica atenuación para mantener tamaño ergonómico constante en pantalla.
+   * - En Zoom Out (z < 1.0): Se tope en 1.85 (86% de la altura de la celda) para no desbordar ni cortarse jamás.
+   */
+  readonly dockCompensatedScale = computed<number>(() => {
+    if (!this.isCanvasMode()) return 1.85;
+    const uiScale = this.uiCompensatedScale();
+    return Math.min(uiScale, 1.0) * 1.85;
+  });
+
+  /**
+   * Factor de escala compensado específico para el badge de analítica (.canvas-slot-badge-bottom-left):
+   * - En Zoom In (z >= 1.5): Mantiene tamaño constante y legible en pantalla.
+   * - Por debajo de 150% (z < 1.5): Se congela la escala relativa a la celda (~1.18x) para no crecer
+   *   dentro de la tarjeta y encogerse armónicamente con ella.
+   */
+  readonly badgeCompensatedScale = computed<number>(() => {
+    if (!this.isCanvasMode()) return 1.18;
+    const uiScale = this.uiCompensatedScale();
+    const uiScaleAt150 = 1 / Math.pow(1.5, 0.82); // ~0.7175
+    return Math.min(uiScale, uiScaleAt150) * 1.65;
+  });
+
+  /**
+   * Factor de escala compensado específico para la fecha y hora (.canvas-slot-time-bottom-right):
+   * - En Zoom >= 75% (z >= 0.75): Mantiene tamaño constante y legible en pantalla.
+   * - Por debajo de 75% (z < 0.75): Se congela la escala relativa a la celda (~1.14x) para no seguir
+   *   creciendo dentro de la tarjeta y encogerse armónicamente con ella.
+   */
+  readonly timeCompensatedScale = computed<number>(() => {
+    if (!this.isCanvasMode()) return 1.0;
+    const uiScale = this.uiCompensatedScale();
+    const uiScaleAt75 = 1 / Math.pow(0.75, 0.45); // ~1.1383
+    return Math.min(uiScale, uiScaleAt75);
+  });
+
+  /**
+   * Factor de escala compensado específico para celdas vacías (.empty-slot-content):
+   * - En Zoom In (z >= 1.0): Atenuación para mantener el botón '+' y texto 'Agregar' ergonómicos.
+   * - En Zoom Out (z < 1.0): Se congela en 1.0 para que no crezca relativo a la celda y se encoja
+   *   armónicamente sin tocar los bordes.
+   */
+  readonly emptySlotCompensatedScale = computed<number>(() => {
+    if (!this.isCanvasMode()) return 1.0;
+    const uiScale = this.uiCompensatedScale();
+    return Math.min(uiScale, 1.0);
+  });
+
+  /**
+   * Nivel de detalle semántico (LOD) del lienzo:
+   * - 'compact': Zoom out extremo (< 45%), simplifica controles para vista panorámica
+   * - 'normal': Vista estándar interactiva (45% a 170%)
+   * - 'detailed': Inspección de alta magnificación (> 170%)
+   */
+  readonly canvasLodMode = computed<'compact' | 'normal' | 'detailed'>(() => {
+    if (!this.isCanvasMode()) return 'normal';
+    const z = this.canvasZoom();
+    if (z < 0.45) return 'compact';
+    if (z > 1.35) return 'detailed';
+    return 'normal';
+  });
+
   readonly isRightPanelCollapsed = signal<boolean>(false);
   private canvasActivityTimer: any = null;
 
@@ -125,6 +214,66 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   // Camera Fullscreen Overlay Signal & Origin Animation
   readonly fullscreenSlot = signal<GridSlot | null>(null);
   readonly fullscreenTransformOrigin = signal<string>('center center');
+
+  // --- Bridge Methods para CameraGridCanvasComponent ---
+  readonly getCameraAnalyticsBound = (camera: Camera) => this.getCameraAnalytics(camera);
+  readonly isSlotInPlaybackModeBound = (slot: GridSlot) => this.isSlotInPlaybackMode(slot);
+  readonly isFeedPausedBound = (cameraName: string) => this.isFeedPaused(cameraName);
+  readonly isSlotDimmedBound = (slot: GridSlot) => this.isSlotDimmed(slot);
+  // --- Bridge Methods para MonitoringTimelineComponent ---
+  readonly getAnalyticColorBound = (type: string): string => this.getAnalyticColor(type);
+
+  onTimelineTimeChange(date: Date): void {
+    this.currentTimePointer.set(date);
+  }
+
+  onTimelinePlaybackModeChange(mode: 'live' | 'playback'): void {
+    this.playbackMode.set(mode);
+    if (mode === 'live') {
+      this.selectedFlagId.set(null);
+      this.selectedCanvasSlotIds.set(new Set());
+      this.highlightedCellCameraName.set(null);
+    }
+  }
+
+  onTimelinePausedChange(paused: boolean): void {
+    this.paused.set(paused);
+  }
+
+  onTimelinePlaybackWindowEndChange(end: Date | null): void {
+    this.playbackWindowEnd.set(end);
+  }
+
+  onTimelineFlagClick(data: { event: EventRecord; count: number; nativeEvent?: MouseEvent }): void {
+    this.toggleTimelineFlag(data.event, data.count, data.nativeEvent);
+  }
+
+  onTimelineZoomChange(zoomSeconds: number): void {
+    this.zoomRangeSeconds.set(zoomSeconds);
+  }
+
+
+  onSharedSlotClick(data: { slot: GridSlot; event: MouseEvent }): void {
+    if (data.slot.isEmpty) {
+      this.openSelectionModal(data.slot.col, data.slot.row, 'slot');
+    }
+  }
+
+  onSharedSlotDblClick(data: { slot: GridSlot; event: MouseEvent }): void {
+    if (!data.slot.isEmpty) {
+      this.openFullscreen(data.slot, data.event);
+    }
+  }
+
+  onSharedSlotMouseDown(data: { slot: GridSlot; event: MouseEvent; index: number }): void {
+    if (!data.slot.isEmpty) {
+      this.onSlotMouseDown(data.slot, data.event, data.index);
+    }
+  }
+
+  onSharedExpanderClick(data: { col: number; row: number; type: 'add-column' | 'add-row' }): void {
+    this.openSelectionModal(data.col, data.row, data.type);
+  }
 
   toggleZenMode(): void {
     const next = !this.isZenMode();
@@ -161,6 +310,44 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   closeCanvasMenuDropdown(): void {
     this.showCanvasMenuDropdown.set(false);
   }
+
+  checkSlotMarquee(cardEl: HTMLElement): void {
+    if (!cardEl) return;
+    const titleEl = cardEl.querySelector('.slot-camera-name') as HTMLElement | null;
+    const containerEl = cardEl.querySelector('.slot-camera-name-container') as HTMLElement | null;
+    if (!titleEl || !containerEl) return;
+
+    // Medir ancho visible del contenedor y longitud real de texto
+    const availableWidth = containerEl.clientWidth;
+    const textWidth = titleEl.scrollWidth;
+
+    if (textWidth > (availableWidth + 2) && availableWidth > 0) {
+      const shift = Math.ceil(textWidth - availableWidth) + 20;
+      titleEl.style.setProperty('--marquee-shift', `-${shift}px`);
+      cardEl.classList.add('camera-title-needs-marquee');
+    } else {
+      titleEl.style.removeProperty('--marquee-shift');
+      cardEl.classList.remove('camera-title-needs-marquee');
+    }
+  }
+
+  clearSlotMarquee(cardEl: HTMLElement): void {
+    if (!cardEl) return;
+    cardEl.classList.remove('camera-title-needs-marquee');
+    const titleEl = cardEl.querySelector('.slot-camera-name') as HTMLElement | null;
+    if (titleEl) {
+      titleEl.style.removeProperty('--marquee-shift');
+    }
+  }
+
+  onSlotMouseEnter(cardEl: HTMLElement): void {
+    this.checkSlotMarquee(cardEl);
+  }
+
+  onSlotMouseLeave(cardEl: HTMLElement): void {
+    this.clearSlotMarquee(cardEl);
+  }
+
 
   openFullscreen(slot: GridSlot, event?: MouseEvent): void {
     if (event) {
@@ -282,72 +469,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   // Multi-select camera signal inside the modal
   readonly selectedCameraIds = signal<Set<string>>(new Set());
 
-  // Modal Search & Filter States
-  readonly modalSearchQuery = signal<string>('');
-  readonly modalTypeFilter = signal<string>('all');
-  readonly showModalTypeDropdown = signal<boolean>(false);
-  readonly modalStatusFilter = signal<string>('all');
-  readonly showModalStatusDropdown = signal<boolean>(false);
-  readonly modalSortDirection = signal<'asc' | 'desc'>('asc');
 
-  toggleModalSortDirection(): void {
-    this.modalSortDirection.update(dir => dir === 'asc' ? 'desc' : 'asc');
-  }
-
-  toggleModalTypeDropdown(event?: Event): void {
-    if (event) event.stopPropagation();
-    this.showModalTypeDropdown.update(v => !v);
-    this.showModalStatusDropdown.set(false);
-  }
-
-  selectModalType(type: string, event?: Event): void {
-    if (event) event.stopPropagation();
-    this.modalTypeFilter.set(type);
-    this.showModalTypeDropdown.set(false);
-  }
-
-  toggleModalStatusDropdown(event?: Event): void {
-    if (event) event.stopPropagation();
-    this.showModalStatusDropdown.update(v => !v);
-    this.showModalTypeDropdown.set(false);
-  }
-
-  selectModalStatus(status: string, event?: Event): void {
-    if (event) event.stopPropagation();
-    this.modalStatusFilter.set(status);
-    this.showModalStatusDropdown.set(false);
-  }
-
-  readonly modalTypeOptions = computed(() => {
-    const cams = this.allCameras();
-    const set = new Set<string>();
-    cams.forEach(c => {
-      const badges = this.getCameraAnalytics(c);
-      badges.forEach(b => set.add(b));
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  });
-
-  readonly modalStatusOptions = computed(() => {
-    const cams = this.allCameras();
-    const hosts = this.allHosts();
-    const set = new Set<string>();
-
-    cams.forEach(c => {
-      const effStatus = getCameraEffectiveStatus(c, hosts);
-      set.add(effStatus);
-    });
-
-    const statusOrder = ['Online', 'Degraded', 'Recovering', 'Pending', 'Offline'];
-    return Array.from(set).sort((a, b) => {
-      const idxA = statusOrder.indexOf(a);
-      const idxB = statusOrder.indexOf(b);
-      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
-      return a.localeCompare(b);
-    });
-  });
 
   // Player & Timeline States
   readonly playbackMode = signal<'live' | 'playback'>('live');
@@ -357,15 +479,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly currentTimePointer = signal<Date>(new Date());
   readonly playbackWindowEnd = signal<Date | null>(null);
 
-  readonly hoursSegmentStr = signal<string>('00');
-  readonly minutesSegmentStr = signal<string>('00');
-  readonly secondsSegmentStr = signal<string>('00');
-  private isEditingTimeSegments = false;
-
-  readonly dateDayStr = signal<string>('01');
-  readonly dateMonthStr = signal<string>('01');
-  readonly dateYearStr = signal<string>('2026');
-  private isEditingDateSegments = false;
 
   // Collections
   readonly allCameras = this.cameraService.cameras;
@@ -375,20 +488,13 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly latestEventsMap = this.monitoringStateService.latestEventsMap;
   readonly isLoadingEvents = signal<boolean>(false);
 
-  // Individual feed configurations
-  readonly activeAiOverlays = signal<Record<string, boolean>>({});
-  readonly activeRecStatuses = signal<Record<string, boolean>>({});
-  readonly flashEffects = signal<Record<string, boolean>>({});
+  // Individual feed configurations (Delegados a MonitoringStreamService)
+  readonly activeAiOverlays = this.streamService.activeAiOverlays;
+  readonly activeRecStatuses = this.streamService.activeRecStatuses;
+  readonly flashEffects = this.streamService.flashEffects;
 
   refreshCameraStream(slot: GridSlot, event?: MouseEvent): void {
-    if (event) event.stopPropagation();
-    if (!slot.camera?.id) return;
-
-    const camId = slot.camera.id;
-    const hostFp = slot.camera.hostFingerprint || '';
-
-    console.log(`[Monitoreo] Refrescando flujo de cámara "${slot.camera.name}" (ID: ${camId}, Host: ${hostFp}). Emitiendo camera_stream_refresh...`);
-    this.websocketService.sendCameraStreamRefresh(camId, hostFp);
+    this.streamService.refreshCameraStream(slot, event);
   }
 
 
@@ -399,29 +505,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   // Logs Feed Control
   readonly isLogsFeedPaused = signal<boolean>(false);
 
-  private backdropMouseDownTarget: EventTarget | null = null;
-
-  onBackdropMouseDown(event: MouseEvent): void {
-    if (event.button === 0) {
-      this.backdropMouseDownTarget = event.target;
-    }
-  }
-
-  onBackdropMouseUp(event: MouseEvent): void {
-    if (
-      event.button === 0 &&
-      this.backdropMouseDownTarget === event.currentTarget &&
-      event.target === event.currentTarget
-    ) {
-      this.showModal.set(false);
-    }
-    this.backdropMouseDownTarget = null;
-  }
-
   // UI Tabs & Toggles
-  readonly activeRightTab = signal<'registro' | 'analiticas'>('registro');
-  readonly activeModalTab = signal<'nodos' | 'todas'>('nodos');
-  readonly expandedNodes = signal<Set<string>>(new Set());
   readonly showModal = signal<boolean>(false);
   readonly selectedEvent = signal<EventRecord | null>(null);
   readonly selectedModalEvent = signal<EventRecord | null>(null);
@@ -434,36 +518,11 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   readonly eventDesdeFilter = signal<Date | null>(null);
   readonly eventHastaFilter = signal<Date | null>(null);
 
-  // Sidebar infinite scroll 3-page sliding window (75 items max in DOM: 25 items x 3 pages)
-  readonly currentSidebarPage = signal<number>(1);
-  readonly sidebarPageSize = 25;
-
   // Sidebar filter panel visibility
   readonly showSidebarFilters = signal<boolean>(false);
   readonly hasActiveSidebarFilters = computed(() =>
-    this.eventAnalyticFilter() !== 'all' ||
-    !!this.filterDateDesdeStr() ||
-    !!this.filterDateHastaStr()
+    this.eventAnalyticFilter() !== 'all'
   );
-
-  // Date and Time inputs inside filters
-  readonly filterDateDesdeStr = signal<string>('');
-  readonly filterTimeDesdeStr = signal<string>('00:00');
-  readonly filterDateHastaStr = signal<string>('');
-  readonly filterTimeHastaStr = signal<string>('23:59');
-
-  readonly tempDateStart = signal<string>('');
-  readonly tempDateEnd = signal<string>('');
-  readonly isSelectingRange = signal<boolean>(false);
-  readonly showTimeRangeDropdown = signal<boolean>(false);
-
-  readonly activeCalendarField = signal<'custom-layout' | 'registro-fechas' | 'fechas' | null>(null);
-  readonly activeNestedCalendar = signal<'desde' | 'hasta' | null>(null);
-  readonly activeTimeField = signal<'desde' | 'hasta' | null>(null);
-  readonly calendarViewMonth = signal<number>(new Date().getMonth());
-  readonly calendarViewYear = signal<number>(new Date().getFullYear());
-  readonly hoursList = Array.from({ length: 24 }, (_, i) => i);
-  readonly minutesList = Array.from({ length: 60 }, (_, i) => i);
 
   // Magnifier lens state
   readonly zoomX = signal<number>(0);
@@ -496,20 +555,32 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   private timelineTimer: any;
 
   constructor() {
+    // Re-evaluar dinámicamente el marquee de tarjetas en hover cuando cambia el zoom o la escala del lienzo
     effect(() => {
-      const d = this.currentTimePointer();
-      const pad = (n: number) => n.toString().padStart(2, '0');
-      if (!this.isEditingTimeSegments) {
-        this.hoursSegmentStr.set(pad(d.getHours()));
-        this.minutesSegmentStr.set(pad(d.getMinutes()));
-        this.secondsSegmentStr.set(pad(d.getSeconds()));
+      this.uiCompensatedScale();
+      this.canvasZoom();
+
+      if (this.marqueeZoomRaf !== null) {
+        cancelAnimationFrame(this.marqueeZoomRaf);
       }
-      if (!this.isEditingDateSegments) {
-        this.dateDayStr.set(pad(d.getDate()));
-        this.dateMonthStr.set(pad(d.getMonth() + 1));
-        this.dateYearStr.set(d.getFullYear().toString());
-      }
-    }, { allowSignalWrites: true });
+
+      this.marqueeZoomRaf = requestAnimationFrame(() => {
+        this.marqueeZoomRaf = null;
+        const hoveredCard = document.querySelector('.grid-slot-cell:hover') as HTMLElement | null;
+
+        // Limpiar marquee en cualquier tarjeta que ya no esté bajo hover
+        document.querySelectorAll('.grid-slot-cell.camera-title-needs-marquee').forEach(el => {
+          if (el !== hoveredCard) {
+            this.clearSlotMarquee(el as HTMLElement);
+          }
+        });
+
+        // Evaluar la tarjeta actualmente bajo el cursor
+        if (hoveredCard) {
+          this.checkSlotMarquee(hoveredCard);
+        }
+      });
+    });
 
     // Restablecer automáticamente el reproductor a EN VIVO si no quedan cámaras seleccionadas en modo ASYNC
     effect(() => {
@@ -654,77 +725,16 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
     // Sincronizar conexiones de WebRTC activas basadas en las celdas ocupadas
     effect(() => {
-      // Congelar la sincronización si el usuario está arrastrando o redimensionando activamente
-      if (this.draggingSlotId() !== null || this.resizingSlotId() !== null) {
-        return;
-      }
-
-      const currentSlots = this.gridSlots();
-      const occupiedSlots = currentSlots.filter(s => s.camera !== null);
-      const activeKeys = new Set(occupiedSlots.map(s => `${s.id}_${s.camera!.id}`));
-
-      // 1. Detener conexiones de slots que ya no existen o cambiaron de cámara
-      for (const connKey of Array.from(this.activeWebRtcConnections.keys())) {
-        if (!activeKeys.has(connKey)) {
-          this.stopWebRtcStreamByKey(connKey);
-        }
-      }
-
-      // 2. Iniciar conexiones ÚNICAMENTE para slots que no tengan conexión ni estado previo registrado
-      if (occupiedSlots.length > 0) {
-        setTimeout(() => {
-          // Re-confirmar que no se haya iniciado un arrastre o redimensionamiento en el intervalo
-          if (this.draggingSlotId() !== null || this.resizingSlotId() !== null) {
-            return;
-          }
-
-          occupiedSlots.forEach(s => {
-            const connKey = `${s.id}_${s.camera!.id}`;
-            // Iniciar solo si no existe la conexión y aún no tiene estado asignado
-            if (!this.activeWebRtcConnections.has(connKey) && !this.webRtcStates()[s.id]) {
-              this.startWebRtcStreamByKey(s, connKey);
-            }
-          });
-        }, 150);
-      }
+      this.streamService.syncWebRtcConnections(
+        this.gridSlots(),
+        this.draggingSlotId() !== null,
+        this.resizingSlotId() !== null
+      );
     });
 
-    // Sincronizar eventos WebSocket (webrtc_start y webrtc_stop) EXCLUSIVAMENTE cuando se agregan o eliminan cámaras de la cuadrícula
+    // Sincronizar eventos WebSocket (webrtc_start y webrtc_stop) cuando cambian las cámaras del lienzo
     effect(() => {
-      const slots = this.gridSlots();
-      const nextGridCamerasMap = new Map<string, { cameraId: string; hostFingerprint: string }>();
-
-      // Recopilar únicamente el conjunto único de cámaras presentes en los slots de la cuadrícula
-      for (const slot of slots) {
-        if (slot.camera && slot.camera.id) {
-          nextGridCamerasMap.set(slot.camera.id, {
-            cameraId: slot.camera.id,
-            hostFingerprint: slot.camera.hostFingerprint || ''
-          });
-        }
-      }
-
-      // 1. Detectar CÁMARAS ELIMINADAS (estaban en la cuadrícula y fueron quitadas)
-      for (const [camId, info] of this.activeGridCamerasMap.entries()) {
-        if (!nextGridCamerasMap.has(camId)) {
-          console.log(`[Monitoreo WebSocket] Cámara eliminada de la cuadrícula: ${camId}. Emitiendo webrtc_stop`);
-          this.websocketService.sendWebRtcStop(info.cameraId, info.hostFingerprint);
-        }
-      }
-
-      // 2. Detectar CÁMARAS AGREGADAS (no estaban en la cuadrícula y acaban de ingresarse)
-      for (const [camId, info] of nextGridCamerasMap.entries()) {
-        if (!this.activeGridCamerasMap.has(camId)) {
-          console.log(`[Monitoreo WebSocket] Nueva cámara agregada a la cuadrícula: ${camId}. Emitiendo webrtc_start`);
-          this.websocketService.sendWebRtcStart(info.cameraId, info.hostFingerprint);
-        }
-      }
-
-      // Actualizar mapa activo
-      this.activeGridCamerasMap.clear();
-      for (const [k, v] of nextGridCamerasMap.entries()) {
-        this.activeGridCamerasMap.set(k, v);
-      }
+      this.streamService.syncWebSocketCameras(this.gridSlots());
     }, { allowSignalWrites: true });
   }
 
@@ -734,7 +744,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.monitoringStateService.onEnterMonitoreo();
     this.cameraService.isViewActive.set(true);
     this.analyticService.isViewActive.set(true);
-    this.scheduleService.isViewActive.set(true);
     this.hostService.isViewActive.set(true);
     this.eventService.isViewActive.set(true);
 
@@ -837,8 +846,27 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    const container = document.querySelector('.monitoring-grid-container');
+    if (container && container.clientWidth > 0 && container.clientHeight > 0) {
+      this.monitoringStateService.monitoreoViewportSize.set({
+        width: container.clientWidth,
+        height: container.clientHeight
+      });
+    }
+  }
+
   ngAfterViewInit(): void {
     setTimeout(() => {
+      const container = document.querySelector('.monitoring-grid-container');
+      if (container && container.clientWidth > 0 && container.clientHeight > 0) {
+        this.monitoringStateService.monitoreoViewportSize.set({
+          width: container.clientWidth,
+          height: container.clientHeight
+        });
+      }
+
       const currentZoom = this.canvasZoom();
       if (!currentZoom || currentZoom <= 0.05) {
         this.resetCanvas();
@@ -911,7 +939,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
     this.cameraService.isViewActive.set(false);
     this.analyticService.isViewActive.set(false);
-    this.scheduleService.isViewActive.set(false);
     this.hostService.isViewActive.set(false);
     this.eventService.isViewActive.set(false);
 
@@ -927,6 +954,9 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     if (this.zenHintTimeout) {
       clearTimeout(this.zenHintTimeout);
     }
+    if (this.marqueeZoomRaf !== null) {
+      cancelAnimationFrame(this.marqueeZoomRaf);
+    }
 
     document.body.classList.remove('zen-mode-active');
 
@@ -934,28 +964,12 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.monitoringStateService.onLeaveMonitoreo();
   }
 
-  async startWebRtcStreamByKey(slot: GridSlot, connKey: string): Promise<void> {
-    if (!slot.camera) return;
-
-    const videoId = `video-feed-${slot.id}`;
-    const videoEl = document.getElementById(videoId) as HTMLVideoElement;
-    if (!videoEl) {
-      // Reintentar en un ciclo corto si el elemento aún no se ha dibujado en el DOM
-      setTimeout(() => {
-        const currentSlots = this.gridSlots();
-        const exists = currentSlots.some(s => s.id === slot.id && s.camera?.id === slot.camera?.id);
-        if (exists && !this.activeWebRtcConnections.has(connKey)) {
-          this.startWebRtcStreamByKey(slot, connKey);
-        }
-      }, 50);
-      return;
-    }
-
-    await this.monitoringStateService.startWebRtcStreamByKey(slot, connKey, videoEl);
+  startWebRtcStreamByKey(slot: GridSlot, connKey: string): Promise<void> {
+    return this.streamService.startWebRtcStreamByKey(slot, connKey);
   }
 
   stopWebRtcStreamByKey(connKey: string): void {
-    this.monitoringStateService.stopWebRtcStreamByKey(connKey);
+    this.streamService.stopWebRtcStreamByKey(connKey);
   }
 
   // Notificaciones Toast Deshabilitadas
@@ -1011,39 +1025,51 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   }
 
   getCellDimensions(): { cellW: number; cellH: number } {
+    const isCanvas = this.isCanvasMode();
+    if (isCanvas) {
+      // En modo lienzo, dimensiones base fijas (16:9) para consistencia absoluta en transformaciones
+      const cellW = 280;
+      const cellH = 158;
+      return { cellW, cellH };
+    }
+
     const gridContainer = document.querySelector('.monitoring-grid-container');
     if (!gridContainer) return { cellW: 240, cellH: 135 };
 
-    const isCanvas = this.isCanvasMode();
     const colsVal = this.cols();
     const rowsVal = this.rows();
-    const refCols = isCanvas ? 4 : colsVal;
-    const refRows = isCanvas ? 4 : rowsVal;
 
     const totalWidth = gridContainer.clientWidth - 20;
-    const availableWidth = totalWidth - (refCols - 1) * 12;
-    const cellW = isCanvas ? Math.max(180, availableWidth / refCols) : (availableWidth / refCols);
+    const availableWidth = totalWidth - (colsVal - 1) * 12;
+    const cellW = availableWidth / colsVal;
 
-    let cellH: number;
-    if (isCanvas) {
-      cellH = Math.round(cellW * (9 / 16));
-    } else {
-      const totalHeight = gridContainer.clientHeight - 20;
-      const availableHeight = totalHeight - (refRows - 1) * 12;
-      cellH = availableHeight / refRows;
-    }
+    const totalHeight = gridContainer.clientHeight - 20;
+    const availableHeight = totalHeight - (rowsVal - 1) * 12;
+    const cellH = availableHeight / rowsVal;
 
     return { cellW, cellH };
   }
 
   getExtenderDimensions(): { width: number; height: number; fontSize: number; iconSize: number } {
-    const zoom = Math.max(0.05, this.canvasZoom());
-    // Escala inversamente al Zoom para mantener dimensiones legibles en pantalla al alejarse
-    const width = Math.round(48 / zoom);
-    const height = Math.round(48 / zoom);
-    const fontSize = Math.max(10, Math.round(11 / zoom));
-    const iconSize = Math.max(13, Math.round(14 / zoom));
-    return { width, height, fontSize, iconSize };
+    const isCanvas = this.isCanvasMode();
+    if (!isCanvas) {
+      return { width: 44, height: 44, fontSize: 11, iconSize: 14 };
+    }
+    const z = Math.max(0.05, this.canvasZoom());
+    const { cellW } = this.getCellDimensions();
+
+    // Amortiguación moderada: evita distorsiones drásticas de la cuadrícula
+    const scaleFactor = 1 / Math.pow(z, 0.4);
+
+    // Bounding estricto del grosor del track en canvas (entre 32px y 56px, máx 22% de celda)
+    const maxThickness = Math.max(40, Math.min(56, Math.round(cellW * 0.22)));
+    const thickness = Math.max(32, Math.min(maxThickness, Math.round(44 * Math.min(scaleFactor, 1.25))));
+
+    // Tipografía e icono legibles y acotados
+    const fontSize = Math.max(10, Math.min(13, Math.round(11 * Math.min(scaleFactor, 1.2))));
+    const iconSize = Math.max(13, Math.min(18, Math.round(14 * Math.min(scaleFactor, 1.25))));
+
+    return { width: thickness, height: thickness, fontSize, iconSize };
   }
 
   getCanvasDimensions(): { width: number; height: number } {
@@ -1323,11 +1349,55 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   }
 
   toggleRightPanel(): void {
-    this.isRightPanelCollapsed.set(!this.isRightPanelCollapsed());
-    // Esperar a que la transición del panel derecho (400ms) termine y recentrar
-    setTimeout(() => {
-      this.resetCanvas();
-    }, 400);
+    const willCollapse = !this.isRightPanelCollapsed();
+    this.isRightPanelCollapsed.set(willCollapse);
+    this.isCanvasAnimating.set(true);
+
+    const gridContainer = document.querySelector('.monitoring-grid-container') as HTMLElement;
+    const rightPanel = document.querySelector('.monitoring-right-panel') as HTMLElement;
+
+    if (gridContainer && rightPanel) {
+      const currentViewportW = gridContainer.clientWidth;
+      const currentViewportH = gridContainer.clientHeight;
+      const currentRightW = rightPanel.offsetWidth;
+
+      // Calcular el ancho proyectado del viewport con base en el nuevo estado del panel
+      const collapsedRightW = Math.max(38, Math.round(window.innerWidth * 0.025));
+      const expandedRightW = Math.max(352, Math.min(512, Math.round(window.innerWidth * 0.30)));
+      const deltaW = willCollapse ? (currentRightW - collapsedRightW) : (collapsedRightW - expandedRightW);
+      const projectedViewportW = Math.max(100, currentViewportW + deltaW);
+
+      const { cellW, cellH } = this.getCellDimensions();
+      const colsVal = Math.max(1, this.cols());
+      const rowsVal = Math.max(1, this.rows());
+      const totalW = colsVal * cellW + (colsVal - 1) * 12 + 20;
+      const totalH = rowsVal * cellH + (rowsVal - 1) * 12 + 20;
+
+      if (totalW > 0 && totalH > 0 && projectedViewportW > 0 && currentViewportH > 0) {
+        const padding = 0.94;
+        const zoomToFitX = (projectedViewportW * padding) / totalW;
+        const zoomToFitY = (currentViewportH * padding) / totalH;
+        const targetZoom = Math.max(0.05, Math.min(3.0, zoomToFitX, zoomToFitY));
+
+        const targetPanX = (projectedViewportW - totalW * targetZoom) / 2;
+        const targetPanY = (currentViewportH - totalH * targetZoom) / 2;
+
+        requestAnimationFrame(() => {
+          this.canvasZoom.set(targetZoom);
+          this.canvasPanX.set(targetPanX);
+          this.canvasPanY.set(targetPanY);
+        });
+      }
+    }
+
+    if (this.canvasAnimationTimeout) {
+      clearTimeout(this.canvasAnimationTimeout);
+    }
+    // Conclusión precisa y limpia en un solo movimiento sin rebote
+    this.canvasAnimationTimeout = setTimeout(() => {
+      this.isCanvasAnimating.set(false);
+      this.canvasAnimationTimeout = null;
+    }, 390);
   }
 
   // --- Sistema de Historial Undo/Redo para distribución, formato y eliminación de cámaras ---
@@ -1482,8 +1552,11 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
       document.body.classList.add('is-panning-canvas');
 
-      const suppressContextMenu = (e: Event) => { e.preventDefault(); };
-      document.addEventListener('contextmenu', suppressContextMenu, { capture: true, once: true });
+      const suppressContextMenu = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+      };
+      window.addEventListener('contextmenu', suppressContextMenu, { capture: true, once: true });
 
       const onMouseMove = (moveEvent: MouseEvent) => {
         const dx = moveEvent.clientX - startX;
@@ -1500,10 +1573,12 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
         document.body.classList.remove('is-panning-canvas');
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
+        window.removeEventListener('blur', onMouseUp);
       };
 
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
+      window.addEventListener('blur', onMouseUp, { once: true });
       return;
     }
 
@@ -1594,9 +1669,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  private isTrackpadActive = false;
-  private trackpadTimeoutTimer: any = null;
-
   private zoomToPoint(nextZoom: number, clientX: number, clientY: number, containerEl?: HTMLElement | null): void {
     const minZoom = this.getMinZoom();
     const clampedZoom = Math.max(minZoom, Math.min(5.0, nextZoom));
@@ -1629,55 +1701,25 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     if (!this.isCanvasMode() || this.isCanvasPinned()) return;
     event.preventDefault();
 
-    // 1. PINCH-TO-ZOOM EN TRACKPAD / TOUCHPAD:
-    // Los navegadores modernos (Chromium, Firefox, Edge, Safari) activan el flag ctrlKey = true al pellizcar el trackpad.
+    // Si no hay variación vertical relevante, ignorar
+    if (event.deltaY === 0) return;
+
+    let zoomDelta = 0;
+
     if (event.ctrlKey) {
-      const zoomDelta = event.deltaY < 0 ? 0.05 : -0.05;
-      const currentZoom = this.canvasZoom();
-      const nextZoom = currentZoom + zoomDelta;
-      const gridContainer = (event.currentTarget || document.querySelector('.monitoring-grid-container')) as HTMLElement;
-      this.zoomToPoint(nextZoom, event.clientX, event.clientY, gridContainer);
-      return;
+      // Gesto pinch-to-zoom en touchpad/trackpad
+      zoomDelta = -(event.deltaY) * 0.01;
+    } else if (event.deltaMode === WheelEvent.DOM_DELTA_LINE || Math.abs(event.deltaY) >= 80) {
+      // Rueda discreta de ratón físico (pasos estándar ±100, ±120 o DOM_DELTA_LINE)
+      zoomDelta = event.deltaY < 0 ? 0.08 : -0.08;
+    } else {
+      // Scroll continuo suave de touchpad/trackpad: solo zoom progresivo proporcional, CERO desplazamiento de lienzo
+      zoomDelta = -(event.deltaY) * 0.0012;
     }
 
-    // 2. DETECCIÓN DE TRACKPAD Y MEMORIA DE SESIÓN DE GESTO OMNIDIRECCIONAL LIBRE
-    const hasHorizontalDelta = Math.abs(event.deltaX) > 0;
-    const isPixelDelta = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL;
+    // Acotar el incremento unitario de zoom para garantizar transiciones fluidas y controladas
+    zoomDelta = Math.max(-0.12, Math.min(0.12, zoomDelta));
 
-    // Se considera rueda de ratón físico solo si no hay delta horizontal, NO hay sesión de Trackpad previa activa y es una rueda discreta
-    const isExplicitMouseWheel = !hasHorizontalDelta && !this.isTrackpadActive && (
-      event.deltaMode === WheelEvent.DOM_DELTA_LINE ||
-      (isPixelDelta && Math.abs(event.deltaY) >= 100 && Math.abs(event.deltaY) % 10 === 0)
-    );
-
-    // Si la sesión de Trackpad está activa, o no es rueda explícita, o hay movimiento horizontal:
-    if (!isExplicitMouseWheel || hasHorizontalDelta || this.isTrackpadActive) {
-      // Activar / renovar memoria de sesión de trackpad por 400ms
-      this.isTrackpadActive = true;
-      if (this.trackpadTimeoutTimer) {
-        clearTimeout(this.trackpadTimeoutTimer);
-      }
-      this.trackpadTimeoutTimer = setTimeout(() => {
-        this.isTrackpadActive = false;
-      }, 400);
-
-      // Desplazamiento omnidireccional libre del lienzo en ejes X e Y (PAN 2 dedos)
-      const currentPanX = this.canvasPanX();
-      const currentPanY = this.canvasPanY();
-      const currentZoom = this.canvasZoom();
-
-      const newPanX = currentPanX - event.deltaX;
-      const newPanY = currentPanY - event.deltaY;
-
-      const constrained = this.constrainPan(newPanX, newPanY, currentZoom);
-      this.canvasPanX.set(constrained.x);
-      this.canvasPanY.set(constrained.y);
-      return;
-    }
-
-    // 3. RUEDA DE RATÓN FÍSICO (PHYSICAL MOUSE WHEEL):
-    // Rueda del ratón sube/baja -> Zoom In / Zoom Out centrado en la posición del puntero
-    const zoomDelta = event.deltaY < 0 ? 0.08 : -0.08;
     const currentZoom = this.canvasZoom();
     const nextZoom = currentZoom + zoomDelta;
     const gridContainer = (event.currentTarget || document.querySelector('.monitoring-grid-container')) as HTMLElement;
@@ -1687,6 +1729,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   onCanvasContextMenu(event: MouseEvent): void {
     if (this.isCanvasMode()) {
       event.preventDefault();
+      event.stopPropagation();
     }
   }
 
@@ -2671,154 +2714,44 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     document.addEventListener('mouseup', onMouseUp);
   }
 
-  // --- Acciones de Feed Individual (Premium floating overlay) ---
+  // --- Acciones de Feed Individual (Delegadas a MonitoringStreamService) ---
   toggleAiOverlay(cameraName: string): void {
-    const active = !!this.activeAiOverlays()[cameraName];
-    this.activeAiOverlays.update(prev => ({ ...prev, [cameraName]: !active }));
+    this.streamService.toggleAiOverlay(cameraName);
   }
 
-  // --- Pausar feed individual de la cámara ---
   toggleFeedPause(cameraName: string): void {
-    const isPaused = !!this.flashEffects()[cameraName + '_paused']; // Reutilizando un mapa interno para pausar
-    this.flashEffects.update(prev => ({ ...prev, [cameraName + '_paused']: !isPaused }));
-    this.showToast(isPaused ? `Feed de ${cameraName} reanudado` : `Feed de ${cameraName} pausado`, 'warning');
+    const isResumed = this.streamService.toggleFeedPause(cameraName);
+    this.showToast(isResumed ? `Feed de ${cameraName} reanudado` : `Feed de ${cameraName} pausado`, 'warning');
   }
 
   isFeedPaused(cameraName: string): boolean {
-    return !!this.flashEffects()[cameraName + '_paused'];
+    return this.streamService.isFeedPaused(cameraName);
   }
 
   toggleRecording(cameraName: string): void {
-    const active = !!this.activeRecStatuses()[cameraName];
-    this.activeRecStatuses.update(prev => ({ ...prev, [cameraName]: !active }));
-    if (!active) {
-      this.showToast(`🔴 Grabando feed histórico de ${cameraName}`, 'danger');
-    } else {
-      this.showToast(`💾 Grabación de ${cameraName} guardada exitosamente`, 'success');
-    }
+    const isStarted = this.streamService.toggleRecording(cameraName);
+    this.showToast(isStarted ? `🔴 Grabando feed histórico de ${cameraName}` : `💾 Grabación de ${cameraName} guardada exitosamente`, isStarted ? 'danger' : 'success');
   }
 
   takeSnapshot(slotOrName: GridSlot | string): void {
     let slot: GridSlot | undefined;
-    let cameraName = '';
-
     if (typeof slotOrName === 'string') {
-      cameraName = slotOrName;
-      slot = this.gridSlots().find(s => s.camera?.name === cameraName);
+      slot = this.gridSlots().find(s => s.camera?.name === slotOrName);
     } else {
       slot = slotOrName;
-      cameraName = slot.camera?.name || 'camara';
     }
+    if (!slot || !slot.camera) return;
 
-    if (!slot || !slot.camera) {
-      return;
-    }
+    const isPlayback = this.isSlotInPlaybackMode(slot);
+    const playbackSnapshot = isPlayback ? this.getSnapshotForCameraAt(slot.camera.name) : null;
+    const latestSnapshot = this.latestEventsMap()[slot.camera.name];
 
-    // Efecto de destello visual de flash
-    this.flashEffects.update(prev => ({ ...prev, [cameraName]: true }));
-    setTimeout(() => {
-      this.flashEffects.update(prev => ({ ...prev, [cameraName]: false }));
-    }, 300);
-
-    const formatTimestamp = () => {
-      const now = new Date();
-      const pad = (n: number) => n.toString().padStart(2, '0');
-      return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-    };
-
-    const downloadFileName = `captura_${cameraName.replace(/[^a-zA-Z0-9_-]/g, '_')}_${formatTimestamp()}`;
-
-    // Caso 1: Video WebRTC en tiempo real activo en el lienzo
-    const videoEl = document.getElementById(`video-feed-${slot.id}`) as HTMLVideoElement;
-    const isVideoActive = videoEl &&
-      this.webRtcStates()[slot.id] === 'connected' &&
-      !this.isSlotInPlaybackMode(slot) &&
-      videoEl.videoWidth > 0 &&
-      videoEl.videoHeight > 0;
-
-    if (isVideoActive) {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = videoEl.videoWidth;
-        canvas.height = videoEl.videoHeight;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL('image/png');
-
-          const a = document.createElement('a');
-          a.href = dataUrl;
-          a.download = `${downloadFileName}.png`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-
-          this.showToast(`📸 Captura de vídeo en tiempo real guardada (${cameraName})`, 'success');
-          return;
-        }
-      } catch (err) {
-        console.error('Error al capturar canvas de vídeo WebRTC:', err);
-      }
-    }
-
-    // Caso 2: Imagen de Evento / Snapshot Histórico en Playback o fallback
-    let imgUrl: string | null = null;
-
-    if (this.isSlotInPlaybackMode(slot)) {
-      const snapshot = this.getSnapshotForCameraAt(slot.camera.name);
-      if (snapshot && snapshot.urlImg) {
-        imgUrl = snapshot.urlImg;
-      }
-    }
-
-    if (!imgUrl) {
-      const lastEvent = this.latestEventsMap()[slot.camera.name];
-      if (lastEvent && lastEvent.urlImg) {
-        imgUrl = lastEvent.urlImg;
-      }
-    }
-
-    if (imgUrl) {
-      this.downloadImageFromUrl(imgUrl, `${downloadFileName}.jpg`);
-      this.showToast(`📸 Fotograma de evento descargado (${cameraName})`, 'success');
-    } else {
-      this.showToast(`📸 Captura de pantalla de ${cameraName} guardada`, 'success');
-    }
-  }
-
-  private downloadImageFromUrl(url: string, fileName: string): void {
-    if (url.startsWith('data:')) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      return;
-    }
-
-    fetch(url)
-      .then(response => response.blob())
-      .then(blob => {
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-      })
-      .catch(err => {
-        console.error('Error al descargar la imagen:', err);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      });
+    this.streamService.takeSnapshot(slot, {
+      isPlayback,
+      playbackSnapshotUrl: playbackSnapshot?.urlImg,
+      latestSnapshotUrl: latestSnapshot?.urlImg,
+      onSuccess: (msg) => this.showToast(msg, 'success')
+    });
   }
 
   isSlotInPlaybackMode(slot: GridSlot): boolean {
@@ -2920,45 +2853,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     return { start, end: new Date(endMs) };
   });
 
-  readonly playheadLeftPct = computed(() => {
-    const range = this.timelineRange();
-    const startMs = range.start.getTime();
-    const endMs = range.end.getTime();
-    const pointerMs = this.currentTimePointer().getTime();
-
-    if (pointerMs <= startMs) return 0;
-    if (pointerMs >= endMs) return 100;
-
-    return ((pointerMs - startMs) / (endMs - startMs)) * 100;
-  });
-
-  readonly timeOffsetLabel = computed(() => {
-    if (this.playbackMode() === 'live') {
-      return 'EN VIVO';
-    }
-    const nowMs = this.liveTickerClock().getTime();
-    const pointerMs = this.currentTimePointer().getTime();
-    const diffSec = Math.max(0, Math.round((nowMs - pointerMs) / 1000));
-
-    if (diffSec < 60) {
-      return `-${diffSec}s del En Vivo`;
-    }
-
-    if (diffSec < 3600) {
-      const m = Math.floor(diffSec / 60);
-      const s = diffSec % 60;
-      return s > 0 ? `-${m}m ${s}s del En Vivo` : `-${m}m del En Vivo`;
-    }
-
-    if (diffSec < 86400) {
-      const h = Math.floor(diffSec / 3600);
-      const m = Math.floor((diffSec % 3600) / 60);
-      return m > 0 ? `-${h}h ${m}m del En Vivo` : `-${h}h del En Vivo`;
-    }
-
-    const d = Math.floor(diffSec / 86400);
-    return `-${d}d del En Vivo`;
-  });
 
   getSnapshotForCameraAt(cameraName: string): EventRecord | null {
     if (this.playbackMode() === 'live') {
@@ -3040,41 +2934,58 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       return null;
     }
 
-    // 3. Fallback en la lista/mapa de eventos para cámaras estáticas no conectadas a WebRTC
-    if (this.webRtcStates()[slot.id] !== 'connected') {
-      const latestEvt = this.getLatestEventForCamera(cameraName, cameraId);
-      if (latestEvt) return latestEvt;
-
-      return null;
-    }
+    // 3. Fallback en la lista/mapa de eventos para cámaras estáticas o como póster base mientras conecta WebRTC
+    const latestEvt = this.getLatestEventForCamera(cameraName, cameraId);
+    if (latestEvt) return latestEvt;
 
     return null;
+  }
+
+  isSlotPlayingLiveVideo(slot: GridSlot): boolean {
+    if (!slot || !slot.camera) return false;
+    if (this.isSlotInPlaybackMode(slot)) return false;
+    return this.monitoringStateService.isSlotVideoPlaying(slot.id);
+  }
+
+  onVideoPlaying(slotId: string, event: Event): void {
+    const video = event.target as HTMLVideoElement;
+    console.log(`%c[Monitoreo Fullscreen Slot ${slotId}] Evento 'playing' disparado -> Dimensiones: ${video?.videoWidth}x${video?.videoHeight}, currentTime: ${video?.currentTime}`, 'color: #2ed573; font-weight: bold;');
+    if (video && (video.videoWidth > 0 || video.currentTime > 0)) {
+      this.monitoringStateService.setSlotVideoPlaying(slotId, true);
+    }
+  }
+
+  onVideoLoadedData(slotId: string, event: Event): void {
+    const video = event.target as HTMLVideoElement;
+    console.log(`[Monitoreo Fullscreen Slot ${slotId}] Evento 'loadeddata' / frame recibido -> Dimensiones: ${video?.videoWidth}x${video?.videoHeight}`);
+    if (video && video.videoWidth > 0 && !video.paused) {
+      this.monitoringStateService.setSlotVideoPlaying(slotId, true);
+    }
+  }
+
+  onVideoPaused(slotId: string): void {
+    console.log(`[Monitoreo Fullscreen Slot ${slotId}] Evento 'pause' o 'waiting' disparado`);
+    this.monitoringStateService.setSlotVideoPlaying(slotId, false);
+  }
+
+  onVideoError(slotId: string, event: Event): void {
+    console.error(`[Monitoreo Fullscreen Slot ${slotId}] Error en elemento <video>:`, event);
+    this.monitoringStateService.setSlotVideoPlaying(slotId, false);
   }
 
   isSlotShowingEventPhoto(slot: GridSlot): boolean {
     if (!slot || !slot.camera) return false;
 
-    // Si la celda está transmitiendo video WebRTC en tiempo real y no en reproducción histórica, no es foto de evento
-    if (this.webRtcStates()[slot.id] === 'connected' && !this.isSlotInPlaybackMode(slot)) {
+    // Si la celda está reproduciendo video WebRTC en vivo y no en reproducción histórica, no se muestra badge de foto
+    if (this.isSlotPlayingLiveVideo(slot)) {
       return false;
     }
 
     // Solo se muestra foto/insignia si se encontró un evento real válido con imagen
     const displayedEvt = this.getDisplayedEventForSlot(slot);
-    return displayedEvt !== null && !!displayedEvt.urlImg;
+    return displayedEvt !== null && !!(displayedEvt.imgMinioObjectName || displayedEvt.urlImg);
   }
 
-  readonly formattedZoomSpanLabel = computed(() => {
-    const sec = this.zoomRangeSeconds();
-    if (sec < 300) return '5 min';
-    if (sec < 1800) return '10 min';
-    if (sec < 3600) return '30 min';
-    if (sec < 10800) return '1 hora';
-    if (sec < 21600) return '3 horas';
-    if (sec < 43200) return '6 horas';
-    if (sec < 86400) return '12 horas';
-    return '24 horas';
-  });
 
   togglePlayPause(): void {
     if (this.playbackMode() === 'live') {
@@ -3101,12 +3012,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.playbackWindowEnd.set(null);
     this.currentTimePointer.set(now);
 
-    this.isEditingTimeSegments = false;
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    this.hoursSegmentStr.set(pad(now.getHours()));
-    this.minutesSegmentStr.set(pad(now.getMinutes()));
-    this.secondsSegmentStr.set(pad(now.getSeconds()));
-
     // Vaciar eventos acumulados en el búfer ordenadamente a la lista principal
     if (this.bufferedEvents().length > 0) {
       const buffer = this.bufferedEvents();
@@ -3124,50 +3029,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.showToast('⚡ Visualización En Vivo restablecida', 'success');
   }
 
-  onScrubberChange(value: number): void {
-    const targetMs = value;
-    const targetDate = new Date(targetMs);
-
-    this.isEditingTimeSegments = false;
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    this.hoursSegmentStr.set(pad(targetDate.getHours()));
-    this.minutesSegmentStr.set(pad(targetDate.getMinutes()));
-    this.secondsSegmentStr.set(pad(targetDate.getSeconds()));
-
-    this.currentTimePointer.set(targetDate);
-  }
-
-  private ensureEventUnclustered(targetEvent: EventRecord): void {
-    const events = this.eventsList();
-    if (events.length <= 1) return;
-
-    const targetMs = new Date(targetEvent.timestamp).getTime();
-
-    // Encontrar la menor distancia de tiempo (ms) hacia cualquier otro evento vecino
-    let minDeltaMs = Infinity;
-    for (const e of events) {
-      if (e.id === targetEvent.id) continue;
-      const diff = Math.abs(new Date(e.timestamp).getTime() - targetMs);
-      if (diff > 0 && diff < minDeltaMs) {
-        minDeltaMs = diff;
-      }
-    }
-
-    if (minDeltaMs === Infinity) return;
-
-    const minDeltaSec = minDeltaMs / 1000;
-
-    // Calcular el rango de zoom óptimo para des-agrupar completamente el evento seleccionado
-    const targetZoomSeconds = Math.max(60, Math.min(300, Math.ceil(minDeltaSec * 10)));
-
-    this.zoomRangeSeconds.set(targetZoomSeconds);
-
-    // Centrar la ventana de tiempo en el evento seleccionado
-    const halfZoomMs = (targetZoomSeconds * 1000) / 2;
-    const nowMs = new Date().getTime();
-    const desiredEndMs = Math.min(nowMs, targetMs + halfZoomMs);
-    this.playbackWindowEnd.set(new Date(desiredEndMs));
-  }
 
   readonly selectedFlagId = signal<string | null>(null);
 
@@ -3226,105 +3087,10 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       this.paused.set(true);
     }
 
-    this.isEditingTimeSegments = false;
-    this.isEditingDateSegments = false;
-
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    this.hoursSegmentStr.set(pad(targetDate.getHours()));
-    this.minutesSegmentStr.set(pad(targetDate.getMinutes()));
-    this.secondsSegmentStr.set(pad(targetDate.getSeconds()));
-    this.dateDayStr.set(pad(targetDate.getDate()));
-    this.dateMonthStr.set(pad(targetDate.getMonth() + 1));
-    this.dateYearStr.set(targetDate.getFullYear().toString());
-
     this.currentTimePointer.set(targetDate);
     this.showToast(`📍 Evento activo: ${eventRecord.analitica || 'Alerta'} (${eventRecord.nombreCamara})`, 'primary');
   }
 
-  backwardEvent(): void {
-    let events = this.eventsList();
-    if (events.length === 0) return;
-
-    // Si hay cámaras seleccionadas en el lienzo (en modo SYNC o ASYNC), filtrar eventos para navegar ÚNICAMENTE entre los de las cámaras seleccionadas
-    if (this.selectedCameraNames().size > 0) {
-      const selectedNames = this.selectedCameraNames();
-      events = events.filter(e => selectedNames.has(e.nombreCamara));
-      if (events.length === 0) return;
-    }
-
-    const sorted = [...events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-    const currentFlagId = this.selectedFlagId();
-
-    let targetIdx = -1;
-    if (currentFlagId !== null) {
-      const currentIdx = sorted.findIndex(e => e.id === currentFlagId);
-      if (currentIdx > 0) {
-        targetIdx = currentIdx - 1;
-      } else if (currentIdx === 0) {
-        targetIdx = 0;
-      }
-    } else {
-      const pointerMs = this.currentTimePointer().getTime();
-      const prevEvents = sorted.filter(e => new Date(e.timestamp).getTime() <= pointerMs);
-      if (prevEvents.length > 0) {
-        targetIdx = sorted.findIndex(e => e.id === prevEvents[prevEvents.length - 1].id);
-      } else {
-        targetIdx = 0;
-      }
-    }
-
-    if (targetIdx >= 0 && targetIdx < sorted.length) {
-      const targetEvent = sorted[targetIdx];
-      this.toggleTimelineFlag(targetEvent, 1);
-    }
-  }
-
-  forwardEvent(): void {
-    if (this.playbackMode() === 'live') return;
-
-    let events = this.eventsList();
-    if (events.length === 0) {
-      this.setLiveMode();
-      return;
-    }
-
-    // Si hay cámaras seleccionadas en el lienzo (en modo SYNC o ASYNC), filtrar eventos para navegar ÚNICAMENTE entre los de las cámaras seleccionadas
-    if (this.selectedCameraNames().size > 0) {
-      const selectedNames = this.selectedCameraNames();
-      events = events.filter(e => selectedNames.has(e.nombreCamara));
-      if (events.length === 0) {
-        this.setLiveMode();
-        return;
-      }
-    }
-
-    const sorted = [...events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-    const currentFlagId = this.selectedFlagId();
-
-    let targetIdx = -1;
-    if (currentFlagId !== null) {
-      const currentIdx = sorted.findIndex(e => e.id === currentFlagId);
-      if (currentIdx >= 0) {
-        targetIdx = currentIdx + 1;
-      }
-    } else {
-      const pointerMs = this.currentTimePointer().getTime();
-      const nextEvents = sorted.filter(e => new Date(e.timestamp).getTime() > pointerMs);
-      if (nextEvents.length > 0) {
-        targetIdx = sorted.findIndex(e => e.id === nextEvents[0].id);
-      }
-    }
-
-    // Si se presiona en el último evento o sobrepasa -> Volver a EN VIVO
-    if (targetIdx < 0 || targetIdx >= sorted.length) {
-      this.selectedFlagId.set(null);
-      this.setLiveMode();
-      return;
-    }
-
-    const targetEvent = sorted[targetIdx];
-    this.toggleTimelineFlag(targetEvent, 1);
-  }
 
   setLiveModeKeepWindow(): void {
     const now = new Date();
@@ -3335,741 +3101,9 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.highlightedCellCameraName.set(null);
     this.currentTimePointer.set(now);
 
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    this.hoursSegmentStr.set(pad(now.getHours()));
-    this.minutesSegmentStr.set(pad(now.getMinutes()));
-    this.secondsSegmentStr.set(pad(now.getSeconds()));
-    this.dateDayStr.set(pad(now.getDate()));
-    this.dateMonthStr.set(pad(now.getMonth() + 1));
-    this.dateYearStr.set(now.getFullYear().toString());
-
     this.showToast('⚡ Transmisión En Vivo reanudada', 'success');
   }
 
-  readonly timelineRuleMarks = computed(() => {
-    const range = this.timelineRange();
-    const startMs = range.start.getTime();
-    const endMs = range.end.getTime();
-    const durationMs = endMs - startMs;
-    const zoomSec = this.zoomRangeSeconds();
-
-    const marks: { id: string; timeLabel: string; leftPct: number }[] = [];
-    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const oneDayMs = 86400 * 1000;
-
-    if (zoomSec >= 86400 * 2) {
-      // Escala multidía: definir paso de días según escala de zoom fija (exclusivamente del zoom)
-      let stepDays = 1;
-      if (zoomSec >= 86400 * 20) stepDays = 5;
-      else if (zoomSec >= 86400 * 10) stepDays = 3;
-      else if (zoomSec >= 86400 * 4) stepDays = 2;
-
-      // Buffer amplio para entrada y salida suave de los bordes
-      const bufferStartMs = startMs - oneDayMs * stepDays * 2;
-      const bufferEndMs = endMs + oneDayMs * stepDays * 2;
-
-      const startDate = new Date(bufferStartMs);
-      const firstDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-      let curr = firstDay.getTime();
-
-      while (curr <= bufferEndMs) {
-        const dayEpoch = Math.floor(curr / oneDayMs);
-        if (dayEpoch % stepDays === 0) {
-          const pct = ((curr - startMs) / durationMs) * 100;
-          if (pct >= 0 && pct <= 100) {
-            const d = new Date(curr);
-            marks.push({
-              id: `day-${dayEpoch}`,
-              timeLabel: `${d.getDate()} ${monthNames[d.getMonth()]}`,
-              leftPct: pct
-            });
-          }
-        }
-        curr += oneDayMs;
-      }
-    } else if (zoomSec >= 14400) {
-      // Escala de horas (4h a 48h): horas exactas fijas (ej. cada 2h, 3h o 6h)
-      const stepHours = zoomSec >= 86400 ? 6 : (zoomSec >= 43200 ? 3 : 2);
-      const stepMs = stepHours * 3600 * 1000;
-
-      const bufferStartMs = startMs - stepMs * 2;
-      const bufferEndMs = endMs + stepMs * 2;
-
-      const startDate = new Date(bufferStartMs);
-      const firstHourMs = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), Math.floor(startDate.getHours() / stepHours) * stepHours).getTime();
-
-      let curr = firstHourMs;
-      while (curr <= bufferEndMs) {
-        const hourEpoch = Math.floor(curr / stepMs);
-        const pct = ((curr - startMs) / durationMs) * 100;
-        if (pct >= 0 && pct <= 100) {
-          const d = new Date(curr);
-          let label = '';
-          if (d.getHours() === 0) {
-            label = `${d.getDate()} ${monthNames[d.getMonth()]}`;
-          } else {
-            label = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-          }
-          marks.push({
-            id: `hour-${hourEpoch}`,
-            timeLabel: label,
-            leftPct: pct
-          });
-        }
-        curr += stepMs;
-      }
-    } else {
-      // Escala corta (<= 4h): divisiones continuas por paso fijo de minutos
-      const stepMinutes = zoomSec <= 600 ? 2 : (zoomSec <= 3600 ? 10 : 30);
-      const stepMs = stepMinutes * 60 * 1000;
-
-      const bufferStartMs = startMs - stepMs * 2;
-      const bufferEndMs = endMs + stepMs * 2;
-
-      const startDate = new Date(bufferStartMs);
-      const firstMinMs = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), startDate.getHours(), Math.floor(startDate.getMinutes() / stepMinutes) * stepMinutes).getTime();
-
-      let curr = firstMinMs;
-      while (curr <= bufferEndMs) {
-        const minEpoch = Math.floor(curr / stepMs);
-        const pct = ((curr - startMs) / durationMs) * 100;
-        if (pct >= 0 && pct <= 100) {
-          const d = new Date(curr);
-          const label = zoomSec <= 600
-            ? d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-            : d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-          marks.push({
-            id: `min-${minEpoch}`,
-            timeLabel: label,
-            leftPct: pct
-          });
-        }
-        curr += stepMs;
-      }
-    }
-
-    return marks;
-  });
-
-  isDraggingTimeline = signal<boolean>(false);
-  isSeekingNeedle = signal<boolean>(false);
-  private dragStartX = 0;
-  private dragStartEndMs = 0;
-  private dragTrackWidth = 1000;
-
-  onTimelineMouseDown(event: MouseEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const target = (event.currentTarget || event.target) as HTMLElement;
-    const wrapper = target ? (target.closest('.timeline-slider-wrapper') as HTMLElement) : null;
-    if (wrapper) {
-      const rect = wrapper.getBoundingClientRect();
-      if (rect.width > 0) {
-        this.dragTrackWidth = rect.width;
-      }
-    }
-
-    if (event.button === 2 || event.button === 1) {
-      // Clic Derecho o Clic Central de Rueda (Button 1) -> Arrastrar y desplazar ventana de tiempo
-      this.isDraggingTimeline.set(true);
-      document.body.classList.add('is-timeline-dragging');
-      this.dragStartX = event.clientX;
-      const range = this.timelineRange();
-      this.dragStartEndMs = range.end.getTime();
-
-      // Suprimir el menú contextual del navegador aunque el mouse se suelte fuera del contenedor
-      const suppressContextMenu = (e: Event) => { e.preventDefault(); };
-      document.addEventListener('contextmenu', suppressContextMenu, { capture: true, once: true });
-    } else if (event.button === 0) {
-      // Clic Izquierdo -> Desplazar aguja roja de reproducción
-      this.isSeekingNeedle.set(true);
-      document.body.classList.add('is-timeline-dragging');
-      this.seekNeedleToEvent(event);
-    }
-  }
-
-  private isRafMovePending = false;
-  private pendingMouseMoveEvent: MouseEvent | null = null;
-
-  @HostListener('window:mousemove', ['$event'])
-  onWindowMouseMove(event: MouseEvent): void {
-    if (!this.isDraggingTimeline() && !this.isSeekingNeedle()) return;
-    event.preventDefault();
-
-    this.pendingMouseMoveEvent = event;
-    if (!this.isRafMovePending) {
-      this.isRafMovePending = true;
-      requestAnimationFrame(() => {
-        this.isRafMovePending = false;
-        if (this.pendingMouseMoveEvent) {
-          this.processTimelineMouseMove(this.pendingMouseMoveEvent);
-        }
-      });
-    }
-  }
-
-  private processTimelineMouseMove(event: MouseEvent): void {
-    if (this.isDraggingTimeline()) {
-      const deltaX = event.clientX - this.dragStartX;
-      const durationMs = Math.min(86400 * 1000, this.zoomRangeSeconds() * 1000);
-      const width = this.dragTrackWidth > 0 ? this.dragTrackWidth : window.innerWidth;
-      const deltaMs = - (deltaX / width) * durationMs;
-
-      const bounds = this.activeDayBounds();
-      const minEndMs = bounds.start.getTime() + durationMs;
-      const maxEndMs = bounds.end.getTime();
-      const newEndMs = Math.max(minEndMs, Math.min(maxEndMs, this.dragStartEndMs + deltaMs));
-
-      this.playbackWindowEnd.set(new Date(newEndMs));
-    } else if (this.isSeekingNeedle()) {
-      this.seekNeedleToEvent(event);
-    }
-  }
-
-  @HostListener('window:mouseup', ['$event'])
-  onTimelineMouseUp(event?: MouseEvent): void {
-    if (this.isDraggingTimeline()) {
-      this.isDraggingTimeline.set(false);
-      document.body.classList.remove('is-timeline-dragging');
-    }
-    if (this.isSeekingNeedle()) {
-      this.isSeekingNeedle.set(false);
-      document.body.classList.remove('is-timeline-dragging');
-    }
-  }
-
-  private seekNeedleToEvent(event: MouseEvent): void {
-    if (this.selectedFlagId() !== null) {
-      this.selectedFlagId.set(null);
-    }
-
-    const durationMs = Math.min(86400 * 1000, this.zoomRangeSeconds() * 1000);
-    const width = this.dragTrackWidth > 0 ? this.dragTrackWidth : window.innerWidth;
-
-    const trackElem = (document.querySelector('.timeline-ruler-track') || document.querySelector('.timeline-slider-wrapper')) as HTMLElement;
-    const rect = trackElem ? trackElem.getBoundingClientRect() : null;
-    const left = rect ? rect.left : 0;
-    const trackWidth = rect ? rect.width : width;
-
-    const mouseX = Math.max(0, Math.min(event.clientX - left, trackWidth));
-    const pct = trackWidth > 0 ? mouseX / trackWidth : 0;
-
-    const range = this.timelineRange();
-    const bounds = this.activeDayBounds();
-    const now = new Date();
-    const nowMs = now.getTime();
-    const rawTargetMs = range.start.getTime() + durationMs * pct;
-    const targetMs = Math.min(nowMs, Math.max(bounds.start.getTime(), rawTargetMs));
-
-    if (targetMs >= nowMs - 1000) {
-      this.setLiveMode();
-      return;
-    }
-
-    const targetDate = new Date(targetMs);
-
-    if (this.playbackMode() === 'live') {
-      this.playbackWindowEnd.set(now);
-      this.playbackMode.set('playback');
-      this.paused.set(true);
-    }
-
-    this.isEditingTimeSegments = false;
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    this.hoursSegmentStr.set(pad(targetDate.getHours()));
-    this.minutesSegmentStr.set(pad(targetDate.getMinutes()));
-    this.secondsSegmentStr.set(pad(targetDate.getSeconds()));
-
-    this.currentTimePointer.set(targetDate);
-  }
-
-  onTimelineWheel(event: WheelEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const bounds = this.activeDayBounds();
-    const durationMs = Math.min(86400 * 1000, this.zoomRangeSeconds() * 1000);
-    const minEndMs = bounds.start.getTime() + durationMs;
-    const maxEndMs = bounds.end.getTime();
-
-    // Desplazamiento horizontal cuando hay movimiento horizontal (deltaX)
-    if (Math.abs(event.deltaX) > 0) {
-      const width = this.dragTrackWidth > 0 ? this.dragTrackWidth : window.innerWidth;
-      const deltaMs = (event.deltaX / width) * durationMs * 0.5;
-
-      const currentEndMs = this.timelineRange().end.getTime();
-      const newEndMs = Math.max(minEndMs, Math.min(maxEndMs, currentEndMs + deltaMs));
-
-      this.playbackWindowEnd.set(new Date(newEndMs));
-      return;
-    }
-
-    // Zoom en regla de tiempo (máximo 24 horas = 86400s)
-    const target = event.currentTarget as HTMLElement;
-    if (!target) return;
-
-    const rect = target.getBoundingClientRect();
-    const mouseX = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
-    const cursorPct = rect.width > 0 ? mouseX / rect.width : 0.5;
-
-    const range = this.timelineRange();
-    const startMs = range.start.getTime();
-    const endMs = range.end.getTime();
-    const currDurationMs = endMs - startMs;
-
-    const cursorTimeMs = startMs + currDurationMs * cursorPct;
-
-    const factor = event.deltaY > 0 ? 1.25 : 0.8;
-    const newZoomSec = Math.max(60, Math.min(86400, Math.round((currDurationMs / 1000) * factor)));
-    const newDurationMs = newZoomSec * 1000;
-
-    const calcMinEndMs = bounds.start.getTime() + newDurationMs;
-    const newEndMs = Math.max(calcMinEndMs, Math.min(maxEndMs, cursorTimeMs + newDurationMs * (1 - cursorPct)));
-
-    this.playbackWindowEnd.set(new Date(newEndMs));
-    this.zoomRangeSeconds.set(newZoomSec);
-  }
-
-  readonly timelineHoverInfo = signal<{ visible: boolean; leftPct: number; timeLabel: string; eventCount: number }>({
-    visible: false,
-    leftPct: 0,
-    timeLabel: '',
-    eventCount: 0
-  });
-
-  onTimelineMouseMove(event: MouseEvent): void {
-    const target = event.currentTarget as HTMLElement;
-    if (!target) return;
-    const rect = target.getBoundingClientRect();
-
-    if (this.isDraggingTimeline()) {
-      const deltaX = event.clientX - this.dragStartX;
-      const durationMs = this.zoomRangeSeconds() * 1000;
-      const deltaMs = - (deltaX / rect.width) * durationMs;
-      const maxEndMs = this.maxTimelineEnd().getTime();
-      const newEndMs = Math.min(maxEndMs, this.dragStartEndMs + deltaMs);
-
-      this.playbackWindowEnd.set(new Date(newEndMs));
-      return;
-    }
-
-    const mouseX = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
-    const leftPct = (mouseX / rect.width) * 100;
-
-    const range = this.timelineRange();
-    const startMs = range.start.getTime();
-    const endMs = range.end.getTime();
-    const hoverMs = startMs + (endMs - startMs) * (leftPct / 100);
-    const hoverDate = new Date(hoverMs);
-
-    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const datePart = `${hoverDate.getDate()} ${monthNames[hoverDate.getMonth()]} ${hoverDate.getFullYear()}`;
-    const timePart = hoverDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const fullLabel = `${datePart} • ${timePart}`;
-
-    const count = this.eventsList().filter(e => Math.abs(new Date(e.timestamp).getTime() - hoverMs) <= 30000).length;
-
-    this.timelineHoverInfo.set({
-      visible: true,
-      leftPct,
-      timeLabel: fullLabel,
-      eventCount: count
-    });
-  }
-
-  onTimelineMouseLeave(): void {
-    this.timelineHoverInfo.set({ visible: false, leftPct: 0, timeLabel: '', eventCount: 0 });
-  }
-
-  readonly currentTimeInputValue = computed(() => {
-    const d = this.currentTimePointer();
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  });
-
-  onSegmentFocus(): void {
-    this.isEditingTimeSegments = true;
-  }
-
-  onHoursSegmentInput(val: string, nextInput?: HTMLInputElement): void {
-    const digitsOnly = val.replace(/\D/g, '');
-    let num = parseInt(digitsOnly, 10);
-    if (!isNaN(num)) {
-      if (num > 23) num = 23;
-      const clampedStr = num.toString();
-      this.hoursSegmentStr.set(clampedStr);
-      if (clampedStr.length >= 2 && nextInput) {
-        nextInput.focus();
-        nextInput.select();
-      }
-    } else {
-      this.hoursSegmentStr.set(digitsOnly);
-    }
-    this.commitSegmentedTime();
-  }
-
-  onMinutesSegmentInput(val: string, nextInput?: HTMLInputElement): void {
-    const digitsOnly = val.replace(/\D/g, '');
-    let num = parseInt(digitsOnly, 10);
-    if (!isNaN(num)) {
-      if (num > 59) num = 59;
-      const clampedStr = num.toString();
-      this.minutesSegmentStr.set(clampedStr);
-      if (clampedStr.length >= 2 && nextInput) {
-        nextInput.focus();
-        nextInput.select();
-      }
-    } else {
-      this.minutesSegmentStr.set(digitsOnly);
-    }
-    this.commitSegmentedTime();
-  }
-
-  onSecondsSegmentInput(val: string): void {
-    const digitsOnly = val.replace(/\D/g, '');
-    let num = parseInt(digitsOnly, 10);
-    if (!isNaN(num)) {
-      if (num > 59) num = 59;
-      this.secondsSegmentStr.set(num.toString());
-    } else {
-      this.secondsSegmentStr.set(digitsOnly);
-    }
-    this.commitSegmentedTime();
-  }
-
-  onSegmentKeydown(event: KeyboardEvent, currentVal: string, prevInput?: HTMLInputElement, nextInput?: HTMLInputElement): void {
-    if (event.key === 'Backspace' && (currentVal === '' || currentVal === '0' || currentVal === '00') && prevInput) {
-      event.preventDefault();
-      prevInput.focus();
-      prevInput.select();
-    } else if (event.key === 'ArrowRight' && nextInput) {
-      event.preventDefault();
-      nextInput.focus();
-      nextInput.select();
-    } else if (event.key === 'ArrowLeft' && prevInput) {
-      event.preventDefault();
-      prevInput.focus();
-      prevInput.select();
-    }
-  }
-
-  onSegmentBlur(segment: 'h' | 'm' | 's'): void {
-    this.isEditingTimeSegments = false;
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    if (segment === 'h') {
-      let h = parseInt(this.hoursSegmentStr(), 10);
-      if (isNaN(h) || h < 0) h = 0;
-      if (h > 23) h = 23;
-      this.hoursSegmentStr.set(pad(h));
-    } else if (segment === 'm') {
-      let m = parseInt(this.minutesSegmentStr(), 10);
-      if (isNaN(m) || m < 0) m = 0;
-      if (m > 59) m = 59;
-      this.minutesSegmentStr.set(pad(m));
-    } else if (segment === 's') {
-      let s = parseInt(this.secondsSegmentStr(), 10);
-      if (isNaN(s) || s < 0) s = 0;
-      if (s > 59) s = 59;
-      this.secondsSegmentStr.set(pad(s));
-    }
-    this.commitSegmentedTime();
-  }
-
-  private commitSegmentedTime(): void {
-    let h = parseInt(this.hoursSegmentStr(), 10);
-    let m = parseInt(this.minutesSegmentStr(), 10);
-    let s = parseInt(this.secondsSegmentStr(), 10);
-
-    if (isNaN(h)) h = 0;
-    if (isNaN(m)) m = 0;
-    if (isNaN(s)) s = 0;
-
-    h = Math.max(0, Math.min(23, h));
-    m = Math.max(0, Math.min(59, m));
-    s = Math.max(0, Math.min(59, s));
-
-    const now = new Date();
-    const current = this.currentTimePointer();
-    const updated = new Date(current.getFullYear(), current.getMonth(), current.getDate(), h, m, s);
-    const maxEndMs = this.maxTimelineEnd().getTime();
-
-    // NUNCA permitir que la hora sobrepase el instante actual `now`
-    const targetMs = Math.min(now.getTime(), Math.min(maxEndMs, updated.getTime()));
-
-    if (targetMs >= now.getTime()) {
-      this.setLiveMode();
-      return;
-    }
-
-    if (this.playbackMode() === 'live') {
-      this.playbackMode.set('playback');
-      this.paused.set(true);
-    }
-    this.currentTimePointer.set(new Date(targetMs));
-  }
-
-  onDateSegmentFocus(): void {
-    this.isEditingDateSegments = true;
-  }
-
-  onDaySegmentInput(val: string, nextInput?: HTMLInputElement): void {
-    const digitsOnly = val.replace(/\D/g, '');
-    let num = parseInt(digitsOnly, 10);
-    if (!isNaN(num)) {
-      if (num > 31) num = 31;
-      this.dateDayStr.set(digitsOnly);
-      if (digitsOnly.length >= 2 && nextInput) {
-        nextInput.focus();
-        nextInput.select();
-      }
-    } else {
-      this.dateDayStr.set(digitsOnly);
-    }
-    this.commitSegmentedDate();
-  }
-
-  onMonthSegmentInput(val: string, nextInput?: HTMLInputElement): void {
-    const digitsOnly = val.replace(/\D/g, '');
-    let num = parseInt(digitsOnly, 10);
-    if (!isNaN(num)) {
-      if (num > 12) num = 12;
-      this.dateMonthStr.set(digitsOnly);
-      if (digitsOnly.length >= 2 && nextInput) {
-        nextInput.focus();
-        nextInput.select();
-      }
-    } else {
-      this.dateMonthStr.set(digitsOnly);
-    }
-    this.commitSegmentedDate();
-  }
-
-  onYearSegmentInput(val: string): void {
-    const digitsOnly = val.replace(/\D/g, '');
-    let num = parseInt(digitsOnly, 10);
-    const currentYear = new Date().getFullYear();
-    if (!isNaN(num)) {
-      if (num > currentYear) num = currentYear;
-      this.dateYearStr.set(digitsOnly);
-    } else {
-      this.dateYearStr.set(digitsOnly);
-    }
-    if (digitsOnly.length >= 4) {
-      this.commitSegmentedDate();
-    }
-  }
-
-  onDateSegmentKeydown(event: KeyboardEvent, currentVal: string, prevInput?: HTMLInputElement, nextInput?: HTMLInputElement): void {
-    if (event.key === 'Backspace' && (currentVal === '' || currentVal === '0' || currentVal === '00' || currentVal === '0000') && prevInput) {
-      event.preventDefault();
-      prevInput.focus();
-      prevInput.select();
-    } else if (event.key === 'ArrowRight' && nextInput) {
-      event.preventDefault();
-      nextInput.focus();
-      nextInput.select();
-    } else if (event.key === 'ArrowLeft' && prevInput) {
-      event.preventDefault();
-      prevInput.focus();
-      prevInput.select();
-    }
-  }
-
-  onDateSegmentBlur(segment: 'd' | 'm' | 'y'): void {
-    this.isEditingDateSegments = false;
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-    const currentDay = now.getDate();
-
-    let day = parseInt(this.dateDayStr(), 10);
-    let month = parseInt(this.dateMonthStr(), 10);
-    let year = parseInt(this.dateYearStr(), 10);
-
-    if (isNaN(day) || day < 1) day = currentDay;
-    if (day > 31) day = 31;
-
-    if (isNaN(month) || month < 1) month = currentMonth;
-    if (month > 12) month = 12;
-
-    if (isNaN(year) || year < 1) year = currentYear;
-    if (year > currentYear) year = currentYear;
-
-    // Bloquear fechas posteriores al día de hoy
-    if (year === currentYear) {
-      if (month > currentMonth) {
-        month = currentMonth;
-        day = currentDay;
-      } else if (month === currentMonth && day > currentDay) {
-        day = currentDay;
-      }
-    }
-
-    this.dateDayStr.set(pad(day));
-    this.dateMonthStr.set(pad(month));
-    this.dateYearStr.set(year.toString().padStart(4, '0'));
-
-    this.commitSegmentedDate();
-  }
-
-  private commitSegmentedDate(): void {
-    let day = parseInt(this.dateDayStr(), 10);
-    let month = parseInt(this.dateMonthStr(), 10);
-    let year = parseInt(this.dateYearStr(), 10);
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-    const currentDay = now.getDate();
-
-    if (isNaN(day) || day < 1) day = 1;
-    if (isNaN(month) || month < 1) month = 1;
-    if (isNaN(year) || year < 1) year = currentYear;
-
-    day = Math.min(31, Math.max(1, day));
-    month = Math.min(12, Math.max(1, month));
-
-    // Garantizar que NUNCA se seleccione una fecha posterior al día de hoy
-    if (year > currentYear) {
-      year = currentYear;
-      month = currentMonth;
-      day = currentDay;
-    } else if (year === currentYear) {
-      if (month > currentMonth) {
-        month = currentMonth;
-        day = currentDay;
-      } else if (month === currentMonth && day > currentDay) {
-        day = currentDay;
-      }
-    }
-
-    if (!this.isEditingDateSegments) {
-      const pad = (n: number) => n.toString().padStart(2, '0');
-      this.dateDayStr.set(pad(day));
-      this.dateMonthStr.set(pad(month));
-      this.dateYearStr.set(year.toString().padStart(4, '0'));
-    }
-
-    const isSelectedToday = year === currentYear && month === currentMonth && day === currentDay;
-
-    if (isSelectedToday) {
-      this.selectedManualDate.set(null);
-      this.zoomRangeSeconds.set(86400);
-      this.playbackWindowEnd.set(null);
-      if (this.currentTimePointer().getTime() > now.getTime()) {
-        this.currentTimePointer.set(now);
-      }
-      this.playbackMode.set('live');
-      this.paused.set(false);
-    } else {
-      const selected = new Date(year, month - 1, day, 12, 0, 0);
-      this.selectedManualDate.set(selected);
-
-      const current = this.currentTimePointer();
-      const updated = new Date(year, month - 1, day, current.getHours(), current.getMinutes(), current.getSeconds());
-      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
-
-      const nowMs = now.getTime();
-      const targetMs = Math.min(nowMs, updated.getTime());
-      const endMs = Math.min(nowMs, endOfDay.getTime());
-
-      this.zoomRangeSeconds.set(86400);
-      this.playbackWindowEnd.set(new Date(endMs));
-
-      if (this.playbackMode() === 'live') {
-        this.playbackMode.set('playback');
-        this.paused.set(true);
-      }
-
-      this.currentTimePointer.set(new Date(targetMs));
-    }
-    this.pruneEventsOlderThan24h();
-  }
-
-  onTimeInput(timeStr: string): void {
-    if (!timeStr) return;
-    const parts = timeStr.trim().split(':');
-    if (parts.length < 2) return;
-
-    let h = parseInt(parts[0], 10);
-    let m = parseInt(parts[1], 10);
-    let s = parts.length > 2 ? parseInt(parts[2], 10) : 0;
-
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    this.hoursSegmentStr.set(pad(h));
-    this.minutesSegmentStr.set(pad(m));
-    this.secondsSegmentStr.set(pad(s));
-    this.commitSegmentedTime();
-  }
-
-  readonly currentDateInputValue = computed(() => {
-    const d = this.currentTimePointer();
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  });
-
-  readonly maxDateInputValue = computed(() => {
-    const d = new Date();
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  });
-
-  onDateInput(dateStr: string): void {
-    if (!dateStr) return;
-    const parts = dateStr.split('-');
-    if (parts.length < 3) return;
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10);
-    const day = parseInt(parts[2], 10);
-    if (!year || !month || !day) return;
-
-    const now = new Date();
-    const isSelectedToday = year === now.getFullYear() && (month - 1) === now.getMonth() && day === now.getDate();
-
-    if (isSelectedToday) {
-      this.selectedManualDate.set(null);
-      this.zoomRangeSeconds.set(86400);
-      this.playbackWindowEnd.set(null);
-      this.currentTimePointer.set(now);
-      this.playbackMode.set('live');
-      this.paused.set(false);
-    } else {
-      const selected = new Date(year, month - 1, day, 12, 0, 0);
-      this.selectedManualDate.set(selected);
-
-      const current = this.currentTimePointer();
-      const updated = new Date(year, month - 1, day, current.getHours(), current.getMinutes(), current.getSeconds());
-      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
-
-      const nowMs = now.getTime();
-      const targetMs = Math.min(nowMs, updated.getTime());
-      const endMs = Math.min(nowMs, endOfDay.getTime());
-
-      this.zoomRangeSeconds.set(86400);
-      this.playbackWindowEnd.set(new Date(endMs));
-
-      if (this.playbackMode() === 'live') {
-        this.playbackMode.set('playback');
-        this.paused.set(true);
-      }
-
-      this.currentTimePointer.set(new Date(targetMs));
-    }
-    this.pruneEventsOlderThan24h();
-  }
-
-  readonly currentScrubberValue = computed(() => {
-    const range = this.timelineRange();
-    const startMs = range.start.getTime();
-    const pointerMs = this.currentTimePointer().getTime();
-
-    if (pointerMs <= startMs) return 0;
-    if (pointerMs >= range.end.getTime()) return this.zoomRangeSeconds();
-
-    return Math.floor((pointerMs - startMs) / 1000);
-  });
 
 
 
@@ -4131,49 +3165,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     return list;
   });
 
-  readonly totalSidebarPages = computed(() => {
-    const total = this.filteredEvents().length;
-    return Math.max(1, Math.ceil(total / this.sidebarPageSize));
-  });
-
-  // Ventana deslizante de 3 páginas: [Página K-1, Página K, Página K+1] (Máximo 750 elementos en el DOM)
-  readonly visibleSidebarEvents = computed(() => {
-    const all = this.filteredEvents();
-    const totalPages = this.totalSidebarPages();
-    const currentPage = Math.min(totalPages, Math.max(1, this.currentSidebarPage()));
-
-    const startPage = Math.max(1, currentPage - 1);
-    const endPage = Math.min(totalPages, currentPage + 1);
-
-    const startIndex = (startPage - 1) * this.sidebarPageSize;
-    const endIndex = endPage * this.sidebarPageSize;
-
-    return all.slice(startIndex, endIndex);
-  });
-
-  onSidebarScroll(event: Event): void {
-    const target = event.target as HTMLElement;
-    if (!target) return;
-
-    const scrollTop = target.scrollTop;
-    const scrollHeight = target.scrollHeight;
-    const clientHeight = target.clientHeight;
-
-    if (scrollHeight <= clientHeight) return;
-
-    const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
-    const currentPage = this.currentSidebarPage();
-    const totalPages = this.totalSidebarPages();
-
-    // Scroll descendente (~75% del contenedor): avanzar a la página siguiente precargando la subsecuente
-    if (scrollPercentage > 0.75 && currentPage < totalPages) {
-      this.currentSidebarPage.update(p => Math.min(totalPages, p + 1));
-    }
-    // Scroll ascendente (~25% superior): retroceder a la página anterior
-    else if (scrollTop < clientHeight * 0.25 && currentPage > 1) {
-      this.currentSidebarPage.update(p => Math.max(1, p - 1));
-    }
-  }
 
   readonly activeAnalyticOptions = computed(() => {
     const set = new Set<string>();
@@ -4220,25 +3211,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     return list;
   });
 
-  readonly collapsedCameraAccordionIds = signal<Set<string>>(new Set());
-
-  toggleCameraAccordion(cameraId: string): void {
-    const current = new Set(this.collapsedCameraAccordionIds());
-    if (current.has(cameraId)) {
-      current.delete(cameraId);
-    } else {
-      current.add(cameraId);
-    }
-    this.collapsedCameraAccordionIds.set(current);
-  }
-
-  isCameraAccordionExpanded(cameraId: string): boolean {
-    return !this.collapsedCameraAccordionIds().has(cameraId);
-  }
-
-  getAnalyticsForCamera(cameraId: string): Analytic[] {
-    return this.analyticService.analytics().filter(a => a.targetCameraIds.includes(cameraId));
-  }
 
   readonly camerasGroupedByHost = computed(() => {
     const hosts = this.allHosts();
@@ -4260,65 +3232,10 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     return this.gridSlots().some(s => s.camera?.id === camera.id);
   }
 
-  // --- Modal Cámara & Asignación ---
-  toggleCameraSelection(camera: Camera): void {
-    this.toggleCameraSelectionLocal(camera);
-  }
-
-  toggleCameraSelectionLocal(camera: Camera): void {
-    this.selectedCameraIds.update(set => {
-      const next = new Set(set);
-      if (next.has(camera.id)) {
-        next.delete(camera.id);
-      } else {
-        next.add(camera.id);
-      }
-      return next;
-    });
-  }
-
-  areAllNodeCamerasSelected(cameras: Camera[]): boolean {
-    if (cameras.length === 0) return false;
-    const selected = this.selectedCameraIds();
-    return cameras.every(c => selected.has(c.id));
-  }
-
-  someNodeCamerasSelected(cameras: Camera[]): boolean {
-    if (cameras.length === 0) return false;
-    const selected = this.selectedCameraIds();
-    const count = cameras.filter(c => selected.has(c.id)).length;
-    return count > 0 && count < cameras.length;
-  }
-
-  selectAllCamerasInNode(cameras: Camera[], event: Event): void {
-    event.stopPropagation();
-    const nextIds = new Set(this.selectedCameraIds());
-    const allSelected = this.areAllNodeCamerasSelected(cameras);
-    if (allSelected) {
-      cameras.forEach(c => nextIds.delete(c.id));
-    } else {
-      cameras.forEach(c => nextIds.add(c.id));
-    }
-    this.selectedCameraIds.set(nextIds);
-  }
-
-  areAllSystemCamerasSelected(): boolean {
-    const cams = this.filteredCamerasForModal();
-    if (cams.length === 0) return false;
-    const selected = this.selectedCameraIds();
-    return cams.every(c => selected.has(c.id));
-  }
-
-  toggleAllSystemCameras(): void {
-    const cams = this.filteredCamerasForModal();
-    const nextIds = new Set(this.selectedCameraIds());
-    const allSelected = this.areAllSystemCamerasSelected();
-    if (allSelected) {
-      cams.forEach(c => nextIds.delete(c.id));
-    } else {
-      cams.forEach(c => nextIds.add(c.id));
-    }
-    this.selectedCameraIds.set(nextIds);
+  // --- Modal Cámara & Asignación (Confirmación delegada a CameraSelectionModalComponent) ---
+  onCameraSelectionConfirmed(selectedIds: Set<string>): void {
+    this.selectedCameraIds.set(selectedIds);
+    this.confirmCameraSelection();
   }
 
   confirmCameraSelection(): void {
@@ -4651,10 +3568,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       this.modalTriggerMode.set('slot');
     }
 
-    // Resetear filtros locales de la modal al abrir
-    this.modalSearchQuery.set('');
-    this.modalStatusFilter.set('all');
-
     // Inicializar checklist de la modal con las cámaras activas en el grid
     const activeIds = new Set(
       this.gridSlots()
@@ -4664,19 +3577,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.selectedCameraIds.set(activeIds);
 
     this.showModal.set(true);
-    this.activeModalTab.set('nodos');
-  }
-
-  toggleNodeCollapse(fingerprint: string): void {
-    this.expandedNodes.update(s => {
-      const next = new Set(s);
-      if (next.has(fingerprint)) {
-        next.delete(fingerprint);
-      } else {
-        next.add(fingerprint);
-      }
-      return next;
-    });
   }
 
   // --- Interacción con Alertas (Highlight Cell & Center) ---
@@ -4695,116 +3595,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     }, 3000);
   }
 
-  // --- Marcas en la línea de tiempo (Agrupamiento Inteligente / Clustering) ---
-  readonly visibleTimelineFlags = computed(() => {
-    const range = this.timelineRange();
-    const startMs = range.start.getTime();
-    const endMs = range.end.getTime();
-    let events = this.eventsList();
-
-    // Filtrar banderas de la línea de tiempo por cámaras seleccionadas en ambos modos (SYNC y ASYNC)
-    // Sin selección → muestra banderas de todas las cámaras del lienzo
-    if (this.selectedCameraNames().size > 0) {
-      const selectedNames = this.selectedCameraNames();
-      events = events.filter(e => selectedNames.has(e.nombreCamara));
-    }
-
-    // Filtrar banderas por búsqueda de texto de cámara en la barra superior
-    const search = this.eventSearchQuery().trim().toLowerCase();
-    if (search) {
-      const matchingCanvasCameraNames = new Set<string>();
-      for (const slot of this.gridSlots()) {
-        if (slot.camera && slot.camera.name.toLowerCase().includes(search)) {
-          matchingCanvasCameraNames.add(slot.camera.name);
-        }
-      }
-      events = events.filter(e =>
-        matchingCanvasCameraNames.has(e.nombreCamara) ||
-        e.nombreCamara.toLowerCase().includes(search)
-      );
-    }
-
-    const rawFlags = events
-      .filter(e => {
-        const t = e.timestampMs || (e.timestampMs = new Date(e.timestamp).getTime());
-        return t >= startMs && t <= endMs;
-      })
-      .map(e => {
-        const t = e.timestampMs || (e.timestampMs = new Date(e.timestamp).getTime());
-        const pct = ((t - startMs) / (endMs - startMs)) * 100;
-        return {
-          event: e,
-          leftPct: pct,
-          color: this.getAnalyticColor(e.analitica)
-        };
-      })
-      .sort((a, b) => a.leftPct - b.leftPct);
-
-    if (rawFlags.length === 0) return [];
-
-    // Umbral de agrupación adaptativo según el nivel de zoom actual:
-    // A zoom máximo (zoomRangeSeconds <= 300s / 5 minutos o menos), el umbral baja a 0.05% para des-agrupar totalmente todas las banderas individuales.
-    const zoomSec = this.zoomRangeSeconds();
-    let clusterThresholdPct = 3.5;
-    if (zoomSec <= 300) {
-      clusterThresholdPct = 0.05; // Des-agrupación total a nivel de segundos individuales al hacer zoom profundo
-    } else if (zoomSec <= 1800) {
-      clusterThresholdPct = 0.5;
-    } else if (zoomSec <= 7200) {
-      clusterThresholdPct = 1.2;
-    } else if (zoomSec <= 21600) {
-      clusterThresholdPct = 2.2;
-    }
-    const clusters: Array<{
-      event: EventRecord;
-      leftPct: number;
-      color: string;
-      count: number;
-      events: EventRecord[];
-    }> = [];
-
-    let currentGroup: typeof rawFlags = [];
-
-    for (const flag of rawFlags) {
-      if (currentGroup.length === 0) {
-        currentGroup.push(flag);
-      } else {
-        const firstInGroup = currentGroup[0];
-        if (flag.leftPct - firstInGroup.leftPct <= clusterThresholdPct) {
-          currentGroup.push(flag);
-        } else {
-          const avgPct = currentGroup.reduce((sum, item) => sum + item.leftPct, 0) / currentGroup.length;
-          const mainEvent = currentGroup[currentGroup.length - 1].event;
-          clusters.push({
-            event: mainEvent,
-            leftPct: avgPct,
-            color: currentGroup[0].color,
-            count: currentGroup.length,
-            events: currentGroup.map(g => g.event)
-          });
-          currentGroup = [flag];
-        }
-      }
-    }
-
-    if (currentGroup.length > 0) {
-      const avgPct = currentGroup.reduce((sum, item) => sum + item.leftPct, 0) / currentGroup.length;
-      const mainEvent = currentGroup[currentGroup.length - 1].event;
-      clusters.push({
-        event: mainEvent,
-        leftPct: avgPct,
-        color: currentGroup[0].color,
-        count: currentGroup.length,
-        events: currentGroup.map(g => g.event)
-      });
-    }
-
-    return clusters;
-  });
-
-  setZoomRange(seconds: number): void {
-    this.zoomRangeSeconds.set(seconds);
-  }
 
   toggleSidebar(): void {
     this.sidebarService.toggleSidebar();
@@ -4843,17 +3633,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
       this.paused.set(true);
     }
 
-    this.isEditingTimeSegments = false;
-    this.isEditingDateSegments = false;
-
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    this.hoursSegmentStr.set(pad(targetDate.getHours()));
-    this.minutesSegmentStr.set(pad(targetDate.getMinutes()));
-    this.secondsSegmentStr.set(pad(targetDate.getSeconds()));
-    this.dateDayStr.set(pad(targetDate.getDate()));
-    this.dateMonthStr.set(pad(targetDate.getMonth() + 1));
-    this.dateYearStr.set(targetDate.getFullYear().toString());
-
     this.currentTimePointer.set(targetDate);
   }
 
@@ -4888,36 +3667,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     return `${day} ${month} ${year}, ${hours}:${mins}:${secs}`;
   }
 
-  formatDatePart(date: any): string {
-    if (!date) return '';
-    const d = parseUtcDate(date);
-    const day = d.getDate().toString().padStart(2, '0');
-    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const year = d.getFullYear();
-    return `${day} ${monthNames[d.getMonth()]} ${year}`;
-  }
-
-  formatTimePart(date: any): string {
-    if (!date) return '';
-    const d = parseUtcDate(date);
-    const hours = d.getHours().toString().padStart(2, '0');
-    const mins = d.getMinutes().toString().padStart(2, '0');
-    const secs = d.getSeconds().toString().padStart(2, '0');
-    return `${hours}:${mins}:${secs}`;
-  }
-
-  /**
-   * Formatea los números flotantes de muchos decimales dentro de un texto de descripción.
-   * Ej: "1796.7047259807587 segundos" → "1,796.70 segundos"
-   * Solo actúa sobre números con 3+ decimales para no afectar valores cortos válidos.
-   */
-  formatDetalleEvento(text: string): string {
-    if (!text) return '';
-    return text.replace(/(\d+\.\d{3,})/g, (match) => {
-      const n = parseFloat(match);
-      return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    });
-  }
 
   getAnalyticColor(analitica: string): string {
     if (!analitica) return 'var(--primary)';
@@ -4989,279 +3738,6 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   toggleSidebarFilters(event: Event): void {
     event.stopPropagation();
     this.showSidebarFilters.update(v => !v);
-    if (!this.showSidebarFilters()) {
-      // close any open sub-popovers when hiding the panel
-      this.activeCalendarField.set(null);
-      this.activeNestedCalendar.set(null);
-      this.activeTimeField.set(null);
-      this.showTimeRangeDropdown.set(false);
-    }
-  }
-
-  setDatePreset(preset: '24h' | '7d' | 'today' | 'clear'): void {
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    const now = new Date();
-    if (preset === 'clear') {
-      this.filterDateDesdeStr.set('');
-      this.filterDateHastaStr.set('');
-      this.filterTimeDesdeStr.set('00:00');
-      this.filterTimeHastaStr.set('23:59');
-      this.eventDesdeFilter.set(null);
-      this.eventHastaFilter.set(null);
-    } else if (preset === 'today') {
-      this.filterDateDesdeStr.set(fmt(now));
-      this.filterDateHastaStr.set(fmt(now));
-      this.filterTimeDesdeStr.set('00:00');
-      this.filterTimeHastaStr.set('23:59');
-    } else if (preset === '24h') {
-      const from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      this.filterDateDesdeStr.set(fmt(from));
-      this.filterDateHastaStr.set(fmt(now));
-      this.filterTimeDesdeStr.set(`${pad(from.getHours())}:${pad(from.getMinutes())}`);
-      this.filterTimeHastaStr.set(`${pad(now.getHours())}:${pad(now.getMinutes())}`);
-    } else if (preset === '7d') {
-      const from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      this.filterDateDesdeStr.set(fmt(from));
-      this.filterDateHastaStr.set(fmt(now));
-      this.filterTimeDesdeStr.set('00:00');
-      this.filterTimeHastaStr.set('23:59');
-    }
-    this.applyDateTimeFilter('desde');
-    this.applyDateTimeFilter('hasta');
-    // sync calendar temp state
-    this.tempDateStart.set(this.filterDateDesdeStr());
-    this.tempDateEnd.set(this.filterDateHastaStr());
-  }
-
-  // --- Date/Time Filters & Dropdowns ---
-  @HostListener('document:click')
-  onDocumentClick(): void {
-    this.activeCalendarField.set(null);
-    this.activeNestedCalendar.set(null);
-    this.activeTimeField.set(null);
-    this.showTimeRangeDropdown.set(false);
-    this.showCanvasMenuDropdown.set(false);
-  }
-
-  toggleDropdown(dropdownName: string, event: Event): void {
-    event.stopPropagation();
-    if (this.activeCalendarField() === dropdownName) {
-      this.activeCalendarField.set(null);
-    } else {
-      this.activeCalendarField.set(dropdownName as any);
-      this.showTimeRangeDropdown.set(false);
-      this.activeTimeField.set(null);
-      this.activeNestedCalendar.set(null);
-      if (dropdownName === 'fechas' || dropdownName === 'registro-fechas') {
-        this.tempDateStart.set(this.filterDateDesdeStr() || '');
-        this.tempDateEnd.set(this.filterDateHastaStr() || '');
-        this.isSelectingRange.set(false);
-        this.calendarViewMonth.set(new Date().getMonth());
-        this.calendarViewYear.set(new Date().getFullYear());
-      }
-    }
-  }
-
-  toggleTimeDropdown(event: Event): void {
-    event.stopPropagation();
-    const current = this.showTimeRangeDropdown();
-    this.showTimeRangeDropdown.set(!current);
-    if (!current) {
-      this.activeCalendarField.set(null);
-      this.activeNestedCalendar.set(null);
-      this.activeTimeField.set(null);
-    }
-  }
-
-  openCalendarField(field: 'desde' | 'hasta', event: Event): void {
-    event.stopPropagation();
-    if (this.activeNestedCalendar() === field) {
-      this.activeNestedCalendar.set(null);
-    } else {
-      this.activeNestedCalendar.set(field);
-      this.activeTimeField.set(null);
-      this.calendarViewMonth.set(new Date().getMonth());
-      this.calendarViewYear.set(new Date().getFullYear());
-    }
-  }
-
-  selectCalendarDay(day: number, event?: Event): void {
-    if (event) event.stopPropagation();
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const dateStr = `${this.calendarViewYear()}-${pad(this.calendarViewMonth() + 1)}-${pad(day)}`;
-    const activeField = this.activeNestedCalendar();
-
-    // Metadatos-style: if activeNestedCalendar is 'desde' or 'hasta', set directly
-    if (activeField === 'desde') {
-      this.filterDateDesdeStr.set(dateStr);
-      this.tempDateStart.set(dateStr);
-      this.applyDateTimeFilter('desde');
-      this.activeNestedCalendar.set(null);
-      return;
-    }
-    if (activeField === 'hasta') {
-      this.filterDateHastaStr.set(dateStr);
-      this.tempDateEnd.set(dateStr);
-      this.applyDateTimeFilter('hasta');
-      this.activeNestedCalendar.set(null);
-      return;
-    }
-
-    if (!this.isSelectingRange()) {
-      this.tempDateStart.set(dateStr);
-      this.tempDateEnd.set(dateStr);
-      this.isSelectingRange.set(true);
-    } else {
-      const startVal = this.tempDateStart();
-      if (startVal) {
-        const startTime = new Date(startVal).getTime();
-        const clickedTime = new Date(dateStr).getTime();
-        if (clickedTime < startTime) {
-          this.tempDateStart.set(dateStr);
-          this.tempDateEnd.set(startVal);
-        } else {
-          this.tempDateEnd.set(dateStr);
-        }
-      } else {
-        this.tempDateStart.set(dateStr);
-        this.tempDateEnd.set(dateStr);
-      }
-      this.isSelectingRange.set(false);
-      this.filterDateDesdeStr.set(this.tempDateStart());
-      this.filterDateHastaStr.set(this.tempDateEnd());
-      this.applyDateTimeFilter('desde');
-      this.applyDateTimeFilter('hasta');
-    }
-  }
-
-  isCalendarDateSelected(day: number): boolean {
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const target = `${this.calendarViewYear()}-${pad(this.calendarViewMonth() + 1)}-${pad(day)}`;
-    return this.tempDateStart() === target || this.tempDateEnd() === target;
-  }
-
-  isCalendarDateInRange(day: number): boolean {
-    const startStr = this.tempDateStart();
-    const endStr = this.tempDateEnd();
-    if (!startStr || !endStr || startStr === endStr) return false;
-
-    const pad = (num: number) => num.toString().padStart(2, '0');
-    const targetStr = `${this.calendarViewYear()}-${pad(this.calendarViewMonth() + 1)}-${pad(day)}`;
-
-    const targetTime = new Date(targetStr).getTime();
-    const startTime = new Date(startStr).getTime();
-    const endTime = new Date(endStr).getTime();
-
-    return targetTime > startTime && targetTime < endTime;
-  }
-
-  getMonths(): string[] {
-    return ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-  }
-
-  getCalendarGrid() {
-    const month = this.calendarViewMonth();
-    const year = this.calendarViewYear();
-    const firstDay = new Date(year, month, 1).getDay();
-    const totalDays = new Date(year, month + 1, 0).getDate();
-    return {
-      emptyDays: Array.from({ length: firstDay }, (_, i) => i),
-      days: Array.from({ length: totalDays }, (_, i) => i + 1)
-    };
-  }
-
-  prevCalendarMonth(event: Event): void {
-    event.stopPropagation();
-    if (this.calendarViewMonth() === 0) {
-      this.calendarViewMonth.set(11);
-      this.calendarViewYear.update(y => y - 1);
-    } else {
-      this.calendarViewMonth.update(m => m - 1);
-    }
-  }
-
-  nextCalendarMonth(event: Event): void {
-    event.stopPropagation();
-    if (this.calendarViewMonth() === 11) {
-      this.calendarViewMonth.set(0);
-      this.calendarViewYear.update(y => y + 1);
-    } else {
-      this.calendarViewMonth.update(m => m + 1);
-    }
-  }
-
-  openTimePickerField(field: 'desde' | 'hasta', event: Event): void {
-    event.stopPropagation();
-    if (this.activeTimeField() === field) {
-      this.activeTimeField.set(null);
-      return;
-    }
-    this.activeTimeField.set(field);
-    this.activeNestedCalendar.set(null);
-  }
-
-  selectTimeHour(h: number, event?: Event): void {
-    if (event) event.stopPropagation();
-    const field = this.activeTimeField();
-    if (!field) return;
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    const ts = field === 'desde' ? this.filterTimeDesdeStr() : this.filterTimeHastaStr();
-    const parts = ts.split(':');
-    const newTs = `${pad(h)}:${parts[1] || '00'}`;
-    if (field === 'desde') {
-      this.filterTimeDesdeStr.set(newTs);
-      this.applyDateTimeFilter('desde');
-    } else {
-      this.filterTimeHastaStr.set(newTs);
-      this.applyDateTimeFilter('hasta');
-    }
-  }
-
-  selectTimeMinute(m: number, event?: Event): void {
-    if (event) event.stopPropagation();
-    const field = this.activeTimeField();
-    if (!field) return;
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    const ts = field === 'desde' ? this.filterTimeDesdeStr() : this.filterTimeHastaStr();
-    const parts = ts.split(':');
-    const newTs = `${parts[0] || '00'}:${pad(m)}`;
-    if (field === 'desde') {
-      this.filterTimeDesdeStr.set(newTs);
-      this.applyDateTimeFilter('desde');
-    } else {
-      this.filterTimeHastaStr.set(newTs);
-      this.applyDateTimeFilter('hasta');
-    }
-  }
-
-  isTimeHourSelected(h: number): boolean {
-    const field = this.activeTimeField();
-    if (!field) return false;
-    const ts = field === 'desde' ? this.filterTimeDesdeStr() : this.filterTimeHastaStr();
-    return parseInt(ts.split(':')[0], 10) === h;
-  }
-
-  isTimeMinuteSelected(m: number): boolean {
-    const field = this.activeTimeField();
-    if (!field) return false;
-    const ts = field === 'desde' ? this.filterTimeDesdeStr() : this.filterTimeHastaStr();
-    return parseInt(ts.split(':')[1], 10) === m;
-  }
-
-  applyDateTimeFilter(field: 'desde' | 'hasta'): void {
-    const dateStr = field === 'desde' ? this.filterDateDesdeStr() : this.filterDateHastaStr();
-    const timeStr = field === 'desde' ? this.filterTimeDesdeStr() : this.filterTimeHastaStr();
-    if (!dateStr) return;
-
-    const date = new Date(`${dateStr}T${timeStr}`);
-    if (isNaN(date.getTime())) return;
-
-    if (field === 'desde') {
-      this.eventDesdeFilter.set(date);
-    } else {
-      this.eventHastaFilter.set(date);
-    }
   }
 
   resetFilters(): void {
@@ -5270,19 +3746,11 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     this.eventAnalyticFilter.set('all');
     this.eventDesdeFilter.set(null);
     this.eventHastaFilter.set(null);
-    this.filterDateDesdeStr.set('');
-    this.filterDateHastaStr.set('');
-    this.filterTimeDesdeStr.set('00:00');
-    this.filterTimeHastaStr.set('23:59');
   }
 
-  formatCalendarDateLabel(dateStr: string): string {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}`;
-    }
-    return dateStr;
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.showCanvasMenuDropdown.set(false);
   }
 
   // --- Real association computed method ---
@@ -5364,138 +3832,5 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
     return 'offline';
   }
 
-  cameraMatchesAnalyticType(c: Camera, typeFilter: string): boolean {
-    if (typeFilter === 'all') return true;
-    const badges = this.getCameraAnalytics(c);
-    return badges.some(b => b.toLowerCase() === typeFilter.toLowerCase());
-  }
 
-  // --- Filtered computed properties for modal ---
-  readonly filteredCamerasForModal = computed(() => {
-    const query = this.modalSearchQuery().trim().toLowerCase();
-    const statusFilter = this.modalStatusFilter();
-    const typeFilter = this.modalTypeFilter();
-    const sortDir = this.modalSortDirection();
-    const hosts = this.allHosts();
-    let cams = this.allCameras();
-
-    if (query) {
-      cams = cams.filter(c =>
-        c.name.toLowerCase().includes(query) ||
-        c.id.toLowerCase().includes(query) ||
-        (c.streamType && c.streamType.toLowerCase().includes(query))
-      );
-    }
-
-    if (typeFilter !== 'all') {
-      cams = cams.filter(c => this.cameraMatchesAnalyticType(c, typeFilter));
-    }
-
-    if (statusFilter !== 'all') {
-      const stLower = statusFilter.toLowerCase();
-      cams = cams.filter(c => {
-        const effLower = getCameraEffectiveStatus(c, hosts).toLowerCase();
-        if (stLower === 'active' || stLower === 'online') {
-          return effLower === 'online';
-        }
-        if (stLower === 'inactive' || stLower === 'offline') {
-          return effLower === 'offline';
-        }
-        return effLower === stLower;
-      });
-    }
-
-    // Orden alfabético fijo y configurable (A-Z / Z-A)
-    return cams.slice().sort((a, b) => {
-      const cmp = (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' });
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-  });
-
-  readonly filteredNodeGroupsForModal = computed(() => {
-    const query = this.modalSearchQuery().trim().toLowerCase();
-    const statusFilter = this.modalStatusFilter();
-    const typeFilter = this.modalTypeFilter();
-    const sortDir = this.modalSortDirection();
-    const hosts = this.allHosts();
-    const cameras = this.allCameras();
-
-    const matchesStatus = (c: Camera) => {
-      if (statusFilter === 'all') return true;
-      const stLower = statusFilter.toLowerCase();
-      const effLower = getCameraEffectiveStatus(c, hosts).toLowerCase();
-      if (stLower === 'active' || stLower === 'online') {
-        return effLower === 'online';
-      }
-      if (stLower === 'inactive' || stLower === 'offline') {
-        return effLower === 'offline';
-      }
-      return effLower === stLower;
-    };
-
-    const matchesFilters = (c: Camera) => {
-      return matchesStatus(c) && this.cameraMatchesAnalyticType(c, typeFilter);
-    };
-
-    const groups: { host: Host; cameras: Camera[] }[] = [];
-
-    hosts.forEach(h => {
-      let hostCams = cameras.filter(c => c.hostFingerprint === h.fingerprint);
-
-      if (query) {
-        hostCams = hostCams.filter(c =>
-          c.name.toLowerCase().includes(query) ||
-          c.id.toLowerCase().includes(query) ||
-          (c.streamType && c.streamType.toLowerCase().includes(query))
-        );
-      }
-
-      hostCams = hostCams.filter(matchesFilters);
-
-      const matchesHost = query ? (h.hostname.toLowerCase().includes(query) || h.fingerprint.toLowerCase().includes(query)) : false;
-
-      const finalCams = matchesHost
-        ? cameras.filter(c => c.hostFingerprint === h.fingerprint && matchesFilters(c))
-        : hostCams;
-
-      if (finalCams.length > 0) {
-        // Ordenar cámaras dentro del nodo alfabéticamente
-        const sortedCams = finalCams.slice().sort((a, b) => {
-          const cmp = (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' });
-          return sortDir === 'asc' ? cmp : -cmp;
-        });
-
-        groups.push({
-          host: h,
-          cameras: sortedCams
-        });
-      }
-    });
-
-    // Ordenar los nodos alfabéticamente por hostname
-    return groups.sort((a, b) => {
-      const cmp = (a.host.hostname || '').localeCompare(b.host.hostname || '', undefined, { numeric: true, sensitivity: 'base' });
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-  });
-
-  isLinuxHost(host: Host): boolean {
-    const sys = host?.hwInfo?.system?.toLowerCase() || '';
-    return sys.includes('linux') || sys.includes('ubuntu') || sys.includes('debian');
-  }
-
-  isWindowsHost(host: Host): boolean {
-    const sys = host?.hwInfo?.system?.toLowerCase() || '';
-    return sys.includes('windows') || sys.includes('win');
-  }
-
-  getHostOsIcon(host: Host): string {
-    if (this.isLinuxHost(host)) {
-      return 'icon-ubuntu';
-    }
-    if (this.isWindowsHost(host)) {
-      return 'icon-windows';
-    }
-    return 'icon-nodos';
-  }
 }

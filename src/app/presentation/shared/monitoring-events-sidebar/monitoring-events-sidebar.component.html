@@ -1,0 +1,182 @@
+@if (collapsedSignal()) {
+  <!-- Barra vertical cuando el panel está colapsado: el botón ES el contenedor directo -->
+  <button
+    type="button"
+    class="right-panel-toggle-bar"
+    (click)="onToggleCollapse()"
+    title="Desplegar Historial"
+    aria-label="Desplegar Historial de Eventos y Analíticas">
+    <div class="toggle-arrow-container py-1">
+      <span class="icon-svg icon-chevron-down vms-icon-fluid-xs"></span>
+    </div>
+    <div class="toggle-bar-text-wrapper">
+      <span class="toggle-bar-text">HISTORIAL DE EVENTOS Y ANALITICAS</span>
+    </div>
+    <div class="toggle-arrow-container py-1">
+      <span class="icon-svg icon-chevron-down vms-icon-fluid-xs"></span>
+    </div>
+  </button>
+} @else {
+  <div class="card right-panel-card border-0 h-100 d-flex flex-column overflow-hidden">
+    <div class="right-panel-inner-content d-flex flex-column flex-grow-1 overflow-hidden">
+    <!-- Tabs Header -->
+    <div class="d-flex right-tabs-header border-bottom">
+      <button class="flex-fill btn-premium-tab d-flex align-items-center justify-content-center"
+        [class.active]="activeRightTab() === 'registro'" (click)="activeRightTab.set('registro')">
+        <span>Eventos</span>
+      </button>
+      <div class="tabs-vertical-divider"></div>
+      <button class="flex-fill btn-premium-tab d-flex align-items-center justify-content-center"
+        [class.active]="activeRightTab() === 'analiticas'" (click)="activeRightTab.set('analiticas')">
+        <span>Analíticas</span>
+      </button>
+    </div>
+
+    <!-- Cuerpo de la Barra Derecha -->
+    <div class="flex-grow-1 overflow-y-auto right-panel-content p-2">
+
+      <!-- PESTAÑA 1: REGISTRO DE EVENTOS -->
+      @if (activeRightTab() === 'registro') {
+      <div class="d-flex flex-column gap-2 h-100">
+
+        <!-- Listado de tarjetas de eventos -->
+        <div class="d-flex flex-column gap-2 flex-grow-1 overflow-y-auto list-eventos-sidebar pe-1"
+          (scroll)="onSidebarScroll($event)">
+          @if (isLoadingSignal() && eventsSignal().length === 0) {
+          <div class="text-center py-4">
+            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+          </div>
+          } @else if (eventsSignal().length === 0) {
+          <div class="text-center py-5 text-muted small">
+            Sin eventos coincidentes.
+          </div>
+          } @else {
+          @for (event of visibleSidebarEvents(); track event.id) {
+          <div class="vms-evt-card" #evtCardEl
+            [class.vms-evt-card--fresh]="currentTimePointerSignal().getTime() - event.timestamp.getTime() < 3000"
+            (mouseenter)="onEventCardMouseEnter(evtCardEl)" (mouseleave)="onEventCardMouseLeave(evtCardEl)"
+            (click)="onEventClick(event)">
+
+            <!-- Header: Cámara (Izquierda) + Analítica (Derecha) -->
+            <div class="vms-evt-card__header">
+              <div class="vms-evt-card__cam-container min-w-0 flex-grow-1 overflow-hidden">
+                <span class="vms-evt-card__cam" [title]="event.nombreCamara">{{ event.nombreCamara }}</span>
+              </div>
+              <span class="vms-analytic-chip flex-shrink-0"
+                [style.--chip-color]="resolveAnalyticColor(event.analitica)">
+                <span class="vms-analytic-chip__dot"></span>
+                <span class="vms-analytic-chip__text">{{ event.analitica }}</span>
+              </span>
+            </div>
+
+            <!-- Body: Miniatura 16:9 Ampliada (Izquierda) | Detalles y Fecha con Atributos (Derecha) -->
+            <div class="vms-evt-card__body">
+              <!-- Miniatura Widescreen 16:9 -->
+              <div class="vms-evt-card__media">
+                <span class="vms-evt-card__placeholder">SIN IMAGEN</span>
+                @let resolvedEvtImgUrl = (event.imgMinioObjectName || event.urlImg) | mediaUrl | async;
+                @if (resolvedEvtImgUrl) {
+                <img [src]="resolvedEvtImgUrl" (load)="onImageLoad($event)" (error)="onImageError($event)" class="vms-evt-card__img" loading="lazy"
+                  alt="" />
+                }
+              </div>
+
+              <!-- Info, Fecha y Atributos -->
+              <div class="vms-evt-card__content">
+                <div class="vms-evt-card__desc" [title]="event.detalleEvento">{{
+                  formatDetalleEvento(event.detalleEvento) }}</div>
+
+                @if (event.objeto || event.conteoAforo !== null || event.tiempoPermanencia !== null ||
+                event.objetosEnArea !== null || event.espaciosLibres !== null || event.direccion) {
+                <div class="vms-evt-card__metrics">
+                  @if (event.objeto) {
+                  <span class="vms-metric-tag"><b class="vms-metric-tag__lbl">Objeto:</b> {{ event.objeto }}</span>
+                  }
+                  @if (event.conteoAforo !== null && event.conteoAforo !== undefined) {
+                  <span class="vms-metric-tag"><b class="vms-metric-tag__lbl">Aforo:</b> {{ event.conteoAforo }}</span>
+                  }
+                  @if (event.tiempoPermanencia !== null && event.tiempoPermanencia !== undefined) {
+                  <span class="vms-metric-tag"><b class="vms-metric-tag__lbl">Perm:</b> {{ event.tiempoPermanencia
+                    | number:'1.0-2' }}s</span>
+                  }
+                  @if (event.objetosEnArea !== null && event.objetosEnArea !== undefined) {
+                  <span class="vms-metric-tag"><b class="vms-metric-tag__lbl">En área:</b> {{ event.objetosEnArea
+                    }}</span>
+                  }
+                  @if (event.espaciosLibres !== null && event.espaciosLibres !== undefined) {
+                  <span class="vms-metric-tag"><b class="vms-metric-tag__lbl">Libres:</b> {{ event.espaciosLibres
+                    }}</span>
+                  }
+                  @if (event.direccion) {
+                  <span class="vms-metric-tag"><b class="vms-metric-tag__lbl">Dir:</b> {{ event.direccion }}</span>
+                  }
+                </div>
+                }
+
+                <!-- Timestamp Premium Estético en Esquina Inferior Derecha -->
+                <div class="vms-evt-card__footer-row">
+                  <div class="vms-stamp">
+                    <svg class="vms-stamp__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span class="vms-stamp__date">{{ formatDatePart(event.timestamp) }}</span>
+                    <span class="vms-stamp__dot"></span>
+                    <span class="vms-stamp__time">{{ formatTimePart(event.timestamp) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          }
+          }
+        </div>
+      </div>
+      }
+
+      <!-- PESTAÑA 2: ANALÍTICAS ACTIVAS POR CÁMARA EN EL LIENZO -->
+      @if (activeRightTab() === 'analiticas') {
+      <div class="d-flex flex-column gap-2 list-analiticas-sidebar">
+        @if (camerasInCanvasSignal().length === 0) {
+        <div class="text-center py-5 text-muted small d-flex flex-column align-items-center gap-2">
+          <span class="icon-svg icon-camara text-muted opacity-50" style="width: 32px; height: 32px;"></span>
+          <span>{{ eventSearchQuerySignal().trim() || selectedCameraNamesSignal().size > 0 ? 'Sin cámaras coincidentes.'
+            : 'No hay cámaras agregadas al lienzo actualmente.' }}</span>
+        </div>
+        } @else {
+        @for (cam of camerasInCanvasSignal(); track cam.id) {
+        <div #accordionCardEl class="camera-analytic-accordion-card mb-2"
+          (mouseenter)="onAccordionCardMouseEnter(accordionCardEl)"
+          (mouseleave)="onAccordionCardMouseLeave(accordionCardEl)">
+
+          <!-- Cabecera de la Cámara (Botón Completo de Configuración) -->
+          <div class="camera-accordion-header d-flex align-items-center gap-2 w-100 min-w-0"
+            (click)="onCameraConfig(cam, $event)" [title]="'Configurar cámara ' + cam.name">
+            <span class="icon-svg icon-camara camera-avatar-icon flex-shrink-0"></span>
+            <div class="camera-accordion-title-container min-w-0 flex-grow-1 overflow-hidden">
+              <span class="camera-accordion-title" [title]="cam.name">
+                {{ cam.name }}
+              </span>
+            </div>
+          </div>
+        </div>
+        }
+        }
+      </div>
+      }
+
+    </div>
+
+    <!-- Botón inferior para colapsar el panel (solo visible cuando está expandido) -->
+    <div class="right-panel-collapse-footer">
+      <button class="right-panel-collapse-btn" (click)="onToggleCollapse()" title="Cerrar panel">
+        <span class="icon-svg icon-chevron-down"
+          style="width: 14px; height: 14px; background-color: currentColor; transform: rotate(-90deg); display: block;"></span>
+        <span class="collapse-btn-label">CERRAR PANEL</span>
+      </button>
+    </div>
+  </div>
+</div>
+}

@@ -48,6 +48,15 @@ export class MonitoringStateService {
   readonly isSyncMode = signal<boolean>(true);
   readonly selectedCanvasSlotIds = signal<Set<string>>(new Set());
 
+  // --- Viewport de Monitoreo Principal (para calcular proporciones) ---
+  readonly monitoreoViewportSize = signal<{ width: number; height: number }>({ width: 1400, height: 800 });
+
+  // --- Pan & Zoom dedicados para la ventana PiP (independientes de Monitoreo) ---
+  readonly pipPanX = signal<number>(0);
+  readonly pipPanY = signal<number>(0);
+  readonly pipZoom = signal<number>(1.0);
+  readonly hasPipUserInteracted = signal<boolean>(false);
+
   // Historial Undo / Redo
   readonly undoStack = signal<CanvasStateSnapshot[]>([]);
   readonly redoStack = signal<CanvasStateSnapshot[]>([]);
@@ -150,6 +159,8 @@ export class MonitoringStateService {
   readonly activeGridCamerasMap = new Map<string, { cameraId: string; hostFingerprint: string }>();
   readonly mediaStreamsMap = new Map<string, MediaStream>();
   readonly webRtcStates = signal<Record<string, 'connecting' | 'connected' | 'failed'>>({});
+  // Signal para registrar qué slots están reproduciendo video real con frames decodificados
+  readonly livePlayingSlots = signal<Record<string, boolean>>({});
 
   // Eventos de cámaras y últimas capturas/snapshots
   readonly latestEventsMap = signal<Record<string, any>>({});
@@ -185,6 +196,68 @@ export class MonitoringStateService {
   });
 
   /**
+   * Sincroniza la vista proporcional de Monitoreo hacia el PiP
+   */
+  syncMonitoreoToPip(): void {
+    if (this.hasPipUserInteracted()) {
+      return;
+    }
+    const monW = Math.max(300, this.monitoreoViewportSize().width);
+    const monH = Math.max(200, this.monitoreoViewportSize().height);
+    const pipW = this.pipSize().width;
+    const pipH = this.pipSize().height;
+
+    const monZoom = Math.max(0.05, this.canvasZoom());
+    const monPanX = this.canvasPanX();
+    const monPanY = this.canvasPanY();
+
+    const focalX = (monW / 2 - monPanX) / monZoom;
+    const focalY = (monH / 2 - monPanY) / monZoom;
+
+    const scaleRatio = Math.min(pipW / monW, pipH / monH);
+    const newPipZoom = Math.max(0.05, Math.min(5.0, monZoom * scaleRatio));
+
+    const newPipPanX = (pipW / 2) - focalX * newPipZoom;
+    const newPipPanY = (pipH / 2) - focalY * newPipZoom;
+
+    this.pipZoom.set(newPipZoom);
+    this.pipPanX.set(newPipPanX);
+    this.pipPanY.set(newPipPanY);
+  }
+
+  /**
+   * Sincroniza la vista proporcional del PiP de vuelta a Monitoreo si el usuario interactuó en PiP
+   */
+  syncPipToMonitoreo(): void {
+    if (!this.hasPipUserInteracted()) {
+      return;
+    }
+
+    const monW = Math.max(300, this.monitoreoViewportSize().width);
+    const monH = Math.max(200, this.monitoreoViewportSize().height);
+    const pipW = this.pipSize().width;
+    const pipH = this.pipSize().height;
+
+    const pipZoom = Math.max(0.05, this.pipZoom());
+    const pipPanX = this.pipPanX();
+    const pipPanY = this.pipPanY();
+
+    const focalX = (pipW / 2 - pipPanX) / pipZoom;
+    const focalY = (pipH / 2 - pipPanY) / pipZoom;
+
+    const scaleRatio = Math.max(monW / pipW, monH / pipH);
+    const newMonZoom = Math.max(0.1, Math.min(5.0, pipZoom * scaleRatio));
+
+    const newMonPanX = (monW / 2) - focalX * newMonZoom;
+    const newMonPanY = (monH / 2) - focalY * newMonZoom;
+
+    this.canvasZoom.set(newMonZoom);
+    this.canvasPanX.set(newMonPanX);
+    this.canvasPanY.set(newMonPanY);
+    this.hasPipUserInteracted.set(false);
+  }
+
+  /**
    * Llamado cuando el usuario ingresa a la vista /dashboard/monitoreo
    */
   onEnterMonitoreo(): void {
@@ -193,6 +266,9 @@ export class MonitoringStateService {
     this.isPipActive.set(false);
     this.isPipMinimized.set(false);
     this.unseenEventsCount.set(0); // El contador desaparece al entrar a Monitoreo
+
+    // Sincronizar vista modificada desde PiP a Monitoreo solo si hubo interacción en PiP
+    this.syncPipToMonitoreo();
 
     // Si estaba pausado por el PiP o por inactividad, reanudar automáticamente todo
     if (this.isMonitoringPaused() || this.isPipInactivityPaused()) {
@@ -210,8 +286,9 @@ export class MonitoringStateService {
     this.unseenEventsCount.set(0); // Comienza a contar desde cero a partir de este momento
 
     if (this.hasActiveCameras()) {
-      // Activar la ventana flotante Picture-in-Picture
+      // Activar la ventana flotante Picture-in-Picture adaptando la vista proporcional
       console.log('[MonitoringStateService] Hay cámaras activas en el lienzo. Activando ventana flotante PiP');
+      this.syncMonitoreoToPip();
       this.isPipActive.set(true);
     } else {
       // Si no hay cámaras, cerrar y limpiar todo
@@ -245,10 +322,7 @@ export class MonitoringStateService {
         videoEl || null,
         (stream) => {
           this.mediaStreamsMap.set(slot.id, stream);
-          if (videoEl) {
-            videoEl.srcObject = stream;
-            videoEl.play().catch(err => console.warn('[MonitoringStateService] Autoplay warning:', err));
-          }
+          this.attachStreamToSlotVideos(slot.id, stream);
         }
       );
 
@@ -259,23 +333,46 @@ export class MonitoringStateService {
       const remoteStream = (pc as any)._remoteStream;
       if (remoteStream) {
         this.mediaStreamsMap.set(slot.id, remoteStream);
+        this.attachStreamToSlotVideos(slot.id, remoteStream);
       }
 
       pc.oniceconnectionstatechange = () => {
         if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+          this.setSlotVideoPlaying(slot.id, false);
           this.webRtcStates.update(prev => ({ ...prev, [slot.id]: 'failed' }));
         }
       };
 
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+          this.setSlotVideoPlaying(slot.id, false);
           this.webRtcStates.update(prev => ({ ...prev, [slot.id]: 'failed' }));
         }
       };
     } catch (error) {
       console.error(`[MonitoringStateService] Error al iniciar stream WebRTC para cámara ${slot.camera.id}:`, error);
+      this.setSlotVideoPlaying(slot.id, false);
       this.webRtcStates.update(prev => ({ ...prev, [slot.id]: 'failed' }));
     }
+  }
+
+  /**
+   * Registra si el video de un slot está efectivamente reproduciendo frames en vivo
+   */
+  setSlotVideoPlaying(slotId: string, isPlaying: boolean): void {
+    if (!slotId) return;
+    this.livePlayingSlots.update(prev => {
+      if (prev[slotId] === isPlaying) return prev;
+      console.log(`%c[WebRTC Slot ${slotId}] Transición de video en vivo -> ${isPlaying ? '🟢 ACTIVO (Frames decodificados)' : '⏸️ INACTIVO / BUFFERING'}`, isPlaying ? 'color: #2ed573; font-weight: bold;' : 'color: #ffa502;');
+      return { ...prev, [slotId]: isPlaying };
+    });
+  }
+
+  /**
+   * Consulta si un slot está reproduciendo video en vivo
+   */
+  isSlotVideoPlaying(slotId: string): boolean {
+    return !!this.livePlayingSlots()[slotId];
   }
 
   /**
@@ -294,12 +391,19 @@ export class MonitoringStateService {
 
     const slotId = connKey.split('_')[0];
     this.mediaStreamsMap.delete(slotId);
+    this.setSlotVideoPlaying(slotId, false);
 
-    const videoId = `video-feed-${slotId}`;
-    const videoEl = document.getElementById(videoId) as HTMLVideoElement;
-    if (videoEl) {
-      videoEl.srcObject = null;
-    }
+    const videoCandidates = [
+      document.getElementById(`video-feed-${slotId}`),
+      document.getElementById(`pip-video-feed-${slotId}`),
+      document.getElementById(`video-feed-fullscreen-${slotId}`)
+    ];
+    videoCandidates.forEach(el => {
+      const v = el as HTMLVideoElement;
+      if (v) {
+        v.srcObject = null;
+      }
+    });
 
     this.webRtcStates.update(prev => {
       const next = { ...prev };
@@ -309,13 +413,48 @@ export class MonitoringStateService {
   }
 
   /**
+   * Adjunta un stream a todos los elementos de video del slot en el DOM
+   */
+  attachStreamToSlotVideos(slotId: string, stream?: MediaStream): void {
+    const s = stream || this.mediaStreamsMap.get(slotId);
+    if (!s) return;
+
+    const videoCandidates = [
+      document.getElementById(`video-feed-${slotId}`),
+      document.getElementById(`pip-video-feed-${slotId}`),
+      document.getElementById(`video-feed-fullscreen-${slotId}`)
+    ];
+
+    if (typeof document !== 'undefined') {
+      const byQuery = document.querySelectorAll(`video[data-slot-id="${slotId}"]`);
+      byQuery.forEach(el => {
+        if (!videoCandidates.includes(el as HTMLElement)) {
+          videoCandidates.push(el as HTMLElement);
+        }
+      });
+    }
+
+    videoCandidates.forEach(el => {
+      const video = el as HTMLVideoElement;
+      if (video) {
+        if (video.srcObject !== s) {
+          video.srcObject = s;
+        }
+        video.play().catch(err => console.warn('[MonitoringStateService] Autoplay attach warning:', err));
+      }
+    });
+  }
+
+  /**
    * Adjunta un stream existente al elemento de video indicado
    */
   attachStreamToVideo(slotId: string, videoEl: HTMLVideoElement): void {
     if (!videoEl) return;
     const stream = this.mediaStreamsMap.get(slotId);
-    if (stream && videoEl.srcObject !== stream) {
-      videoEl.srcObject = stream;
+    if (stream) {
+      if (videoEl.srcObject !== stream) {
+        videoEl.srcObject = stream;
+      }
       videoEl.play().catch(err => console.warn('[MonitoringStateService] Autoplay play warning:', err));
     }
   }
@@ -408,6 +547,10 @@ export class MonitoringStateService {
     this.canvasPanX.set(0);
     this.canvasPanY.set(0);
     this.canvasZoom.set(1.0);
+    this.pipPanX.set(0);
+    this.pipPanY.set(0);
+    this.pipZoom.set(1.0);
+    this.hasPipUserInteracted.set(false);
     this.selectedCanvasSlotIds.set(new Set());
     this.undoStack.set([]);
     this.redoStack.set([]);

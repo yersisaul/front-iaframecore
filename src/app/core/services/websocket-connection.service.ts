@@ -41,14 +41,6 @@ export class WebsocketConnectionService {
         this.connect();
       }
     });
-
-    // Debugger periódico del token en sessionStorage (cada 5 segundos)
-    setInterval(() => {
-      const activeToken = sessionStorage.getItem('auth_token');
-      const currentUser = this.authService.currentUser();
-      console.warn('[WS Debugger] Token activo en sessionStorage:', activeToken);
-      console.warn('[WS Debugger] Usuario activo en señal:', currentUser);
-    }, 5000);
   }
 
   private buildWsUrl(token: string): string {

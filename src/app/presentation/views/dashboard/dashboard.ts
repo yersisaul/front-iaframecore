@@ -99,6 +99,12 @@ export class Dashboard implements OnInit, OnDestroy {
   });
 
   private iframeLoadingTimeoutId?: any;
+  private morphTimeouts: any[] = [];
+
+  private clearMorphTimeouts(): void {
+    this.morphTimeouts.forEach(t => clearTimeout(t));
+    this.morphTimeouts = [];
+  }
 
   ngOnInit(): void {
     this.dashboardService.isViewActive.set(true);
@@ -110,6 +116,7 @@ export class Dashboard implements OnInit, OnDestroy {
     if (this.iframeLoadingTimeoutId) {
       clearTimeout(this.iframeLoadingTimeoutId);
     }
+    this.clearMorphTimeouts();
   }
 
   /**
@@ -125,24 +132,30 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   /**
-   * Selecciona un dashboard con animación de redimensionamiento fluido desde la tarjeta hacia el lienzo
+   * Selecciona un dashboard con animación de redimensionamiento fluido desde la tarjeta hacia el lienzo,
+   * manteniendo la imagen visible durante 2 segundos mientras carga el iframe y desvaneciéndola lentamente.
    */
   selectDashboard(item: DashboardItem, event?: MouseEvent): void {
-    if (this.isMorphing()) return;
-
+    if (this.isMorphing() && this.morphDirection() === 'closing') return;
     const cardElement = event ? ((event.target as HTMLElement).closest('.dashboard-item-card') as HTMLElement) : null;
     const viewContainer = (cardElement?.closest('.dashboard-view-container') || document.querySelector('.dashboard-view-container')) as HTMLElement;
 
     if (cardElement && viewContainer && typeof window !== 'undefined') {
       const cardRect = cardElement.getBoundingClientRect();
       const containerRect = viewContainer.getBoundingClientRect();
+      const compStyle = window.getComputedStyle(viewContainer);
+      const pTop = parseFloat(compStyle.paddingTop) || 0;
+      const pBottom = parseFloat(compStyle.paddingBottom) || 0;
+      const pLeft = parseFloat(compStyle.paddingLeft) || 0;
+      const pRight = parseFloat(compStyle.paddingRight) || 0;
+
+      const targetTop = containerRect.top + pTop;
+      const targetLeft = containerRect.left + pLeft;
+      const targetWidth = containerRect.width - pLeft - pRight;
+      const targetHeight = containerRect.height - pTop - pBottom;
+
       this.savedCardRect = cardRect;
       this.clickedCardId.set(item.id);
-
-      const targetTop = Math.max(16, containerRect.top + 16);
-      const targetLeft = containerRect.left + 16;
-      const targetWidth = containerRect.width - 32;
-      const targetHeight = containerRect.height - 32;
 
       this.morphItem.set(item);
       this.morphDirection.set('opening');
@@ -157,10 +170,11 @@ export class Dashboard implements OnInit, OnDestroy {
         height: `${cardRect.height}px`,
         borderRadius: '14px',
         zIndex: '1500',
-        transition: 'none'
+        transition: 'none',
+        opacity: '1'
       });
 
-      // Paso 2: Animar hacia el tamaño completo del lienzo
+      // Paso 2: Animar expansión hacia el tamaño completo del lienzo
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           this.morphStyle.set({
@@ -171,19 +185,45 @@ export class Dashboard implements OnInit, OnDestroy {
             height: `${targetHeight}px`,
             borderRadius: '14px',
             zIndex: '1500',
-            transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+            transition: 'all 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
+            opacity: '1'
           });
         });
       });
 
-      // Paso 3: Consolidar estado final al culminar la animación
-      setTimeout(() => {
+      // Paso 3: Al alcanzar el tamaño completo (450ms), activar el iframe debajo para que cargue
+      const t1 = setTimeout(() => {
         this.selectedDashboard.set(item);
         this.hasIframeError.set(false);
         this.setIframeLoading(true);
-        this.isMorphing.set(false);
-        this.morphDirection.set(null);
-      }, 410);
+
+        // Paso 4: Mantener la imagen del morph 2 segundos completa, luego desvanecer lentamente (0.9s)
+        const t2 = setTimeout(() => {
+          this.morphStyle.set({
+            position: 'fixed',
+            top: `${targetTop}px`,
+            left: `${targetLeft}px`,
+            width: `${targetWidth}px`,
+            height: `${targetHeight}px`,
+            borderRadius: '14px',
+            zIndex: '1500',
+            transition: 'opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1)',
+            opacity: '0'
+          });
+
+          // Paso 5: Al finalizar el desvanecimiento lento, desmontar el overlay del morph
+          const t3 = setTimeout(() => {
+            this.isMorphing.set(false);
+            this.morphDirection.set(null);
+          }, 920);
+
+          this.morphTimeouts.push(t3);
+        }, 1000);
+
+        this.morphTimeouts.push(t2);
+      }, 460);
+
+      this.morphTimeouts.push(t1);
 
     } else {
       this.selectedDashboard.set(item);
@@ -196,7 +236,7 @@ export class Dashboard implements OnInit, OnDestroy {
    * Sale del dashboard activo con animación inversa encogiéndose de vuelta a la tarjeta original
    */
   exitDashboard(): void {
-    if (this.isMorphing()) return;
+    this.clearMorphTimeouts();
 
     const activeItem = this.selectedDashboard();
     const viewContainer = document.querySelector('.dashboard-view-container') as HTMLElement;
@@ -219,7 +259,8 @@ export class Dashboard implements OnInit, OnDestroy {
         height: `${currentRect.height}px`,
         borderRadius: '14px',
         zIndex: '1500',
-        transition: 'none'
+        transition: 'none',
+        opacity: '1'
       });
 
       // Ocultar iframe para mostrar la grilla
@@ -246,13 +287,15 @@ export class Dashboard implements OnInit, OnDestroy {
       });
 
       // Restaurar estado
-      setTimeout(() => {
+      const tClose = setTimeout(() => {
         this.isMorphing.set(false);
         this.morphDirection.set(null);
         this.morphItem.set(null);
         this.clickedCardId.set(null);
         this.savedCardRect = null;
       }, 370);
+
+      this.morphTimeouts.push(tClose);
 
     } else {
       this.selectedDashboard.set(null);
@@ -614,7 +657,7 @@ export class Dashboard implements OnInit, OnDestroy {
       document.execCommand('copy');
       document.body.removeChild(ta);
       this.setCopiedState(id);
-    } catch {}
+    } catch { }
   }
 
   /**

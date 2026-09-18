@@ -1,0 +1,258 @@
+<!-- =========================================================================
+     MODAL DE SELECCIÓN DE CÁMARAS (BLURRED DIALOG)
+     ========================================================================= -->
+@if (show) {
+<div class="modal-backdrop-blur d-flex align-items-center justify-content-center"
+  (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)">
+  <div class="premium-detail-modal select-camera-modal d-flex flex-column shadow-2xl"
+    (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <div class="modal-header-section p-4 d-flex justify-content-between align-items-center">
+      <div>
+        <h5 class="fw-bold mb-1 text-body">Gestionar Canales de Monitoreo</h5>
+        <p class="text-muted small mb-0">Active o desactive las cámaras del sistema para distribuirlas en la cuadrícula.
+        </p>
+      </div>
+    </div>
+
+    <!-- Modal Controls Area: Centered, containing Tabs and Search/Filters -->
+    <div class="modal-controls-container gap-3 px-5 pb-3">
+      <!-- Modal Tabs -->
+      <div class="modal-tabs-pill">
+        <button class="btn-premium-tab" [class.active]="activeModalTab() === 'nodos'"
+          (click)="activeModalTab.set('nodos')">
+          Por Nodo
+        </button>
+        <button class="btn-premium-tab" [class.active]="activeModalTab() === 'todas'"
+          (click)="activeModalTab.set('todas')">
+          Todas las Cámaras
+        </button>
+      </div>
+
+      <!-- Searchbar and Status Filters Row -->
+      <div class="modal-search-row">
+        <div class="modal-search-wrapper d-flex align-items-center flex-grow-1">
+          <span class="icon-svg icon-search me-2 text-muted" style="width: 14px; height: 14px; opacity: 0.5;"></span>
+          <input #modalSearchInput type="text" placeholder="Buscar por cámara, nodo o tipo..."
+            class="modal-search-input" [value]="modalSearchQuery()" (input)="modalSearchQuery.set(modalSearchInput.value)" />
+        </div>
+        <!-- Filtro por Tipo de Analítica -->
+        <div class="filter-dropdown-wrapper position-relative flex-shrink-0">
+          <button type="button" class="modal-filter-pill d-flex align-items-center gap-2"
+            [class.active]="modalTypeFilter() !== 'all'" (click)="toggleModalTypeDropdown($event)">
+            <span class="icon-svg icon-activity filter-icon" style="width: 14px; height: 14px;"></span>
+            <span>Tipo: {{ modalTypeFilter() === 'all' ? 'Todos' : modalTypeFilter() }}</span>
+            <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+              [class.rotated]="showModalTypeDropdown()" style="width: 10px; height: 10px;"></span>
+          </button>
+          @if (showModalTypeDropdown()) {
+          <div class="modal-filter-dropdown-menu p-2 show position-absolute end-0 mt-1 shadow-sm"
+            style="z-index: 1060; min-width: 190px;" (click)="$event.stopPropagation()">
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded" [class.active]="modalTypeFilter() === 'all'"
+              (click)="selectModalType('all', $event)">
+              Todos los Tipos
+            </button>
+            @for (tp of modalTypeOptions(); track tp) {
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded"
+              [class.active]="modalTypeFilter().toLowerCase() === tp.toLowerCase()"
+              (click)="selectModalType(tp, $event)">
+              {{ tp }}
+            </button>
+            }
+          </div>
+          }
+        </div>
+
+        <!-- Dropdown con Chevrón en formato Pill Redonda de Estado de Cámara -->
+        <div class="filter-dropdown-wrapper position-relative flex-shrink-0">
+          <button type="button" class="modal-filter-pill d-flex align-items-center gap-2"
+            [class.active]="modalStatusFilter() !== 'all'" (click)="toggleModalStatusDropdown($event)">
+            <span class="modal-camera-status-dot" [class]="getStatusCssClass(modalStatusFilter())"></span>
+            <span>
+              Estado: {{ modalStatusFilter() === 'all' ? 'Todos' : getStatusFilterLabel(modalStatusFilter()) }}
+            </span>
+            <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+              [class.rotated]="showModalStatusDropdown()" style="width: 10px; height: 10px;"></span>
+          </button>
+          @if (showModalStatusDropdown()) {
+          <div class="modal-filter-dropdown-menu p-2 show position-absolute end-0 mt-1 shadow-sm"
+            style="z-index: 1060; min-width: 190px;" (click)="$event.stopPropagation()">
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center gap-2"
+              [class.active]="modalStatusFilter() === 'all'" (click)="selectModalStatus('all', $event)">
+              <span class="status-dot all"></span>
+              <span>Todos los Estados</span>
+            </button>
+            @for (st of modalStatusOptions(); track st) {
+            <button type="button" class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center gap-2"
+              [class.active]="modalStatusFilter().toLowerCase() === st.toLowerCase()"
+              (click)="selectModalStatus(st, $event)">
+              <span class="status-dot" [class]="getStatusCssClass(st)"></span>
+              <span>{{ getStatusFilterLabel(st) }}</span>
+            </button>
+            }
+          </div>
+          }
+        </div>
+
+        <!-- Botón de Alternancia de Ordenamiento A-Z / Z-A -->
+        <button type="button"
+          class="btn btn-sort-toggle d-flex align-items-center gap-2 shadow-sm rounded-pill border px-3 py-1.5 flex-shrink-0"
+          (click)="toggleModalSortDirection()"
+          [title]="modalSortDirection() === 'asc' ? 'Orden actual: (A → Z) · Clic para cambiar a (Z → A)' : 'Orden actual: (Z → A) · Clic para cambiar a (A → Z)'"
+          aria-label="Alternar orden alfabético">
+          <span class="sort-icon-letters font-monospace fw-bold">{{ modalSortDirection() === 'asc' ? 'A→Z' : 'Z→A' }}</span>
+          <span class="icon-svg sort-arrow-icon" [class.icon-arrow-up]="modalSortDirection() === 'asc'"
+            [class.icon-arrow-down]="modalSortDirection() === 'desc'"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body-content custom-scrollbar py-2 px-4 flex-grow-1">
+
+      <!-- TAB 1: POR NODO (Collapsible Lists) -->
+      @if (activeModalTab() === 'nodos') {
+      <div class="d-flex flex-column gap-3">
+        @if (filteredNodeGroupsForModal().length === 0) {
+        <span class="text-muted text-center py-5 d-block">Sin nodos coincidentes.</span>
+        } @else {
+        @for (nodeGroup of filteredNodeGroupsForModal(); track nodeGroup.host.fingerprint) {
+        <div class="node-group-container border rounded-3 overflow-hidden transition-all"
+          [class.os-ubuntu]="isLinuxHost(nodeGroup.host)" [class.os-windows]="isWindowsHost(nodeGroup.host)"
+          [class.os-standard]="!isLinuxHost(nodeGroup.host) && !isWindowsHost(nodeGroup.host)"
+          style="background-color: var(--bg-surface);">
+          <!-- Encabezado del Nodo (Gatillo) -->
+          <div
+            class="node-group-header p-3 d-flex justify-content-between align-items-center cursor-pointer select-none"
+            (click)="toggleNodeCollapse(nodeGroup.host.fingerprint)">
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-fill me-3">
+              <!-- Checkbox del Nodo (Selección Total/Parcial) -->
+              @if (nodeGroup.cameras.length > 0) {
+              <span class="custom-chk-indicator flex-shrink-0"
+                [class.checked]="areAllNodeCamerasSelected(nodeGroup.cameras)"
+                [class.indeterminate]="someNodeCamerasSelected(nodeGroup.cameras)"
+                (click)="selectAllCamerasInNode(nodeGroup.cameras, $event)">
+              </span>
+              }
+              <span class="icon-svg node-os-icon flex-shrink-0" [class]="getHostOsIcon(nodeGroup.host)"
+                style="width: 22px; height: 22px;"></span>
+              <div class="min-w-0 flex-fill">
+                <span class="fw-bold text-body d-block text-truncate" style="font-size: 0.9rem;">{{
+                  nodeGroup.host.hostname || 'Host'
+                  }}</span>
+                <span class="text-muted small d-block font-monospace text-truncate" style="font-size: 0.72rem;">{{
+                  nodeGroup.host.fingerprint }}</span>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-3 flex-shrink-0">
+              <span class="badge bg-secondary-light text-secondary">{{ nodeGroup.cameras.length }} cámaras</span>
+              <span class="icon-svg icon-chevron-down transition-all" style="width: 12px; height: 12px;"
+                [class.rotated]="expandedNodes().has(nodeGroup.host.fingerprint)"></span>
+            </div>
+          </div>
+
+          <!-- Listado de cámaras desplegable -->
+          @if (expandedNodes().has(nodeGroup.host.fingerprint)) {
+          <div class="node-group-body p-3 border-top d-flex flex-column gap-2 bg-light-translucent"
+            style="animation: slideDown 0.2s ease-out;">
+            @if (nodeGroup.cameras.length === 0) {
+            <span class="text-muted small font-italic py-2 d-block text-center">Este nodo no posee cámaras en este filtro.</span>
+            } @else {
+            @for (cam of nodeGroup.cameras; track cam.id; let cIdx = $index) {
+            <div class="camera-list-item d-flex justify-content-between align-items-center cursor-pointer select-none"
+              [class.active-slot-camera]="selectedCameraIds().has(cam.id)" (click)="toggleCameraSelectionLocal(cam)">
+              <div class="d-flex align-items-center gap-3">
+                <div class="position-relative">
+                  <span class="modal-camera-status-dot" [class]="'modal-camera-status-dot ' + getCameraStatusClass(cam)"
+                    [title]="getCameraStatusLabel(cam)"></span>
+                </div>
+                <div>
+                  <span class="fw-bold d-block text-body" style="font-size: 0.85rem;">
+                    {{ cam.name }}
+                  </span>
+                  <div class="camera-meta-details">
+                    @for (badge of getCameraAnalytics(cam); track $index) {
+                    <span class="camera-analytic-badge">{{ badge }}</span>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <!-- Indicador Checkmark / Toggle -->
+              <div class="d-flex align-items-center gap-3">
+                <span class="camera-codec-badge font-monospace">
+                  {{ cam.decoder.toUpperCase() }} / {{ cam.streamType.toUpperCase() }}
+                </span>
+                <span class="custom-chk-indicator" [class.checked]="selectedCameraIds().has(cam.id)"></span>
+              </div>
+            </div>
+            }
+            }
+          </div>
+          }
+        </div>
+        }
+        }
+      </div>
+      }
+
+      <!-- TAB 2: TODAS LAS CÁMARAS -->
+      @if (activeModalTab() === 'todas') {
+      <div class="d-flex flex-column gap-2">
+        @if (filteredCamerasForModal().length > 0) {
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="text-body fw-bold" style="font-size: 0.85rem;">{{ filteredCamerasForModal().length }} cámaras en total</span>
+          <button class="btn-premium-toggle-all" (click)="toggleAllSystemCameras()">
+            {{ areAllSystemCamerasSelected() ? 'Deseleccionar Todas' : 'Seleccionar Todas' }}
+          </button>
+        </div>
+        }
+        @if (filteredCamerasForModal().length === 0) {
+        <span class="text-muted text-center py-5 d-block">No se encontraron cámaras con los filtros aplicados.</span>
+        } @else {
+        @for (cam of filteredCamerasForModal(); track cam.id; let cIdx = $index) {
+        <div class="camera-list-item d-flex justify-content-between align-items-center cursor-pointer select-none"
+          [class.active-slot-camera]="selectedCameraIds().has(cam.id)" (click)="toggleCameraSelectionLocal(cam)">
+          <div class="d-flex align-items-center gap-3">
+            <div class="position-relative">
+              <span class="modal-camera-status-dot" [class]="'modal-camera-status-dot ' + getCameraStatusClass(cam)"
+                [title]="getCameraStatusLabel(cam)"></span>
+            </div>
+            <div>
+              <span class="fw-bold d-block text-body" style="font-size: 0.85rem;">
+                {{ cam.name }}
+              </span>
+              <div class="camera-meta-details">
+                @for (badge of getCameraAnalytics(cam); track $index) {
+                <span class="camera-analytic-badge">{{ badge }}</span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-3">
+            <span class="camera-codec-badge font-monospace">
+              {{ (cam.decoder || '').toUpperCase() }} / {{ (cam.streamType || '').toUpperCase() }}
+            </span>
+            <span class="custom-chk-indicator" [class.checked]="selectedCameraIds().has(cam.id)"></span>
+          </div>
+        </div>
+        }
+        }
+      </div>
+      }
+
+    </div>
+
+    <!-- Modal Footer Section -->
+    <div class="modal-footer-section p-3 d-flex w-100 gap-3" style="background-color: var(--bg-surface);">
+      <button type="button" class="btn-premium-footer btn-premium-cancel flex-grow-1" (click)="onCancel()">
+        Cancelar
+      </button>
+      <button type="button" class="btn-premium-footer btn-premium-confirm flex-grow-1" (click)="onConfirm()">
+        Confirmar
+      </button>
+    </div>
+  </div>
+</div>
+}

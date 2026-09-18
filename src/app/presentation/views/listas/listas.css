@@ -103,20 +103,6 @@
   box-shadow: 0 8px 24px rgba(var(--primary-rgb, 59, 130, 246), 0.12);
 }
 
-.subject-card-badge {
-  top: 12px;
-  left: 12px;
-  z-index: 5;
-  background: var(--bg-primary);
-  color: var(--primary);
-  border: 1px solid var(--border-color);
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
 .subject-card-select-wrap {
   top: 10px;
   right: 10px;
@@ -426,8 +412,7 @@
 .list-item-row:hover {
   background-color: var(--border-color-translucent);
   border-color: var(--primary);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.07);
 }
 
 .list-item-row.active-list {
@@ -436,6 +421,7 @@
   color: var(--primary) !important;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.06) !important;
   border-left: 4px solid var(--primary) !important;
+  padding-left: calc(1.15rem - 3px) !important;
 }
 
 [data-bs-theme="dark"] .list-item-row.active-list {
@@ -450,7 +436,10 @@
   border-radius: 50%;
   flex-shrink: 0;
   display: inline-block;
-  transition: transform 0.25s ease;
+  margin-left: 3px;
+  position: relative;
+  z-index: 2;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .submenu-dot.rostros {
@@ -465,6 +454,8 @@
 
 .list-item-row.active-list .submenu-dot {
   transform: scale(1.3);
+  position: relative;
+  z-index: 2;
 }
 
 /* Buttons */
@@ -507,14 +498,230 @@
   background-color: var(--bg-danger-light) !important;
 }
 
-.delete-list-btn {
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
+.text-primary-hover:hover {
+  color: var(--primary) !important;
+  background-color: var(--primary-light, rgba(43, 127, 255, 0.12)) !important;
 }
 
-.list-item-row:hover .delete-list-btn,
-.delete-list-btn:hover {
-  opacity: 1;
+/* ══════════════════════════════════════════════════════
+   LIST ITEMS ACTIONS DEPLOYMENT & MARQUEE SYSTEM
+   ══════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════
+   LIST ITEMS DIRECT SVG ACTION BUTTONS (NO CONTAINERS)
+   ══════════════════════════════════════════════════════ */
+
+/* Configuración de espaciado y gap entre botones de acción */
+:host {
+  /* Separación configurable entre el botón de editar y el de eliminar (24px) */
+  --list-actions-gap: 24px;
+}
+
+/* Contenedor de controles directos SVG */
+.list-card-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0;
+  margin-left: 0;
+  transition: gap 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    margin 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.list-item-row:hover .list-card-actions,
+.list-item-row.list-card-hovered .list-card-actions {
+  gap: var(--list-actions-gap, 24px);
+  margin-left: 1.25rem;
+}
+
+.list-btn-action,
+span.list-btn-action,
+button.list-btn-action {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-block !important;
+  border: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background-color: currentColor !important;
+  background-image: none !important;
+  color: var(--text-muted, #94a3b8);
+  box-shadow: none !important;
+  cursor: pointer;
+  width: 0;
+  max-width: 0;
+  min-width: 0;
+  height: 16px;
+  min-height: 16px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  flex-shrink: 0;
+  vertical-align: middle;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.2s ease,
+    margin 0.25s ease,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 0.2s ease,
+    filter 0.2s ease;
+}
+
+/* En hover de la tarjeta se revelan directamente los botones SVG */
+.list-item-row:hover .list-btn-action,
+.list-item-row.list-card-hovered .list-btn-action {
+  width: 16px !important;
+  min-width: 16px !important;
+  max-width: 16px !important;
+  height: 16px !important;
+  opacity: 0.8 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+
+/* Si no están dentro de list-card-actions, mantener separación por margin */
+.list-item-row:hover > .list-btn-action,
+.list-item-row.list-card-hovered > .list-btn-action {
+  margin-left: 1.25rem !important;
+}
+
+.list-item-row:hover > .list-btn-action + .list-btn-action,
+.list-item-row.list-card-hovered > .list-btn-action + .list-btn-action,
+.list-item-row:hover > .list-btn-edit ~ .list-btn-delete,
+.list-item-row.list-card-hovered > .list-btn-edit ~ .list-btn-delete {
+  margin-left: var(--list-actions-gap, 24px) !important;
+}
+
+/* Hover específico en cada SVG */
+.list-btn-edit:hover {
+  opacity: 1 !important;
+  color: var(--primary, #2b7fff) !important;
+  transform: scale(1.22) translateY(-1px);
+  filter: drop-shadow(0 2px 8px rgba(43, 127, 255, 0.5));
+}
+
+.list-btn-delete:hover {
+  opacity: 1 !important;
+  color: var(--text-danger, #ef4444) !important;
+  transform: scale(1.22) translateY(-1px);
+  filter: drop-shadow(0 2px 8px rgba(239, 68, 68, 0.5));
+}
+
+.list-btn-action:active {
+  transform: scale(0.92);
+}
+
+/* Modos oscuros para botones de acción SVG */
+:host-context([data-bs-theme="dark"]) .list-btn-action,
+:host-context([data-theme="dark"]) .list-btn-action,
+:host-context(.dark) .list-btn-action,
+[data-bs-theme="dark"] .list-btn-action {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+:host-context([data-bs-theme="dark"]) .list-btn-edit:hover,
+:host-context([data-theme="dark"]) .list-btn-edit:hover,
+:host-context(.dark) .list-btn-edit:hover,
+[data-bs-theme="dark"] .list-btn-edit:hover {
+  color: #60a5fa !important;
+  filter: drop-shadow(0 2px 10px rgba(96, 165, 250, 0.6));
+}
+
+:host-context([data-bs-theme="dark"]) .list-btn-delete:hover,
+:host-context([data-theme="dark"]) .list-btn-delete:hover,
+:host-context(.dark) .list-btn-delete:hover,
+[data-bs-theme="dark"] .list-btn-delete:hover {
+  color: #f87171 !important;
+  filter: drop-shadow(0 2px 10px rgba(248, 113, 113, 0.6));
+}
+
+/* Contenedores y tipografía de Marquee */
+.list-meta-marquee-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1 1 0%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.list-name-marquee-container,
+.list-desc-marquee-container {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  container-type: inline-size;
+  transition: -webkit-mask-image 0.25s ease, mask-image 0.25s ease;
+}
+
+.list-name-marquee-container {
+  height: 22px;
+  min-height: 22px;
+}
+
+.list-desc-marquee-container {
+  height: 18px;
+  min-height: 18px;
+}
+
+/* Desvanecimiento con máscara cuando el texto desborda y se activa el marquee */
+.list-item-row.list-card-needs-marquee .list-name-marquee-container:has(.animate-marquee),
+.list-item-row.list-card-needs-marquee .list-desc-marquee-container:has(.animate-marquee) {
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 14px), transparent 100%);
+}
+
+.list-name-marquee-text,
+.list-desc-marquee-text {
+  display: block;
+  line-height: 1.2;
+  width: 100%;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+  text-align: left;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+/* Expansión del texto al hacer hover en la fila */
+.list-item-row:hover .list-name-marquee-text,
+.list-item-row:hover .list-desc-marquee-text,
+.list-item-row.list-card-hovered .list-name-marquee-text,
+.list-item-row.list-card-hovered .list-desc-marquee-text {
+  display: block !important;
+  max-width: none !important;
+  width: max-content !important;
+}
+
+/* Animación de desplazamiento suave alternate */
+.list-item-row.list-card-needs-marquee .list-name-marquee-text.animate-marquee,
+.list-item-row.list-card-needs-marquee .list-desc-marquee-text.animate-marquee {
+  padding-right: 20px !important;
+  text-overflow: clip !important;
+  overflow: visible !important;
+  animation: listCardMarquee 3.5s linear infinite alternate;
+}
+
+@keyframes listCardMarquee {
+  0%,
+  15% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  85%,
+  100% {
+    transform: translate3d(var(--marquee-shift, calc(-100% + 100cqw - 20px)), 0, 0);
+  }
 }
 
 /* Detail Area Min Height */
@@ -1014,42 +1221,101 @@
   background-color: var(--primary-light) !important;
 }
 
-/* Floating Sighting Badge (Top-Left) */
+/* ══════════════════════════════════════════════════════
+   FLOATING SIGHTINGS COUNT (TOP-LEFT, NO CONTAINER)
+   ══════════════════════════════════════════════════════ */
+.subject-card-sightings,
 .subject-card-badge {
-  top: 14px;
-  left: 14px;
-  background-color: var(--bg-primary, #f8fafc);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  font-size: 0.72rem;
+  top: 11px;
+  left: 13px;
+  z-index: 4;
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.76rem;
   font-weight: 600;
-  font-family: var(--font-monospace, monospace);
-  padding: 0.25rem 0.55rem;
-  border-radius: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  display: flex;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+  display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 5px;
+  transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.subject-card-sightings .subject-sightings-icon,
 .subject-card-badge .badge-icon {
-  color: var(--primary);
-  opacity: 0.8;
-  transition: transform 0.3s ease;
+  width: 14px;
+  height: 14px;
+  opacity: 0.75;
+  background-color: currentColor;
+  flex-shrink: 0;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.subject-card-sightings .subject-sightings-count {
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+/* Hover de la tarjeta: sutil iluminación estética */
+.subject-card:hover .subject-card-sightings,
 .subject-card:hover .subject-card-badge {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  color: var(--text-on-primary-btn);
-  box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.2);
+  color: var(--primary, #2b7fff);
 }
 
+.subject-card:hover .subject-card-sightings .subject-sightings-icon,
 .subject-card:hover .subject-card-badge .badge-icon {
-  color: var(--text-on-primary-btn);
   opacity: 1;
-  transform: scale(1.1);
+  transform: scale(1.12);
+}
+
+/* Estado activo de la tarjeta seleccionada */
+.subject-card.active-subject .subject-card-sightings,
+.subject-card.active-subject .subject-card-badge {
+  color: var(--primary, #2b7fff);
+}
+
+.subject-card.active-subject .subject-card-sightings .subject-sightings-icon,
+.subject-card.active-subject .subject-card-badge .badge-icon {
+  opacity: 1;
+}
+
+/* Modos oscuros adaptativos */
+:host-context([data-bs-theme="dark"]) .subject-card-sightings,
+:host-context([data-bs-theme="dark"]) .subject-card-badge,
+:host-context([data-theme="dark"]) .subject-card-sightings,
+:host-context([data-theme="dark"]) .subject-card-badge,
+:host-context(.dark) .subject-card-sightings,
+:host-context(.dark) .subject-card-badge,
+[data-bs-theme="dark"] .subject-card-sightings,
+[data-bs-theme="dark"] .subject-card-badge {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+:host-context([data-bs-theme="dark"]) .subject-card:hover .subject-card-sightings,
+:host-context([data-bs-theme="dark"]) .subject-card:hover .subject-card-badge,
+:host-context([data-theme="dark"]) .subject-card:hover .subject-card-sightings,
+:host-context([data-theme="dark"]) .subject-card:hover .subject-card-badge,
+:host-context(.dark) .subject-card:hover .subject-card-sightings,
+:host-context(.dark) .subject-card:hover .subject-card-badge,
+[data-bs-theme="dark"] .subject-card:hover .subject-card-sightings,
+[data-bs-theme="dark"] .subject-card:hover .subject-card-badge,
+:host-context([data-bs-theme="dark"]) .subject-card.active-subject .subject-card-sightings,
+:host-context([data-bs-theme="dark"]) .subject-card.active-subject .subject-card-badge,
+:host-context([data-theme="dark"]) .subject-card.active-subject .subject-card-sightings,
+:host-context([data-theme="dark"]) .subject-card.active-subject .subject-card-badge,
+:host-context(.dark) .subject-card.active-subject .subject-card-sightings,
+:host-context(.dark) .subject-card.active-subject .subject-card-badge,
+[data-bs-theme="dark"] .subject-card.active-subject .subject-card-sightings,
+[data-bs-theme="dark"] .subject-card.active-subject .subject-card-badge {
+  color: #60a5fa;
 }
 
 /* Delete button hover logic */

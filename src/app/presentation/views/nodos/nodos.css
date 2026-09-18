@@ -38,19 +38,18 @@
 }
 
 .host-card:hover {
-  transform: translateY(-2px);
   border-color: var(--primary);
-  box-shadow: 0 8px 24px rgba(var(--primary-rgb), .12);
+  box-shadow: 0 10px 32px rgba(var(--primary-rgb), .28);
 }
 
 .ubuntu-card:hover {
   border-color: var(--color-os-ubuntu) !important;
-  box-shadow: var(--shadow-os-ubuntu) !important;
+  box-shadow: 0 10px 32px rgba(233, 84, 32, 0.28) !important;
 }
 
 .windows-card:hover {
   border-color: var(--color-os-windows) !important;
-  box-shadow: var(--shadow-os-windows) !important;
+  box-shadow: 0 10px 32px rgba(0, 164, 239, 0.28) !important;
 }
 
 .host-header-block {
@@ -72,7 +71,7 @@
 }
 
 .host-card .card-body {
-  padding: 1.35rem !important;
+  padding: 0.875rem !important;
 }
 
 .os-avatar-icon {

@@ -387,7 +387,7 @@ for (let i = 1; i <= 35; i++) {
       camara: cameraNames[i % cameraNames.length],
       timestamp: new Date(Date.now() - i * 3600000).toISOString(),
       confiabilidad: 0.6 + (Math.random() * 0.38),
-      ruta_imagen_remota: `https://images.unsplash.com/photo-${i % 2 === 0 ? '1506794778202-cad84cf45f1d' : '1544005313-94ddf0286df2'}?w=400&h=300&fit=crop`,
+      img_minio_object_name: `https://images.unsplash.com/photo-${i % 2 === 0 ? '1506794778202-cad84cf45f1d' : '1544005313-94ddf0286df2'}?w=400&h=300&fit=crop`,
       tipo_objeto: i % 4 === 0 ? 'persona' : (i % 2 === 0 ? 'ciclista' : 'peatón'),
       edad: i % 3 === 0 ? 'adulto' : (i % 3 === 1 ? 'joven' : 'anciano'),
       genero: i % 2 === 0 ? 'masculino' : 'femenino',
@@ -412,7 +412,7 @@ for (let i = 1; i <= 35; i++) {
       camara: cameraNames[i % cameraNames.length],
       timestamp: new Date(Date.now() - i * 3600000).toISOString(),
       confiabilidad: 0.6 + (Math.random() * 0.38),
-      ruta_imagen_remota: `https://images.unsplash.com/photo-${i % 2 === 0 ? '1503376780353-7e6692767b70' : '1533473359331-0135ef1b58bf'}?w=400&h=300&fit=crop`,
+      img_minio_object_name: `https://images.unsplash.com/photo-${i % 2 === 0 ? '1503376780353-7e6692767b70' : '1533473359331-0135ef1b58bf'}?w=400&h=300&fit=crop`,
       tipo_objeto: i % 3 === 0 ? 'auto' : (i % 3 === 1 ? 'camioneta' : 'motocicleta'),
       colores: [
         { color_text: i % 2 === 0 ? 'gris' : 'blanco', r: i % 2 === 0 ? 128 : 255, g: i % 2 === 0 ? 128 : 255, b: i % 2 === 0 ? 128 : 255, porcentaje: 0.7 },
@@ -434,7 +434,7 @@ for (let i = 1; i <= 35; i++) {
       camara: cameraNames[i % cameraNames.length],
       timestamp: new Date(Date.now() - i * 3600000).toISOString(),
       confiabilidad: 0.6 + (Math.random() * 0.38),
-      ruta_imagen_remota: `https://randomuser.me/api/portraits/${i % 2 === 0 ? 'men' : 'women'}/${15 + i}.jpg`,
+      img_minio_object_name: `https://randomuser.me/api/portraits/${i % 2 === 0 ? 'men' : 'women'}/${15 + i}.jpg`,
       edad: i % 3 === 0 ? 'joven' : (i % 3 === 1 ? 'adulto' : 'anciano'),
       genero: i % 2 === 0 ? 'masculino' : 'femenino',
       colores: [
@@ -455,7 +455,7 @@ for (let i = 1; i <= 20; i++) {
       camara: cameraNames[i % cameraNames.length],
       timestamp: new Date(Date.now() - i * 3600000).toISOString(),
       confiabilidad: 0.5 + (Math.random() * 0.45),
-      ruta_imagen_remota: `https://picsum.photos/400/300?random=${300 + i}`,
+      img_minio_object_name: `https://picsum.photos/400/300?random=${300 + i}`,
       tipo_objeto: i % 2 === 0 ? 'mochila' : 'maleta',
       colores: [
         { color_text: i % 2 === 0 ? 'azul' : 'negro', r: 0, g: 0, b: i % 2 === 0 ? 255 : 0, porcentaje: 1.0 }
@@ -708,7 +708,7 @@ const server = http.createServer((req, res) => {
               score = 0.95;
               if (lastUploadedImage.embedding && lastUploadedImage.url) {
                 // Si la consulta es similar al vector cargado, mostramos la imagen real
-                docCopy._source.ruta_imagen_remota = lastUploadedImage.url;
+                docCopy._source.img_minio_object_name = lastUploadedImage.url;
               }
             } else if (idx === 1) {
               // 88% de similitud para el segundo match

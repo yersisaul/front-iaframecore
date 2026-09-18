@@ -1,0 +1,249 @@
+<!-- Contenedor Principal del Lienzo Transformable con Compensación de Escala HUD y LOD -->
+<div class="monitoring-grid-canvas-wrapper" [class.is-animating-canvas]="isCanvasAnimating"
+  [attr.data-lod]="canvasLodMode" [style.--ui-scale]="uiCompensatedScale"
+  [style.--dock-scale]="dockCompensatedScale" [style.--badge-scale]="badgeCompensatedScale"
+  [style.--time-scale]="timeCompensatedScale" [style.--empty-slot-scale]="emptySlotCompensatedScale"
+  [style.--canvas-zoom]="mode === 'pip' || isCanvasMode() ? canvasZoom() : 1"
+  [style.transform]="getWrapperTransform()"
+  [style.transformOrigin]="'0 0'"
+  [style.width]="getWrapperWidth()"
+  [style.height]="getWrapperHeight()"
+  [style.gridTemplateColumns]="getGridColsStyle()"
+  [style.gridTemplateRows]="getGridRowsStyle()">
+
+  <!-- Renderizado de Slots del Grid (Activos y Vacíos Internos) -->
+  @for (slot of visibleGridSlots(); track slot.id; let idx = $index) {
+  <div #cardEl class="grid-slot-cell position-relative" [class.slot-empty]="slot.isEmpty"
+    [class.slot-occupied]="!slot.isEmpty" [class.locked-slot]="slot.isLocked"
+    [class.is-resizing]="resizingSlotId === slot.id"
+    [class.selected-slot]="selectedSlotIds.has(slot.id)"
+    [class.selected-slot-sync]="isSyncMode && selectedSlotIds.has(slot.id)"
+    [class.selected-slot-async]="!isSyncMode && selectedSlotIds.has(slot.id)"
+    [class.slot-dimmed]="isSlotDimmed(slot)"
+    [class.highlighted-alert]="!slot.isEmpty && slot.camera && highlightedCameraName === slot.camera.name"
+    [class.dragging-placeholder]="draggingSlotId === slot.id || (mode === 'monitoreo' && selectedSlotIds.has(slot.id) && draggingSlotId !== null)"
+    [class.swap-pulse]="swapPulseSlotId === slot.id" [style.--span-scale-val]="getClampedSpan(slot.spanX)"
+    [style.--slot-span-x]="slot.spanX || 1" [style.--slot-span-y]="slot.spanY || 1"
+    [style.gridColumn]="slot.col + ' / span ' + slot.spanX" [style.gridRow]="slot.row + ' / span ' + slot.spanY"
+    [attr.data-type]="slot.isEmpty ? 'empty' : 'card'" [attr.data-id]="slot.id" [attr.data-col]="slot.col"
+    [attr.data-row]="slot.row" [attr.data-index]="idx"
+    (mousedown)="isInteractive && !slot.isEmpty ? onSlotMouseDown(slot, $event, idx) : null"
+    (click)="onSlotClick(slot, $event)"
+    (dblclick)="onSlotDblClick(slot, $event)"
+    (mouseenter)="isInteractive && !slot.isEmpty ? onSlotMouseEnter(cardEl) : null"
+    (mouseleave)="isInteractive && !slot.isEmpty ? onSlotMouseLeave(cardEl) : null">
+
+    @if (slot.isEmpty) {
+    <!-- Celda Vacía -->
+    <div class="empty-slot-content">
+      <div class="empty-slot-inner">
+        <span class="empty-slot-plus" aria-hidden="true">+</span>
+        <span class="empty-slot-label">Añadir cámara</span>
+      </div>
+    </div>
+    } @else {
+    <!-- Celda Ocupada con Cámara -->
+    <div class="occupied-slot-content h-100 w-100 position-relative overflow-hidden">
+      <!-- Barra de Encabezado Superior Integrada (Flexbox Anti-Colisión) -->
+      <div class="slot-top-bar d-flex align-items-center">
+        <div class="slot-overlay-header d-flex align-items-center min-w-0">
+          <span class="status-dot-pulse me-2"
+            [class]="'status-dot-pulse me-2 ' + getCameraStatusClass(slot.camera)"
+            [title]="getCameraStatusLabel(slot.camera)"></span>
+          <div class="slot-camera-name-container min-w-0 flex-grow-1">
+            <span class="slot-camera-name fw-bold" [title]="slot.camera?.name">{{ slot.camera?.name }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feed / Imagen del último evento o Video en Tiempo Real -->
+      <div class="slot-video-wrapper w-100 h-100 bg-dark d-flex align-items-center justify-content-center position-relative">
+        <!-- Efecto de Destello Flash Blanco (Snapshot) -->
+        <div class="flash-effect-overlay" [class.active]="slot.camera && flashEffects[slot.camera.name]">
+        </div>
+
+        <!-- Overlay de Pausa Individual del Feed -->
+        @if (slot.camera && isFeedPaused(slot.camera.name)) {
+        <div
+          class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-60"
+          style="z-index: 8; backdrop-filter: grayscale(1) blur(2px);">
+          <span class="badge bg-warning text-dark font-monospace text-uppercase vms-badge-fluid-sm">⏸️
+            FEED PAUSADO</span>
+        </div>
+        }
+
+        <!-- Elemento de Video WebRTC en Vivo (Capa Superior activa) -->
+        @if (slot.camera) {
+        <video [id]="videoIdPrefix + '-' + slot.id"
+          [attr.data-slot-id]="slot.id"
+          [attr.data-camera-id]="slot.camera.id"
+          [attr.data-camera-name]="slot.camera.name"
+          class="slot-video-element w-100 h-100 object-fit-contain position-absolute top-0 start-0"
+          style="z-index: 6;"
+          [class.feed-paused-grayscale]="isFeedPaused(slot.camera.name)"
+          (playing)="onVideoPlaying(slot.id, $event)"
+          (loadeddata)="onVideoLoadedData(slot.id, $event)"
+          (timeupdate)="onVideoLoadedData(slot.id, $event)"
+          (pause)="onVideoPaused(slot.id)"
+          (waiting)="onVideoPaused(slot.id)"
+          (error)="onVideoError(slot.id, $event)"
+          autoplay playsinline muted>
+        </video>
+        }
+
+        <!-- Imagen de Evento / Instantánea Persistente (Capa Base / Fallback) -->
+        @if (slot.camera) {
+        @let displayImgEvent = getDisplayedEventForSlot(slot);
+        @if (displayImgEvent && (displayImgEvent.imgMinioObjectName || displayImgEvent.urlImg)) {
+        @let resolvedSlotImgUrl = (displayImgEvent.imgMinioObjectName || displayImgEvent.urlImg) | mediaUrl | async;
+        @if (resolvedSlotImgUrl) {
+        <img [src]="resolvedSlotImgUrl" (load)="onImageLoad($event)" (error)="onImageError($event)"
+          class="slot-event-img object-fit-contain w-100 h-100 position-absolute top-0 start-0"
+          style="z-index: 4;" [class.feed-paused-grayscale]="isFeedPaused(slot.camera.name)" alt=""
+          draggable="false" />
+        }
+        } @else if (!isSlotPlayingLiveVideo(slot)) {
+        @if (webRtcStates()[slot.id] === 'connecting') {
+        <!-- Placeholder Conectando Cámara (Mientras se efectúa la consulta/conexión si no hay imagen de evento previa) -->
+        <div class="waiting-event-placeholder d-flex flex-column align-items-center justify-content-center w-100 h-100 position-absolute top-0 start-0" style="z-index: 3;">
+          <div class="placeholder-wave-container mb-2">
+            <div class="placeholder-wave-bar"></div>
+            <div class="placeholder-wave-bar"></div>
+            <div class="placeholder-wave-bar"></div>
+          </div>
+          <span class="text-white-50 small text-uppercase fw-semibold tracking-wider"
+            style="font-size: 0.65rem; letter-spacing: 0.05em;">Conectando Cámara...</span>
+        </div>
+        } @else {
+        <!-- Placeholder Sin Imagen (Falló conexión WebRTC o fecha histórica sin eventos para esta cámara) -->
+        <div
+          class="no-image-placeholder d-flex flex-column align-items-center justify-content-center w-100 h-100 position-absolute top-0 start-0 select-none" style="z-index: 3;">
+          <span class="icon-svg icon-camara text-white-50 opacity-40 mb-2"
+            style="width: 24px; height: 24px; background-color: currentColor;"></span>
+          <span class="text-white-50 small text-uppercase fw-semibold tracking-wider"
+            style="font-size: 0.65rem; letter-spacing: 0.05em;">Sin imagen</span>
+        </div>
+        }
+        }
+        }
+
+        <!-- Controles Flotantes y Overlays comunes (compatibles con Video e Imagen) -->
+        @if (slot.camera && (isSlotPlayingLiveVideo(slot) || webRtcStates()[slot.id] === 'connected' || getDisplayedEventForSlot(slot))) {
+        <!-- Bounding Box IA -->
+        @if (activeAiOverlays[slot.camera.name]) {
+        @if (aiBoundingBoxes[slot.camera.name]; as box) {
+        <div class="ai-bounding-box" [style.top.%]="box.top" [style.left.%]="box.left"
+          [style.width.%]="box.width" [style.height.%]="box.height" [style.border-color]="box.color">
+          <span class="box-label" [style.background-color]="box.color">{{ box.label }}</span>
+        </div>
+        }
+        }
+        }
+
+        <!-- Chip de Analítica (Solo visible cuando se muestra la foto estática/histórica de un evento) -->
+        @if (slot.camera && isSlotShowingEventPhoto(slot)) {
+        @let targetEvt = getDisplayedEventForSlot(slot);
+        @let analyticType = targetEvt?.analitica || getCameraAnalytics(slot.camera)[0] || 'Detección';
+        <div class="canvas-slot-badge-bottom-left">
+          <span class="vms-analytic-chip" [style.--chip-color]="getAnalyticColor(analyticType)">
+            <span class="vms-analytic-chip__dot"></span>
+            <span class="vms-analytic-chip__text">{{ getAnalyticLabel(analyticType) }}</span>
+          </span>
+        </div>
+
+        <!-- Fecha y Hora del Evento abajo a la derecha -->
+        @if (targetEvt && targetEvt.timestamp) {
+        <span class="canvas-slot-time-bottom-right">
+          {{ formatDatePart(targetEvt.timestamp) }} • {{ formatTimePart(targetEvt.timestamp) }}
+        </span>
+        }
+        }
+
+        <!-- BARRA DE CONTROLES VERTICAL EN HOVER (Premium Action Dock - Solo Monitoreo) -->
+        @if (mode === 'monitoreo' && showCellActions && slot.camera) {
+        <div class="feed-actions-vertical-dock d-flex flex-column align-items-center"
+          (click)="$event.stopPropagation()">
+          <!-- Refrescar Flujo de Cámara (WebSocket: camera_stream_refresh) -->
+          <button class="action-dock-btn" (click)="onRefreshCameraStream(slot, $event)"
+            title="Refrescar flujo de video">
+            <span class="icon-svg icon-refresh vms-icon-fluid-xs"></span>
+          </button>
+
+          <!-- Snapshot -->
+          <button class="action-dock-btn" (click)="onTakeSnapshot(slot, $event)" title="Capturar Fotograma">
+            <span class="icon-svg icon-camara vms-icon-fluid-xs"></span>
+          </button>
+
+          <!-- Bloquear/Desbloquear Slot -->
+          <button class="action-dock-btn" [class.active-lock]="slot.isLocked" (click)="onToggleLockSlot(slot, $event)"
+            [title]="slot.isLocked ? 'Desbloquear cámara' : 'Bloquear cámara'">
+            <span class="icon-svg icon-lock vms-icon-fluid-xs"></span>
+          </button>
+
+          <!-- Quitar Cámara -->
+          <button class="action-dock-btn btn-danger-action"
+            (click)="onRemoveCameraFromSlot(slot.col, slot.row, $event)" title="Quitar cámara">
+            <span class="icon-svg icon-trash vms-icon-fluid-xs"></span>
+          </button>
+        </div>
+        }
+      </div>
+
+      <!-- TIRADOR DE REDIMENSIONAMIENTO (Minimalist Floating SVG Grip - Solo Monitoreo) -->
+      @if (mode === 'monitoreo' && showCellActions && (cols() > 1 || rows() > 1) && !slot.isLocked) {
+      <div class="feed-resize-handle" (mousedown)="onInitResize(slot, $event, cardEl)"
+        title="Redimensionar celda">
+        <svg class="resize-grip-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 6L6 14M14 9.5L9.5 14M14 13L13 14" stroke="currentColor" stroke-width="1.6"
+            stroke-linecap="round" />
+        </svg>
+      </div>
+      }
+    </div>
+    }
+  </div>
+  }
+
+  <!-- Recuadros Fantasma de Aterrizaje Celda por Celda (Ghost Drop Highlights - Solo Monitoreo) -->
+  @if (mode === 'monitoreo') {
+  @for (dt of draggingDropTargets; track $index) {
+  <div class="canvas-drop-ghost-highlight" [style.gridColumn]="dt.col + ' / span ' + dt.spanX"
+    [style.gridRow]="dt.row + ' / span ' + dt.spanY" [class.drop-invalid]="!dt.isValid">
+  </div>
+  }
+  }
+
+  <!-- Expandores de bordes (Drop Targets para agregar columnas/filas - Solo Monitoreo) -->
+  <!-- Vertical: Lado derecho -->
+  @if (mode === 'monitoreo' && showExpanders && isCanvasMode() && !isCanvasPinned() && activeHoveredExpander !== 'column' && activeHoveredExpander !== 'both') {
+  @let extDim = getExtenderDimensions();
+  <div class="grid-cell-placeholder-vertical d-flex align-items-center justify-content-center"
+    [class.hover-active]="activeHoveredExpander === 'column'" [style.gridColumn]="(cols() + 1) + ' / span 1'"
+    [style.gridRow]="'1 / span ' + rows()" data-type="vertical-expander"
+    (click)="onExpanderClick(cols() + 1, 1, 'add-column')"
+    title="Arrastre una cámara aquí para añadir una columna">
+    <div class="expander-content d-flex flex-column align-items-center text-muted">
+      <span class="icon-svg icon-plus mb-1" [style.width.px]="extDim.iconSize"
+        [style.height.px]="extDim.iconSize" style="background-color: currentColor;"></span>
+      <span class="vms-expander-label-vert" [style.fontSize.px]="extDim.fontSize">COLUMNA</span>
+    </div>
+  </div>
+  }
+
+  <!-- Horizontal: Lado inferior -->
+  @if (mode === 'monitoreo' && showExpanders && isCanvasMode() && !isCanvasPinned() && activeHoveredExpander !== 'row' && activeHoveredExpander !== 'both') {
+  @let extDim = getExtenderDimensions();
+  <div class="grid-cell-placeholder-wide d-flex align-items-center justify-content-center"
+    [class.hover-active]="activeHoveredExpander === 'row'" [style.gridColumn]="'1 / span ' + cols()"
+    [style.gridRow]="(rows() + 1) + ' / span 1'" data-type="horizontal-expander"
+    (click)="onExpanderClick(1, rows() + 1, 'add-row')"
+    title="Arrastre una cámara aquí para añadir una fila">
+    <div class="expander-content d-flex align-items-center text-muted gap-1">
+      <span class="icon-svg icon-plus" [style.width.px]="extDim.iconSize" [style.height.px]="extDim.iconSize"
+        style="background-color: currentColor;"></span>
+      <span class="vms-expander-label-horiz" [style.fontSize.px]="extDim.fontSize">FILA</span>
+    </div>
+  </div>
+  }
+
+</div>

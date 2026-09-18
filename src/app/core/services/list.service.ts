@@ -238,8 +238,9 @@ export class ListService {
       nombre_asociado: name || (listType === 'plate_recognition' ? 'Propietario no registrado' : ''),
       fingerprint_host: '', // Global scope
       embedding: [],
+      img_minio_object_name: record.imgMinioObjectName || '',
       metadata: {
-        url_img: record.imagenRemota,
+        img_minio_object_name: record.imgMinioObjectName || '',
         document_id: record.id,
         ...(listType === 'plate_recognition' ? { text_placa: record.reconocimiento } : {})
       }
@@ -296,7 +297,12 @@ export class ListService {
     this.isLoading.set(true);
     return this.listRepository.updateFaceImg(detailId, file).pipe(
       tap(res => {
-        this.listDetails.update(current => current.map(d => d.detail_id === detailId ? { ...d, metadata: { ...d.metadata, url_img: res.metadata?.url_img } } : d));
+        const newObjName = res.img_minio_object_name || res.metadata?.img_minio_object_name;
+        this.listDetails.update(current => current.map(d => d.detail_id === detailId ? {
+          ...d,
+          img_minio_object_name: newObjName,
+          metadata: { ...d.metadata, img_minio_object_name: newObjName }
+        } : d));
         this.isLoading.set(false);
       }),
       catchError(err => {

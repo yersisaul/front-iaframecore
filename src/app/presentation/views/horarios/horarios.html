@@ -47,7 +47,8 @@
         <div class="schedules-selector-container overflow-y-auto scroll-container pe-1 flex-grow-1 min-h-0">
           <div class="d-flex flex-column gap-3">
             @for (sched of filteredSchedules(); track sched.id) {
-            <div class="schedule-modal-item p-3.5 rounded-3 border transition-all"
+            <div
+              class="schedule-modal-item rounded-3 border transition-all d-flex align-items-center justify-content-between"
               [class.schedule-active]="isScheduleActive(sched)" [class.schedule-inactive]="!isScheduleActive(sched)"
               [class.selected-for-details]="selectedScheduleId() === sched.id"
               [class.card-crud-new]="scheduleNewIds().has(sched.id)"
@@ -57,60 +58,61 @@
               [class.card-crud-status-inactive]="scheduleInactiveStatusIds().has(sched.id)"
               (click)="selectScheduleForDetails(sched)" style="cursor: pointer;">
 
-              <!-- Contenedor vertical de 2 filas -->
-              <div class="d-flex flex-column gap-2.5">
-
-                <!-- Fila 1: Título con Frecuencia y Controles CRUD -->
-                <div class="d-flex align-items-center justify-content-between w-100">
-                  <!-- Título y Frecuencia -->
-                  <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="status-dot pulse" [class.pulse]="isScheduleActive(sched)"></span>
-                    <span class="fw-bold" style="font-size: 0.95rem;">{{ sched.name }}</span>
-                    <span class="badge bg-light-translucent text-uppercase text-muted"
-                      style="font-size: 0.65rem; border: 1px solid var(--border-color); padding: 3px 6px; border-radius: 5px;">
-                      {{ sched.frequency }}
-                    </span>
-                  </div>
-
-                  <!-- Controles CRUD -->
-                  <div class="d-flex align-items-center gap-2">
-                    <!-- Switch -->
-                    <div class="form-check form-switch m-0 d-flex align-items-center"
-                      (click)="$event.stopPropagation()">
-                      <input class="form-check-input" type="checkbox" role="switch" [id]="'switch-sched-' + sched.id"
-                        [checked]="sched.status === 'activo'"
-                        [disabled]="!permissionsService.hasPermission('Horarios', 'editar')"
-                        (change)="toggleScheduleStatus(sched, $event)">
-                    </div>
-
-                    <!-- Editar -->
-                    @if (permissionsService.hasPermission('Horarios', 'editar')) {
-                    <button class="btn btn-xs btn-ghost p-1.5"
-                      (click)="openEditScheduleModal(sched); $event.stopPropagation()" title="Editar Horario"
-                      aria-label="Editar horario">
-                      <span class="icon-svg icon-edit" style="width: 14px; height: 14px;"></span>
-                    </button>
-                    }
-
-                    <!-- Borrar -->
-                    @if (permissionsService.hasPermission('Horarios', 'eliminar')) {
-                    <button class="btn btn-xs btn-ghost text-danger p-1.5"
-                      (click)="openDeleteScheduleModal(sched); $event.stopPropagation()" title="Eliminar Horario"
-                      aria-label="Eliminar horario">
-                      <span class="icon-svg icon-trash" style="width: 14px; height: 14px;"></span>
-                    </button>
-                    }
-                  </div>
+              <!-- Columna Izquierda: Información Textual (Título, Frecuencia y Rango) -->
+              <div class="d-flex flex-column justify-content-center gap-1.5 min-w-0 flex-grow-1 me-3 ps-1"
+                style="overflow: hidden;">
+                <!-- Título y Frecuencia -->
+                <div class="d-flex align-items-center gap-2 min-w-0">
+                  <span class="status-dot pulse flex-shrink-0" [class.pulse]="isScheduleActive(sched)"></span>
+                  <span class="fw-bold text-truncate" style="font-size: 0.95rem;" [title]="sched.name">{{ sched.name
+                    }}</span>
+                  <span class="badge bg-light-translucent text-uppercase text-muted flex-shrink-0"
+                    style="font-size: 0.65rem; border: 1px solid var(--border-color); padding: 3px 6px; border-radius: 5px;">
+                    {{ sched.frequency }}
+                  </span>
                 </div>
 
-                <!-- Fila 2: Rango Horario -->
-                <div class="d-flex align-items-center gap-2 mt-0.5">
+                <!-- Rango Horario -->
+                <div class="d-flex align-items-center gap-2">
                   <span class="font-monospace text-muted small" style="font-size: 0.75rem;">
                     {{ sched.start | date:'dd/MM/yyyy HH:mm' }} - {{ sched.end | date:'dd/MM/yyyy HH:mm' }}
                   </span>
                 </div>
-
               </div>
+
+              <!-- Columna Derecha: Controles centrados verticalmente -->
+              <div class="schedule-card-controls d-flex align-items-center flex-shrink-0">
+                <!-- Botón Editar SVG Directo -->
+                @if (permissionsService.hasPermission('Horarios', 'editar')) {
+                <span role="button" tabindex="0" class="icon-svg icon-edit sched-btn-action sched-btn-edit"
+                  (click)="openEditScheduleModal(sched); $event.stopPropagation()"
+                  (keydown.enter)="openEditScheduleModal(sched); $event.stopPropagation()"
+                  (keydown.space)="openEditScheduleModal(sched); $event.stopPropagation()" title="Editar Horario"
+                  aria-label="Editar horario">
+                </span>
+                }
+
+                <!-- Botón Eliminar SVG Directo -->
+                @if (permissionsService.hasPermission('Horarios', 'eliminar')) {
+                <span role="button" tabindex="0" class="icon-svg icon-trash sched-btn-action sched-btn-delete"
+                  (click)="openDeleteScheduleModal(sched); $event.stopPropagation()"
+                  (keydown.enter)="openDeleteScheduleModal(sched); $event.stopPropagation()"
+                  (keydown.space)="openDeleteScheduleModal(sched); $event.stopPropagation()" title="Eliminar Horario"
+                  aria-label="Eliminar horario">
+                </span>
+                }
+
+                <!-- Switch de Estado Operativo (Siempre Visible) -->
+                <div class="form-check form-switch m-0 d-flex align-items-center sched-switch-wrap"
+                  (click)="$event.stopPropagation()">
+                  <input class="form-check-input sched-switch-input" type="checkbox" role="switch"
+                    [id]="'switch-sched-' + sched.id" [checked]="sched.status === 'activo'"
+                    [disabled]="!permissionsService.hasPermission('Horarios', 'editar')"
+                    (change)="toggleScheduleStatus(sched, $event)"
+                    [title]="sched.status === 'activo' ? 'Desactivar Horario' : 'Activar Horario'">
+                </div>
+              </div>
+
             </div>
             }
           </div>
@@ -212,23 +214,20 @@
                   <span class="bento-card-title">Operación y Ventana Diaria</span>
                 </div>
                 <div class="bento-details-card-body d-flex flex-column gap-3 pt-1">
-                  <!-- Días de Operación -->
-                  <div>
-                    <div class="weekday-grid">
+                  <!-- Días de Operación (Diseño Flotante Minimalista - Propuesta 1) -->
+                  <div class="weekday-flow-wrapper">
+                    <div class="weekday-flow-grid">
                       @for (dayLabel of ['D', 'L', 'M', 'M', 'J', 'V', 'S']; track $index) {
                       @let isDayActive = isDayOfWeekActive($index, activeSched.start, activeSched.end,
                       activeSched.frequency);
-                      <div class="details-weekday-circle" [class.active]="isDayActive"
-                        [title]="isDayActive ? 'Operativo' : 'Inactivo'">
-                        {{ dayLabel }}
+                      <div class="weekday-flow-col" [class.active]="isDayActive"
+                        [title]="(isDayActive ? 'Operativo: ' : 'Inactivo: ') + ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][$index]">
+                        <span class="weekday-flow-letter">{{ dayLabel }}</span>
+                        <span class="weekday-flow-indicator"></span>
                       </div>
                       }
                     </div>
                   </div>
-
-                  <!-- Divider Sutil -->
-                  <div class="border-top border-color-subtle w-100 my-1"></div>
-
                   <!-- Timeline -->
                   <div>
                     <div class="timeline-hours-labels d-flex justify-content-between mb-2 text-muted font-monospace"

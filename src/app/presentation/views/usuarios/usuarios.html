@@ -278,17 +278,19 @@
               <span class="role-badge mb-1 d-inline-block">{{ rol.nombre }}</span>
               <p class="text-muted mb-0 small mt-1">{{ rol.descripcion }}</p>
             </div>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center flex-shrink-0">
+              @if (!isSystemRole(rol.nombre) && permissionsService.hasPermission('Roles', 'eliminar')) {
+              <span role="button" tabindex="0" class="icon-svg icon-trash role-btn-action role-btn-delete"
+                (click)="openDeleteRoleModal(rol, $event)"
+                (keydown.enter)="openDeleteRoleModal(rol, $event)"
+                (keydown.space)="openDeleteRoleModal(rol, $event)"
+                title="Eliminar Rol" aria-label="Eliminar Rol">
+              </span>
+              }
+
               <span class="permission-code-badge role-permissions-count-badge text-truncate">{{
                 getActivePermissionsCount(rol) }}
                 permisos</span>
-
-              @if (!isSystemRole(rol.nombre) && permissionsService.hasPermission('Roles', 'eliminar')) {
-              <button class="btn-action-icon btn-action-delete role-delete-btn"
-                (click)="openDeleteRoleModal(rol, $event)" title="Eliminar Rol" aria-label="Eliminar Rol">
-                <span class="icon-svg icon-trash" style="width: 13px; height: 13px;"></span>
-              </button>
-              }
             </div>
           </div>
           }

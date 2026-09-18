@@ -15,6 +15,8 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
+import { MediaUrlPipe } from '../../shared/pipes/media-url.pipe';
+import { MediaFileService } from '../../../core/services/media-file.service';
 
 export interface FaceUploadResult {
   file: File;
@@ -67,7 +69,7 @@ export interface SubjectImportDraft {
 @Component({
   selector: 'app-listas',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent, FilterActionsComponent, EmptyStateComponent, PaginationControlsComponent, CustomSelectComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent, FilterActionsComponent, EmptyStateComponent, PaginationControlsComponent, CustomSelectComponent, MediaUrlPipe],
   templateUrl: './listas.html',
   styleUrl: './listas.css'
 })
@@ -76,6 +78,7 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   private listService = inject(ListService);
   private sidebarService = inject(SidebarService);
   public permissionsService = inject(PermissionsService);
+  private mediaFileService = inject(MediaFileService);
 
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
 
@@ -416,14 +419,28 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onImageError(event: Event): void {
-    const target = event.target as HTMLElement;
-    if (target) {
+    const target = event.target as HTMLImageElement;
+    if (target && target.src && target.src !== window.location.href) {
       target.style.display = 'none';
-      const wrapper = target.parentElement;
-      if (wrapper) {
-        const placeholder = wrapper.querySelector('.subject-card-placeholder') as HTMLElement;
+      const container = target.closest('.subject-card-img-wrapper, .identity-avatar-header, .timeline-img-wrapper, .sighting-preview-hero') || target.parentElement;
+      if (container) {
+        const placeholder = container.querySelector('.subject-card-placeholder') as HTMLElement;
         if (placeholder) {
           placeholder.style.display = 'flex';
+        }
+      }
+    }
+  }
+
+  onImageLoad(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (target) {
+      target.style.display = '';
+      const container = target.closest('.subject-card-img-wrapper, .identity-avatar-header, .timeline-img-wrapper, .sighting-preview-hero') || target.parentElement;
+      if (container) {
+        const placeholder = container.querySelector('.subject-card-placeholder') as HTMLElement;
+        if (placeholder) {
+          placeholder.style.display = 'none';
         }
       }
     }
@@ -803,7 +820,14 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     if (this.listType() === 'face_recognition') {
       this.editFaceSubjectName.set(detail.nombre_asociado || '');
       this.selectedEditFaceFile.set(null);
-      this.editFaceImagePreviewUrl.set(detail.metadata?.url_img || null);
+      const objName = detail.img_minio_object_name || detail.metadata?.img_minio_object_name;
+      if (objName) {
+        this.mediaFileService.getFileUrl(objName).subscribe(url => {
+          this.editFaceImagePreviewUrl.set(url);
+        });
+      } else {
+        this.editFaceImagePreviewUrl.set(null);
+      }
       this.showEditFaceSubjectModal.set(true);
     } else {
       this.editPlateSubjectPlate.set(detail.metadata?.text_placa || '');
@@ -821,6 +845,24 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     this.editFaceSubjectName.set('');
     this.selectedEditFaceFile.set(null);
     this.editFaceImagePreviewUrl.set(null);
+  }
+
+  resetEditFaceFile(event?: Event): void {
+    if (event) event.stopPropagation();
+    const preview = this.editFaceImagePreviewUrl();
+    if (preview && preview.startsWith('blob:')) {
+      URL.revokeObjectURL(preview);
+    }
+    this.selectedEditFaceFile.set(null);
+    const detail = this.selectedSubjectDetail();
+    const objName = detail?.img_minio_object_name || detail?.metadata?.img_minio_object_name;
+    if (objName) {
+      this.mediaFileService.getFileUrl(objName).subscribe(url => {
+        this.editFaceImagePreviewUrl.set(url);
+      });
+    } else {
+      this.editFaceImagePreviewUrl.set(null);
+    }
   }
 
   closeEditPlateSubjectModal(): void {
@@ -1516,6 +1558,84 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
 
   closeFullscreenImage(): void {
     this.fullscreenImgUrl.set(null);
+  }
+
+  onListCardMouseEnter(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const row = target.classList.contains('list-item-row')
+      ? target
+      : (target.closest('.list-item-row') as HTMLElement | null);
+    if (!row) return;
+
+    row.classList.add('list-card-hovered');
+
+    const nameEl = row.querySelector('.list-name-marquee-text') as HTMLElement | null;
+    const descEl = row.querySelector('.list-desc-marquee-text') as HTMLElement | null;
+    const dotEl = row.querySelector('.submenu-dot') as HTMLElement | null;
+    const actionButtons = row.querySelectorAll('.list-btn-action');
+
+    if (!nameEl && !descEl) return;
+
+    const dotWidth = dotEl ? dotEl.offsetWidth : 8;
+    const numButtons = actionButtons.length;
+    // Cada botón SVG mide 16px de ancho + gap de 24px + margen desde el texto (20px)
+    const actionsWidth = numButtons > 0 ? (numButtons * 16 + (numButtons - 1) * 24 + 20) : 0;
+    // Padding horizontal (p-3: ~32px) + gap dot a texto (~16px)
+    const fixedSpacing = 48;
+    const availableFullWidth = row.clientWidth - dotWidth - actionsWidth - fixedSpacing;
+
+    let needsMarquee = false;
+    const fadeOffset = 20;
+
+    if (nameEl && nameEl.scrollWidth > availableFullWidth) {
+      const shift = Math.ceil(nameEl.scrollWidth - availableFullWidth) + fadeOffset;
+      nameEl.style.setProperty('--marquee-shift', `-${shift}px`);
+      nameEl.classList.add('animate-marquee');
+      needsMarquee = true;
+    } else if (nameEl) {
+      nameEl.style.removeProperty('--marquee-shift');
+      nameEl.classList.remove('animate-marquee');
+    }
+
+    if (descEl && descEl.scrollWidth > availableFullWidth) {
+      const shift = Math.ceil(descEl.scrollWidth - availableFullWidth) + fadeOffset;
+      descEl.style.setProperty('--marquee-shift', `-${shift}px`);
+      descEl.classList.add('animate-marquee');
+      needsMarquee = true;
+    } else if (descEl) {
+      descEl.style.removeProperty('--marquee-shift');
+      descEl.classList.remove('animate-marquee');
+    }
+
+    if (needsMarquee) {
+      row.classList.add('list-card-needs-marquee');
+    } else {
+      row.classList.remove('list-card-needs-marquee');
+    }
+  }
+
+  onListCardMouseLeave(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const row = target.classList.contains('list-item-row')
+      ? target
+      : (target.closest('.list-item-row') as HTMLElement | null);
+    if (!row) return;
+
+    row.classList.remove('list-card-hovered', 'list-card-needs-marquee');
+    const nameEl = row.querySelector('.list-name-marquee-text') as HTMLElement | null;
+    const descEl = row.querySelector('.list-desc-marquee-text') as HTMLElement | null;
+    if (nameEl) {
+      nameEl.style.removeProperty('--marquee-shift');
+      nameEl.classList.remove('animate-marquee');
+    }
+    if (descEl) {
+      descEl.style.removeProperty('--marquee-shift');
+      descEl.classList.remove('animate-marquee');
+    }
   }
 
 }

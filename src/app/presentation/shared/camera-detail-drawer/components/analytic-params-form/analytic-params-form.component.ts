@@ -140,7 +140,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
     return this.selectedType() === 'human_behavior';
   });
 
-  readonly classTimesMap = signal<Record<number, number>>({});
+  readonly classTimes = signal<number[]>([]);
   readonly draggedClassIndex = signal<number | null>(null);
   readonly previewClassTargetIndex = signal<number | null>(null);
   readonly draggedClassCardHeight = signal<number>(0);
@@ -265,6 +265,14 @@ export class AnalyticParamsFormComponent implements OnChanges {
           updated.splice(targetIdx, 0, movedItem);
           return updated;
         });
+        this.classTimes.update(times => {
+          const updated = [...times];
+          const movedTime = updated[sourceIdx] ?? 1;
+          updated.splice(sourceIdx, 1);
+          updated.splice(targetIdx, 0, movedTime);
+          return updated;
+        });
+        this.emitFormValues();
       }
 
       this.draggedClassIndex.set(null);
@@ -766,50 +774,215 @@ export class AnalyticParamsFormComponent implements OnChanges {
     return this.currentModelClasses().find(c => c.classIndex === classIdx);
   }
 
-  getClassTime(classIdx: number): number {
-    return this.classTimesMap()[classIdx] ?? 1;
+  getClassTime(rowIdx: number): number {
+    return this.classTimes()[rowIdx] ?? 1;
   }
 
-  updateClassTime(classIdx: number, event: Event): void {
+  updateClassTime(rowIdx: number, event: Event): void {
     const target = event.target as HTMLInputElement;
     const val = Math.max(1, Number(target.value) || 1);
-    this.classTimesMap.update(map => ({
-      ...map,
-      [classIdx]: val
-    }));
+    this.classTimes.update(times => {
+      const next = [...times];
+      while (next.length <= rowIdx) {
+        next.push(1);
+      }
+      next[rowIdx] = val;
+      return next;
+    });
     this.emitFormValues();
   }
 
   readonly isTypeDropdownOpen = signal<boolean>(false);
   readonly isModelDropdownOpen = signal<boolean>(false);
+  readonly isTrackerDropdownOpen = signal<boolean>(false);
+  readonly isColorFiltroDropdownOpen = signal<boolean>(false);
+  readonly isParteCuerpoDropdownOpen = signal<boolean>(false);
+  readonly isPertenenciaDropdownOpen = signal<boolean>(false);
+  readonly isCondicionDropdownOpen = signal<boolean>(false);
+  readonly isDirectionDropdownOpen = signal<boolean>(false);
+
+  readonly colorFiltroOptions = [
+    { value: 'Sin color', label: 'Sin filtro de color' },
+    { value: 'rojo', label: 'Rojo' },
+    { value: 'rosado', label: 'Rosado' },
+    { value: 'azul', label: 'Azul' },
+    { value: 'celeste', label: 'Celeste' },
+    { value: 'verde', label: 'Verde' },
+    { value: 'amarillo', label: 'Amarillo' },
+    { value: 'anaranjado', label: 'Anaranjado' },
+    { value: 'negro', label: 'Negro' },
+    { value: 'blanco', label: 'Blanco' },
+    { value: 'gris claro', label: 'Gris Claro' },
+    { value: 'gris oscuro', label: 'Gris Oscuro' },
+    { value: 'marron', label: 'Marrón' }
+  ];
+
+  readonly trackerOptions = [
+    { value: 'Sort', label: 'Sort (Básico y Ligero)' },
+    { value: 'Oc-Sort', label: 'Oc-Sort (Intermedio)' },
+    { value: 'Bot-Sort', label: 'Bot-Sort (Complejo y Robusto)' }
+  ];
+
+  readonly parteCuerpoOptions = [
+    { value: 'Cabeza', label: 'Cabeza' },
+    { value: 'Rostro', label: 'Rostro' },
+    { value: 'Manos', label: 'Manos' },
+    { value: 'Pies', label: 'Pies' },
+    { value: 'Rodillas', label: 'Rodillas' },
+    { value: 'Pecho/Espalda', label: 'Pecho/Espalda' },
+    { value: 'Cintura', label: 'Cintura' }
+  ];
+
+  readonly pertenenciaOptions = [
+    { value: 'Con objeto', label: 'Con objeto' },
+    { value: 'Sin objeto', label: 'Sin objeto' }
+  ];
+
+  readonly condicionOptions = [
+    { value: 'Cumple', label: 'Cumple' },
+    { value: 'No cumple', label: 'No cumple' }
+  ];
+
+  readonly directionOptions = [
+    { value: 'Bidireccional', label: 'Bidireccional' },
+    { value: 'De A a B', label: 'De A a B' },
+    { value: 'De B a A', label: 'De B a A' }
+  ];
 
   toggleTypeDropdown(event: Event): void {
     event.stopPropagation();
-    this.isTypeDropdownOpen.update(open => !open);
-    this.isClassesDropdownOpen.set(false);
-    this.isModelDropdownOpen.set(false);
+    const next = !this.isTypeDropdownOpen();
+    this.closeDropdowns();
+    this.isTypeDropdownOpen.set(next);
   }
 
   toggleClassesDropdown(event: Event): void {
     event.stopPropagation();
-    this.isClassesDropdownOpen.update(open => !open);
-    this.isTypeDropdownOpen.set(false);
-    this.isModelDropdownOpen.set(false);
+    const next = !this.isClassesDropdownOpen();
+    this.closeDropdowns();
+    this.isClassesDropdownOpen.set(next);
   }
 
   toggleModelDropdown(event: Event): void {
     event.stopPropagation();
-    this.isModelDropdownOpen.update(open => !open);
-    this.isTypeDropdownOpen.set(false);
-    this.isClassesDropdownOpen.set(false);
+    const next = !this.isModelDropdownOpen();
+    this.closeDropdowns();
+    this.isModelDropdownOpen.set(next);
   }
 
   toggleListsDropdown(event: Event): void {
     event.stopPropagation();
-    this.isListsDropdownOpen.update(open => !open);
-    this.isTypeDropdownOpen.set(false);
-    this.isClassesDropdownOpen.set(false);
-    this.isModelDropdownOpen.set(false);
+    const next = !this.isListsDropdownOpen();
+    this.closeDropdowns();
+    this.isListsDropdownOpen.set(next);
+  }
+
+  toggleTrackerDropdown(event: Event): void {
+    event.stopPropagation();
+    const next = !this.isTrackerDropdownOpen();
+    this.closeDropdowns();
+    this.isTrackerDropdownOpen.set(next);
+  }
+
+  selectTracker(val: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.selectedTracker.set(val);
+    this.isTrackerDropdownOpen.set(false);
+    this.emitFormValues();
+  }
+
+  getTrackerLabel(): string {
+    return this.trackerOptions.find(o => o.value === this.selectedTracker())?.label || this.selectedTracker();
+  }
+
+  toggleColorFiltroDropdown(event: Event): void {
+    event.stopPropagation();
+    const next = !this.isColorFiltroDropdownOpen();
+    this.closeDropdowns();
+    this.isColorFiltroDropdownOpen.set(next);
+  }
+
+  selectColorFiltro(val: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.colorFiltro.set(val);
+    this.isColorFiltroDropdownOpen.set(false);
+    this.emitFormValues();
+  }
+
+  getColorFiltroLabel(): string {
+    return this.colorFiltroOptions.find(o => o.value.toLowerCase() === (this.colorFiltro() || '').toLowerCase())?.label || this.colorFiltro() || 'Sin filtro de color';
+  }
+
+  toggleParteCuerpoDropdown(event: Event): void {
+    event.stopPropagation();
+    const next = !this.isParteCuerpoDropdownOpen();
+    this.closeDropdowns();
+    this.isParteCuerpoDropdownOpen.set(next);
+  }
+
+  selectParteCuerpo(val: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.parteDeCuerpo.set(val);
+    this.isParteCuerpoDropdownOpen.set(false);
+    this.emitFormValues();
+  }
+
+  getParteCuerpoLabel(): string {
+    return this.parteCuerpoOptions.find(o => o.value.toLowerCase() === (this.parteDeCuerpo() || '').toLowerCase())?.label || this.parteDeCuerpo();
+  }
+
+  togglePertenenciaDropdown(event: Event): void {
+    event.stopPropagation();
+    const next = !this.isPertenenciaDropdownOpen();
+    this.closeDropdowns();
+    this.isPertenenciaDropdownOpen.set(next);
+  }
+
+  selectPertenencia(val: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.pertenenciaObjeto.set(val);
+    this.isPertenenciaDropdownOpen.set(false);
+    this.emitFormValues();
+  }
+
+  getPertenenciaLabel(): string {
+    return this.pertenenciaOptions.find(o => o.value.toLowerCase() === (this.pertenenciaObjeto() || '').toLowerCase())?.label || this.pertenenciaObjeto();
+  }
+
+  toggleCondicionDropdown(event: Event): void {
+    event.stopPropagation();
+    const next = !this.isCondicionDropdownOpen();
+    this.closeDropdowns();
+    this.isCondicionDropdownOpen.set(next);
+  }
+
+  selectCondicion(val: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.condicionEventoComportamiento.set(val);
+    this.isCondicionDropdownOpen.set(false);
+    this.emitFormValues();
+  }
+
+  getCondicionLabel(): string {
+    return this.condicionOptions.find(o => o.value.toLowerCase() === (this.condicionEventoComportamiento() || '').toLowerCase())?.label || this.condicionEventoComportamiento();
+  }
+
+  toggleDirectionDropdown(event: Event): void {
+    event.stopPropagation();
+    const next = !this.isDirectionDropdownOpen();
+    this.closeDropdowns();
+    this.isDirectionDropdownOpen.set(next);
+  }
+
+  selectDirection(val: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.strDirection.set(val);
+    this.isDirectionDropdownOpen.set(false);
+    this.emitFormValues();
+  }
+
+  getDirectionLabel(): string {
+    return this.directionOptions.find(o => o.value.toLowerCase() === (this.strDirection() || '').toLowerCase())?.label || this.strDirection();
   }
 
   isListSelectionValid(): boolean {
@@ -861,6 +1034,12 @@ export class AnalyticParamsFormComponent implements OnChanges {
     this.isTypeDropdownOpen.set(false);
     this.isModelDropdownOpen.set(false);
     this.isListsDropdownOpen.set(false);
+    this.isTrackerDropdownOpen.set(false);
+    this.isColorFiltroDropdownOpen.set(false);
+    this.isParteCuerpoDropdownOpen.set(false);
+    this.isPertenenciaDropdownOpen.set(false);
+    this.isCondicionDropdownOpen.set(false);
+    this.isDirectionDropdownOpen.set(false);
   }
 
   getSelectedAnalyticTypeLabel(): string {
@@ -1150,50 +1329,48 @@ export class AnalyticParamsFormComponent implements OnChanges {
     if (Array.isArray(rawClasses) && rawClasses.length > 0) {
       const modelClasses = this.currentModelClasses();
       const restoredIndexes: number[] = [];
-      const restoredTimes: Record<number, number> = {};
+      const restoredTimes: number[] = [];
 
       rawClasses.forEach((item: any) => {
         let idx: number | undefined = undefined;
+        let t: number = 1;
         if (typeof item === 'number') {
           idx = item;
-          restoredIndexes.push(item);
         } else if (item && typeof item === 'object') {
           const name = String(item.class_name || item.className || '').trim();
           if (name) {
             const found = modelClasses.find(mc => mc.className.toLowerCase() === name.toLowerCase());
             if (found) {
               idx = found.classIndex;
-              restoredIndexes.push(found.classIndex);
             } else if (item.class_index !== undefined && item.class_index !== null) {
               idx = Number(item.class_index);
-              restoredIndexes.push(idx);
             } else if (item.classIndex !== undefined && item.classIndex !== null) {
               idx = Number(item.classIndex);
-              restoredIndexes.push(idx);
             }
           } else if (item.class_index !== undefined && item.class_index !== null) {
             idx = Number(item.class_index);
-            restoredIndexes.push(idx);
           } else if (item.classIndex !== undefined && item.classIndex !== null) {
             idx = Number(item.classIndex);
-            restoredIndexes.push(idx);
           }
 
-          if (idx !== undefined && item.tiempo !== undefined && item.tiempo !== null) {
-            restoredTimes[idx] = Number(item.tiempo);
+          if (item.tiempo !== undefined && item.tiempo !== null) {
+            t = Math.max(1, Number(item.tiempo));
           }
         } else if (typeof item === 'string') {
           const name = item.toLowerCase();
           const found = modelClasses.find(mc => mc.className.toLowerCase() === name);
-          if (found) restoredIndexes.push(found.classIndex);
+          if (found) idx = found.classIndex;
+        }
+
+        if (idx !== undefined) {
+          restoredIndexes.push(idx);
+          restoredTimes.push(t);
         }
       });
 
       if (restoredIndexes.length > 0) {
         this.selectedClassIndexes.set(restoredIndexes);
-      }
-      if (Object.keys(restoredTimes).length > 0) {
-        this.classTimesMap.set(restoredTimes);
+        this.classTimes.set(restoredTimes);
       }
     }
 
@@ -1210,8 +1387,8 @@ export class AnalyticParamsFormComponent implements OnChanges {
     } else {
       this.metadatos.set(false);
     }
-    if (params['scale_area'] !== undefined || params['Escala'] !== undefined || params['scale_factor'] !== undefined) {
-      this.scaleFactor.set(Number(params['scale_area'] ?? params['Escala'] ?? params['scale_factor']));
+    if (params['Escala'] !== undefined || params['scale_area'] !== undefined || params['scale_factor'] !== undefined) {
+      this.scaleFactor.set(Number(params['Escala'] ?? params['scale_area'] ?? params['scale_factor']));
     }
     if (params['zona_analisis'] !== undefined || params['Zona'] !== undefined || params['zona'] !== undefined) {
       this.zonaLinea.set(Number(params['zona_analisis'] ?? params['Zona'] ?? params['zona']));
@@ -1342,16 +1519,19 @@ export class AnalyticParamsFormComponent implements OnChanges {
   }
 
   toggleClassSelection(classIdx: number): void {
-    this.selectedClassIndexes.update(indexes => {
-      if (indexes.includes(classIdx)) {
-        return indexes.filter(i => i !== classIdx);
-      } else {
-        if (this.selectedType() === 'object_proximity' && indexes.length >= 2) {
-          return indexes; // Bloqueo estricto: máximo 2 objetos para Cercanía entre Objetos
-        }
-        return [...indexes, classIdx];
+    const currentIdxs = this.selectedClassIndexes();
+    if (currentIdxs.includes(classIdx)) {
+      const pos = currentIdxs.indexOf(classIdx);
+      this.selectedClassIndexes.update(indexes => indexes.filter((_, i) => i !== pos));
+      this.classTimes.update(times => times.filter((_, i) => i !== pos));
+    } else {
+      if (this.selectedType() === 'object_proximity' && currentIdxs.length >= 2) {
+        return; // Bloqueo estricto: máximo 2 objetos para Cercanía entre Objetos
       }
-    });
+      this.selectedClassIndexes.update(indexes => [...indexes, classIdx]);
+      this.classTimes.update(times => [...times, 1]);
+    }
+    this.emitFormValues();
   }
 
   selectAllClasses(): void {
@@ -1359,16 +1539,22 @@ export class AnalyticParamsFormComponent implements OnChanges {
     if (this.selectedType() === 'object_proximity') {
       if (classes.length >= 2) {
         this.selectedClassIndexes.set([classes[0].classIndex, classes[1].classIndex]);
+        this.classTimes.set([1, 1]);
       } else if (classes.length === 1) {
         this.selectedClassIndexes.set([classes[0].classIndex]);
+        this.classTimes.set([1]);
       }
     } else {
       this.selectedClassIndexes.set(classes.map(c => c.classIndex));
+      this.classTimes.set(classes.map(() => 1));
     }
+    this.emitFormValues();
   }
 
   deselectAllClasses(): void {
     this.selectedClassIndexes.set([]);
+    this.classTimes.set([]);
+    this.emitFormValues();
   }
 
   emitFormValues(): void {
@@ -1422,14 +1608,14 @@ export class AnalyticParamsFormComponent implements OnChanges {
         };
       });
     } else if (selType === 'human_behavior') {
-      // Para Comportamiento Humano: incluye el atributo "tiempo" en segundos por cada clase
-      activeClasses = selectedIndexes.map(idx => {
+      // Para Comportamiento Humano: incluye el atributo "tiempo" en segundos por cada clase según su posición
+      activeClasses = selectedIndexes.map((idx, posIdx) => {
         const found = availableClasses.find(c => c.classIndex === idx);
-        const t = this.classTimesMap()[idx] ?? 1;
+        const t = this.classTimes()[posIdx] ?? 1;
         return {
-          class_index: found ? found.classIndex : idx,
+          tiempo: t,
           class_name: found ? found.className : String(idx),
-          tiempo: t
+          class_index: found ? found.classIndex : idx
         };
       });
     } else {
@@ -1517,7 +1703,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
     if (isLineType) {
       detectionParams['zona_analisis'] = this.zonaLinea();
     } else {
-      detectionParams['scale_area'] = this.scaleFactor();
+      detectionParams['Escala'] = this.scaleFactor();
     }
 
     const payload = {

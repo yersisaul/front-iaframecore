@@ -90,7 +90,8 @@
   transition: opacity 0.2s ease !important;
 }
 
-.monitoring-pip-window.is-expanding-fullscreen .pip-canvas-inner {
+.monitoring-pip-window.is-expanding-fullscreen .pip-canvas-inner,
+.monitoring-pip-window.is-expanding-fullscreen .monitoring-grid-canvas-wrapper {
   transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
@@ -103,247 +104,16 @@
   transition: filter 0.35s ease, transform 0.35s ease;
 }
 
-/* DIFUMINADO GLOBAL DEL PIP POR INACTIVIDAD O PAUSA MANUAL */
-.monitoring-pip-window.is-inactivity-blurred .pip-canvas-viewport,
-.monitoring-pip-window.is-paused .pip-canvas-viewport {
-  filter: blur(14px) brightness(0.45) saturate(120%);
-  transform: scale(1.04);
-}
-
-.pip-canvas-inner {
-  display: grid;
-  gap: 8px;
-  padding: 8px;
-  background-color: #000000;
-  transition: transform 0.05s ease-out;
-}
-
-/* Celda de la cuadrícula idéntica a Monitoreo */
-.grid-slot-cell {
-  background-color: #0c1221;
-  border-radius: 8px;
-  border: 1.5px solid rgba(255, 255, 255, 0.1);
-  overflow: hidden;
+.pip-canvas-viewport app-camera-grid-canvas {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
   width: 100%;
+  height: 100%;
 }
 
-.grid-slot-cell.slot-occupied {
-  background-color: #000000;
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-/* Celda Vacía idéntica a Monitoreo */
-.grid-slot-cell.slot-empty {
-  border-style: dashed;
-  border-width: 1.5px;
-  border-color: rgba(255, 255, 255, 0.12);
-  background-color: rgba(255, 255, 255, 0.02);
-}
-
-.empty-slot-content {
-  padding: 0.5rem;
-  text-align: center;
-}
-
-.btn-add-camera {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.4);
-  pointer-events: none;
-}
-
-.empty-slot-title {
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 0.62rem;
-  letter-spacing: 0.05em;
-  margin-top: 0.25rem;
-}
-
-/* Barra de Encabezado Superior idéntica a Monitoreo */
-.slot-top-bar {
+.pip-canvas-viewport app-camera-grid-canvas .monitoring-grid-canvas-wrapper {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  z-index: 15 !important;
-  padding: 6px 10px 14px 10px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.35) 65%, transparent 100%);
-  pointer-events: none;
-  border-top-left-radius: inherit;
-  border-top-right-radius: inherit;
-}
-
-.slot-overlay-header {
-  position: relative;
-  z-index: 15 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-  color: #ffffff;
-  min-width: 0;
-  flex: 1 1 auto;
-  pointer-events: auto;
-  padding: 0 !important;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-}
-
-/* Punto de Estado Pulsante idéntico a Monitoreo */
-.status-dot-pulse {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: #ef4444;
-  display: inline-block;
-  position: relative;
-  flex-shrink: 0;
-  margin-right: 6px;
-  align-self: center;
-  z-index: 2;
-}
-
-.status-dot-pulse.online {
-  background-color: #10b981;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.8);
-}
-
-.status-dot-pulse.online::after {
-  content: '';
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  border-radius: 50%;
-  background-color: #10b981;
-  animation: pip-pulse-glow 1.5s infinite ease-in-out;
-  opacity: 0.6;
-  z-index: 1;
-}
-
-.status-dot-pulse.degraded {
-  background-color: #f97316;
-  box-shadow: 0 0 6px rgba(249, 115, 22, 0.8);
-}
-
-.status-dot-pulse.recovering {
-  background-color: #eab308;
-  box-shadow: 0 0 6px rgba(234, 179, 8, 0.8);
-}
-
-.status-dot-pulse.pending {
-  background-color: #00e5ff;
-  box-shadow: 0 0 6px rgba(0, 229, 255, 0.8);
-}
-
-.status-dot-pulse.pending::after {
-  content: '';
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  border-radius: 50%;
-  background-color: #00e5ff;
-  animation: pip-pulse-glow 1.5s infinite ease-in-out;
-  opacity: 0.6;
-}
-
-.status-dot-pulse.offline {
-  background-color: #ef4444;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.8);
-}
-
-@keyframes pip-pulse-glow {
-  0% {
-    transform: scale(1);
-    opacity: 0.8;
-  }
-
-  50% {
-    transform: scale(2.2);
-    opacity: 0;
-  }
-
-  100% {
-    transform: scale(1);
-    opacity: 0;
-  }
-}
-
-.slot-camera-name-container {
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.slot-camera-name {
-  display: block;
-  width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #ffffff;
-  line-height: 1.25;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
-}
-
-.slot-video-wrapper {
-  background-color: #000000;
-  position: relative;
-}
-
-.slot-video-element {
-  background-color: #000000;
-}
-
-.slot-event-img {
-  background-color: #000000;
-  z-index: 4;
-}
-
-/* Fecha y Hora del Evento abajo a la derecha: limpia y transparente idéntica a Monitoreo */
-.canvas-slot-time-bottom-right {
-  position: absolute;
-  bottom: 6px;
-  right: 8px;
-  z-index: 15;
-  font-size: 0.62rem;
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.92);
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
-  pointer-events: none;
-  background: transparent !important;
-  padding: 0 !important;
-  border: none !important;
-  white-space: nowrap;
-}
-
-.no-image-placeholder {
-  pointer-events: none;
-}
-
-.waiting-event-placeholder {
-  pointer-events: none;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 5;
-  background-color: rgba(0, 0, 0, 0.6);
 }
 
 /* ==========================================================================
@@ -355,7 +125,8 @@
   opacity: 0;
   pointer-events: none;
   cursor: grab;
-  z-index: 20;
+  z-index: 35;
+  /* Superior a los resize-handles (30) para evitar que corten o tapen los controles */
   transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -373,27 +144,39 @@
 
 /* Barra Superior del Overlay */
 .pip-yt-top-bar {
+  position: relative;
+  z-index: 60;
   pointer-events: auto;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
+  padding: 2px 4px;
 }
 
+/* Estado en vivo flotante (Sin contenedor, sin corte visual en el dot) */
+.pip-yt-live-status,
 .pip-yt-live-pill {
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 2px 4px !important;
+  margin: 0 !important;
   color: #ffffff;
-  font-size: 0.72rem;
-  font-weight: 500;
-  max-width: calc(100% - 145px);
+  font-size: 0.78rem;
+  font-weight: 600;
+  max-width: calc(100% - 130px);
   min-width: 0;
   flex: 0 1 auto;
   white-space: nowrap !important;
-  overflow: hidden;
+  overflow: visible !important;
+  /* IMPORTANTE: visible para que el dot no se corte */
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
+  user-select: none;
+  position: relative;
+  z-index: 5;
 }
 
 .pip-yt-live-text {
@@ -405,21 +188,28 @@
   text-overflow: ellipsis;
   min-width: 0;
   max-width: 100%;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 2px 8px rgba(0, 0, 0, 0.85);
+  letter-spacing: 0.015em;
 }
 
 .pip-yt-pulse-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background-color: #22c55e;
-  box-shadow: 0 0 8px #22c55e;
+  box-shadow: 0 0 8px #22c55e, 0 0 3px #4ade80;
   animation: pip-pulse 2s infinite ease-in-out;
   flex-shrink: 0;
+  margin-left: 2px;
+  margin-right: 2px;
+  position: relative;
+  z-index: 6;
 }
 
 .pip-yt-pulse-dot.paused {
   background-color: #f59e0b;
-  box-shadow: 0 0 8px #f59e0b;
+  box-shadow: 0 0 8px #f59e0b, 0 0 3px #fbbf24;
   animation: none;
 }
 
@@ -432,68 +222,76 @@
   }
 
   50% {
-    opacity: 0.5;
-    transform: scale(1.2);
+    opacity: 0.55;
+    transform: scale(1.25);
   }
 }
 
+/* Acciones superiores derechas (SVGs directos sin contenedores) */
 .pip-yt-top-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
   flex-shrink: 0;
 }
 
-.pip-yt-action-btn {
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin: 0;
-  box-sizing: border-box;
+/* Botones SVG directos (Sin contenedores circulares ni bordes) */
+.pip-yt-action-btn,
+span.pip-yt-action-btn,
+button.pip-yt-action-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-block !important;
+  border: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background-color: currentColor !important;
+  background-image: none !important;
+  color: rgba(255, 255, 255, 0.85);
+  box-shadow: none !important;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 17px;
+  height: 17px;
+  min-width: 17px;
+  min-height: 17px;
+  max-width: 17px;
+  flex-shrink: 0;
+  vertical-align: middle;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.95)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.75));
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 0.2s ease,
+    opacity 0.2s ease,
+    filter 0.2s ease;
 }
 
-.pip-yt-action-btn .icon-svg {
-  display: block;
-  margin: auto !important;
-  pointer-events: none;
+.pip-yt-action-btn:active {
+  transform: scale(0.9);
 }
 
-.pip-yt-action-btn:hover {
-  background: rgba(43, 127, 255, 0.85);
-  border-color: rgba(255, 255, 255, 0.4);
-  transform: scale(1.1);
-  color: #ffffff;
-  box-shadow: 0 0 14px rgba(43, 127, 255, 0.5);
+/* Hover específico para cada acción SVG directa */
+.pip-yt-btn-center:hover {
+  color: #38bdf8 !important;
+  transform: scale(1.22) translateY(-1px);
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.85)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
 }
 
-.pip-yt-action-btn.active-paused {
-  background: rgba(245, 158, 11, 0.7);
-  border-color: rgba(245, 158, 11, 0.9);
-  color: #ffffff;
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.6);
+.pip-yt-btn-pause:hover {
+  color: #fbbf24 !important;
+  transform: scale(1.22) translateY(-1px);
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.85)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
 }
 
-.pip-yt-action-btn.pip-yt-close-btn:hover {
-  background: rgba(239, 68, 68, 0.85);
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 0 14px rgba(239, 68, 68, 0.5);
+.pip-yt-btn-close:hover,
+.pip-yt-close-btn:hover {
+  color: #f87171 !important;
+  transform: scale(1.22) translateY(-1px);
+  filter: drop-shadow(0 0 10px rgba(248, 113, 113, 0.85)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
 }
 
 /* ==========================================================================
-   3. ISLA DINÁMICA FLOTANTE SUPERIOR (Dynamic Island - iPhone Style)
+   3. ISLA DINÁMICA FLOTANTE SUPERIOR (Dynamic Island)
+   Adaptable a Tema Claro y Oscuro con Botones Directos SVG sin Contenedores
    ========================================================================== */
 
 .pip-dynamic-island {
@@ -503,25 +301,45 @@
   transform: translateX(-50%);
   z-index: 1060;
   pointer-events: auto;
-  min-width: 220px;
+  min-width: 230px;
   max-width: 90vw;
-  background: rgba(15, 23, 42, 0.88);
+  /* Tema Claro por defecto */
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 9999px;
-  padding: 6px 10px 6px 14px;
-  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  padding: 7px 16px 7px 14px;
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.04);
   cursor: pointer;
   animation: dynamicIslandEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .pip-dynamic-island:hover {
-  background: rgba(15, 23, 42, 0.95);
-  border-color: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 20px 42px -6px rgba(0, 0, 0, 0.8), 0 0 16px rgba(245, 158, 11, 0.25);
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 20px 42px -6px rgba(0, 0, 0, 0.2), 0 0 16px rgba(245, 158, 11, 0.2);
   transform: translateX(-50%) scale(1.02);
+}
+
+/* Modos Oscuros para la Isla Dinámica */
+:host-context([data-bs-theme="dark"]) .pip-dynamic-island,
+:host-context([data-theme="dark"]) .pip-dynamic-island,
+:host-context(.dark) .pip-dynamic-island,
+[data-bs-theme="dark"] .pip-dynamic-island {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+:host-context([data-bs-theme="dark"]) .pip-dynamic-island:hover,
+:host-context([data-theme="dark"]) .pip-dynamic-island:hover,
+:host-context(.dark) .pip-dynamic-island:hover,
+[data-bs-theme="dark"] .pip-dynamic-island:hover {
+  background: rgba(15, 23, 42, 0.96);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 20px 42px -6px rgba(0, 0, 0, 0.85), 0 0 16px rgba(245, 158, 11, 0.25);
 }
 
 .pip-dynamic-island.has-event-pulse {
@@ -566,9 +384,10 @@
   height: 8px;
   border-radius: 50%;
   background-color: #f59e0b;
-  box-shadow: 0 0 8px #f59e0b;
+  box-shadow: 0 0 8px #f59e0b, 0 0 3px #fbbf24;
   animation: pip-island-pulse 2s infinite ease-in-out;
   flex-shrink: 0;
+  margin-left: 2px;
 }
 
 @keyframes pip-island-pulse {
@@ -582,78 +401,173 @@
 
   50% {
     transform: scale(1.25);
-    opacity: 0.6;
+    opacity: 0.65;
     box-shadow: 0 0 12px 2px #f59e0b;
   }
 }
 
+/* Tipografía de la Isla Dinámica - Modo Claro */
 .pip-island-title {
-  font-size: 0.76rem;
-  color: #ffffff;
-  line-height: 1.15;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  line-height: 1.2;
   letter-spacing: -0.01em;
+  transition: color 0.2s ease;
 }
 
 .pip-island-sub {
-  font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.65);
-  line-height: 1.15;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.2;
+  transition: color 0.2s ease;
 }
 
+/* Tipografía de la Isla Dinámica - Modo Oscuro */
+:host-context([data-bs-theme="dark"]) .pip-island-title,
+:host-context([data-theme="dark"]) .pip-island-title,
+:host-context(.dark) .pip-island-title,
+[data-bs-theme="dark"] .pip-island-title {
+  color: #f8fafc;
+}
+
+:host-context([data-bs-theme="dark"]) .pip-island-sub,
+:host-context([data-theme="dark"]) .pip-island-sub,
+:host-context(.dark) .pip-island-sub,
+[data-bs-theme="dark"] .pip-island-sub {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* Acciones de la Isla Dinámica (SVGs directos sin contenedores) */
 .pip-island-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 13px;
 }
 
-.pip-island-btn {
-  width: 30px;
-  height: 30px;
-  min-width: 30px;
-  min-height: 30px;
-  border-radius: 50%;
-  display: inline-flex;
+/* Botones SVG Directos de la Isla */
+.pip-island-action-btn,
+span.pip-island-action-btn,
+button.pip-island-action-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  border: 1px solid transparent;
+  border: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background-color: currentColor !important;
+  background-image: none !important;
+  box-shadow: none !important;
   cursor: pointer;
-  padding: 0;
-  margin: 0;
-  box-sizing: border-box;
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  vertical-align: middle;
+  color: var(--text-secondary, #64748b);
+  opacity: 0.72;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 0.2s ease,
+    opacity 0.2s ease,
+    filter 0.2s ease;
 }
 
-.pip-island-btn .icon-svg {
-  display: block;
-  margin: auto !important;
-  pointer-events: none;
+.pip-island-action-btn:active {
+  transform: scale(0.9);
 }
 
-.pip-island-play-btn {
-  background: #2563eb;
-  border-color: rgba(255, 255, 255, 0.25);
-  color: #ffffff;
+.pip-island-action-btn:focus-visible {
+  outline: 2px solid var(--primary, #2563eb) !important;
+  outline-offset: 3px !important;
+  border-radius: 2px;
 }
 
-.pip-island-play-btn:hover {
-  background: #1d4ed8;
-  border-color: rgba(255, 255, 255, 0.6);
-  transform: scale(1.1);
-  box-shadow: 0 0 14px rgba(37, 99, 235, 0.6);
+/* Calibración Óptica:
+   - play-simple.svg: el triángulo ocupa solo 10.34px de ancho x 11.6px de alto en un viewBox 24x24 (~43% del espacio).
+   - close-simple.svg: las aspas de la 'X' ocupan 14.5px x 14.5px con trazo grueso de 2.5px (~60% del espacio).
+   Para que ambos se perciban del mismo tamaño exacto y masa visual, Play requiere un contenedor de 20px
+   y Close uno de 15px (ambos renderizan su glifo a ~9.5px ópticos).
+*/
+.pip-island-btn-play {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  color: var(--text-secondary, #64748b);
+  opacity: 0.72;
 }
 
-.pip-island-close-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.75);
+.pip-island-btn-play:hover {
+  color: var(--primary, #2563eb) !important;
+  opacity: 1 !important;
+  transform: scale(1.22) translateY(-1px);
+  filter: drop-shadow(0 2px 8px rgba(37, 99, 235, 0.55));
 }
 
-.pip-island-close-btn:hover {
-  background: rgba(239, 68, 68, 0.85);
-  border-color: rgba(255, 255, 255, 0.4);
-  color: #ffffff;
-  transform: scale(1.1);
-  box-shadow: 0 0 14px rgba(239, 68, 68, 0.5);
+.pip-island-btn-close {
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  min-height: 15px !important;
+  max-width: 15px !important;
+  max-height: 15px !important;
+  color: var(--text-secondary, #64748b);
+  opacity: 0.72;
+}
+
+.pip-island-btn-close:hover {
+  color: #ef4444 !important;
+  opacity: 1 !important;
+  transform: scale(1.22) translateY(-1px);
+  filter: drop-shadow(0 2px 8px rgba(239, 68, 68, 0.55));
+}
+
+/* Modos Oscuros para Botones de la Isla */
+:host-context([data-bs-theme="dark"]) .pip-island-action-btn,
+:host-context([data-theme="dark"]) .pip-island-action-btn,
+:host-context(.dark) .pip-island-action-btn,
+[data-bs-theme="dark"] .pip-island-action-btn {
+  color: rgba(255, 255, 255, 0.62);
+  opacity: 0.85;
+}
+
+:host-context([data-bs-theme="dark"]) .pip-island-btn-play,
+:host-context([data-theme="dark"]) .pip-island-btn-play,
+:host-context(.dark) .pip-island-btn-play,
+[data-bs-theme="dark"] .pip-island-btn-play {
+  color: rgba(255, 255, 255, 0.62);
+  opacity: 0.85;
+}
+
+:host-context([data-bs-theme="dark"]) .pip-island-btn-play:hover,
+:host-context([data-theme="dark"]) .pip-island-btn-play:hover,
+:host-context(.dark) .pip-island-btn-play:hover,
+[data-bs-theme="dark"] .pip-island-btn-play:hover {
+  color: #38bdf8 !important;
+  opacity: 1 !important;
+  transform: scale(1.22) translateY(-1px);
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.85));
+}
+
+:host-context([data-bs-theme="dark"]) .pip-island-btn-close,
+:host-context([data-theme="dark"]) .pip-island-btn-close,
+:host-context(.dark) .pip-island-btn-close,
+[data-bs-theme="dark"] .pip-island-btn-close {
+  color: rgba(255, 255, 255, 0.62);
+  opacity: 0.85;
+}
+
+:host-context([data-bs-theme="dark"]) .pip-island-btn-close:hover,
+:host-context([data-theme="dark"]) .pip-island-btn-close:hover,
+:host-context(.dark) .pip-island-btn-close:hover,
+[data-bs-theme="dark"] .pip-island-btn-close:hover {
+  color: #f87171 !important;
+  opacity: 1 !important;
+  transform: scale(1.22) translateY(-1px);
+  filter: drop-shadow(0 0 10px rgba(248, 113, 113, 0.85));
 }
 
 .pip-yt-bottom-spacer {
@@ -666,69 +580,69 @@
 
 .pip-resize-handle {
   position: absolute;
-  z-index: 30;
+  z-index: 50;
 }
 
 .pip-resize-handle.edge-top {
   top: 0;
-  left: 10px;
-  right: 10px;
-  height: 6px;
+  left: 14px;
+  right: 14px;
+  height: 8px;
   cursor: n-resize;
 }
 
 .pip-resize-handle.edge-bottom {
   bottom: 0;
-  left: 10px;
-  right: 10px;
-  height: 6px;
+  left: 14px;
+  right: 14px;
+  height: 8px;
   cursor: s-resize;
 }
 
 .pip-resize-handle.edge-left {
   left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 6px;
+  top: 14px;
+  bottom: 14px;
+  width: 8px;
   cursor: w-resize;
 }
 
 .pip-resize-handle.edge-right {
   right: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 6px;
+  top: 14px;
+  bottom: 14px;
+  width: 8px;
   cursor: e-resize;
 }
 
 .pip-resize-handle.corner-top-left {
   top: 0;
   left: 0;
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   cursor: nwse-resize;
 }
 
 .pip-resize-handle.corner-top-right {
   top: 0;
   right: 0;
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   cursor: nesw-resize;
 }
 
 .pip-resize-handle.corner-bottom-left {
   bottom: 0;
   left: 0;
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   cursor: nesw-resize;
 }
 
 .pip-resize-handle.corner-bottom-right {
   bottom: 0;
   right: 0;
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   cursor: nwse-resize;
 }

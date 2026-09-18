@@ -804,19 +804,21 @@
   background: rgba(var(--primary-rgb), 0.015);
   border: 1px solid var(--border-color) !important;
   border-radius: 16px !important;
-  padding: 16px !important;
+  padding: 14px 16px !important;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
   position: relative;
   overflow: hidden;
   border-left-width: 4px !important;
   border-left-style: solid !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
 }
 
 .schedule-modal-item:hover {
-  transform: translateY(-2.5px);
   border-color: rgba(var(--primary-rgb), 0.3) !important;
-  box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08), 0 0 15px rgba(var(--primary-rgb), 0.02);
+  box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.10), 0 0 20px rgba(var(--primary-rgb), 0.05);
   background: rgba(var(--primary-rgb), 0.03);
 }
 
@@ -840,6 +842,7 @@
   background-color: var(--text-muted);
   display: inline-block;
   position: relative;
+  margin-left: 2px;
 }
 
 .status-dot.pulse {
@@ -872,6 +875,120 @@
 
 .bg-light-translucent {
   background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* ── CONTROLES DE ACCIÓN DIRECTOS SVG Y SWITCH (OPCIÓN 1) ── */
+
+:host {
+  /* Separación configurable entre el botón de editar y el de eliminar (18px) */
+  --schedule-actions-gap: 18px;
+}
+
+.schedule-card-controls {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Botones directos SVG (sin contenedores) */
+.sched-btn-action,
+span.sched-btn-action,
+button.sched-btn-action {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-block !important;
+  border: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background-color: currentColor !important;
+  background-image: none !important;
+  color: var(--text-muted, #94a3b8);
+  box-shadow: none !important;
+  cursor: pointer;
+  width: 0;
+  max-width: 0;
+  min-width: 0;
+  height: 15px;
+  min-height: 15px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  flex-shrink: 0;
+  vertical-align: middle;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.2s ease,
+    margin 0.25s ease,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 0.2s ease,
+    filter 0.2s ease;
+}
+
+/* En hover de la tarjeta se revelan suavemente los botones SVG */
+.schedule-modal-item:hover .sched-btn-action {
+  width: 15px !important;
+  min-width: 15px !important;
+  max-width: 15px !important;
+  height: 15px !important;
+  opacity: 0.8 !important;
+  pointer-events: auto !important;
+  margin-right: var(--schedule-actions-gap, 18px) !important;
+  visibility: visible !important;
+}
+
+/* Hover específico para el botón de editar */
+.sched-btn-edit:hover {
+  opacity: 1 !important;
+  color: var(--primary, #2b7fff) !important;
+  transform: scale(1.22) translateY(-1px);
+  filter: drop-shadow(0 2px 8px rgba(43, 127, 255, 0.5));
+}
+
+/* Hover específico para el botón de eliminar */
+.sched-btn-delete:hover {
+  opacity: 1 !important;
+  color: var(--text-danger, #ef4444) !important;
+  transform: scale(1.22) translateY(-1px);
+  filter: drop-shadow(0 2px 8px rgba(239, 68, 68, 0.5));
+}
+
+.sched-btn-action:active {
+  transform: scale(0.92);
+}
+
+/* Switch de estado operativo */
+.sched-switch-wrap {
+  flex-shrink: 0;
+}
+
+.sched-switch-input {
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Modos oscuros para botones de acción SVG */
+:host-context([data-bs-theme="dark"]) .sched-btn-action,
+:host-context([data-theme="dark"]) .sched-btn-action,
+:host-context(.dark) .sched-btn-action,
+[data-bs-theme="dark"] .sched-btn-action {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+:host-context([data-bs-theme="dark"]) .sched-btn-edit:hover,
+:host-context([data-theme="dark"]) .sched-btn-edit:hover,
+:host-context(.dark) .sched-btn-edit:hover,
+[data-bs-theme="dark"] .sched-btn-edit:hover {
+  color: #60a5fa !important;
+  filter: drop-shadow(0 2px 10px rgba(96, 165, 250, 0.6));
+}
+
+:host-context([data-bs-theme="dark"]) .sched-btn-delete:hover,
+:host-context([data-theme="dark"]) .sched-btn-delete:hover,
+:host-context(.dark) .sched-btn-delete:hover,
+[data-bs-theme="dark"] .sched-btn-delete:hover {
+  color: #f87171 !important;
+  filter: drop-shadow(0 2px 10px rgba(248, 113, 113, 0.6));
 }
 
 /* ── COMPONENTES DE CALENDARIO Y SELECTOR DE HORA CUSTOMIZADOS ── */
@@ -1251,46 +1368,159 @@
   font-family: var(--font-monospace, monospace);
 }
 
-/* Días de la semana */
-.weekday-grid {
-  display: flex;
-  gap: 0.35rem;
-  justify-content: space-between;
+/* ═══════════════════════════════════════════════════════════════
+   DÍAS DE LA SEMANA (TIPOGRAFÍA FLOTANTE + MICRO-PÍLDORA LUMINOSA)
+   Optimizado para máxima legibilidad y contraste en Temas Claro y Oscuro
+   ═══════════════════════════════════════════════════════════════ */
+.weekday-flow-wrapper {
+  padding: 0.35rem 0.5rem 0.2rem 0.5rem;
 }
 
-.details-weekday-circle {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  /* squircle modern layout */
-  font-size: 0.8rem;
-  font-weight: 700;
+.weekday-flow-grid {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border-color);
-  background-color: rgba(0, 0, 0, 0.02);
-  color: var(--text-muted);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  justify-content: space-between;
+  gap: 0.65rem;
   user-select: none;
 }
 
-[data-bs-theme="dark"] .details-weekday-circle {
-  background-color: rgba(255, 255, 255, 0.03);
+.weekday-flow-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1 1 0;
+  padding: 6px 2px;
+  border-radius: 8px;
+  cursor: default;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.25s ease;
 }
 
-.details-weekday-circle:hover {
-  border-color: rgba(var(--primary-rgb), 0.35);
-  color: var(--primary);
+.weekday-flow-col:hover {
   transform: translateY(-2px);
+  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.05);
 }
 
-.details-weekday-circle.active {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%) !important;
+/* Letra del día flotante (Estado Inactivo / Base - Modo Claro) */
+.weekday-flow-letter {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-secondary, #64748b);
+  opacity: 0.65;
+  transition: color 0.25s ease, opacity 0.25s ease, font-weight 0.25s ease,
+    transform 0.25s ease, text-shadow 0.25s ease;
+}
+
+/* Indicador micro-píldora inferior (Inactivo - Modo Claro) */
+.weekday-flow-indicator {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--border-color, #cbd5e1);
+  opacity: 0.7;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Estado Activo (Operativo) - Modo Claro */
+.weekday-flow-col.active .weekday-flow-letter {
+  color: var(--text-primary, #0f172a);
+  opacity: 1;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.weekday-flow-col.active .weekday-flow-indicator {
+  width: 22px;
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--primary, #2563eb), #3b82f6);
+  opacity: 1;
+  box-shadow: 0 1px 8px rgba(37, 99, 235, 0.45);
+}
+
+/* Interacción Hover - Modo Claro */
+.weekday-flow-col:hover .weekday-flow-letter {
+  opacity: 0.95;
+  color: var(--text-primary, #0f172a);
+}
+
+.weekday-flow-col.active:hover .weekday-flow-letter {
+  opacity: 1;
+  color: var(--primary, #2563eb);
+}
+
+.weekday-flow-col.active:hover .weekday-flow-indicator {
+  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.65);
+  transform: scaleX(1.12);
+}
+
+/* ── ADAPTACIÓN TEMA OSCURO ── */
+:host-context([data-bs-theme="dark"]) .weekday-flow-col:hover,
+:host-context([data-theme="dark"]) .weekday-flow-col:hover,
+:host-context(.dark) .weekday-flow-col:hover,
+[data-bs-theme="dark"] .weekday-flow-col:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Inactivos en Tema Oscuro: nítidos, legibles y subordinados armónicamente */
+:host-context([data-bs-theme="dark"]) .weekday-flow-col:not(.active) .weekday-flow-letter,
+:host-context([data-theme="dark"]) .weekday-flow-col:not(.active) .weekday-flow-letter,
+:host-context(.dark) .weekday-flow-col:not(.active) .weekday-flow-letter,
+[data-bs-theme="dark"] .weekday-flow-col:not(.active) .weekday-flow-letter {
+  color: rgba(255, 255, 255, 0.45);
+  opacity: 1;
+}
+
+:host-context([data-bs-theme="dark"]) .weekday-flow-col:not(.active):hover .weekday-flow-letter,
+:host-context([data-theme="dark"]) .weekday-flow-col:not(.active):hover .weekday-flow-letter,
+:host-context(.dark) .weekday-flow-col:not(.active):hover .weekday-flow-letter,
+[data-bs-theme="dark"] .weekday-flow-col:not(.active):hover .weekday-flow-letter {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+:host-context([data-bs-theme="dark"]) .weekday-flow-col:not(.active) .weekday-flow-indicator,
+:host-context([data-theme="dark"]) .weekday-flow-col:not(.active) .weekday-flow-indicator,
+:host-context(.dark) .weekday-flow-col:not(.active) .weekday-flow-indicator,
+[data-bs-theme="dark"] .weekday-flow-col:not(.active) .weekday-flow-indicator {
+  background-color: rgba(255, 255, 255, 0.18);
+  opacity: 0.8;
+}
+
+/* Activos en Tema Oscuro: blanco brillante luminiscente */
+:host-context([data-bs-theme="dark"]) .weekday-flow-col.active .weekday-flow-letter,
+:host-context([data-theme="dark"]) .weekday-flow-col.active .weekday-flow-letter,
+:host-context(.dark) .weekday-flow-col.active .weekday-flow-letter,
+[data-bs-theme="dark"] .weekday-flow-col.active .weekday-flow-letter {
   color: #ffffff !important;
-  border-color: transparent !important;
-  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.25);
-  transform: translateY(-2px) scale(1.05);
+  opacity: 1;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.35);
+}
+
+:host-context([data-bs-theme="dark"]) .weekday-flow-col.active .weekday-flow-indicator,
+:host-context([data-theme="dark"]) .weekday-flow-col.active .weekday-flow-indicator,
+:host-context(.dark) .weekday-flow-col.active .weekday-flow-indicator,
+[data-bs-theme="dark"] .weekday-flow-col.active .weekday-flow-indicator {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.75), 0 0 4px rgba(96, 165, 250, 0.9);
+}
+
+:host-context([data-bs-theme="dark"]) .weekday-flow-col.active:hover .weekday-flow-letter,
+:host-context([data-theme="dark"]) .weekday-flow-col.active:hover .weekday-flow-letter,
+:host-context(.dark) .weekday-flow-col.active:hover .weekday-flow-letter,
+[data-bs-theme="dark"] .weekday-flow-col.active:hover .weekday-flow-letter {
+  color: #60a5fa !important;
+  text-shadow: 0 0 16px rgba(96, 165, 250, 0.6);
+}
+
+:host-context([data-bs-theme="dark"]) .weekday-flow-col.active:hover .weekday-flow-indicator,
+:host-context([data-theme="dark"]) .weekday-flow-col.active:hover .weekday-flow-indicator,
+:host-context(.dark) .weekday-flow-col.active:hover .weekday-flow-indicator,
+[data-bs-theme="dark"] .weekday-flow-col.active:hover .weekday-flow-indicator {
+  box-shadow: 0 0 18px rgba(59, 130, 246, 0.95), 0 0 6px rgba(96, 165, 250, 1);
+  transform: scaleX(1.15);
 }
 
 /* Timeline gráfico premium */

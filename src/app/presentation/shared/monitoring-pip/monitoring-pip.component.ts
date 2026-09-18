@@ -17,11 +17,13 @@ import { MonitoringStateService, GridSlot } from '../../../core/services/monitor
 import { getCameraEffectiveStatus, getCameraStatusCssClass, getCameraStatusFilterLabel } from '../../../core/utils/camera-status.utils';
 import { parseUtcDate } from '../../../core/utils/date-utils';
 import { Camera } from '../../../core/domain/entities/camera.models';
+import { MediaUrlPipe } from '../pipes/media-url.pipe';
+import { CameraGridCanvasComponent } from '../camera-grid-canvas/camera-grid-canvas.component';
 
 @Component({
   selector: 'app-monitoring-pip',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CameraGridCanvasComponent],
   templateUrl: './monitoring-pip.component.html',
   styleUrl: './monitoring-pip.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -67,9 +69,9 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
   private panStartCanvasX = 0;
   private panStartCanvasY = 0;
 
-  readonly pipPanX = this.stateService.canvasPanX;
-  readonly pipPanY = this.stateService.canvasPanY;
-  readonly pipZoom = this.stateService.canvasZoom;
+  readonly pipPanX = this.stateService.pipPanX;
+  readonly pipPanY = this.stateService.pipPanY;
+  readonly pipZoom = this.stateService.pipZoom;
 
   // Referencias a los slots del servicio singleton
   readonly gridSlots = this.stateService.gridSlots;
@@ -130,11 +132,13 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
   });
 
   constructor() {
-    // Sincronizar elementos de video y centrar lienzo cuando el PiP se hace visible
+    // Sincronizar elementos de video y vista del lienzo cuando el PiP se hace visible
     effect(() => {
       if (this.isVisible()) {
         setTimeout(() => {
-          this.centerPipCanvas();
+          if (!this.stateService.hasPipUserInteracted()) {
+            this.stateService.syncMonitoreoToPip();
+          }
           if (!this.isPaused()) {
             this.attachAllLiveVideos();
           }
@@ -149,7 +153,9 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
 
   ngAfterViewInit(): void {
     this.ensureDefaultPosition();
-    this.centerPipCanvas();
+    if (!this.stateService.hasPipUserInteracted()) {
+      this.stateService.syncMonitoreoToPip();
+    }
     this.attachAllLiveVideos();
   }
 
@@ -187,16 +193,19 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
   // --- Centrado por Defecto a Todas las Cámaras ---
 
   centerPipCanvas(): void {
+    this.stateService.hasPipUserInteracted.set(true);
     const pipSize = this.stateService.pipSize();
     const viewportW = pipSize.width;
     const viewportH = pipSize.height;
 
     const { width: totalW, height: totalH } = this.getCanvasDimensions();
-    const currentZoom = this.pipZoom();
-    const rawPanX = (viewportW - totalW * currentZoom) / 2;
-    const rawPanY = (viewportH - totalH * currentZoom) / 2;
+    const fitZoom = Math.max(0.05, Math.min(1.0, this.getMinZoom()));
+    this.pipZoom.set(fitZoom);
 
-    const constrained = this.constrainPan(rawPanX, rawPanY, currentZoom);
+    const rawPanX = (viewportW - totalW * fitZoom) / 2;
+    const rawPanY = (viewportH - totalH * fitZoom) / 2;
+
+    const constrained = this.constrainPan(rawPanX, rawPanY, fitZoom);
 
     this.pipPanX.set(constrained.x);
     this.pipPanY.set(constrained.y);
@@ -209,6 +218,7 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
     event.stopPropagation();
 
     this.onPipUserActivity();
+    this.stateService.hasPipUserInteracted.set(true);
 
     const zoomDelta = event.deltaY < 0 ? 0.08 : -0.08;
     const currentZoom = this.pipZoom();
@@ -385,15 +395,34 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
     // 2. Área objetivo exacta del lienzo del Monitoreo (.monitoring-grid-container)
     const targetRect = this.getTargetGridRect();
 
-    // 3. Zoom y Pan del PiP que se conservan idénticos en el Monitoreo
+    // 3. Zoom y Pan calculados proporcionalmente hacia Monitoreo
     const pipCurrentZoom = Math.max(0.05, this.pipZoom());
     const pipCurrentPanX = this.pipPanX();
     const pipCurrentPanY = this.pipPanY();
 
-    // Sincronizar de inmediato al servicio de estado para que Monitoreo use exactamente este mismo zoom
-    this.stateService.canvasZoom.set(pipCurrentZoom);
-    this.stateService.canvasPanX.set(pipCurrentPanX);
-    this.stateService.canvasPanY.set(pipCurrentPanY);
+    const pipW = startRect.width;
+    const pipH = startRect.height;
+    const monW = targetRect.width > 50 ? targetRect.width : this.stateService.monitoreoViewportSize().width;
+    const monH = targetRect.height > 50 ? targetRect.height : this.stateService.monitoreoViewportSize().height;
+
+    const focalX = (pipW / 2 - pipCurrentPanX) / pipCurrentZoom;
+    const focalY = (pipH / 2 - pipCurrentPanY) / pipCurrentZoom;
+
+    let targetMonZoom = this.stateService.canvasZoom();
+    let targetMonPanX = this.stateService.canvasPanX();
+    let targetMonPanY = this.stateService.canvasPanY();
+
+    if (this.stateService.hasPipUserInteracted()) {
+      const scaleRatio = Math.max(monW / pipW, monH / pipH);
+      targetMonZoom = Math.max(0.1, Math.min(5.0, pipCurrentZoom * scaleRatio));
+      targetMonPanX = (monW / 2) - focalX * targetMonZoom;
+      targetMonPanY = (monH / 2) - focalY * targetMonZoom;
+    }
+
+    this.stateService.canvasZoom.set(targetMonZoom);
+    this.stateService.canvasPanX.set(targetMonPanX);
+    this.stateService.canvasPanY.set(targetMonPanY);
+    this.stateService.hasPipUserInteracted.set(false);
 
     // 4. Fijar explícitamente las coordenadas iniciales en los signals
     this.expandingLeft.set(startRect.left);
@@ -403,7 +432,7 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
 
     this.isExpanding.set(true);
 
-    // 5. En el siguiente ciclo de renderizado, animar hacia el área exacta del lienzo de monitoreo conservando el zoom
+    // 5. En el siguiente ciclo de renderizado, animar hacia el área exacta del lienzo de monitoreo conservando y escalando la vista
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         this.expandingLeft.set(targetRect.left);
@@ -411,10 +440,10 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
         this.expandingWidth.set(targetRect.width);
         this.expandingHeight.set(targetRect.height);
 
-        // El zoom y pan se conservan constantes durante toda la animación
-        this.pipZoom.set(pipCurrentZoom);
-        this.pipPanX.set(pipCurrentPanX);
-        this.pipPanY.set(pipCurrentPanY);
+        // Animar suavemente el zoom y pan hacia los objetivos de Monitoreo
+        this.pipZoom.set(targetMonZoom);
+        this.pipPanX.set(targetMonPanX);
+        this.pipPanY.set(targetMonPanY);
       });
     });
 
@@ -496,6 +525,7 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
 
         this.pipPanX.set(constrained.x);
         this.pipPanY.set(constrained.y);
+        this.stateService.hasPipUserInteracted.set(true);
         this.onPipUserActivity();
       };
 
@@ -558,7 +588,7 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
       return;
     }
     const target = event.target as HTMLElement;
-    if (target.closest('button')) {
+    if (target.closest('button') || target.closest('.pip-yt-action-btn')) {
       return;
     }
 
@@ -591,6 +621,9 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
     const currentSize = this.stateService.pipSize();
     this.resizeStartWidth = currentSize.width;
     this.resizeStartHeight = currentSize.height;
+    const resizeStartZoom = this.pipZoom();
+    const resizeStartPanX = this.pipPanX();
+    const resizeStartPanY = this.pipPanY();
 
     const currentPos = this.stateService.pipPosition() || this.getDefaultPosition();
     const startPosX = currentPos.x;
@@ -663,7 +696,15 @@ export class MonitoringPipComponent implements OnInit, OnDestroy, AfterViewInit 
       this.stateService.pipSize.set({ width: finalWidth, height: finalHeight });
       this.stateService.pipPosition.set({ x: newPosX, y: newPosY });
 
-      const constrained = this.constrainPan(this.pipPanX(), this.pipPanY(), this.pipZoom());
+      // Escalar zoom y pan del lienzo proporcionalmente con la ventana
+      const scaleRatio = finalWidth / this.resizeStartWidth;
+      const minZoom = this.getMinZoom();
+      const newZoom = Math.max(minZoom, Math.min(3.0, resizeStartZoom * scaleRatio));
+      this.pipZoom.set(newZoom);
+
+      const newPanX = resizeStartPanX * scaleRatio;
+      const newPanY = resizeStartPanY * scaleRatio;
+      const constrained = this.constrainPan(newPanX, newPanY, newZoom);
       this.pipPanX.set(constrained.x);
       this.pipPanY.set(constrained.y);
 

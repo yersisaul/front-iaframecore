@@ -28,7 +28,7 @@
   position: relative;
   overflow: hidden !important;
   border-radius: 0.75rem !important;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 0.0625rem solid rgba(255, 255, 255, 0.12);
   cursor: crosshair;
   display: flex;
   align-items: center;
@@ -39,6 +39,8 @@
   max-width: calc(100cqh * var(--aspect-ratio, 1.7778));
   max-height: 100%;
   margin: auto;
+  container-type: size;
+  container-name: canvasWrapper;
   user-select: none !important;
   -webkit-user-select: none !important;
   -moz-user-select: none !important;
@@ -127,154 +129,7 @@
   pointer-events: none;
 }
 
-/* =========================================================================
-   FLOATING TOOLBAR (GLASSMORPHISM PREMIUM — ESTILO MONITOREO)
-   ========================================================================= */
-.canvas-floating-toolbar {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  z-index: 20;
-  pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.625rem;
-  background-color: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(16px) saturate(1.6);
-  -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 99px;
-  box-shadow: 0 0.5rem 1.75rem rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
-  transition: box-shadow 0.25s ease, border-color 0.25s ease;
-  animation: toolbarSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
 
-.canvas-floating-toolbar:hover {
-  border-color: rgba(0, 0, 0, 0.12);
-  box-shadow: 0 0.75rem 2.25rem rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-@keyframes toolbarSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-0.375rem) scale(0.96);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* --- Grupo de botones --- */
-.toolbar-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-/* --- Separador vertical --- */
-.toolbar-divider {
-  width: 1px;
-  height: 1.25rem;
-  background-color: rgba(0, 0, 0, 0.1);
-  margin: 0 0.25rem;
-  border-radius: 1px;
-  flex-shrink: 0;
-}
-
-/* --- Botones de herramientas (circulares) --- */
-.btn-canvas-tool {
-  width: 2rem;
-  height: 2rem;
-  min-width: 2rem;
-  padding: 0;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 50%;
-  color: rgba(0, 0, 0, 0.55);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease-in-out;
-}
-
-.btn-canvas-tool:hover:not([disabled]) {
-  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.1);
-  border-color: rgba(var(--primary-rgb, 59, 130, 246), 0.18);
-  color: var(--primary, #3b82f6);
-  transform: scale(1.08);
-}
-
-.btn-canvas-tool:active:not([disabled]) {
-  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.18);
-  transform: scale(0.94);
-}
-
-.btn-canvas-tool[disabled] {
-  opacity: 0.22;
-  cursor: not-allowed;
-}
-
-/* Botón de peligro (trash) */
-.btn-danger-tool:hover:not([disabled]) {
-  background-color: rgba(239, 68, 68, 0.1) !important;
-  border-color: rgba(239, 68, 68, 0.2) !important;
-  color: #ef4444 !important;
-}
-
-.btn-danger-tool:active:not([disabled]) {
-  background-color: rgba(239, 68, 68, 0.2) !important;
-}
-
-/* --- Iconos dentro de los botones --- */
-.toolbar-icon {
-  width: 1rem;
-  height: 1rem;
-  background-color: currentColor;
-  display: block;
-}
-
-/* --- Badge de Estado --- */
-.toolbar-status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0 0.625rem;
-  height: 1.625rem;
-  user-select: none;
-}
-
-.status-dot {
-  width: 0.4375rem;
-  height: 0.4375rem;
-  border-radius: 50%;
-  background-color: #f59e0b;
-  flex-shrink: 0;
-  transition: background-color 0.3s ease;
-}
-
-.status-dot.closed {
-  background-color: #10b981;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
-}
-
-.status-dot.empty {
-  background-color: rgba(0, 0, 0, 0.2);
-  box-shadow: none;
-}
-
-.status-text {
-  font-family: var(--font-monospace, 'SF Mono', 'Fira Code', monospace);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.5);
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-  text-transform: uppercase;
-}
 
 /* =========================================================================
    GEOMETRÍA SVG — LÍNEAS Y POLÍGONOS PREMIUM v2
@@ -605,13 +460,13 @@
 :host-context(.dark) .canvas-floating-toolbar {
   background-color: rgba(18, 18, 18, 0.88);
   border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0.75rem 2.5rem rgba(0, 0, 0, 0.55), inset 0 0.0625rem 0 rgba(255, 255, 255, 0.05);
 }
 
 :host-context([data-bs-theme="dark"]) .canvas-floating-toolbar:hover,
 :host-context(.dark) .canvas-floating-toolbar:hover {
   border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.65), inset 0 0.0625rem 0 rgba(255, 255, 255, 0.08);
 }
 
 :host-context([data-bs-theme="dark"]) .toolbar-divider,
@@ -741,46 +596,57 @@
 /* --- Minibar Contextual Flotante de Atajos y Ayuda (Quick Help Bar) --- */
 .canvas-quick-help-bar {
   position: absolute;
-  bottom: 0.75rem;
+  bottom: clamp(0.35rem, 1.8cqmin, 0.75rem);
   left: 50%;
   transform: translateX(-50%);
   z-index: 25;
-  padding: 0.35rem 0.75rem;
+  max-width: calc(100% - clamp(0.8rem, 4cqmin, 1.5rem));
+  padding: clamp(0.2rem, 0.8cqmin, 0.35rem) clamp(0.4rem, 1.8cqmin, 0.75rem);
   background: rgba(15, 23, 42, 0.88);
-  backdrop-filter: blur(16px) saturate(1.6);
-  -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 99px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  font-size: 0.72rem;
+  backdrop-filter: blur(1rem) saturate(1.6);
+  -webkit-backdrop-filter: blur(1rem) saturate(1.6);
+  border: 0.0625rem solid rgba(255, 255, 255, 0.12);
+  border-radius: 99rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.35);
+  font-size: clamp(0.58rem, 1.85cqmin, 0.72rem);
   color: rgba(255, 255, 255, 0.75);
   white-space: nowrap;
   animation: helpBarSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.52s cubic-bezier(0.16, 1, 0.3, 1), transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.canvas-quick-help-bar.canvas-quick-help-bar--dodge,
+.canvas-quick-help-bar.canvas-quick-help-bar--hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translate(-50%, 0.5rem) scale(0.96) !important;
 }
 
 .canvas-quick-help-bar .kbd-key {
   display: inline-block;
-  padding: 0.1rem 0.35rem;
+  padding: clamp(0.05rem, 0.2cqmin, 0.1rem) clamp(0.2rem, 0.8cqmin, 0.35rem);
   font-family: monospace;
-  font-size: 0.6875rem;
+  font-size: clamp(0.52rem, 1.7cqmin, 0.6875rem);
   font-weight: 700;
   color: #38bdf8;
   background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  border: 0.0625rem solid rgba(56, 189, 248, 0.3);
   border-radius: 0.25rem;
   line-height: 1;
-  margin-right: 0.2rem;
+  margin-right: clamp(0.1rem, 0.4cqmin, 0.2rem);
 }
 
 .canvas-quick-help-bar .help-drawing-pill {
   background: rgba(59, 130, 246, 0.2);
   color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  border: 0.0625rem solid rgba(59, 130, 246, 0.4);
   font-weight: 700;
-  padding: 0.1rem 0.45rem;
-  border-radius: 99px;
-  font-size: 0.6875rem;
-  margin-right: 0.4rem;
+  padding: clamp(0.05rem, 0.2cqmin, 0.1rem) clamp(0.25rem, 1cqmin, 0.45rem);
+  border-radius: 99rem;
+  font-size: clamp(0.52rem, 1.7cqmin, 0.6875rem);
+  margin-right: clamp(0.2rem, 0.8cqmin, 0.4rem);
 }
 
 .canvas-quick-help-bar .help-item-highlight {
@@ -796,7 +662,7 @@
 
 .canvas-quick-help-bar .help-sep {
   color: rgba(255, 255, 255, 0.25);
-  margin: 0 0.35rem;
+  margin: 0 clamp(0.18rem, 0.8cqmin, 0.35rem);
   font-weight: bold;
 }
 
@@ -848,19 +714,19 @@
 .btn-preset-tool {
   width: auto !important;
   min-width: auto !important;
-  height: 2rem !important;
-  padding: 0 0.75rem !important;
-  border-radius: 99px !important;
+  height: clamp(1.5rem, 5.2cqmin, 2rem) !important;
+  padding: 0 clamp(0.4rem, 1.8cqmin, 0.75rem) !important;
+  border-radius: 99rem !important;
   background: rgba(59, 130, 246, 0.18) !important;
-  border: 1px solid rgba(59, 130, 246, 0.4) !important;
+  border: 0.0625rem solid rgba(59, 130, 246, 0.4) !important;
   color: #60a5fa !important;
   font-family: var(--font-body, system-ui, -apple-system, sans-serif) !important;
-  font-size: 0.75rem !important;
+  font-size: clamp(0.62rem, 2cqmin, 0.75rem) !important;
   font-weight: 700 !important;
   white-space: nowrap !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 0.35rem !important;
+  gap: clamp(0.2rem, 0.8cqmin, 0.35rem) !important;
   transition: all 0.2s ease !important;
 }
 
@@ -868,7 +734,7 @@
   background: rgba(59, 130, 246, 0.35) !important;
   border-color: rgba(59, 130, 246, 0.7) !important;
   color: #ffffff !important;
-  box-shadow: 0 0 14px rgba(59, 130, 246, 0.4) !important;
+  box-shadow: 0 0 0.875rem rgba(59, 130, 246, 0.4) !important;
   transform: scale(1.04) !important;
 }
 
@@ -1013,4 +879,14 @@
 .status-dot.locked {
   background-color: rgba(131, 131, 131, 0.445) !important;
   box-shadow: none !important;
+}
+
+/* =========================================================================
+   ADAPTACIÓN DINÁMICA MULTI-ASPECT-RATIO (CONTAINER QUERIES RELATIVAS SIN PX)
+   ========================================================================= */
+@container canvasWrapper (max-width: 28em) {
+  .canvas-quick-help-bar {
+    -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 1.25rem), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 1.25rem), transparent 100%);
+  }
 }

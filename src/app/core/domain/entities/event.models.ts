@@ -28,7 +28,9 @@ export interface EventRecord {
   objeto: string;
   sujeto?: string | null;
   detalleEvento: string;
-  urlImg: string;
+  imgMinioObjectName?: string | null;
+  videoMinioObjectName?: string | null;
+  urlImg?: string;
   urlVideo?: string | null;
   conteoAforo: number | null;
   tiempoPermanencia: number | null;

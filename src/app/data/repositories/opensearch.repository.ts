@@ -94,8 +94,7 @@ export class OpenSearchRepository implements IMetadataRepository {
       track_total_hits: true,
       size: pageSize,
       sort: [
-        { timestamp: { order: 'desc' } },
-        { _id: { order: 'desc' } }
+        { timestamp: { order: 'desc' } }
       ],
       query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} },
       aggs: aggs
@@ -134,17 +133,6 @@ export class OpenSearchRepository implements IMetadataRepository {
     );
   }
 
-  private ensureMaxResultWindow(): Observable<any> {
-    return this.http.put(`${AppEnvironment.openSearchBaseUrl}/_all/_settings`, {
-      'index.max_result_window': 2147483647
-    }).pipe(
-      catchError(err => {
-        console.warn('[OpenSearch] No se pudo actualizar max_result_window:', err);
-        return of(null);
-      })
-    );
-  }
-
   private searchPage(
     index: MetaIndexName,
     filters: MetaFilterState,
@@ -177,8 +165,7 @@ export class OpenSearchRepository implements IMetadataRepository {
         from: (page - 1) * pageSize,
         size: pageSize,
         sort: [
-          { timestamp: { order: 'desc' } },
-          { _id: { order: 'desc' } }
+          { timestamp: { order: 'desc' } }
         ],
         query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} },
         aggs: aggs
@@ -190,8 +177,7 @@ export class OpenSearchRepository implements IMetadataRepository {
       from: (page - 1) * pageSize,
       size: pageSize,
       sort: [
-        { timestamp: { order: 'desc' } },
-        { _id: { order: 'desc' } }
+        { timestamp: { order: 'desc' } }
       ],
       query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} }
     };
@@ -209,12 +195,11 @@ export class OpenSearchRepository implements IMetadataRepository {
     return this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/${index}/_search`, queryBody).pipe(
       map(res => parseResult(res)),
       catchError(err => {
-        console.warn(`[OpenSearch] Query falló en índice "${index}" (${err?.status || err?.message}). Ampliando max_result_window y reintentando...`);
-        return this.ensureMaxResultWindow().pipe(
-          switchMap(() => this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/${index}/_search`, fallbackQuery)),
+        console.warn(`[OpenSearch] Query falló en índice "${index}" (${err?.status || err?.message}). Intentando consulta simplificada sin agregaciones...`);
+        return this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/${index}/_search`, fallbackQuery).pipe(
           map(res => ({ ...parseResult(res), filterOptions: defaultFilterOptions() })),
           catchError(err2 => {
-            console.error(`[OpenSearch] Reintento en índice "${index}" falló:`, err2?.error || err2);
+            console.error(`[OpenSearch] Consulta en índice "${index}" falló:`, err2?.error || err2);
             return of<MetadataSearchResult>({ records: [], total: 0, filterOptions: defaultFilterOptions() });
           })
         );
@@ -504,7 +489,8 @@ export class OpenSearchRepository implements IMetadataRepository {
         camara: item.camara || '',
         timestamp: parseUtcDate(item.timestamp),
         confiabilidad: typeof item.confiabilidad === 'number' ? item.confiabilidad : 0,
-        imagenRemota: MetadataMapper.sanitizeImageUrl(item.url_img),
+        imgMinioObjectName: item.img_minio_object_name || '',
+        urlImg: item.img_minio_object_name || '',
         edad: item.edad || '',
         genero: item.genero || '',
         colores: [],

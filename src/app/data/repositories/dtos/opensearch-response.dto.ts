@@ -53,7 +53,8 @@ export interface OsBaseDocDto {
   camara_id?: string;
   timestamp: string;
   confiabilidad: number;
-  ruta_imagen_remota: string;
+  img_minio_object_name?: string;
+  video_minio_object_name?: string;
   embedding?: number[];
 }
 

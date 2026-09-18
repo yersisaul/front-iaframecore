@@ -1,0 +1,756 @@
+/* =========================================================================
+   TIMELINE PLAYER (Compacto, Reactivo y Proporcionado)
+   ========================================================================= */
+.timeline-player-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: clamp(0.6rem, 1.2vh, 0.85rem);
+  padding: clamp(0.45rem, 0.8vh, 0.65rem) clamp(0.6rem, 1vw, 0.9rem) clamp(0.65rem, 1.2vh, 0.95rem) clamp(0.6rem, 1vw, 0.9rem);
+  box-shadow: none !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  position: relative;
+  z-index: 10;
+  overflow: visible !important;
+}
+
+.timeline-controls-row {
+  position: relative;
+  min-height: clamp(2.35rem, 4.2vh, 2.75rem);
+  width: 100%;
+}
+
+.timeline-slider-wrapper,
+.timeline-ruler-track,
+.timeline-interactive-track {
+  overflow: visible !important;
+  position: relative;
+  cursor: default !important;
+}
+
+.timeline-slider-wrapper {
+  z-index: 15;
+  padding: clamp(0.15rem, 0.3vh, 0.25rem) clamp(0.25rem, 0.5vw, 0.5rem);
+}
+
+.timeline-ruler-track {
+  z-index: 16;
+}
+
+body.is-timeline-dragging,
+body.is-timeline-dragging *,
+.timeline-slider-wrapper.is-dragging,
+.timeline-slider-wrapper.is-dragging *,
+.timeline-slider-wrapper.is-seeking,
+.timeline-slider-wrapper.is-seeking * {
+  cursor: grabbing !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Banderines de Eventos VMS — Cabeza Diamond Elevada con Conteo
+═══════════════════════════════════════════════════════════ */
+
+.timeline-flags-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 40 !important;
+}
+
+/* El item reposa flotando ajustado sobre la pista */
+.vms-flag-item {
+  position: absolute;
+  bottom: calc(100% + clamp(6px, 0.9vh, 9px));
+  width: clamp(9px, 1.2vh, 12px);
+  height: clamp(9px, 1.2vh, 12px);
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 2px;
+  background-color: var(--flag-color, #2b7fff);
+  border: 1px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 41 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+/* Diamond ampliado cuando agrupa múltiples eventos (count > 1) */
+.vms-flag-item.has-count {
+  width: clamp(13px, 1.7vh, 16px);
+  height: clamp(13px, 1.7vh, 16px);
+  border-radius: 2px;
+}
+
+/* Número en posición recta (-45deg) dentro del diamante */
+.vms-flag-count-label {
+  transform: rotate(-45deg);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: clamp(0.52rem, 0.7vh, 0.6rem);
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+}
+
+.vms-flag-item:hover {
+  transform: translateX(-50%) rotate(45deg) scale(1.25);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  z-index: 55 !important;
+}
+
+/* Estado Seleccionado (Sin borde ni resplandor azul, zoom reducido) */
+.vms-flag-item.is-selected {
+  transform: translateX(-50%) rotate(45deg) scale(1.4);
+  border-color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  z-index: 65 !important;
+}
+
+/* Soporte Tema Oscuro */
+[data-bs-theme="dark"] .vms-flag-item,
+[data-theme="dark"] .vms-flag-item {
+  border: 1px solid rgba(15, 23, 42, 0.9);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+[data-bs-theme="dark"] .vms-flag-item.is-selected,
+[data-theme="dark"] .vms-flag-item.is-selected {
+  border-color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Cápsula de Transporte VMS Principal (Centrada con Margen Vertical)
+═══════════════════════════════════════════════════════════ */
+
+.vms-transport-dock {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  box-sizing: border-box !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(2.35rem, 4.2vh, 2.75rem);
+  min-height: clamp(2.35rem, 4.2vh, 2.75rem);
+  max-height: clamp(2.35rem, 4.2vh, 2.75rem);
+  padding: clamp(4px, 0.6vh, 6px) clamp(0.5rem, 0.75vw, 0.75rem);
+  border-radius: 9999px !important;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  gap: clamp(0.35rem, 0.5vw, 0.55rem);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  line-height: 1;
+}
+
+/* Botones de reproducción 100% circulares flotando dentro del padding */
+.vms-transport-btn {
+  height: 100% !important;
+  width: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  min-width: unset !important;
+  max-width: unset !important;
+  border-radius: 50% !important;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #475569);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.vms-transport-btn .vms-transport-icon {
+  width: clamp(14px, 1.7vh, 17px) !important;
+  height: clamp(14px, 1.7vh, 17px) !important;
+  background-color: var(--text-secondary, #334155) !important;
+  transition: background-color 0.15s ease;
+}
+
+.vms-transport-btn:hover:not(:disabled) {
+  background: rgba(var(--primary-rgb, 43, 127, 255), 0.12);
+  color: var(--primary, #2b7fff);
+  transform: scale(1.06);
+}
+
+.vms-transport-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.vms-transport-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.vms-transport-play-btn {
+  color: var(--text-primary, #0f172a);
+  font-weight: 700;
+}
+
+.vms-transport-play-btn:hover {
+  background: rgba(var(--primary-rgb, 43, 127, 255), 0.15);
+  color: var(--primary, #2b7fff);
+}
+
+/* Soporte Tema Oscuro */
+[data-bs-theme="dark"] .vms-transport-dock,
+[data-theme="dark"] .vms-transport-dock {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 3px 14px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+[data-bs-theme="dark"] .vms-transport-btn,
+[data-theme="dark"] .vms-transport-btn {
+  color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .vms-transport-btn .vms-transport-icon,
+[data-theme="dark"] .vms-transport-btn .vms-transport-icon {
+  background-color: #e2e8f0 !important;
+}
+
+[data-bs-theme="dark"] .vms-transport-play-btn,
+[data-theme="dark"] .vms-transport-play-btn {
+  color: #ffffff;
+}
+
+[data-bs-theme="dark"] .vms-transport-play-btn .vms-transport-icon,
+[data-theme="dark"] .vms-transport-play-btn .vms-transport-icon {
+  background-color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .vms-transport-btn:hover:not(:disabled) .vms-transport-icon,
+[data-theme="dark"] .vms-transport-btn:hover:not(:disabled) .vms-transport-icon {
+  background-color: #60a5fa !important;
+}
+
+[data-bs-theme="dark"] .vms-transport-btn:hover:not(:disabled),
+[data-theme="dark"] .vms-transport-btn:hover:not(:disabled) {
+  background: rgba(43, 127, 255, 0.2);
+  color: #60a5fa;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Cápsulas VMS Compactas (Horario, Fecha & Badge EN VIVO)
+═══════════════════════════════════════════════════════════ */
+
+.vms-time-dock,
+.vms-date-dock {
+  box-sizing: border-box !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(1.75rem, 3.1vh, 2.05rem);
+  min-height: clamp(1.75rem, 3.1vh, 2.05rem);
+  max-height: clamp(1.75rem, 3.1vh, 2.05rem);
+  padding: 0 clamp(0.5rem, 0.75vw, 0.75rem);
+  border-radius: 9999px !important;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  line-height: 1;
+  cursor: text;
+  gap: 0.1rem;
+}
+
+/* Badge EN VIVO compacto y refinado */
+.vms-live-badge {
+  box-sizing: border-box !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(1.55rem, 2.7vh, 1.8rem);
+  min-height: clamp(1.55rem, 2.7vh, 1.8rem);
+  max-height: clamp(1.55rem, 2.7vh, 1.8rem);
+  padding: 0 clamp(0.45rem, 0.65vw, 0.65rem);
+  border-radius: 9999px !important;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  line-height: 1;
+  cursor: default;
+  user-select: none;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: clamp(0.68rem, 0.78vw, 0.76rem);
+  font-weight: 700;
+  gap: clamp(0.35rem, 0.45vw, 0.45rem);
+  margin-left: clamp(0.25rem, 0.4vw, 0.45rem);
+}
+
+.vms-time-dock:hover,
+.vms-time-dock:focus-within,
+.vms-date-dock:hover,
+.vms-date-dock:focus-within {
+  border-color: var(--primary, #2b7fff);
+  box-shadow:
+    0 3px 14px rgba(var(--primary-rgb, 43, 127, 255), 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.vms-time-icon,
+.vms-date-icon {
+  width: clamp(12px, 1.5vh, 14px);
+  height: clamp(12px, 1.5vh, 14px);
+  margin-right: clamp(3px, 0.4vw, 5px);
+  color: var(--text-muted, #64748b);
+  opacity: 0.8;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.vms-time-dock:focus-within .vms-time-icon,
+.vms-time-dock:hover .vms-time-icon,
+.vms-date-dock:focus-within .vms-date-icon,
+.vms-date-dock:hover .vms-date-icon {
+  color: var(--primary, #2b7fff);
+  opacity: 1;
+}
+
+.vms-live-badge .live-dot-pulse {
+  margin: 0 !important;
+  width: clamp(6px, 0.8vh, 7.5px);
+  height: clamp(6px, 0.8vh, 7.5px);
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  background-color: #10b981; /* verde en vivo por defecto */
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+  animation: live-dot-blink 1.4s ease-in-out infinite alternate;
+}
+
+.vms-live-badge .live-dot-pulse.red {
+  background-color: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
+  animation: none !important;
+}
+
+.vms-live-badge.is-live {
+  background: rgba(16, 185, 129, 0.09);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #10b981;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.15);
+}
+
+/* Soporte Tema Oscuro */
+[data-bs-theme="dark"] .vms-time-dock,
+[data-theme="dark"] .vms-time-dock,
+[data-bs-theme="dark"] .vms-date-dock,
+[data-theme="dark"] .vms-date-dock,
+[data-bs-theme="dark"] .vms-live-badge,
+[data-theme="dark"] .vms-live-badge {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 3px 14px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.digital-clock-segment {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+
+  color: var(--text-primary, #1a2035);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: clamp(0.82rem, 0.95vw, 0.92rem);
+  font-weight: 700;
+
+  width: 2.1ch;
+  text-align: center;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1;
+  cursor: text;
+}
+
+.digital-clock-segment.date-year-segment {
+  width: 4.1ch !important;
+}
+
+.digital-clock-segment:focus {
+  background: rgba(var(--primary-rgb, 43, 127, 255), 0.15) !important;
+  border-radius: 4px;
+  color: var(--primary, #2b7fff);
+}
+
+.digital-clock-colon {
+  color: var(--text-muted, #94a3b8);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: clamp(0.82rem, 0.95vw, 0.92rem);
+  font-weight: 700;
+  user-select: none;
+  pointer-events: none;
+  line-height: 1;
+  padding: 0 1px;
+}
+
+/* Individual HH / MM / SS segments */
+.digital-clock-input::-webkit-datetime-edit-hour-field,
+.digital-clock-input::-webkit-datetime-edit-minute-field,
+.digital-clock-input::-webkit-datetime-edit-second-field {
+  border-radius: 3px;
+  padding: 1px 2px;
+  /* Inherit theme text color */
+  color: var(--text-primary, #1a2035);
+}
+
+/* Active segment highlight using primary brand color */
+.digital-clock-input::-webkit-datetime-edit-hour-field:focus,
+.digital-clock-input::-webkit-datetime-edit-minute-field:focus,
+.digital-clock-input::-webkit-datetime-edit-second-field:focus {
+  background: rgba(var(--primary-rgb, 43, 127, 255), 0.18);
+  color: var(--primary, #2b7fff);
+  outline: none;
+}
+
+/* Colon separators — muted, theme adaptive */
+.digital-clock-input::-webkit-datetime-edit-text {
+  color: var(--text-muted, #94a3b8);
+  padding: 0 1px;
+}
+
+/* Dark theme override — deepen the card */
+[data-bs-theme="dark"] .digital-clock-box,
+[data-theme="dark"] .digital-clock-box {
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+
+
+.status-live-dot {
+  color: var(--color-online, #10b981);
+  font-size: 0.7rem;
+  animation: liveDotBlink 1.5s infinite alternate;
+}
+
+.status-divider {
+  opacity: 0.3;
+}
+
+@keyframes liveDotBlink {
+  0% {
+    opacity: 0.3;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Selector de velocidad personalizado */
+.timeline-player-card select.form-select {
+  background-color: var(--bg-header-light) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+  border-radius: 8px !important;
+  padding: 0.35rem 1.5rem 0.35rem 0.6rem !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.timeline-player-card select.form-select:hover {
+  border-color: var(--primary) !important;
+}
+
+.timeline-player-card select.form-select:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(43, 127, 255, 0.15) !important;
+  outline: none !important;
+}
+
+/* Regla del Timeline (Flotante, Sin Contenedor) */
+.timeline-slider-wrapper {
+  height: 48px;
+  background-color: transparent;
+  border: none !important;
+  padding: 0;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+}
+
+.timeline-slider-wrapper.is-dragging {
+  cursor: grabbing !important;
+}
+
+.timeline-axis-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--border-color);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.timeline-progress-fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 2px;
+  background: var(--primary);
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 2;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.timeline-ruler-hash {
+  position: absolute;
+  top: 50%;
+  height: clamp(6px, 0.9vh, 8px);
+  width: 1px;
+  background-color: var(--border-color);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.timeline-ruler-time {
+  position: absolute;
+  top: clamp(8px, 1.2vh, 12px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: clamp(0.6rem, 0.75vw, 0.68rem);
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.timeline-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background-color: #ef4444;
+  z-index: 20;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Desactivar transiciones CSS durante el arrastre/búsqueda para respuesta 1:1 fluida sin luchar contra la animación CSS */
+body.is-timeline-dragging *,
+body.is-timeline-dragging .timeline-playhead,
+body.is-timeline-dragging .timeline-ruler-hash,
+body.is-timeline-dragging .timeline-ruler-time,
+body.is-timeline-dragging .event-flag-pin,
+.timeline-slider-wrapper.is-seeking .timeline-playhead,
+.timeline-slider-wrapper.is-dragging .timeline-playhead {
+  transition: none !important;
+}
+
+/* Aislamiento de Maquetación CPU Universal */
+.vms-timeline-dock,
+.monitoring-canvas-container,
+.list-eventos-sidebar {
+  contain: layout style;
+}
+
+.playhead-line {
+  width: 100%;
+  height: 100%;
+  background-color: #ef4444;
+}
+
+.playhead-handle {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: clamp(6px, 0.8vh, 8px);
+  height: clamp(6px, 0.8vh, 8px);
+  background-color: #ef4444;
+  border-radius: 1px;
+}
+
+/* Pins Romboidales Minimalistas */
+.timeline-flags-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.event-flag-pin {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 12;
+  transition: left 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s ease;
+}
+
+.event-flag-pin:hover {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.5);
+  z-index: 25;
+}
+
+.flag-drop-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1px;
+  height: 14px;
+  transform: translateX(-50%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Botón de En Vivo Limpio */
+.btn-live-toggle {
+  background-color: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-live-toggle:hover {
+  background-color: rgba(var(--primary-rgb), 0.08);
+  color: var(--primary);
+}
+
+.btn-live-toggle.is-live {
+  color: #10b981;
+}
+
+.live-dot-pulse.red {
+  background-color: #ef4444 !important;
+}
+
+@keyframes live-dot-blink {
+  0% { opacity: 0.6; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Tooltip de Previsualización Limpio */
+.timeline-hover-tooltip {
+  position: absolute;
+  top: calc(-100% - clamp(1.2rem, 2.2vh, 1.6rem)) !important;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #ffffff;
+  padding: clamp(2px, 0.4vh, 4px) clamp(6px, 0.6vw, 10px);
+  border-radius: 6px;
+  font-size: clamp(0.65rem, 0.75vw, 0.72rem);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 999999 !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-events-badge {
+  background-color: var(--primary);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* HUD de Fecha y Hora Histórica */
+.time-travel-hud {
+  background-color: transparent;
+  border: none !important;
+}
+
+::ng-deep [data-bs-theme="dark"] .timeline-player-card,
+::ng-deep .dark .timeline-player-card {
+  background-color: #171717 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Scrubber Slider interactivo sobre el timeline */
+.timeline-scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 32px;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+  margin: 0;
+}
+
+.timeline-scrubber::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 32px;
+  background: transparent;
+}
+
+.timeline-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.timeline-scrubber::-moz-range-thumb {
+  width: 16px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+}

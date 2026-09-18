@@ -1,5 +1,6 @@
-import { Component, Input, Output, EventEmitter, signal, computed, ElementRef, ViewChild, HostListener, AfterViewInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, computed, ElementRef, ViewChild, HostListener, AfterViewInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MediaFileService } from '../../../../../core/services/media-file.service';
 
 export interface Point2D {
   x: number; // Normalizado 0..1000
@@ -24,6 +25,8 @@ interface CanvasSnapshot {
   styleUrls: ['./analytic-canvas.component.css']
 })
 export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChanges {
+  private mediaFileService = inject(MediaFileService);
+
   @Input() imageUrl: string = '';
   @Input() cameraId: string = '';
   @Input() strDirection: string = 'Bidireccional';
@@ -39,6 +42,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   @Output() geometryChanged = new EventEmitter<any>();
 
   @ViewChild('canvasContainer', { static: false }) canvasContainer!: ElementRef<HTMLDivElement>;
+  @ViewChild('quickHelpBar', { static: false }) quickHelpBarRef?: ElementRef<HTMLDivElement>;
 
   // Estado primario de formas/áreas en el lienzo
   readonly shapes = signal<CanvasShape[]>([]);
@@ -54,6 +58,13 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   readonly hoveredShapeIndex = signal<number | null>(null);
   readonly contextMenuState = signal<{ shapeIndex: number; x: number; y: number } | null>(null);
   readonly isMagnetSnapped = signal<boolean>(false);
+  readonly hasUserModifiedGeometry = signal<boolean>(false);
+
+  // Desvanecimiento por Reacción Lejana (Proximity Dodge) de la Barra de Atajos
+  readonly isCursorNearHelpBar = signal<boolean>(false);
+  readonly isHelpBarDodgeActive = computed<boolean>(() =>
+    this.isCursorNearHelpBar() || this.activeDragInfo() !== null || this.draggingGroupInfo() !== null
+  );
 
   // Dimensiones del contenedor medidas dinámicamente para reactividad en cualquier resolución
   readonly containerWidth = signal<number>(800);
@@ -178,8 +189,21 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['imageUrl']) {
-      this.imageUrlSignal.set(this.imageUrl || '');
-      this.imageFailed.set(false);
+      const raw = this.imageUrl || '';
+      if (!raw) {
+        this.imageUrlSignal.set('');
+        this.imageFailed.set(false);
+      } else {
+        this.mediaFileService.getFileUrl(raw).subscribe({
+          next: (resolved) => {
+            this.imageUrlSignal.set(resolved || raw);
+            this.imageFailed.set(false);
+          },
+          error: () => {
+            this.imageUrlSignal.set(raw);
+          }
+        });
+      }
     }
     if (changes['initialData'] && this.initialData) {
       this.loadInitialData(this.initialData);
@@ -319,31 +343,10 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
         }));
       }
 
-      // 2. Detectar si los puntos provienen de la escala previa del sistema (1920x1080 o 3840x2160)
-      const maxX = Math.max(...raw.map(p => p.x), 0);
-      const maxY = Math.max(...raw.map(p => p.y), 0);
-
-      if (maxX > currentW || maxY > currentH) {
-        let refW = 1920;
-        let refH = 1080;
-        if (maxX > 1920 || maxY > 1080) {
-          refW = 3840;
-          refH = 2160;
-        }
-
-        const scaleX = currentW / refW;
-        const scaleY = currentH / refH;
-
-        return raw.map(p => ({
-          x: Math.max(0, Math.min(currentW, Math.round(p.x * scaleX))),
-          y: Math.max(0, Math.min(currentH, Math.round(p.y * scaleY)))
-        }));
-      }
-
-      // 3. Puntos dentro del rango de la resolución de la cámara
+      // 2. Preservar coordenadas nativas exactas de la cámara (sin reducir ni dividir)
       return raw.map(p => ({
-        x: Math.max(0, Math.min(currentW, Math.round(p.x))),
-        y: Math.max(0, Math.min(currentH, Math.round(p.y)))
+        x: Math.round(p.x),
+        y: Math.round(p.y)
       }));
     };
 
@@ -925,6 +928,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     const normY = this.toNormY(clickY);
 
     this.currentMousePos.set({ x: normX, y: normY });
+    this.checkHelpBarProximity(event.clientX, event.clientY);
 
     // 1) Caso: Arrastre de un punto de control individual (con Imán magnético al primer punto)
     const dragPoint = this.activeDragInfo();
@@ -1046,6 +1050,51 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     }
 
     this.hoverEdgeInfo.set(closestCandidate);
+  }
+
+  private checkHelpBarProximity(clientX: number, clientY: number): void {
+    const el = this.quickHelpBarRef?.nativeElement;
+    if (!el || !this.canvasContainer) {
+      if (this.isCursorNearHelpBar()) this.isCursorNearHelpBar.set(false);
+      return;
+    }
+
+    const helpRect = el.getBoundingClientRect();
+    const canvasRect = this.canvasContainer.nativeElement.getBoundingClientRect();
+
+    // Si el cursor está fuera de los límites del canvas, restaurar
+    if (
+      clientX < canvasRect.left ||
+      clientX > canvasRect.right ||
+      clientY < canvasRect.top ||
+      clientY > canvasRect.bottom
+    ) {
+      if (this.isCursorNearHelpBar()) this.isCursorNearHelpBar.set(false);
+      return;
+    }
+
+    // Radio de proximidad cercano (se oculta únicamente al aproximarse a corta distancia de la barra)
+    const baseProximity = Math.max(12, Math.min(22, canvasRect.height * 0.04));
+    const isCurrentlyNear = this.isCursorNearHelpBar();
+    // Margen de histéresis reducido: 8px extra para salir limpiamente sin parpadeo
+    const proximityMargin = isCurrentlyNear ? baseProximity + 8 : baseProximity;
+
+    const isInsideProximityBox =
+      clientX >= (helpRect.left - proximityMargin) &&
+      clientX <= (helpRect.right + proximityMargin) &&
+      clientY >= (helpRect.top - proximityMargin) &&
+      clientY <= (helpRect.bottom + proximityMargin);
+
+    if (isInsideProximityBox !== isCurrentlyNear) {
+      this.isCursorNearHelpBar.set(isInsideProximityBox);
+    }
+  }
+
+  @HostListener('document:mouseleave')
+  onDocumentMouseLeave(): void {
+    if (this.isCursorNearHelpBar()) {
+      this.isCursorNearHelpBar.set(false);
+    }
   }
 
   @HostListener('document:mouseup')
@@ -1693,7 +1742,11 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     return [v1, v2, v3, v4];
   }
 
-  emitGeometry(): void {
+  emitGeometry(isUserAction: boolean = false): void {
+    if (isUserAction) {
+      this.hasUserModifiedGeometry.set(true);
+    }
+
     const allShapes = this.shapes();
     const maxW = this.naturalImageWidth() || 1920;
     const maxH = this.naturalImageHeight() || 1080;
@@ -1704,7 +1757,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
         const origArea = s.points.map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) }));
         const outerArea = this.calculateOuterArea(origArea, this.scaleFactor).map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) }));
         const item: any = {
-          label: `Polygon${idx + 1}`,
+          label: `Polygon${idx}`,
           original_area: origArea,
           outer_area: outerArea
         };
@@ -1716,7 +1769,8 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
 
       const payload = {
         polygons,
-        lines: []
+        lines: [],
+        hasUserModified: this.hasUserModifiedGeometry()
       };
       this.geometryChanged.emit(payload);
     } else if (this.geometryType === 'line') {
@@ -1727,7 +1781,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
 
         return {
           camera_id: this.cameraId || '',
-          label: `Linea${idx + 1}`,
+          label: `Linea${idx}`,
           extreme_points: s.points.map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) })),
           direction_points: this.calculateDirectionPoints(p1, p2, 15).map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) })),
           analysis_zone: this.calculateAnalysisZone(p1, p2, halfW).map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) }))
@@ -1736,7 +1790,8 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
 
       const payload = {
         polygons: [],
-        lines
+        lines,
+        hasUserModified: this.hasUserModifiedGeometry()
       };
       this.geometryChanged.emit(payload);
     }

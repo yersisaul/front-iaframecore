@@ -25,7 +25,6 @@ function getEnvValue(key) {
 
 const apiTarget = getEnvValue('API_HOST');
 const openSearchTarget = getEnvValue('OPENSEARCH_HOST');
-const minioTarget = getEnvValue('MINIO_PUBLIC_URL') || apiTarget;
 const jwtSecret = getEnvValue('JWT_SECRET_KEY');
 const openSearchUser = getEnvValue('OPENSEARCH_USER');
 const openSearchPassword = getEnvValue('OPENSEARCH_PASSWORD');
@@ -45,7 +44,6 @@ console.log(`=========================================`);
 console.log(`🔌 Cargando proxy desde variables de entorno:`);
 console.log(`   - /api        -> ${apiTarget} (Auth x-api-key: ${jwtSecret ? 'habilitada' : 'ninguna'})`);
 console.log(`   - /opensearch -> ${openSearchTarget} (Basic Auth: ${openSearchAuthHeader ? 'habilitada (' + openSearchUser + ')' : 'ninguna'})`);
-console.log(`   - /minio      -> ${minioTarget}`);
 console.log(`   - /ws         -> ${wsTarget} (WebSocket)`);
 console.log(`=========================================`);
 
@@ -68,29 +66,6 @@ module.exports = {
         if (jwtSecret) {
           proxyReq.setHeader('x-api-key', jwtSecret);
           proxyReq.setHeader('X-API-Key', jwtSecret);
-        }
-      });
-      proxy.on('proxyRes', (proxyRes, req, res) => {
-        if (req.headers && req.headers.origin) {
-          proxyRes.headers['access-control-allow-origin'] = req.headers.origin;
-          proxyRes.headers['access-control-allow-credentials'] = 'true';
-          proxyRes.headers['access-control-allow-headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, x-api-key, X-API-Key';
-          proxyRes.headers['access-control-allow-methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
-        }
-      });
-    }
-  },
-  "/minio": {
-    "target": minioTarget,
-    "changeOrigin": true,
-    "secure": false,
-    "pathRewrite": {
-      "^/minio": ""
-    },
-    configure: (proxy, options) => {
-      proxy.on('proxyReq', (proxyReq, req, res) => {
-        if (req.headers && req.headers.origin) {
-          proxyReq.setHeader('Origin', req.headers.origin);
         }
       });
       proxy.on('proxyRes', (proxyRes, req, res) => {

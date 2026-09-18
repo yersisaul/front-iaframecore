@@ -71,7 +71,7 @@
             </div>
           </div>
           <!-- Opciones scrolleables -->
-          <div class="dropdown-items-scroll scrollable-menu p-2 pt-1">
+          <div class="dropdown-items-scroll scrollable-menu p-1">
             @if (filteredCamarasOptions().length === 0) {
             <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
             }
@@ -672,7 +672,7 @@
       <!-- Metadata Cards Grid -->
       @if (records().length > 0) {
       <div class="metadata-grid">
-        @for (record of records(); track record.id) {
+        @for (record of records(); track (record.id + '-' + $index)) {
         <div class="card metadata-card border-0 shadow-sm rounded-3 position-relative"
           [class.metadata-card--live-new]="newRecordIds().has(record.id)" style="overflow: visible !important;"
           (mouseenter)="onCardMouseEnter($event)" (mousemove)="onCardMouseMove($event, record.id)"
@@ -686,8 +686,9 @@
               <span class="fallback-text">SIN IMAGEN</span>
             </div>
 
-            @if (record.imagenRemota) {
-            <img [src]="record.imagenRemota" (error)="onImageError($event)"
+            @let resolvedImg = record.imgMinioObjectName | mediaUrl | async;
+            @if (resolvedImg) {
+            <img [src]="resolvedImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
               class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
               alt="Thumbnail" />
             }
@@ -867,8 +868,21 @@
         @if (selectedRecordForWatchlist(); as record) {
         <!-- Record Thumbnail -->
         <div class="d-flex align-items-center gap-3 mb-3 p-2 border rounded bg-light-translucent">
-          <img [src]="record.imagenRemota" class="rounded object-fit-contain shadow-sm border bg-dark"
-            style="width: 60px; height: 60px;" />
+          @let modalImg = record.imgMinioObjectName | mediaUrl | async;
+          @if (modalImg) {
+            <img [src]="modalImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
+              class="rounded object-fit-contain shadow-sm border bg-dark"
+              style="width: 60px; height: 60px;" />
+          } @else {
+            <div class="rounded d-flex align-items-center justify-content-center border bg-dark text-muted"
+              style="width: 60px; height: 60px; font-size: 0.6rem;">
+              @if (record.imgMinioObjectName) {
+                <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+              } @else {
+                SIN FOTO
+              }
+            </div>
+          }
           <div style="min-width: 0;">
             <span class="small text-muted d-block text-capitalize">Índice: {{ activeIndex() }}</span>
             <span class="fw-semibold text-body d-block text-truncate" style="font-size: 0.85rem;">{{ record.camara

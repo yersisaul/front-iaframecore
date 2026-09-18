@@ -111,7 +111,7 @@
 }
 
 .host-card .card-body {
-  padding: 1.35rem !important;
+  padding: 0.875rem !important;
 }
 
 [data-bs-theme="dark"] .host-card {
@@ -119,9 +119,8 @@
 }
 
 .host-card:hover {
-  transform: translateY(-2px);
   border-color: var(--color-online, #10b981) !important;
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2) !important;
+  box-shadow: 0 10px 32px rgba(16, 185, 129, 0.28) !important;
 }
 
 [data-bs-theme="dark"] .host-card:hover {
@@ -4240,7 +4239,7 @@ code.code-badge {
 
 .nm-table {
   width: 100%;
-  min-width: 68rem;
+  min-width: 76rem;
   border-collapse: collapse;
   table-layout: fixed;
   border: none !important;
@@ -4248,55 +4247,60 @@ code.code-badge {
 
 /* Anchos y proporciones de columnas (Estrategia Fijo rem + Absorción Elástica) */
 .nm-table .col-status {
-  width: 7.5rem;
-  min-width: 7.5rem;
+  width: 5.5rem;
+  min-width: 5.5rem;
   text-align: center;
 }
 
 .nm-table .col-camera-name {
-  width: 27.5rem;
-  min-width: 27.5rem;
+  width: 25rem;
+  min-width: 25rem;
 }
 
 .nm-table .col-host {
-  width: 10rem;
-  min-width: 10rem;
+  width: 8.5rem;
+  min-width: 8.5rem;
+  max-width: 11rem;
+  overflow: hidden;
+}
+
+.nm-table .col-analytics {
+  width: 25rem;
+  min-width: 25rem;
+}
+
+.nm-table td.col-analytics {
+  padding: 6px 14px;
+  vertical-align: middle;
 }
 
 .nm-table .col-stream {
-  width: 7.5rem;
-  min-width: 7.5rem;
+  width: 5rem;
+  min-width: 5rem;
 }
 
 .nm-table .col-decoder {
-  width: 7.5rem;
-  min-width: 7.5rem;
-  text-align: center;
-}
-
-.nm-table .col-coords {
-  width: 12.5rem;
-  min-width: 12.5rem;
+  width: 5rem;
+  min-width: 5rem;
   text-align: center;
 }
 
 .nm-table .col-add-column {
-  width: 5rem;
-  min-width: 5rem;
-  max-width: 5rem;
+  width: 4rem;
+  min-width: 4rem;
+  max-width: 4rem;
   text-align: center;
-  padding: 0 6px !important;
 }
 
-.nm-table .col-analytics {
-  width: 100%;
-  min-width: 27.5rem;
+.nm-table td.col-add-column {
+  padding: 0 6px !important;
 }
 
 .btn-th-column-toggle {
   background: transparent;
   border: none;
-  padding: 4px 6px;
+  padding: 0 6px;
+  height: 26px;
   border-radius: 6px;
   font-family: inherit;
   font-size: 0.76rem;
@@ -4310,7 +4314,6 @@ code.code-badge {
   position: relative;
   overflow: hidden;
   transition: transform 0.15s ease;
-  min-height: 24px;
 }
 
 .btn-th-column-toggle .col-label-text {
@@ -4360,7 +4363,7 @@ code.code-badge {
 
 .btn-add-table-column {
   min-width: 44px;
-  height: 24px;
+  height: 26px;
   border-radius: 6px;
   border: 1px solid var(--border-color);
   background-color: var(--bg-surface);
@@ -4386,11 +4389,16 @@ code.code-badge {
 .dropdown-restore-columns {
   position: absolute;
   top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
+  right: 0;
+  left: auto;
+  transform: none;
   min-width: 175px;
   z-index: 1050;
   text-align: left;
+}
+
+.nm-table thead tr {
+  height: 3.25rem;
 }
 
 .nm-table td,
@@ -4402,11 +4410,12 @@ code.code-badge {
 }
 
 .nm-table th {
+  height: 3.25rem;
   background-color: rgba(15, 23, 42, 0.02);
   color: var(--text-muted);
   font-weight: 700;
   letter-spacing: 0.04em;
-  padding: 12px 14px;
+  padding: 0 14px;
   border-bottom: 1.5px solid var(--border-color) !important;
   font-size: 0.76rem;
   white-space: nowrap;
@@ -4548,9 +4557,10 @@ code.code-badge {
 /* Analíticas marquesina en hover de fila idéntica a Nodos (gpu-model / os-release) con efecto fade-out */
 .camera-analytics-marquee-container {
   flex: 1;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
+  overflow: hidden !important;
   display: flex;
   align-items: center;
   container-type: inline-size;

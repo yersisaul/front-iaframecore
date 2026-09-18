@@ -22,36 +22,7 @@ import {
 export class MetadataMapper {
   static sanitizeImageUrl(url?: string): string {
     if (!url) return '';
-    
-    // Si la URL es una vista previa local (blob: / data:) o dominio público externo
-    if (
-      url.startsWith('blob:') ||
-      url.startsWith('data:') ||
-      url.includes('unsplash.com') ||
-      url.includes('picsum.photos') ||
-      url.includes('randomuser.me')
-    ) {
-      return url;
-    }
-
-    // Si ya viene formateada con la ruta del servicio de imágenes /minio/
-    if (url.startsWith('/minio/')) {
-      return url;
-    }
-
-    // Reemplaza cualquier esquema y host/puerto (ej. http://backend-api:8000 o http://minio:9000) por /minio
-    let sanitized = url.replace(/^https?:\/\/[^\/]+/, '/minio');
-
-    // Si venía prefijada con /api/, la convertimos a /minio/
-    if (sanitized.startsWith('/api/')) {
-      sanitized = sanitized.replace('/api/', '/minio/');
-    } else if (!sanitized.startsWith('/minio/')) {
-      // Para rutas relativas de imágenes (ej. /storage/..., /media/..., static/...)
-      const cleanPath = sanitized.startsWith('/') ? sanitized : '/' + sanitized;
-      sanitized = '/minio' + cleanPath;
-    }
-
-    return sanitized;
+    return url.trim();
   }
 
   static toDomainColor(dto: OsColorDto): MetaColor {
@@ -76,12 +47,14 @@ export class MetadataMapper {
     const score = (hit._score !== undefined && hit._score !== null && hit._score !== 1.0)
       ? hit._score
       : (typeof src.confiabilidad === 'number' ? src.confiabilidad : 0);
+    const imgMinioObjectName = src.img_minio_object_name || '';
     return {
       id: hit._id,
       camara: src.camara || '',
       timestamp: parseUtcDate(src.timestamp),
       confiabilidad: score,
-      imagenRemota: MetadataMapper.sanitizeImageUrl(src.ruta_imagen_remota),
+      imgMinioObjectName,
+      urlImg: imgMinioObjectName,
       tipoObjeto: src.tipo_objeto || '',
       edad: src.edad || '',
       genero: src.genero || '',
@@ -96,12 +69,14 @@ export class MetadataMapper {
     const score = (hit._score !== undefined && hit._score !== null && hit._score !== 1.0)
       ? hit._score
       : (typeof src.confiabilidad === 'number' ? src.confiabilidad : 0);
+    const imgMinioObjectName = src.img_minio_object_name || '';
     return {
       id: hit._id,
       camara: src.camara || '',
       timestamp: parseUtcDate(src.timestamp),
       confiabilidad: score,
-      imagenRemota: MetadataMapper.sanitizeImageUrl(src.ruta_imagen_remota),
+      imgMinioObjectName,
+      urlImg: imgMinioObjectName,
       tipoObjeto: src.tipo_objeto || '',
       colores: Array.isArray(src.colores) ? src.colores.map(MetadataMapper.toDomainColor) : [],
       reconocimiento: src.reconocimiento || '',
@@ -114,12 +89,14 @@ export class MetadataMapper {
     const score = (hit._score !== undefined && hit._score !== null && hit._score !== 1.0)
       ? hit._score
       : (typeof src.confiabilidad === 'number' ? src.confiabilidad : 0);
+    const imgMinioObjectName = src.img_minio_object_name || '';
     return {
       id: hit._id,
       camara: src.camara || '',
       timestamp: parseUtcDate(src.timestamp),
       confiabilidad: score,
-      imagenRemota: MetadataMapper.sanitizeImageUrl(src.ruta_imagen_remota),
+      imgMinioObjectName,
+      urlImg: imgMinioObjectName,
       edad: src.edad || '',
       genero: src.genero || '',
       colores: Array.isArray(src.colores) ? src.colores.map(MetadataMapper.toDomainColor) : [],
@@ -133,12 +110,14 @@ export class MetadataMapper {
     const score = (hit._score !== undefined && hit._score !== null && hit._score !== 1.0)
       ? hit._score
       : (typeof src.confiabilidad === 'number' ? src.confiabilidad : 0);
+    const imgMinioObjectName = src.img_minio_object_name || '';
     return {
       id: hit._id,
       camara: src.camara || '',
       timestamp: parseUtcDate(src.timestamp),
       confiabilidad: score,
-      imagenRemota: MetadataMapper.sanitizeImageUrl(src.ruta_imagen_remota),
+      imgMinioObjectName,
+      urlImg: imgMinioObjectName,
       tipoObjeto: src.tipo_objeto || '',
       colores: Array.isArray(src.colores) ? src.colores.map(MetadataMapper.toDomainColor) : [],
       embedding: src.embedding

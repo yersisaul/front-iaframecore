@@ -18,14 +18,6 @@ interface InternalEventSearchResult extends EventSearchResult {
 export class EventHttpRepository implements IEventRepository {
   constructor(private http: HttpClient) {}
 
-  private ensureMaxResultWindow(): Observable<any> {
-    return this.http.put(`${AppEnvironment.openSearchBaseUrl}/_all/_settings`, {
-      'index.max_result_window': 2147483647
-    }).pipe(
-      catchError(err => of(null))
-    );
-  }
-
   search(
     filters: EventFilters,
     page: number,
@@ -68,9 +60,9 @@ export class EventHttpRepository implements IEventRepository {
     const mustFilters = this.buildMustFilters(filters);
 
     const aggs = {
-      camara_vals: { terms: { field: 'nombre_camara', size: 100 } },
-      analitica_vals: { terms: { field: 'analitica', size: 100 } },
-      objeto_vals: { terms: { field: 'objeto', size: 100 } },
+      camara_vals: { terms: { field: 'nombre_camara.keyword', size: 100 } },
+      analitica_vals: { terms: { field: 'analitica.keyword', size: 100 } },
+      objeto_vals: { terms: { field: 'objeto.keyword', size: 100 } },
       lista_vals: { terms: { field: 'match_detail.list_name.keyword', size: 50 } },
       direccion_vals: { terms: { field: 'direccion.keyword', size: 10 } }
     };
@@ -79,8 +71,7 @@ export class EventHttpRepository implements IEventRepository {
       track_total_hits: true,
       size: pageSize,
       sort: [
-        { timestamp: { order: 'desc' } },
-        { _id: { order: 'desc' } }
+        { timestamp: { order: 'desc' } }
       ],
       query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} },
       aggs: aggs
@@ -131,9 +122,9 @@ export class EventHttpRepository implements IEventRepository {
     const mustFilters = this.buildMustFilters(filters);
 
     const aggs = {
-      camara_vals: { terms: { field: 'nombre_camara', size: 100 } },
-      analitica_vals: { terms: { field: 'analitica', size: 100 } },
-      objeto_vals: { terms: { field: 'objeto', size: 100 } }
+      camara_vals: { terms: { field: 'nombre_camara.keyword', size: 100 } },
+      analitica_vals: { terms: { field: 'analitica.keyword', size: 100 } },
+      objeto_vals: { terms: { field: 'objeto.keyword', size: 100 } }
     };
 
     const queryBody = {
@@ -141,8 +132,7 @@ export class EventHttpRepository implements IEventRepository {
       from: (page - 1) * pageSize,
       size: pageSize,
       sort: [
-        { timestamp: { order: 'desc' } },
-        { _id: { order: 'desc' } }
+        { timestamp: { order: 'desc' } }
       ],
       query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} },
       aggs: aggs
@@ -153,8 +143,7 @@ export class EventHttpRepository implements IEventRepository {
       from: (page - 1) * pageSize,
       size: pageSize,
       sort: [
-        { timestamp: { order: 'desc' } },
-        { _id: { order: 'desc' } }
+        { timestamp: { order: 'desc' } }
       ],
       query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} }
     };
@@ -172,12 +161,11 @@ export class EventHttpRepository implements IEventRepository {
     return this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/eventos/_search`, queryBody).pipe(
       map(res => parseResult(res)),
       catchError(err => {
-        console.warn(`[OpenSearch] Eventos query falló (${err?.status || err?.message}). Ampliando max_result_window y reintentando...`);
-        return this.ensureMaxResultWindow().pipe(
-          switchMap(() => this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/eventos/_search`, fallbackQuery)),
+        console.warn(`[OpenSearch] Eventos query falló (${err?.status || err?.message}). Intentando consulta simplificada sin agregaciones...`);
+        return this.http.post<OsResponse<any>>(`${AppEnvironment.openSearchBaseUrl}/eventos/_search`, fallbackQuery).pipe(
           map(res => ({ ...parseResult(res), filterOptions: defaultEventFilterOptions() })),
           catchError(err2 => {
-            console.error('[OpenSearch] Reintento de eventos falló:', err2?.error || err2);
+            console.error('[OpenSearch] Consulta de eventos falló:', err2?.error || err2);
             return of<EventSearchResult>({ records: [], total: 0, filterOptions: defaultEventFilterOptions() });
           })
         );
@@ -189,11 +177,43 @@ export class EventHttpRepository implements IEventRepository {
     const mustFilters: any[] = [];
 
     if (filters.camaras && filters.camaras.length > 0) {
-      mustFilters.push({ terms: { nombre_camara: filters.camaras } });
+      const camQueries: any[] = [
+        { terms: { 'nombre_camara.keyword': filters.camaras } },
+        { terms: { 'nombre_camara': filters.camaras } },
+        { terms: { 'id_camara': filters.camaras } },
+        { terms: { 'id_camara.keyword': filters.camaras } }
+      ];
+      filters.camaras.forEach(c => {
+        camQueries.push({ match_phrase: { nombre_camara: c } });
+      });
+      mustFilters.push({
+        bool: {
+          should: camQueries,
+          minimum_should_match: 1
+        }
+      });
     }
 
     if (filters.analiticas && filters.analiticas.length > 0) {
-      mustFilters.push({ terms: { analitica: filters.analiticas } });
+      const anaQueries: any[] = [
+        { terms: { 'analitica.keyword': filters.analiticas } },
+        { terms: { 'analitica': filters.analiticas } }
+      ];
+      filters.analiticas.forEach(a => {
+        anaQueries.push({ match_phrase: { analitica: a } });
+        const normalized = a.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (normalized !== a) {
+          anaQueries.push({ match_phrase: { analitica: normalized } });
+        }
+        anaQueries.push({ wildcard: { analitica: { value: `*${normalized}*`, case_insensitive: true } } });
+        anaQueries.push({ wildcard: { 'analitica.keyword': { value: `*${normalized}*`, case_insensitive: true } } });
+      });
+      mustFilters.push({
+        bool: {
+          should: anaQueries,
+          minimum_should_match: 1
+        }
+      });
     }
 
     if (filters.objetos && filters.objetos.length > 0) {
@@ -409,17 +429,17 @@ export class EventHttpRepository implements IEventRepository {
       size: 0,
       aggs: {
         lists: {
-          terms: { field: 'match_detail.list_name', size: 100 },
+          terms: { field: 'match_detail.list_name.keyword', size: 100 },
           aggs: {
-            detail_ids: { terms: { field: 'match_detail.detail_id', size: 100 } }
+            detail_ids: { terms: { field: 'match_detail.detail_id.keyword', size: 100 } }
           }
         },
         legacy_facial: {
           filter: {
-            wildcard: { analitica: { value: '*facial*', case_insensitive: true } }
+            wildcard: { 'analitica.keyword': { value: '*facial*', case_insensitive: true } }
           },
           aggs: {
-            nombres: { terms: { field: 'objeto', size: 50 } }
+            nombres: { terms: { field: 'objeto.keyword', size: 50 } }
           }
         }
       }
