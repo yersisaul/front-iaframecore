@@ -504,7 +504,7 @@
             @if (record.imgMinioObjectName || record.urlImg) {
             @let resolvedImgUrl = (record.imgMinioObjectName || record.urlImg) | mediaUrl | async;
             @if (resolvedImgUrl) {
-            <img [src]="resolvedImgUrl" (error)="onImageError($event)"
+            <img [src]="resolvedImgUrl" (load)="onImageLoad($event)" (error)="onImageError($event)"
               class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
               alt="Event Thumbnail" />
             }

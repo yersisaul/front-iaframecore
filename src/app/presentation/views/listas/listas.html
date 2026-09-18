@@ -322,23 +322,22 @@
 
               <!-- Subject Avatar/Image -->
               <div class="subject-card-img-wrapper">
+                @let objName = detail.img_minio_object_name || detail.metadata?.img_minio_object_name;
+                @let resolvedDetailImg = objName ? (objName | mediaUrl | async) : null;
                 <div class="subject-card-placeholder shadow-sm"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'"
-                  [style.display]="detail.metadata?.url_img ? 'none' : 'flex'">
+                  [style.display]="resolvedDetailImg ? 'none' : 'flex'">
                   <span class="icon-svg" [class.icon-user]="listType() === 'face_recognition'"
                     [class.icon-camara]="listType() !== 'face_recognition'"
                     style="width: 22px; height: 22px; background-color: var(--text-muted); opacity: 0.6;"></span>
                   <span class="subject-card-placeholder-text">SIN IMAGEN</span>
                 </div>
-                @if (detail.metadata?.url_img) {
-                @let resolvedDetailImg = detail.metadata?.url_img | mediaUrl | async;
                 @if (resolvedDetailImg) {
-                <img [src]="resolvedDetailImg" (error)="onImageError($event)"
+                <img [src]="resolvedDetailImg" (error)="onImageError($event)" (load)="onImageLoad($event)"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'" class="subject-card-avatar shadow-sm"
                   alt="Foto" />
-                }
                 }
               </div>
 
@@ -443,25 +442,24 @@
             <!-- Columna Izquierda: Solo Foto/Avatar Independiente -->
             <div class="identity-column-left">
               <div class="identity-avatar-header position-relative d-flex align-items-center justify-content-center">
+                @let activeObjName = activeDetail.img_minio_object_name || activeDetail.metadata?.img_minio_object_name;
+                @let resolvedActiveImg = activeObjName ? (activeObjName | mediaUrl | async) : null;
                 <div class="subject-card-placeholder drawer-avatar-placeholder shadow-sm"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'"
-                  [style.display]="activeDetail.metadata?.url_img ? 'none' : 'flex'">
+                  [style.display]="resolvedActiveImg ? 'none' : 'flex'">
                   <span class="icon-svg" [class.icon-user]="listType() === 'face_recognition'"
                     [class.icon-camara]="listType() !== 'face_recognition'"
                     style="width: 32px; height: 32px; background-color: var(--text-muted); opacity: 0.6;"></span>
                   <span class="subject-card-placeholder-text" style="font-size: 0.72rem; margin-top: 4px;">SIN
                     IMAGEN</span>
                 </div>
-                @if (activeDetail.metadata?.url_img) {
-                @let resolvedActiveImg = activeDetail.metadata?.url_img | mediaUrl | async;
                 @if (resolvedActiveImg) {
-                <img [src]="resolvedActiveImg" (error)="onImageError($event)"
+                <img [src]="resolvedActiveImg" (error)="onImageError($event)" (load)="onImageLoad($event)"
                   class="identity-avatar object-fit-cover shadow-sm cursor-pointer"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'"
                   (click)="openFullscreenImage(resolvedActiveImg, $event)" alt="Foto" />
-                }
                 }
               </div>
             </div>
@@ -629,17 +627,15 @@
                 <div class="d-flex gap-3 align-items-center">
                   <div
                     class="timeline-img-wrapper flex-shrink-0 position-relative d-flex align-items-center justify-content-center">
+                    @let resolvedHitImg = hit.imagen ? (hit.imagen | mediaUrl | async) : null;
                     <div class="subject-card-placeholder timeline-sighting-placeholder shadow-xs rounded-circle"
-                      [style.display]="hit.imagen ? 'none' : 'flex'">
+                      [style.display]="resolvedHitImg ? 'none' : 'flex'">
                       <span class="icon-svg icon-camara"
                         style="width: 14px; height: 14px; background-color: var(--text-muted); opacity: 0.6;"></span>
                     </div>
-                    @if (hit.imagen) {
-                    @let resolvedHitImg = hit.imagen | mediaUrl | async;
                     @if (resolvedHitImg) {
-                    <img [src]="resolvedHitImg" (error)="onImageError($event)"
+                    <img [src]="resolvedHitImg" (error)="onImageError($event)" (load)="onImageLoad($event)"
                       class="timeline-sighting-img rounded-circle shadow-xs" alt="Avistamiento" />
-                    }
                     }
                   </div>
                   <div class="text-truncate flex-grow-1">
@@ -689,8 +685,9 @@
 
     <!-- Image Hero -->
     <div class="sighting-preview-hero position-relative">
+      @let resolvedHitPreview = hit.imagen ? (hit.imagen | mediaUrl | async) : null;
       <div class="subject-card-placeholder flex-column align-items-center justify-content-center"
-        [style.display]="hit.imagen ? 'none' : 'flex'"
+        [style.display]="resolvedHitPreview ? 'none' : 'flex'"
         style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; background-color: var(--bg-dark-surface, var(--bg-primary)); z-index: 1;">
         <span class="icon-svg icon-camara"
           style="width: 32px; height: 32px; background-color: var(--text-muted); opacity: 0.6;"></span>
@@ -698,19 +695,16 @@
           style="font-size: 0.75rem; letter-spacing: 0.05em; font-weight: 600;">SIN IMAGEN</span>
       </div>
 
-      @if (hit.imagen) {
-      @let resolvedHitPreview = hit.imagen | mediaUrl | async;
       @if (resolvedHitPreview) {
       <div class="sighting-preview-img-container w-100 h-100 position-relative cursor-pointer"
         (click)="openFullscreenImage(resolvedHitPreview, $event)" title="Clic para ver en pantalla completa">
-        <img [src]="resolvedHitPreview" (error)="onImageError($event)" class="sighting-preview-img" alt="Avistamiento" />
+        <img [src]="resolvedHitPreview" (error)="onImageError($event)" (load)="onImageLoad($event)" class="sighting-preview-img" alt="Avistamiento" />
         <div class="sighting-preview-zoom-overlay">
           <span class="icon-svg icon-fullscreen"
             style="width: 20px; height: 20px; background-color: currentColor;"></span>
           <span class="zoom-text">Pantalla Completa</span>
         </div>
       </div>
-      }
       }
 
       <!-- Top Bar Badges -->
@@ -1484,7 +1478,7 @@
               @if (selectedEditFaceFile()) {
               <button
                 class="btn-ghost remove-preview-btn position-absolute p-1 rounded-circle shadow border bg-body modal-remove-btn"
-                (click)="selectedEditFaceFile.set(null); editFaceImagePreviewUrl.set(selectedSubjectDetail()?.metadata?.url_img || null); $event.stopPropagation()"
+                (click)="resetEditFaceFile($event)"
                 title="Deshacer Cambio" [disabled]="isUpdatingSubject()">
                 <span class="icon-svg icon-close text-danger" style="width: 14px; height: 14px;"></span>
               </button>

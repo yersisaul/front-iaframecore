@@ -1076,9 +1076,16 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onImageError(event: Event): void {
+    const target = event.target as HTMLImageElement;
+    if (target && target.src && target.src !== window.location.href) {
+      target.style.display = 'none';
+    }
+  }
+
+  onImageLoad(event: Event): void {
     const target = event.target as HTMLElement;
     if (target) {
-      target.style.display = 'none';
+      target.style.display = '';
     }
   }
 

@@ -11,8 +11,9 @@ export interface ListDetail {
   fingerprint_host?: string;
   nombre_asociado: string;
   embedding: number[];
+  img_minio_object_name?: string;
   metadata?: {
-    url_img?: string;
+    img_minio_object_name?: string;
     text_placa?: string;
     [key: string]: any;
   };

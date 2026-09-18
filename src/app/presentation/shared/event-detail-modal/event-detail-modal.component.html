@@ -50,8 +50,8 @@
             </div>
             }
             } @else {
-            @if (resolvedImageUrl() || selectedEvent.imgMinioObjectName || selectedEvent.urlImg) {
-            <img [src]="resolvedImageUrl() || selectedEvent.urlImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
+            @if (resolvedImageUrl()) {
+            <img [src]="resolvedImageUrl()" (load)="onImageLoad($event)" (error)="onImageError($event)"
               class="stage-media-element img-element select-none" alt="Captura del evento"
               [style.display]="hasImageError() ? 'none' : 'block'" />
 
@@ -59,7 +59,7 @@
             @if (activeMediaType() === 'image' && isZoomed() && !hasImageError()) {
             <div class="magnifier-lens" [style.left.px]="zoomX()" [style.top.px]="zoomY()"
               [style.width.px]="zoomLensDiameter()" [style.height.px]="zoomLensDiameter()"
-              [style.background-image]="'url(' + (resolvedImageUrl() || selectedEvent.urlImg) + ')'"
+              [style.background-image]="'url(' + resolvedImageUrl() + ')'"
               [style.background-position]="zoomBgX() + 'px ' + zoomBgY() + 'px'"
               [style.background-size]="zoomBgWidth() + 'px ' + zoomBgHeight() + 'px'">
             </div>
@@ -73,8 +73,13 @@
             }
             } @else {
             <div class="comparison-img-fallback select-none">
-              <span class="icon-svg icon-warning fallback-icon" style="background-color: #f59e0b;"></span>
-              <span>Captura no disponible</span>
+              @if (selectedEvent.imgMinioObjectName || selectedEvent.urlImg) {
+                <span class="spinner-border spinner-border-sm text-primary mb-2" role="status"></span>
+                <span class="text-muted small">Cargando captura...</span>
+              } @else {
+                <span class="icon-svg icon-warning fallback-icon" style="background-color: #f59e0b;"></span>
+                <span>Captura no disponible</span>
+              }
             </div>
             }
             }
@@ -99,7 +104,7 @@
               <span class="text-muted small">Cargando foto...</span>
             </div>
             } @else if (matchData()?.matchImgUrl) {
-            <img [src]="matchData()?.matchImgUrl" (error)="onMatchImageError($event)"
+            <img [src]="matchData()?.matchImgUrl" (load)="onMatchImageLoad($event)" (error)="onMatchImageError($event)"
               class="stage-media-element img-element select-none" alt="Fotografía en Lista de Control"
               [style.display]="hasMatchImageError() ? 'none' : 'block'" />
             @if (hasMatchImageError()) {
@@ -377,9 +382,11 @@
             <!-- Columna Izquierda: Fotografía o Icono -->
             <div class="identity-photo-col flex-shrink-0"
               [style.border-color]="getSimilarityColor(getDisplaySimilarity())">
-              @if (matchData()?.matchImgUrl && !hasMatchImageError()) {
-              <img [src]="matchData()?.matchImgUrl" class="identity-photo-img" alt="Foto en Lista de Control" />
-              } @else {
+              @if (matchData()?.matchImgUrl) {
+              <img [src]="matchData()?.matchImgUrl" (load)="onMatchImageLoad($event)" (error)="onMatchImageError($event)"
+                class="identity-photo-img" [style.display]="hasMatchImageError() ? 'none' : 'block'" alt="Foto en Lista de Control" />
+              }
+              @if (!matchData()?.matchImgUrl || hasMatchImageError()) {
               <div
                 class="identity-photo-placeholder d-flex flex-column align-items-center justify-content-center h-100">
                 <span class="icon-svg identity-photo-placeholder-icon" [class.icon-user]="!isPlateEvent(selectedEvent)"

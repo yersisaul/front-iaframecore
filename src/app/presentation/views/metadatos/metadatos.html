@@ -688,7 +688,7 @@
 
             @let resolvedImg = record.imgMinioObjectName | mediaUrl | async;
             @if (resolvedImg) {
-            <img [src]="resolvedImg" (error)="onImageError($event)"
+            <img [src]="resolvedImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
               class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
               alt="Thumbnail" />
             }
@@ -868,13 +868,20 @@
         @if (selectedRecordForWatchlist(); as record) {
         <!-- Record Thumbnail -->
         <div class="d-flex align-items-center gap-3 mb-3 p-2 border rounded bg-light-translucent">
-          @let modalImg = (record.imgMinioObjectName || record.urlImg) | mediaUrl | async;
+          @let modalImg = record.imgMinioObjectName | mediaUrl | async;
           @if (modalImg) {
-            <img [src]="modalImg" class="rounded object-fit-contain shadow-sm border bg-dark"
+            <img [src]="modalImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
+              class="rounded object-fit-contain shadow-sm border bg-dark"
               style="width: 60px; height: 60px;" />
           } @else {
             <div class="rounded d-flex align-items-center justify-content-center border bg-dark text-muted"
-              style="width: 60px; height: 60px; font-size: 0.6rem;">SIN FOTO</div>
+              style="width: 60px; height: 60px; font-size: 0.6rem;">
+              @if (record.imgMinioObjectName) {
+                <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+              } @else {
+                SIN FOTO
+              }
+            </div>
           }
           <div style="min-width: 0;">
             <span class="small text-muted d-block text-capitalize">Índice: {{ activeIndex() }}</span>

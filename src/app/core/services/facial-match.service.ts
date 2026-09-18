@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, catchError, tap } from 'rxjs/operators';
+import { map, catchError, switchMap, tap } from 'rxjs/operators';
 import { AppEnvironment } from '../config/app-environment';
 import { EventRecord } from '../domain/entities/event.models';
-import { MetadataMapper } from '../../data/mappers/metadata.mapper';
+import { MediaFileService } from './media-file.service';
 
 export interface FacialMatchInfo {
   personName: string;
@@ -20,6 +20,7 @@ export interface FacialMatchInfo {
 })
 export class FacialMatchService {
   private http = inject(HttpClient);
+  private mediaFileService = inject(MediaFileService);
 
   // Caché en memoria para evitar consultas redundantes a OpenSearch
   private readonly matchCache = new Map<string, FacialMatchInfo>();
@@ -97,20 +98,24 @@ export class FacialMatchService {
       };
 
       return this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/detalle_listas/_search`, queryById).pipe(
-        map(res => {
+        switchMap(res => {
           const hit = res.hits?.hits?.[0]?._source;
-          const rawImg = hit?.metadata?.url_img || hit?.url_img || hit?.url_imagen || hit?.foto;
-          const matchImgUrl = rawImg ? MetadataMapper.sanitizeImageUrl(rawImg) : (event.urlImgMatch || null);
+          const objName = hit?.metadata?.img_minio_object_name || hit?.img_minio_object_name || '';
+          const resolveImg$ = objName ? this.mediaFileService.getFileUrl(objName) : of(event.urlImgMatch || null);
 
-          const result: FacialMatchInfo = {
-            personName,
-            groupName,
-            matchImgUrl,
-            similarity: directSim,
-            isMatchConfirmed: true
-          };
-          this.matchCache.set(cacheKey, result);
-          return result;
+          return resolveImg$.pipe(
+            map(matchImgUrl => {
+              const result: FacialMatchInfo = {
+                personName,
+                groupName,
+                matchImgUrl: matchImgUrl || event.urlImgMatch || null,
+                similarity: directSim,
+                isMatchConfirmed: true
+              };
+              this.matchCache.set(cacheKey, result);
+              return result;
+            })
+          );
         }),
         catchError(err => {
           console.warn('[FacialMatchService] Error al obtener documento por detail_id:', err);
@@ -137,13 +142,13 @@ export class FacialMatchService {
     };
 
     const fetchListPhoto$ = this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/detalle_listas/_search`, queryList).pipe(
-      map(res => {
+      switchMap(res => {
         const hit = res.hits?.hits?.[0]?._source;
-        const rawImg = hit?.metadata?.url_img || hit?.url_img || hit?.url_imagen || hit?.foto;
-        if (rawImg) {
-          return MetadataMapper.sanitizeImageUrl(rawImg);
+        const objName = hit?.metadata?.img_minio_object_name || hit?.img_minio_object_name || '';
+        if (objName) {
+          return this.mediaFileService.getFileUrl(objName);
         }
-        return null;
+        return of(null);
       }),
       catchError(() => of(null))
     );
