@@ -5,8 +5,6 @@ import { map } from 'rxjs/operators';
 import { IStorageRepository, UploadResult } from '../../core/domain/repositories/storage.repository';
 import { AppEnvironment } from '../../core/config/app-environment';
 
-import { MetadataMapper } from '../mappers/metadata.mapper';
-
 @Injectable({
   providedIn: 'root'
 })
@@ -21,7 +19,7 @@ export class StorageHttpRepository implements IStorageRepository {
 
     return this.http.post<any>(`${this.apiUrl}/${category}`, formData).pipe(
       map(res => {
-        const rawUrl = res.url || res.url_img || '';
+        const rawUrl = res.img_minio_object_name || res.url || '';
         return {
           url: rawUrl,
           embedding: res.embedding || []

@@ -19,8 +19,10 @@ export class MediaFileService {
   private cache = new Map<string, Observable<string>>();
 
   /**
-   * Obtiene la URL presignada temporal para un objeto de MinIO a través del endpoint
-   * GET /frontend/extra/{object_name}
+   * Obtiene la URL temporal de un objeto en MinIO a través del endpoint
+   * GET /frontend/extra/{object_name}.
+   * Devuelve directamente la URL original provista por el backend, permitiendo
+   * acceso directo y soporte nativo para múltiples servidores MinIO o dominios públicos.
    */
   getFileUrl(objectName: string | null | undefined): Observable<string> {
     if (!objectName || !objectName.trim()) {
@@ -29,8 +31,8 @@ export class MediaFileService {
 
     const cleanName = objectName.trim().replace(/^\/+/, '');
 
-    // Si ya es una URL completa (http://, https:// o data:), retornarla directamente
-    if (/^https?:\/\//i.test(cleanName) || cleanName.startsWith('data:')) {
+    // Si ya es una URI en memoria (data:, blob:) o una URL absoluta directa (http://, https://)
+    if (cleanName.startsWith('data:') || cleanName.startsWith('blob:') || /^https?:\/\//i.test(cleanName)) {
       return of(cleanName);
     }
 
@@ -43,8 +45,8 @@ export class MediaFileService {
     // Petición al endpoint GET /frontend/extra/{object_name}
     const request$ = this.http.get<ExtraFileResponse>(`${AppEnvironment.apiUrl}/frontend/extra/${cleanName}`).pipe(
       map(res => {
-        const url = res?.url || res?.download_url || res?.presigned_url || (typeof res === 'string' ? res : '');
-        return url;
+        const rawUrl = res?.url || res?.download_url || res?.presigned_url || (typeof res === 'string' ? res : '');
+        return rawUrl || '';
       }),
       catchError(err => {
         console.warn(`[MediaFileService] Error al resolver URL para objeto "${cleanName}":`, err);

@@ -21,11 +21,12 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 import { SearchInputComponent } from '../../shared/search-input/search-input.component';
 import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
+import { MediaUrlPipe } from '../../shared/pipes/media-url.pipe';
 
 @Component({
   selector: 'app-metadatos',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, FilterActionsComponent, CustomSelectComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, EmptyStateComponent, PaginationControlsComponent, PageHeaderComponent, SearchInputComponent, FilterActionsComponent, CustomSelectComponent, MediaUrlPipe],
   templateUrl: './metadatos.html',
   styleUrl: './metadatos.css'
 })
@@ -525,9 +526,16 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onImageError(event: Event): void {
+    const target = event.target as HTMLImageElement;
+    if (target && target.src && target.src !== window.location.href) {
+      target.style.display = 'none';
+    }
+  }
+
+  onImageLoad(event: Event): void {
     const target = event.target as HTMLElement;
     if (target) {
-      target.style.display = 'none';
+      target.style.display = '';
     }
   }
 
@@ -546,7 +554,8 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     ).subscribe(params => {
       const idx = params.get('indexName') as MetaIndexName;
       if (idx) {
-        this.metadataService.initializeIndexAndState(idx, 1, this.pageSize(), this.filters());
+        const estimatedSize = this.columns() * 10;
+        this.metadataService.initializeIndexAndState(idx, 1, estimatedSize, this.filters());
       }
     });
   }
@@ -1164,7 +1173,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
 
     this.metadataService.updateFilters({
       imageEmbedding: record.embedding,
-      imageSearchUrl: record.imagenRemota,
+      imageSearchUrl: record.imgMinioObjectName || record.urlImg || '',
       imageFile: null
     });
     this.metadataService.setPage(1);

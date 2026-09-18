@@ -47,12 +47,14 @@ export class MetadataMapper {
     const score = (hit._score !== undefined && hit._score !== null && hit._score !== 1.0)
       ? hit._score
       : (typeof src.confiabilidad === 'number' ? src.confiabilidad : 0);
+    const imgMinioObjectName = src.img_minio_object_name || '';
     return {
       id: hit._id,
       camara: src.camara || '',
       timestamp: parseUtcDate(src.timestamp),
       confiabilidad: score,
-      imagenRemota: MetadataMapper.sanitizeImageUrl(src.ruta_imagen_remota),
+      imgMinioObjectName,
+      urlImg: imgMinioObjectName,
       tipoObjeto: src.tipo_objeto || '',
       edad: src.edad || '',
       genero: src.genero || '',
@@ -67,12 +69,14 @@ export class MetadataMapper {
     const score = (hit._score !== undefined && hit._score !== null && hit._score !== 1.0)
       ? hit._score
       : (typeof src.confiabilidad === 'number' ? src.confiabilidad : 0);
+    const imgMinioObjectName = src.img_minio_object_name || '';
     return {
       id: hit._id,
       camara: src.camara || '',
       timestamp: parseUtcDate(src.timestamp),
       confiabilidad: score,
-      imagenRemota: MetadataMapper.sanitizeImageUrl(src.ruta_imagen_remota),
+      imgMinioObjectName,
+      urlImg: imgMinioObjectName,
       tipoObjeto: src.tipo_objeto || '',
       colores: Array.isArray(src.colores) ? src.colores.map(MetadataMapper.toDomainColor) : [],
       reconocimiento: src.reconocimiento || '',
@@ -85,12 +89,14 @@ export class MetadataMapper {
     const score = (hit._score !== undefined && hit._score !== null && hit._score !== 1.0)
       ? hit._score
       : (typeof src.confiabilidad === 'number' ? src.confiabilidad : 0);
+    const imgMinioObjectName = src.img_minio_object_name || '';
     return {
       id: hit._id,
       camara: src.camara || '',
       timestamp: parseUtcDate(src.timestamp),
       confiabilidad: score,
-      imagenRemota: MetadataMapper.sanitizeImageUrl(src.ruta_imagen_remota),
+      imgMinioObjectName,
+      urlImg: imgMinioObjectName,
       edad: src.edad || '',
       genero: src.genero || '',
       colores: Array.isArray(src.colores) ? src.colores.map(MetadataMapper.toDomainColor) : [],
@@ -104,12 +110,14 @@ export class MetadataMapper {
     const score = (hit._score !== undefined && hit._score !== null && hit._score !== 1.0)
       ? hit._score
       : (typeof src.confiabilidad === 'number' ? src.confiabilidad : 0);
+    const imgMinioObjectName = src.img_minio_object_name || '';
     return {
       id: hit._id,
       camara: src.camara || '',
       timestamp: parseUtcDate(src.timestamp),
       confiabilidad: score,
-      imagenRemota: MetadataMapper.sanitizeImageUrl(src.ruta_imagen_remota),
+      imgMinioObjectName,
+      urlImg: imgMinioObjectName,
       tipoObjeto: src.tipo_objeto || '',
       colores: Array.isArray(src.colores) ? src.colores.map(MetadataMapper.toDomainColor) : [],
       embedding: src.embedding

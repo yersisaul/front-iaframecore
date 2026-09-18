@@ -296,6 +296,7 @@
 }
 
 @keyframes marquee-title {
+
   0%,
   15% {
     transform: translate3d(0, 0, 0);
@@ -348,6 +349,7 @@
   letter-spacing: 0.07em;
   color: var(--text-secondary);
   font-weight: 700 !important;
+  padding-left: 0.25rem;
 }
 
 .popover-section {

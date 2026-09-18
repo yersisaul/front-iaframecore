@@ -82,6 +82,7 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
       const imgTarget = this.event.imgMinioObjectName || this.event.urlImg;
       if (imgTarget) {
         this.mediaFileService.getFileUrl(imgTarget).subscribe(url => {
+          this.hasImageError.set(false);
           this.resolvedImageUrl.set(url);
         });
       } else {
@@ -308,6 +309,7 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
   }
 
   onImageLoad(event: Event): void {
+    this.hasImageError.set(false);
     const img = event.target as HTMLImageElement;
     if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
       this.mediaAspectRatio.set(img.naturalWidth / img.naturalHeight);
@@ -326,6 +328,10 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
   }
 
   onImageError(errEvent: Event): void {
+    const img = errEvent.target as HTMLImageElement;
+    if (!img?.src || img.src === window.location.href) {
+      return;
+    }
     this.hasImageError.set(true);
   }
 
@@ -395,7 +401,15 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
     return this.isFacialEvent(record) || this.isPlateEvent(record) || !!record?.matchDetail;
   }
 
+  onMatchImageLoad(event: Event): void {
+    this.hasMatchImageError.set(false);
+  }
+
   onMatchImageError(errEvent: Event): void {
+    const img = errEvent.target as HTMLImageElement;
+    if (!img?.src || img.src === window.location.href) {
+      return;
+    }
     this.hasMatchImageError.set(true);
   }
 

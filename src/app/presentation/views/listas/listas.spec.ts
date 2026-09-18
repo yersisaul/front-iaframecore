@@ -75,8 +75,9 @@ describe('Listas', () => {
       nombre_asociado: 'John Doe',
       fingerprint_host: '',
       embedding: [],
+      img_minio_object_name: 'http://face.jpg',
       metadata: {
-        url_img: 'http://face.jpg',
+        img_minio_object_name: 'http://face.jpg',
         text_placa: 'XYZ123'
       }
     };

@@ -6,7 +6,7 @@ import { IListRepository } from '../../core/domain/repositories/list.repository'
 import { List, ListDetail } from '../../core/domain/entities/list.models';
 import { AppEnvironment } from '../../core/config/app-environment';
 import { parseUtcDate } from '../../core/utils/date-utils';
-import { MetadataMapper } from '../mappers/metadata.mapper';
+import { MediaFileService } from '../../core/services/media-file.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,7 +15,7 @@ export class ListHttpRepository implements IListRepository {
   private readonly listsUrl = `${AppEnvironment.apiUrl}/frontend/lists`;
   private readonly detailsUrl = `${AppEnvironment.apiUrl}/frontend/list_details`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private mediaFileService: MediaFileService) {}
 
   getLists(): Observable<List[]> {
     return this.http.get<any[]>(`${this.listsUrl}/`).pipe(
@@ -155,15 +155,17 @@ export class ListHttpRepository implements IListRepository {
 
         const items: ListDetail[] = hits.map((h: any) => {
           const src = h._source || {};
+          const objName = src.metadata?.img_minio_object_name || src.img_minio_object_name || '';
           return {
             detail_id: src.detail_id || h._id,
             list_id: src.list_id || listId || '',
             nombre_asociado: src.nombre_asociado || '',
             fingerprint_host: src.fingerprint_host || '',
             embedding: src.embedding || [],
+            img_minio_object_name: objName,
             metadata: {
               text_placa: src.metadata?.text_placa || src.text_placa,
-              url_img: src.metadata?.url_img ? MetadataMapper.sanitizeImageUrl(src.metadata.url_img) : undefined
+              img_minio_object_name: objName
             }
           } as ListDetail;
         });
@@ -283,15 +285,17 @@ export class ListHttpRepository implements IListRepository {
   getListDetailById(detailId: string): Observable<ListDetail> {
     return this.http.get<any>(`${this.detailsUrl}/${detailId}`).pipe(
       map(res => {
+        const objName = res.metadata?.img_minio_object_name || res.img_minio_object_name || '';
         const mapped = {
           detail_id: res.detail_id,
           list_id: res.list_id,
           nombre_asociado: res.nombre_asociado || '',
           fingerprint_host: res.fingerprint_host || '',
           embedding: res.embedding || [],
+          img_minio_object_name: objName,
           metadata: {
             text_placa: res.metadata?.text_placa,
-            url_img: res.metadata?.url_img ? MetadataMapper.sanitizeImageUrl(res.metadata.url_img) : undefined
+            img_minio_object_name: objName
           }
         } as ListDetail;
         return mapped;
@@ -318,9 +322,11 @@ export class ListHttpRepository implements IListRepository {
     } else {
       // Faces: multipart/form-data
       if (!file) {
-        if (detail.metadata?.url_img) {
-          // Fetch the file from url_img first!
-          return this.http.get(detail.metadata.url_img, { responseType: 'blob' }).pipe(
+        const objName = detail.img_minio_object_name || detail.metadata?.img_minio_object_name;
+        if (objName) {
+          // Fetch the file from MinIO using MediaFileService first!
+          return this.mediaFileService.getFileUrl(objName).pipe(
+            switchMap(url => this.http.get(url, { responseType: 'blob' })),
             switchMap((blob: any) => {
               const downloadedFile = new File([blob], 'face.jpg', { type: 'image/jpeg' });
               return this.registerListDetail(detail, downloadedFile);
@@ -345,15 +351,17 @@ export class ListHttpRepository implements IListRepository {
 
     return request$.pipe(
       map(res => {
+        const objName = res.img_minio_object_name || res.metadata?.img_minio_object_name || detail.img_minio_object_name || detail.metadata?.img_minio_object_name || '';
         return {
           detail_id: res.detail_id,
           list_id: detail.list_id || '',
           nombre_asociado: detail.nombre_asociado || '',
           fingerprint_host: detail.fingerprint_host || '',
           embedding: detail.embedding || [],
+          img_minio_object_name: objName,
           metadata: {
             ...detail.metadata,
-            url_img: (res.url_img || detail.metadata?.url_img) ? MetadataMapper.sanitizeImageUrl(res.url_img || detail.metadata?.url_img) : undefined
+            img_minio_object_name: objName
           }
         } as ListDetail;
       }),
@@ -404,7 +412,7 @@ export class ListHttpRepository implements IListRepository {
       aggs: {
         by_detail_id: {
           terms: {
-            field: 'match_detail.detail_id',
+            field: 'match_detail.detail_id.keyword',
             size: 1000
           },
           aggs: {
@@ -428,7 +436,7 @@ export class ListHttpRepository implements IListRepository {
           if (src.event_id && typeof src.event_id === 'string' && src.event_id.trim()) {
             return src.event_id.trim();
           }
-          const url = src.url_img || src.url_video;
+          const url = src.img_minio_object_name || src.video_minio_object_name;
           if (url && typeof url === 'string') {
             const filename = url.split('/').pop()?.split('?')[0] || '';
             const lastDot = filename.lastIndexOf('.');
@@ -453,8 +461,8 @@ export class ListHttpRepository implements IListRepository {
               camara: src.nombre_camara || 'Cámara',
               timestamp: parseUtcDate(src.timestamp),
               confiabilidad: typeof conf === 'number' ? (conf > 1 ? conf / 100 : conf) : 1.0,
-              imagen: MetadataMapper.sanitizeImageUrl(src.url_img),
-              urlVideo: src.url_video ? MetadataMapper.sanitizeImageUrl(src.url_video) : null,
+              imagen: src.img_minio_object_name || '',
+              urlVideo: src.video_minio_object_name || null,
               tipoObjeto: src.objeto || '',
               reconocimiento: src.match_detail?.list_name || src.objeto || '',
               detalleEvento: src.detalle_evento || '',
@@ -505,7 +513,7 @@ export class ListHttpRepository implements IListRepository {
           if (src.event_id && typeof src.event_id === 'string' && src.event_id.trim()) {
             return src.event_id.trim();
           }
-          const url = src.url_img || src.url_video;
+          const url = src.img_minio_object_name || src.video_minio_object_name;
           if (url && typeof url === 'string') {
             const filename = url.split('/').pop()?.split('?')[0] || '';
             const lastDot = filename.lastIndexOf('.');
@@ -525,8 +533,8 @@ export class ListHttpRepository implements IListRepository {
             camara: src.nombre_camara || 'Cámara',
             timestamp: parseUtcDate(src.timestamp),
             confiabilidad: typeof conf === 'number' ? (conf > 1 ? conf / 100 : conf) : 1.0,
-            imagen: MetadataMapper.sanitizeImageUrl(src.url_img),
-            urlVideo: src.url_video ? MetadataMapper.sanitizeImageUrl(src.url_video) : null,
+            imagen: src.img_minio_object_name || '',
+            urlVideo: src.video_minio_object_name || null,
             tipoObjeto: src.objeto || '',
             reconocimiento: src.match_detail?.list_name || src.objeto || '',
             detalleEvento: src.detalle_evento || '',
@@ -564,16 +572,20 @@ export class ListHttpRepository implements IListRepository {
     formData.append('file', file, file.name);
 
     return this.http.put<any>(`${this.detailsUrl}/update_face_img/${detailId}`, formData).pipe(
-      map(res => ({
-        detail_id: res.detail_id || detailId,
-        list_id: res.list_id || '',
-        nombre_asociado: res.nombre_asociado || '',
-        fingerprint_host: res.fingerprint_host || '',
-        embedding: res.embedding || [],
-        metadata: {
-          url_img: res.url_img ? MetadataMapper.sanitizeImageUrl(res.url_img) : undefined
-        }
-      } as ListDetail))
+      map(res => {
+        const objName = res.img_minio_object_name || res.metadata?.img_minio_object_name || '';
+        return {
+          detail_id: res.detail_id || detailId,
+          list_id: res.list_id || '',
+          nombre_asociado: res.nombre_asociado || '',
+          fingerprint_host: res.fingerprint_host || '',
+          embedding: res.embedding || [],
+          img_minio_object_name: objName,
+          metadata: {
+            img_minio_object_name: objName
+          }
+        } as ListDetail;
+      })
     );
   }
 
@@ -584,16 +596,20 @@ export class ListHttpRepository implements IListRepository {
     return this.http.put<any>(`${this.detailsUrl}/update_face_detail/${detailId}`, body.toString(), {
       headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded')
     }).pipe(
-      map(res => ({
-        detail_id: res.detail_id || detailId,
-        list_id: res.list_id || listId || '',
-        nombre_asociado: res.nombre_asociado || payload.nombre_asociado,
-        fingerprint_host: res.fingerprint_host || '',
-        embedding: res.embedding || [],
-        metadata: {
-          url_img: res.url_img ? MetadataMapper.sanitizeImageUrl(res.url_img) : undefined
-        }
-      } as ListDetail))
+      map(res => {
+        const objName = res.img_minio_object_name || res.metadata?.img_minio_object_name || '';
+        return {
+          detail_id: res.detail_id || detailId,
+          list_id: res.list_id || listId || '',
+          nombre_asociado: res.nombre_asociado || payload.nombre_asociado,
+          fingerprint_host: res.fingerprint_host || '',
+          embedding: res.embedding || [],
+          img_minio_object_name: objName,
+          metadata: {
+            img_minio_object_name: objName
+          }
+        } as ListDetail;
+      })
     );
   }
 
@@ -607,28 +623,34 @@ export class ListHttpRepository implements IListRepository {
     return this.http.put<any>(`${this.detailsUrl}/update_plate_detail/${detailId}`, body.toString(), {
       headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded')
     }).pipe(
-      map(res => ({
-        detail_id: res.detail_id || detailId,
-        list_id: res.list_id || listId || '',
-        nombre_asociado: res.nombre_asociado || payload.nombre_asociado || '',
-        fingerprint_host: res.fingerprint_host || '',
-        embedding: res.embedding || [],
-        metadata: {
-          text_placa: res.metadata?.text_placa || payload.plate_text,
-          url_img: res.metadata?.url_img ? MetadataMapper.sanitizeImageUrl(res.metadata.url_img) : undefined
-        }
-      } as ListDetail))
+      map(res => {
+        const objName = res.img_minio_object_name || res.metadata?.img_minio_object_name || '';
+        return {
+          detail_id: res.detail_id || detailId,
+          list_id: res.list_id || listId || '',
+          nombre_asociado: res.nombre_asociado || payload.nombre_asociado || '',
+          fingerprint_host: res.fingerprint_host || '',
+          embedding: res.embedding || [],
+          img_minio_object_name: objName,
+          metadata: {
+            text_placa: res.metadata?.text_placa || payload.plate_text,
+            img_minio_object_name: objName
+          }
+        } as ListDetail;
+      })
     );
   }
 
   private sanitizeDetails(details: ListDetail[]): ListDetail[] {
     return (details || []).map(d => {
-      if (d && d.metadata && d.metadata.url_img) {
+      if (d) {
+        const objName = d.img_minio_object_name || d.metadata?.img_minio_object_name || '';
         return {
           ...d,
+          img_minio_object_name: objName,
           metadata: {
             ...d.metadata,
-            url_img: MetadataMapper.sanitizeImageUrl(d.metadata.url_img)
+            img_minio_object_name: objName
           }
         };
       }

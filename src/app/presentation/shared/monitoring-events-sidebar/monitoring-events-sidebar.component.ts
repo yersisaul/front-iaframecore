@@ -200,9 +200,16 @@ export class MonitoringEventsSidebarComponent {
   }
 
   onImageError(event: Event): void {
+    const target = event.target as HTMLImageElement;
+    if (target && target.src && target.src !== window.location.href) {
+      target.style.opacity = '0';
+    }
+  }
+
+  onImageLoad(event: Event): void {
     const target = event.target as HTMLElement;
     if (target) {
-      target.style.opacity = '0';
+      target.style.opacity = '1';
     }
   }
 

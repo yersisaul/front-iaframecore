@@ -171,7 +171,7 @@
                     {{ cam.name }}
                   </span>
                   <div class="camera-meta-details">
-                    @for (badge of getCameraAnalytics(cam); track badge) {
+                    @for (badge of getCameraAnalytics(cam); track $index) {
                     <span class="camera-analytic-badge">{{ badge }}</span>
                     }
                   </div>
@@ -223,7 +223,7 @@
                 {{ cam.name }}
               </span>
               <div class="camera-meta-details">
-                @for (badge of getCameraAnalytics(cam); track badge) {
+                @for (badge of getCameraAnalytics(cam); track $index) {
                 <span class="camera-analytic-badge">{{ badge }}</span>
                 }
               </div>

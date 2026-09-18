@@ -23,7 +23,10 @@ export interface MetaBaseRecord {
   camara: string;
   timestamp: Date;
   confiabilidad: number;
-  imagenRemota: string;
+  imgMinioObjectName?: string;
+  videoMinioObjectName?: string;
+  urlImg?: string;
+  urlVideo?: string;
   embedding?: number[];
 }
 

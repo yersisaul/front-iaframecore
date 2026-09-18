@@ -259,37 +259,42 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly hostSearch = signal<string>('');
 
   // ── Control de Visibilidad de Columnas de Tabla ──────────────────────────
-  readonly columnVisibility = signal<{ stream: boolean; decoder: boolean; coords: boolean }>({
+  readonly columnVisibility = signal<{ stream: boolean; decoder: boolean }>({
     stream: true,
-    decoder: true,
-    coords: true
+    decoder: true
   });
 
-  isColumnVisible(column: 'stream' | 'decoder' | 'coords'): boolean {
+  isColumnVisible(column: 'stream' | 'decoder'): boolean {
     return this.columnVisibility()[column];
   }
 
   readonly hasHiddenColumns = computed<boolean>(() => {
     const v = this.columnVisibility();
-    return !v.stream || !v.decoder || !v.coords;
+    return !v.stream || !v.decoder;
   });
 
-  readonly hiddenColumnsList = computed<{ key: 'stream' | 'decoder' | 'coords'; label: string }[]>(() => {
+  readonly activeActionColumn = computed<'decoder' | 'stream' | 'add-column'>(() => {
     const v = this.columnVisibility();
-    const list: { key: 'stream' | 'decoder' | 'coords'; label: string }[] = [];
+    if (v.decoder) return 'decoder';
+    if (v.stream) return 'stream';
+    return 'add-column';
+  });
+
+  readonly hiddenColumnsList = computed<{ key: 'stream' | 'decoder'; label: string }[]>(() => {
+    const v = this.columnVisibility();
+    const list: { key: 'stream' | 'decoder'; label: string }[] = [];
     if (!v.stream) list.push({ key: 'stream', label: 'Stream' });
     if (!v.decoder) list.push({ key: 'decoder', label: 'Decoder' });
-    if (!v.coords) list.push({ key: 'coords', label: 'Coordenadas' });
     return list;
   });
 
-  hideColumn(column: 'stream' | 'decoder' | 'coords', event?: Event): void {
+  hideColumn(column: 'stream' | 'decoder', event?: Event): void {
     event?.stopPropagation();
     this.columnVisibility.update(v => ({ ...v, [column]: false }));
     this.saveColumnVisibilityToStorage();
   }
 
-  showColumn(column: 'stream' | 'decoder' | 'coords', event?: Event): void {
+  showColumn(column: 'stream' | 'decoder', event?: Event): void {
     event?.stopPropagation();
     this.columnVisibility.update(v => ({ ...v, [column]: true }));
     this.saveColumnVisibilityToStorage();
@@ -300,7 +305,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   showAllColumns(event?: Event): void {
     event?.stopPropagation();
-    this.columnVisibility.set({ stream: true, decoder: true, coords: true });
+    this.columnVisibility.set({ stream: true, decoder: true });
     this.saveColumnVisibilityToStorage();
     this.activeDropdown.set(null);
   }
@@ -312,8 +317,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
         const parsed = JSON.parse(saved);
         this.columnVisibility.set({
           stream: parsed.stream !== false,
-          decoder: parsed.decoder !== false,
-          coords: parsed.coords !== false
+          decoder: parsed.decoder !== false
         });
       }
     } catch {

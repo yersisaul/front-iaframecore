@@ -3,10 +3,24 @@ const path = require('path');
 
 const configDir = path.join(__dirname, 'src', 'app', 'core', 'config');
 const appEnvPath = path.join(configDir, 'app-environment.ts');
+const envPath = path.join(__dirname, '.env');
 
 function getEnvValue(key) {
   if (process.env[key]) {
     return process.env[key];
+  }
+
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, 'utf8');
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const parts = trimmed.split('=');
+      if (parts[0].trim() === key) {
+        return parts.slice(1).join('=').trim().replace(/^['"]|['"]$/g, '');
+      }
+    }
   }
 
   return null;
@@ -17,6 +31,8 @@ function getEnvValue(key) {
 const dashboardPath =
   getEnvValue('DASHBOARD_DEFAULT_PATH') || '/app/dashboards';
 
+const isDebug = getEnvValue('DEBUG') === 'true';
+
 const normalizedPath = dashboardPath.startsWith('/')
   ? dashboardPath
   : '/' + dashboardPath;
@@ -24,6 +40,7 @@ const normalizedPath = dashboardPath.startsWith('/')
 const appEnvContent = `export const AppEnvironment = {
   production: true,
   version: '1.0.0',
+  debug: ${isDebug},
 
   enableBackendWorkarounds: true,
 

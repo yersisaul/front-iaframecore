@@ -12,7 +12,7 @@
   @if (isOpen()) {
   <div class="filter-dropdown-menu custom-select-menu p-1 shadow-lg animation-popover-in"
     (click)="$event.stopPropagation()">
-    <div class="custom-select-menu-inner custom-scrollbar">
+    <div class="custom-select-menu-inner">
       @for (opt of normalizedOptions(); track opt.value) {
       <button type="button"
         class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center justify-content-between w-100"

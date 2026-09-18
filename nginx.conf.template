@@ -88,22 +88,7 @@ server {
         ${OPENSEARCH_AUTH_HEADER}
     }
 
-    # 5. Settings endpoint (PUT only)
-    location = /opensearch/_all/_settings {
-        limit_except PUT {
-            deny all;
-        }
-        rewrite ^/opensearch/(.*)$ /$1 break;
-        proxy_pass ${OPENSEARCH_HOST};
-        proxy_set_header Host $proxy_host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_hide_header WWW-Authenticate;
-        ${OPENSEARCH_AUTH_HEADER}
-    }
-
-    # 6. Deny access to any other OpenSearch paths
+    # 5. Deny access to any other OpenSearch paths
     location /opensearch/ {
         deny all;
     }

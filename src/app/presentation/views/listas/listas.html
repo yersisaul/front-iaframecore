@@ -322,17 +322,19 @@
 
               <!-- Subject Avatar/Image -->
               <div class="subject-card-img-wrapper">
+                @let objName = detail.img_minio_object_name || detail.metadata?.img_minio_object_name;
+                @let resolvedDetailImg = objName ? (objName | mediaUrl | async) : null;
                 <div class="subject-card-placeholder shadow-sm"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'"
-                  [style.display]="detail.metadata?.url_img ? 'none' : 'flex'">
+                  [style.display]="resolvedDetailImg ? 'none' : 'flex'">
                   <span class="icon-svg" [class.icon-user]="listType() === 'face_recognition'"
                     [class.icon-camara]="listType() !== 'face_recognition'"
                     style="width: 22px; height: 22px; background-color: var(--text-muted); opacity: 0.6;"></span>
                   <span class="subject-card-placeholder-text">SIN IMAGEN</span>
                 </div>
-                @if (detail.metadata?.url_img) {
-                <img [src]="detail.metadata?.url_img || ''" (error)="onImageError($event)"
+                @if (resolvedDetailImg) {
+                <img [src]="resolvedDetailImg" (error)="onImageError($event)" (load)="onImageLoad($event)"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'" class="subject-card-avatar shadow-sm"
                   alt="Foto" />
@@ -440,22 +442,24 @@
             <!-- Columna Izquierda: Solo Foto/Avatar Independiente -->
             <div class="identity-column-left">
               <div class="identity-avatar-header position-relative d-flex align-items-center justify-content-center">
+                @let activeObjName = activeDetail.img_minio_object_name || activeDetail.metadata?.img_minio_object_name;
+                @let resolvedActiveImg = activeObjName ? (activeObjName | mediaUrl | async) : null;
                 <div class="subject-card-placeholder drawer-avatar-placeholder shadow-sm"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'"
-                  [style.display]="activeDetail.metadata?.url_img ? 'none' : 'flex'">
+                  [style.display]="resolvedActiveImg ? 'none' : 'flex'">
                   <span class="icon-svg" [class.icon-user]="listType() === 'face_recognition'"
                     [class.icon-camara]="listType() !== 'face_recognition'"
                     style="width: 32px; height: 32px; background-color: var(--text-muted); opacity: 0.6;"></span>
                   <span class="subject-card-placeholder-text" style="font-size: 0.72rem; margin-top: 4px;">SIN
                     IMAGEN</span>
                 </div>
-                @if (activeDetail.metadata?.url_img) {
-                <img [src]="activeDetail.metadata?.url_img || ''" (error)="onImageError($event)"
+                @if (resolvedActiveImg) {
+                <img [src]="resolvedActiveImg" (error)="onImageError($event)" (load)="onImageLoad($event)"
                   class="identity-avatar object-fit-cover shadow-sm cursor-pointer"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'"
-                  (click)="openFullscreenImage(activeDetail.metadata?.url_img || '', $event)" alt="Foto" />
+                  (click)="openFullscreenImage(resolvedActiveImg, $event)" alt="Foto" />
                 }
               </div>
             </div>
@@ -623,13 +627,14 @@
                 <div class="d-flex gap-3 align-items-center">
                   <div
                     class="timeline-img-wrapper flex-shrink-0 position-relative d-flex align-items-center justify-content-center">
+                    @let resolvedHitImg = hit.imagen ? (hit.imagen | mediaUrl | async) : null;
                     <div class="subject-card-placeholder timeline-sighting-placeholder shadow-xs rounded-circle"
-                      [style.display]="hit.imagen ? 'none' : 'flex'">
+                      [style.display]="resolvedHitImg ? 'none' : 'flex'">
                       <span class="icon-svg icon-camara"
                         style="width: 14px; height: 14px; background-color: var(--text-muted); opacity: 0.6;"></span>
                     </div>
-                    @if (hit.imagen) {
-                    <img [src]="hit.imagen" (error)="onImageError($event)"
+                    @if (resolvedHitImg) {
+                    <img [src]="resolvedHitImg" (error)="onImageError($event)" (load)="onImageLoad($event)"
                       class="timeline-sighting-img rounded-circle shadow-xs" alt="Avistamiento" />
                     }
                   </div>
@@ -680,8 +685,9 @@
 
     <!-- Image Hero -->
     <div class="sighting-preview-hero position-relative">
+      @let resolvedHitPreview = hit.imagen ? (hit.imagen | mediaUrl | async) : null;
       <div class="subject-card-placeholder flex-column align-items-center justify-content-center"
-        [style.display]="hit.imagen ? 'none' : 'flex'"
+        [style.display]="resolvedHitPreview ? 'none' : 'flex'"
         style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; background-color: var(--bg-dark-surface, var(--bg-primary)); z-index: 1;">
         <span class="icon-svg icon-camara"
           style="width: 32px; height: 32px; background-color: var(--text-muted); opacity: 0.6;"></span>
@@ -689,10 +695,10 @@
           style="font-size: 0.75rem; letter-spacing: 0.05em; font-weight: 600;">SIN IMAGEN</span>
       </div>
 
-      @if (hit.imagen) {
+      @if (resolvedHitPreview) {
       <div class="sighting-preview-img-container w-100 h-100 position-relative cursor-pointer"
-        (click)="openFullscreenImage(hit.imagen, $event)" title="Clic para ver en pantalla completa">
-        <img [src]="hit.imagen" (error)="onImageError($event)" class="sighting-preview-img" alt="Avistamiento" />
+        (click)="openFullscreenImage(resolvedHitPreview, $event)" title="Clic para ver en pantalla completa">
+        <img [src]="resolvedHitPreview" (error)="onImageError($event)" (load)="onImageLoad($event)" class="sighting-preview-img" alt="Avistamiento" />
         <div class="sighting-preview-zoom-overlay">
           <span class="icon-svg icon-fullscreen"
             style="width: 20px; height: 20px; background-color: currentColor;"></span>
@@ -834,7 +840,7 @@
           <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
             style="font-size: 0.65rem; letter-spacing: 0.05em;">Posturas</div>
           <div class="attributes-grid">
-            @for (pos of getPosturas(hit); track pos.postura) {
+            @for (pos of getPosturas(hit); track (pos.postura + '-' + $index)) {
             <span class="attribute-pill posture-pill text-capitalize">
               {{ pos.postura }}
               <span class="posture-count">{{ pos.conteo }}</span>
@@ -850,7 +856,7 @@
           <div class="popover-section-title text-muted text-uppercase fw-bold mb-2"
             style="font-size: 0.65rem; letter-spacing: 0.05em;">Colores Detectados</div>
           <div class="attributes-grid">
-            @for (col of hit.colores; track col.colorText) {
+            @for (col of hit.colores; track $index) {
             <span class="color-pill-v2 d-inline-flex align-items-center rounded-pill py-1 px-2 border"
               [style.background-color]="getColorStyle(col)"
               [style.color]="getColorLuminance(col.r, col.g, col.b) > 0.6 ? '#1e293b' : '#ffffff'"
@@ -941,7 +947,7 @@
             <!-- Grid Premium de Borradores de Importación -->
             <div class="import-drafts-grid w-100 mt-2 overflow-y-auto scroll-container pe-1"
               (scroll)="onDraftsScroll($event)" (click)="$event.stopPropagation()">
-              @for (draft of faceImportDrafts(); track draft.previewUrl; let idx = $index) {
+              @for (draft of faceImportDrafts(); track (draft.previewUrl || idx); let idx = $index) {
               <div
                 class="preview-card-premium position-relative d-flex flex-column align-items-center p-3 rounded-4 border bg-surface-card transition-all">
 
@@ -1472,7 +1478,7 @@
               @if (selectedEditFaceFile()) {
               <button
                 class="btn-ghost remove-preview-btn position-absolute p-1 rounded-circle shadow border bg-body modal-remove-btn"
-                (click)="selectedEditFaceFile.set(null); editFaceImagePreviewUrl.set(selectedSubjectDetail()?.metadata?.url_img || null); $event.stopPropagation()"
+                (click)="resetEditFaceFile($event)"
                 title="Deshacer Cambio" [disabled]="isUpdatingSubject()">
                 <span class="icon-svg icon-close text-danger" style="width: 14px; height: 14px;"></span>
               </button>
