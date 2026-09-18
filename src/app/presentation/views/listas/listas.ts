@@ -15,6 +15,7 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 import { FilterActionsComponent } from '../../shared/filter-actions/filter-actions.component';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
+import { MediaUrlPipe } from '../../shared/pipes/media-url.pipe';
 
 export interface FaceUploadResult {
   file: File;
@@ -67,7 +68,7 @@ export interface SubjectImportDraft {
 @Component({
   selector: 'app-listas',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent, FilterActionsComponent, EmptyStateComponent, PaginationControlsComponent, CustomSelectComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, ConfirmDeleteModalComponent, PageHeaderComponent, FilterActionsComponent, EmptyStateComponent, PaginationControlsComponent, CustomSelectComponent, MediaUrlPipe],
   templateUrl: './listas.html',
   styleUrl: './listas.css'
 })

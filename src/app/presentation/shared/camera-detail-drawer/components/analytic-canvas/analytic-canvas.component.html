@@ -25,10 +25,11 @@
     }
 
     <!-- Imagen del Último Evento o Placeholder Sleek Bloqueado -->
-    @if (effectiveImageUrl() && !imageFailed()) {
+    @if (effectiveImageUrl()) {
     <img [src]="effectiveImageUrl()" alt="" class="camera-snapshot-img select-none" (load)="onImageLoad($event)"
-      (error)="onImageError($event)" draggable="false" />
-    } @else {
+      (error)="onImageError($event)" draggable="false" [style.display]="imageFailed() ? 'none' : 'block'" />
+    }
+    @if (!effectiveImageUrl() || imageFailed()) {
     <div
       class="camera-snapshot-placeholder d-flex flex-column align-items-center justify-content-center w-100 h-100 select-none gap-2">
       <div class="placeholder-icon-ring mb-2.5 d-flex align-items-center justify-content-center">

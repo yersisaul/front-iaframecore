@@ -404,7 +404,7 @@ export class ListHttpRepository implements IListRepository {
       aggs: {
         by_detail_id: {
           terms: {
-            field: 'match_detail.detail_id',
+            field: 'match_detail.detail_id.keyword',
             size: 1000
           },
           aggs: {
@@ -525,8 +525,8 @@ export class ListHttpRepository implements IListRepository {
             camara: src.nombre_camara || 'Cámara',
             timestamp: parseUtcDate(src.timestamp),
             confiabilidad: typeof conf === 'number' ? (conf > 1 ? conf / 100 : conf) : 1.0,
-            imagen: MetadataMapper.sanitizeImageUrl(src.url_img),
-            urlVideo: src.url_video ? MetadataMapper.sanitizeImageUrl(src.url_video) : null,
+            imagen: MetadataMapper.sanitizeImageUrl(src.img_minio_object_name),
+            urlVideo: src.video_minio_object_name ? MetadataMapper.sanitizeImageUrl(src.video_minio_object_name) : null,
             tipoObjeto: src.objeto || '',
             reconocimiento: src.match_detail?.list_name || src.objeto || '',
             detalleEvento: src.detalle_evento || '',

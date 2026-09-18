@@ -116,7 +116,7 @@ export class EventMapper {
     const videoMinioObjectName = src.video_minio_object_name || null;
 
     return {
-      id: resolvedId,
+      id: hit._id,
       eventId: src.event_id || resolvedId,
       timestamp: parseUtcDate(src.timestamp),
       hora: typeof src.hora === 'number' ? src.hora : 0,

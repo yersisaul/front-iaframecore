@@ -573,27 +573,16 @@
             [class.host-card--deleting]="hostService.deletingHostIds().has(host.fingerprint)"
             [class.has-delete-permission]="permissionsService.hasPermission('Hosts', 'eliminar')"
             (click)="goToCameras(host.fingerprint)">
-            <!-- Estado: Se convierte en botón completo de eliminar al hacer hover en la fila -->
+            <!-- Estado -->
             <td class="col-status text-center">
-              <div class="table-status-cell-inner">
-                <span class="table-status-content d-inline-flex align-items-center justify-content-center gap-2">
-                  <span class="status-dot" [class.online]="host.status === 'active' || host.status === 'online'"></span>
-                  <span class="fw-semibold" [class.text-success]="host.status === 'active' || host.status === 'online'"
-                    [class.text-danger]="host.status !== 'active' && host.status !== 'online'"
-                    style="font-size: 0.88rem;">
-                    {{ (host.status === 'active' || host.status === 'online') ? 'Online' : 'Offline' }}
-                  </span>
+              <span class="d-inline-flex align-items-center justify-content-center gap-2">
+                <span class="status-dot" [class.online]="host.status === 'active' || host.status === 'online'"></span>
+                <span class="fw-semibold" [class.text-success]="host.status === 'active' || host.status === 'online'"
+                  [class.text-danger]="host.status !== 'active' && host.status !== 'online'"
+                  style="font-size: 0.88rem;">
+                  {{ (host.status === 'active' || host.status === 'online') ? 'Online' : 'Offline' }}
                 </span>
-
-                @if (permissionsService.hasPermission('Hosts', 'eliminar')) {
-                <button type="button"
-                  class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
-                  (click)="$event.stopPropagation(); openDeleteHostModal(host, $event)" title="Eliminar nodo"
-                  aria-label="Eliminar nodo">
-                  <span class="icon-svg icon-trash"></span>
-                </button>
-                }
-              </div>
+              </span>
             </td>
             <!-- Hostname -->
             <td class="col-hostname">
@@ -719,20 +708,33 @@
               <span class="text-muted" style="font-size: 0.82rem;">-</span>
               }
             </td>
-            <!-- Última Vez -->
+            <!-- Última Vez: Se convierte en botón completo de eliminar al hacer hover en la fila -->
             <td class="col-last-seen text-center">
-              @if (host.metrics?.lastSeen) {
-              <div class="d-flex flex-column align-items-center justify-content-center" style="gap: 2px;">
-                <span class="text-body fw-medium font-monospace text-nowrap" style="font-size: 0.82rem;">
-                  {{ host.metrics?.lastSeen | date:'dd/MM/yyyy' }}
-                </span>
-                <span class="text-muted font-monospace text-nowrap" style="font-size: 0.76rem;">
-                  {{ host.metrics?.lastSeen | date:'HH:mm:ss' }}
-                </span>
+              <div class="table-last-seen-cell-inner">
+                <div class="table-last-seen-content">
+                  @if (host.metrics?.lastSeen) {
+                  <div class="d-flex flex-column align-items-center justify-content-center" style="gap: 2px;">
+                    <span class="text-body fw-medium font-monospace text-nowrap" style="font-size: 0.82rem;">
+                      {{ host.metrics?.lastSeen | date:'dd/MM/yyyy' }}
+                    </span>
+                    <span class="text-muted font-monospace text-nowrap" style="font-size: 0.76rem;">
+                      {{ host.metrics?.lastSeen | date:'HH:mm:ss' }}
+                    </span>
+                  </div>
+                  } @else {
+                  <span class="text-muted font-monospace" style="font-size: 0.82rem;">-</span>
+                  }
+                </div>
+
+                @if (permissionsService.hasPermission('Hosts', 'eliminar')) {
+                <button type="button"
+                  class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
+                  (click)="$event.stopPropagation(); openDeleteHostModal(host, $event)" title="Eliminar nodo"
+                  aria-label="Eliminar nodo">
+                  <span class="icon-svg icon-trash"></span>
+                </button>
+                }
               </div>
-              } @else {
-              <span class="text-muted font-monospace" style="font-size: 0.82rem;">-</span>
-              }
             </td>
           </tr>
           }

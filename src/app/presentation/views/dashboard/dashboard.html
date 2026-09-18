@@ -222,8 +222,8 @@
     <div
       class="browser-iframe-viewport position-relative flex-grow-1 overflow-hidden d-flex align-items-center justify-content-center">
       @if (morphItem()?.url_img) {
-      <img [src]="getSanitizedImg(morphItem()?.url_img)" class="w-100 h-100 object-fit-contain morph-preview-img"
-        alt="" />
+      <img [src]="getSanitizedImg(morphItem()?.url_img)" class="w-100 h-100 object-fit-cover morph-preview-img"
+        style="object-position: top center;" alt="" />
       } @else {
       <div class="d-flex flex-column align-items-center justify-content-center text-muted">
         <span class="icon-svg icon-dashboard opacity-40 mb-2" style="width: 2.5rem; height: 2.5rem;"></span>

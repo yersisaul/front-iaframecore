@@ -50,17 +50,25 @@
             </div>
             }
             } @else {
-            @if ((resolvedImageUrl() || selectedEvent.imgMinioObjectName || selectedEvent.urlImg) && !hasImageError()) {
+            @if (resolvedImageUrl() || selectedEvent.imgMinioObjectName || selectedEvent.urlImg) {
             <img [src]="resolvedImageUrl() || selectedEvent.urlImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
-              class="stage-media-element img-element select-none" alt="Captura del evento" />
+              class="stage-media-element img-element select-none" alt="Captura del evento"
+              [style.display]="hasImageError() ? 'none' : 'block'" />
 
             <!-- Lente Lupa Magnifier (Sólo en modo Imagen normal) -->
-            @if (activeMediaType() === 'image' && isZoomed()) {
+            @if (activeMediaType() === 'image' && isZoomed() && !hasImageError()) {
             <div class="magnifier-lens" [style.left.px]="zoomX()" [style.top.px]="zoomY()"
               [style.width.px]="zoomLensDiameter()" [style.height.px]="zoomLensDiameter()"
               [style.background-image]="'url(' + (resolvedImageUrl() || selectedEvent.urlImg) + ')'"
               [style.background-position]="zoomBgX() + 'px ' + zoomBgY() + 'px'"
               [style.background-size]="zoomBgWidth() + 'px ' + zoomBgHeight() + 'px'">
+            </div>
+            }
+
+            @if (hasImageError()) {
+            <div class="comparison-img-fallback select-none">
+              <span class="icon-svg icon-warning fallback-icon" style="background-color: #f59e0b;"></span>
+              <span>Captura no disponible</span>
             </div>
             }
             } @else {
@@ -90,9 +98,16 @@
               <span class="spinner-border spinner-border-sm text-primary mb-2" role="status"></span>
               <span class="text-muted small">Cargando foto...</span>
             </div>
-            } @else if (matchData()?.matchImgUrl && !hasMatchImageError()) {
+            } @else if (matchData()?.matchImgUrl) {
             <img [src]="matchData()?.matchImgUrl" (error)="onMatchImageError($event)"
-              class="stage-media-element img-element select-none" alt="Fotografía en Lista de Control" />
+              class="stage-media-element img-element select-none" alt="Fotografía en Lista de Control"
+              [style.display]="hasMatchImageError() ? 'none' : 'block'" />
+            @if (hasMatchImageError()) {
+            <div class="comparison-img-fallback select-none">
+              <span class="icon-svg icon-user fallback-icon text-muted" style="width: 28px; height: 28px;"></span>
+              <span class="text-muted small">Foto no disponible</span>
+            </div>
+            }
             } @else {
             <div class="comparison-img-fallback select-none">
               <span class="icon-svg icon-user fallback-icon text-muted" style="width: 28px; height: 28px;"></span>

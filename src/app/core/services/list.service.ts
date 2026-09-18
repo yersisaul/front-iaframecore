@@ -239,7 +239,7 @@ export class ListService {
       fingerprint_host: '', // Global scope
       embedding: [],
       metadata: {
-        url_img: record.imagenRemota,
+        url_img: record.imgMinioObjectName || '',
         document_id: record.id,
         ...(listType === 'plate_recognition' ? { text_placa: record.reconocimiento } : {})
       }

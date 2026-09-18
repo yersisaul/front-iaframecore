@@ -510,19 +510,20 @@
           @if (!hostId()) {
           <col class="col-host">
           }
-          @if (isColumnVisible('stream')) {
+          <col class="col-analytics">
+          @if (isColumnVisible('stream') && activeActionColumn() !== 'stream') {
           <col class="col-stream">
           }
-          @if (isColumnVisible('decoder')) {
-          <col class="col-decoder">
-          }
-          @if (isColumnVisible('coords')) {
-          <col class="col-coords">
-          }
-          @if (hasHiddenColumns()) {
+          @if (hasHiddenColumns() && activeActionColumn() !== 'add-column') {
           <col class="col-add-column">
           }
-          <col class="col-analytics">
+          @if (activeActionColumn() === 'decoder') {
+          <col class="col-decoder">
+          } @else if (activeActionColumn() === 'stream') {
+          <col class="col-stream">
+          } @else {
+          <col class="col-add-column">
+          }
         </colgroup>
         <thead>
           <tr>
@@ -549,7 +550,10 @@
               </div>
             </th>
             }
-            @if (isColumnVisible('stream')) {
+            <th scope="col" class="col-analytics text-muted small fw-bold">ANALITICAS POR CAMARA</th>
+
+            <!-- STREAM como penúltima si DECODER está activo -->
+            @if (isColumnVisible('stream') && activeActionColumn() !== 'stream') {
             <th scope="col" class="col-stream text-muted small fw-bold text-center">
               <button type="button" class="btn-th-column-toggle" (click)="hideColumn('stream', $event)"
                 title="Ocultar columna Stream">
@@ -560,29 +564,9 @@
               </button>
             </th>
             }
-            @if (isColumnVisible('decoder')) {
-            <th scope="col" class="col-decoder text-muted small fw-bold text-center">
-              <button type="button" class="btn-th-column-toggle" (click)="hideColumn('decoder', $event)"
-                title="Ocultar columna Decodificador">
-                <span class="col-label-text">DECODER</span>
-                <span class="col-label-hover-icon">
-                  <span class="icon-svg icon-trash"></span>
-                </span>
-              </button>
-            </th>
-            }
-            @if (isColumnVisible('coords')) {
-            <th scope="col" class="col-coords text-muted small fw-bold text-center">
-              <button type="button" class="btn-th-column-toggle" (click)="hideColumn('coords', $event)"
-                title="Ocultar columna Coordenadas">
-                <span class="col-label-text">COORDENADAS</span>
-                <span class="col-label-hover-icon">
-                  <span class="icon-svg icon-trash"></span>
-                </span>
-              </button>
-            </th>
-            }
-            @if (hasHiddenColumns()) {
+
+            <!-- Botón [+] de añadir columnas cuando queda PENÚLTIMA -->
+            @if (hasHiddenColumns() && activeActionColumn() !== 'add-column') {
             <th scope="col" class="col-add-column text-center position-relative">
               <div class="position-relative d-inline-block">
                 <button type="button" class="btn-add-table-column"
@@ -618,7 +602,65 @@
               </div>
             </th>
             }
-            <th scope="col" class="col-analytics text-muted small fw-bold pe-3">ANALITICAS POR CAMARA</th>
+
+            <!-- ÚLTIMA COLUMNA ACTIVA (Aloja el botón de eliminar en hover en tbody) -->
+            @if (activeActionColumn() === 'decoder') {
+            <th scope="col" class="col-decoder text-muted small fw-bold text-center">
+              <button type="button" class="btn-th-column-toggle" (click)="hideColumn('decoder', $event)"
+                title="Ocultar columna Decodificador">
+                <span class="col-label-text">DECODER</span>
+                <span class="col-label-hover-icon">
+                  <span class="icon-svg icon-trash"></span>
+                </span>
+              </button>
+            </th>
+            } @else if (activeActionColumn() === 'stream') {
+            <th scope="col" class="col-stream text-muted small fw-bold text-center">
+              <button type="button" class="btn-th-column-toggle" (click)="hideColumn('stream', $event)"
+                title="Ocultar columna Stream">
+                <span class="col-label-text">STREAM</span>
+                <span class="col-label-hover-icon">
+                  <span class="icon-svg icon-trash"></span>
+                </span>
+              </button>
+            </th>
+            } @else {
+            <!-- Si no hay columnas de datos visibles, [+] es la ÚLTIMA columna -->
+            <th scope="col" class="col-add-column text-center position-relative">
+              <div class="position-relative d-inline-block">
+                <button type="button" class="btn-add-table-column"
+                  [class.active]="activeDropdown() === 'restoreColumns'"
+                  (click)="toggleDropdown('restoreColumns', $event)" title="Restaurar columnas ocultas">
+                  <span class="icon-svg icon-plus" style="width: 12px; height: 12px;"></span>
+                </button>
+
+                @if (activeDropdown() === 'restoreColumns') {
+                <div class="filter-dropdown-menu dropdown-restore-columns p-2 shadow-lg"
+                  (click)="$event.stopPropagation()">
+                  <div class="dropdown-header-title text-uppercase text-muted px-2 py-1 mb-1 fw-bold"
+                    style="font-size: 0.68rem; letter-spacing: 0.05em;">
+                    Columnas ocultas
+                  </div>
+                  @for (col of hiddenColumnsList(); track col.key) {
+                  <button type="button" class="dropdown-item d-flex align-items-center gap-2 py-1.5 px-3 rounded"
+                    (click)="showColumn(col.key, $event)">
+                    <span class="icon-svg icon-plus text-primary flex-shrink-0"
+                      style="width: 12px; height: 12px;"></span>
+                    <span>{{ col.label }}</span>
+                  </button>
+                  }
+                  @if (hiddenColumnsList().length > 1) {
+                  <div class="dropdown-divider my-1"></div>
+                  <button type="button" class="dropdown-item text-primary fw-semibold py-1.5 px-3 rounded"
+                    (click)="showAllColumns($event)">
+                    <span>Mostrar todas</span>
+                  </button>
+                  }
+                </div>
+                }
+              </div>
+            </th>
+            }
           </tr>
         </thead>
         <tbody>
@@ -630,30 +672,19 @@
             [class.card-crud-status-inactive]="cameraInactiveStatusIds().has(camera.id)"
             [class.has-delete-permission]="permissionsService.hasPermission('Cámaras', 'eliminar')"
             (click)="openAiPanel(camera)">
-            <!-- Estado con Reemplazo de Eliminar en Hover (Opción 1) -->
+            <!-- Estado -->
             <td class="col-status text-center">
-              <div class="table-status-action-wrapper">
-                <span class="table-status-badge d-inline-flex align-items-center justify-content-center gap-2">
-                  <span [class]="'status-dot ' + getCameraStatusClass(camera)"></span>
-                  <span class="fw-semibold" style="font-size: 0.88rem;"
-                    [class]="'fw-semibold status-text-' + getCameraStatusClass(camera)">
-                    {{ getCameraStatusLabel(camera) }}
-                  </span>
+              <span class="table-status-badge d-inline-flex align-items-center justify-content-center gap-2">
+                <span [class]="'status-dot ' + getCameraStatusClass(camera)"></span>
+                <span class="fw-semibold" style="font-size: 0.88rem;"
+                  [class]="'fw-semibold status-text-' + getCameraStatusClass(camera)">
+                  {{ getCameraStatusLabel(camera) }}
                 </span>
-
-                @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
-                <button type="button"
-                  class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
-                  (click)="$event.stopPropagation(); openDeleteModal(camera, $event)" title="Eliminar cámara"
-                  aria-label="Eliminar cámara">
-                  <span class="icon-svg icon-trash"></span>
-                </button>
-                }
-              </div>
+              </span>
             </td>
             <!-- Nombre -->
             <td class="col-camera-name">
-              <div class="d-flex align-items-center" style="min-width: 0;">
+              <div class="d-flex align-items-center" style="min-width: 0; width: 100%;">
                 <div class="camera-table-name-container min-w-0">
                   <span class="camera-table-name-text fw-bold text-body" style="font-size: 0.88rem;"
                     [title]="camera.name">
@@ -661,8 +692,8 @@
                   </span>
                   @if (camera.nxId && (camera.decoder.toLowerCase().includes('nx') ||
                   camera.streamType.toLowerCase().includes('nx'))) {
-                  <span class="camera-table-nx-subtext text-muted font-monospace"
-                    style="font-size: 0.72rem; line-height: 1.2;" [title]="'NX ID: ' + camera.nxId">
+                  <span class="camera-table-nx-subtext text-muted font-monospace text-truncate d-block"
+                    style="font-size: 0.72rem; line-height: 1.2; max-width: 100%;" [title]="'NX ID: ' + camera.nxId">
                     NX ID: {{ camera.nxId }}
                   </span>
                   }
@@ -674,61 +705,19 @@
             <td class="col-host">
               @let nodeNameTable = getHostName(camera.hostFingerprint);
               @if (nodeNameTable.toUpperCase() === 'SIN NODO') {
-              <span class="text-muted opacity-50 fw-semibold d-inline-block"
-                style="font-size: 0.82rem; letter-spacing: 0.04em;">
+              <span class="text-muted opacity-50 fw-semibold d-block text-truncate"
+                style="font-size: 0.82rem; letter-spacing: 0.04em; max-width: 100%;">
                 SIN NODO
               </span>
               } @else {
-              <span class="text-body text-truncate d-inline-block" style="font-size: 0.88rem;" [title]="nodeNameTable">
+              <span class="text-body text-truncate d-block" style="font-size: 0.88rem; max-width: 100%;" [title]="nodeNameTable">
                 {{ nodeNameTable }}
               </span>
               }
             </td>
             }
-            <!-- Stream -->
-            @if (isColumnVisible('stream')) {
-            <td class="col-stream text-center">
-              <div
-                class="d-inline-flex align-items-center justify-content-center gap-2 text-uppercase font-monospace text-body"
-                style="font-size: 0.85rem; font-weight: 600;">
-                @if (camera.streamType.toLowerCase().includes('webrtc')) {
-                <span class="icon-svg icon-webrtc" style="width: 15px; height: 15px; background-color: #0ea5e9;"></span>
-                } @else if (camera.streamType.toLowerCase().includes('rtsp')) {
-                <span class="icon-svg icon-rtsp" style="width: 15px; height: 15px; background-color: #10b981;"></span>
-                } @else {
-                <span class="icon-svg icon-play" style="width: 15px; height: 15px; background-color: #f97316;"></span>
-                }
-                <span>{{ camera.streamType }}</span>
-              </div>
-            </td>
-            }
-            <!-- Decodificador -->
-            @if (isColumnVisible('decoder')) {
-            <td class="col-decoder text-center">
-              <span class="text-body font-monospace text-uppercase text-nowrap"
-                style="font-size: 0.85rem; font-weight: 500;">{{
-                camera.decoder }}</span>
-            </td>
-            }
-            <!-- Coordenadas -->
-            @if (isColumnVisible('coords')) {
-            <td class="col-coords text-center">
-              <a [href]="'https://www.google.com/maps/search/?api=1&query=' + camera.location.lat + ',' + camera.location.lon"
-                target="_blank" rel="noopener noreferrer" class="coords-map-btn text-nowrap"
-                (click)="$event.stopPropagation()" title="Ver ubicación en Google Maps"
-                style="font-size: 0.82rem; gap: 6px; padding: 6px 12px; border-radius: 6px;">
-                <span class="icon-svg icon-location-pin coords-pin-svg" style="width: 16px; height: 16px;"></span>
-                <span class="font-monospace">{{ camera.location.lat | number:'1.1-2' }}, {{ camera.location.lon |
-                  number:'1.1-2' }}</span>
-              </a>
-            </td>
-            }
-            <!-- Columna '+' dinámica celda vacía para mantener alineación -->
-            @if (hasHiddenColumns()) {
-            <td class="col-add-column text-center p-0"></td>
-            }
-            <!-- Analíticas de IA -->
-            <td class="col-analytics pe-3">
+            <!-- Analíticas de IA (a la izquierda de STREAM) -->
+            <td class="col-analytics">
               <div class="camera-analytics-marquee-container">
                 @if (getAnalyticsForCamera(camera.id); as cameraAnalytics) {
                 @if (cameraAnalytics.length > 0) {
@@ -750,6 +739,93 @@
                 }
               </div>
             </td>
+            <!-- Stream (cuando NO es la última columna activa) -->
+            @if (isColumnVisible('stream') && activeActionColumn() !== 'stream') {
+            <td class="col-stream text-center">
+              <div
+                class="d-inline-flex align-items-center justify-content-center gap-2 text-uppercase font-monospace text-body"
+                style="font-size: 0.85rem; font-weight: 600;">
+                @if (camera.streamType.toLowerCase().includes('webrtc')) {
+                <span class="icon-svg icon-webrtc" style="width: 15px; height: 15px; background-color: #0ea5e9;"></span>
+                } @else if (camera.streamType.toLowerCase().includes('rtsp')) {
+                <span class="icon-svg icon-rtsp" style="width: 15px; height: 15px; background-color: #10b981;"></span>
+                } @else {
+                <span class="icon-svg icon-play" style="width: 15px; height: 15px; background-color: #f97316;"></span>
+                }
+                <span>{{ camera.streamType }}</span>
+              </div>
+            </td>
+            }
+
+            <!-- Celda '+' vacía en tbody cuando '+' es penúltima -->
+            @if (hasHiddenColumns() && activeActionColumn() !== 'add-column') {
+            <td class="col-add-column text-center p-0"></td>
+            }
+
+            <!-- ÚLTIMA COLUMNA ACTIVA (Con el botón de eliminar al hacer hover en la fila) -->
+            @if (activeActionColumn() === 'decoder') {
+            <td class="col-decoder text-center">
+              <div class="table-decoder-cell-inner">
+                <div class="table-decoder-content">
+                  <span class="text-body font-monospace text-uppercase text-nowrap"
+                    style="font-size: 0.85rem; font-weight: 500;">
+                    {{ camera.decoder }}
+                  </span>
+                </div>
+
+                @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
+                <button type="button"
+                  class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
+                  (click)="$event.stopPropagation(); openDeleteModal(camera, $event)" title="Eliminar cámara"
+                  aria-label="Eliminar cámara">
+                  <span class="icon-svg icon-trash"></span>
+                </button>
+                }
+              </div>
+            </td>
+            } @else if (activeActionColumn() === 'stream') {
+            <td class="col-stream text-center">
+              <div class="table-stream-cell-inner">
+                <div class="table-stream-content">
+                  <div
+                    class="d-inline-flex align-items-center justify-content-center gap-2 text-uppercase font-monospace text-body"
+                    style="font-size: 0.85rem; font-weight: 600;">
+                    @if (camera.streamType.toLowerCase().includes('webrtc')) {
+                    <span class="icon-svg icon-webrtc" style="width: 15px; height: 15px; background-color: #0ea5e9;"></span>
+                    } @else if (camera.streamType.toLowerCase().includes('rtsp')) {
+                    <span class="icon-svg icon-rtsp" style="width: 15px; height: 15px; background-color: #10b981;"></span>
+                    } @else {
+                    <span class="icon-svg icon-play" style="width: 15px; height: 15px; background-color: #f97316;"></span>
+                    }
+                    <span>{{ camera.streamType }}</span>
+                  </div>
+                </div>
+
+                @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
+                <button type="button"
+                  class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
+                  (click)="$event.stopPropagation(); openDeleteModal(camera, $event)" title="Eliminar cámara"
+                  aria-label="Eliminar cámara">
+                  <span class="icon-svg icon-trash"></span>
+                </button>
+                }
+              </div>
+            </td>
+            } @else {
+            <!-- Cuando NO hay columnas de datos visibles, [+] es la última y aloja el botón de eliminar en hover -->
+            <td class="col-add-column text-center p-0">
+              <div class="table-add-column-cell-inner">
+                @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
+                <button type="button"
+                  class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
+                  (click)="$event.stopPropagation(); openDeleteModal(camera, $event)" title="Eliminar cámara"
+                  aria-label="Eliminar cámara">
+                  <span class="icon-svg icon-trash"></span>
+                </button>
+                }
+              </div>
+            </td>
+            }
           </tr>
           }
         </tbody>

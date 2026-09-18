@@ -54,9 +54,11 @@ export class EventService {
 
     // 2. Analiticas
     if (filters.analiticas && filters.analiticas.length > 0) {
-      const matchAna = filters.analiticas.some(
-        a => a.toLowerCase() === (record.analitica || '').toLowerCase()
-      );
+      const matchAna = filters.analiticas.some(a => {
+        const cleanA = a.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const cleanRec = (record.analitica || '').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return cleanA === cleanRec || cleanRec.includes(cleanA) || cleanA.includes(cleanRec);
+      });
       if (!matchAna) return false;
     }
 

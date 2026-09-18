@@ -279,12 +279,32 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     return q ? uniqueNames.filter(name => name.toLowerCase().includes(q)) : uniqueNames;
   });
 
+  // Opciones 100% dinámicas para el filtro de analíticas basadas en datos reales existentes
+  readonly filteredAnaliticasOptions = computed(() => {
+    const raw = this.filterOptions().analiticas || [];
+    const fromRecords = this.records().map(r => r.analitica).filter(Boolean);
+    const temp = this.tempFilters()?.analiticas || [];
+
+    const set = new Set<string>();
+    [...raw, ...fromRecords, ...temp].forEach(a => {
+      if (a && typeof a === 'string' && a.trim()) {
+        set.add(a.trim());
+      }
+    });
+
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  });
+
   // Opciones limpias para el filtro de objetos (excluye nombres de personas y nombres de listas)
   readonly filteredObjetosOptions = computed(() => {
     const raw = this.filterOptions().objetos || [];
+    const fromRecords = this.records().map(r => r.objeto).filter(Boolean);
+    const temp = this.tempFilters()?.objetos || [];
     const systemLists = this.listService.lists().map((l: any) => (l.name || '').toLowerCase());
     
-    return raw.filter(item => {
+    const all = Array.from(new Set([...raw, ...fromRecords, ...temp])).filter(Boolean);
+
+    return all.filter(item => {
       if (!item) return false;
       const lower = item.trim().toLowerCase();
       // Descartar si coincide con una lista conocida
@@ -295,7 +315,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
         return false;
       }
       return true;
-    }).sort();
+    }).sort((a, b) => a.localeCompare(b));
   });
 
   // Filter dropdown toggle states
@@ -402,6 +422,11 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnInit(): void {
     this.eventService.isViewActive.set(true);
+    const initialSize = this.columns() * 10;
+    if (this.eventService.pageSize() !== initialSize) {
+      this.eventService.pageSize.set(initialSize);
+    }
+
     this.cameraService.getAllCameras().subscribe();
     this.listService.loadLists().subscribe();
     this.eventRepository.getAvailableSubjects().subscribe({
