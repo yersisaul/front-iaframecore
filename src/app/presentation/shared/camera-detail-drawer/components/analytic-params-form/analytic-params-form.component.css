@@ -1019,3 +1019,122 @@
   background-color: var(--primary, #3b82f6);
   color: #ffffff !important;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   INDICADORES ESTÉTICOS PARA ENCABEZADOS DE GRUPOS EN DROPDOWNS
+   ═══════════════════════════════════════════════════════════ */
+.analytic-optgroup-header {
+  user-select: none;
+}
+
+.analytic-optgroup-header.with-divider {
+  margin-top: 0.5rem;
+  padding-top: 0.6rem !important;
+  border-top: 1px solid var(--border-color, rgba(0, 0, 0, 0.07));
+}
+
+.analytic-optgroup-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+/* Indicadores Geométricos Puros (Sin Emojis ni Iconos) */
+.analytic-optgroup-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.indicator-polygon {
+  width: 8px;
+  height: 8px;
+  border-radius: 2.5px;
+  background-color: #3b82f6;
+  box-shadow: 0 0 0 2.5px rgba(59, 130, 246, 0.22);
+}
+
+.indicator-speed-quad {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background-color: #f59e0b;
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.22);
+  margin-left: 1px;
+  margin-right: 1px;
+}
+
+.indicator-line {
+  width: 10px;
+  height: 3.5px;
+  border-radius: 2px;
+  background-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+/* Micro-Badges de Categoría */
+.analytic-optgroup-badge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.badge-polygon {
+  background-color: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.badge-speed-quad {
+  background-color: rgba(245, 158, 11, 0.08);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.badge-line {
+  background-color: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.22);
+}
+
+/* Dark mode overrides */
+[data-bs-theme="dark"] .analytic-optgroup-header.with-divider,
+.dark .analytic-optgroup-header.with-divider,
+:host-context([data-bs-theme="dark"]) .analytic-optgroup-header.with-divider,
+:host-context(.dark) .analytic-optgroup-header.with-divider {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-bs-theme="dark"] .badge-polygon,
+.dark .badge-polygon,
+:host-context([data-bs-theme="dark"]) .badge-polygon,
+:host-context(.dark) .badge-polygon {
+  background-color: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+[data-bs-theme="dark"] .badge-speed-quad,
+.dark .badge-speed-quad,
+:host-context([data-bs-theme="dark"]) .badge-speed-quad,
+:host-context(.dark) .badge-speed-quad {
+  background-color: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+[data-bs-theme="dark"] .badge-line,
+.dark .badge-line,
+:host-context([data-bs-theme="dark"]) .badge-line,
+:host-context(.dark) .badge-line {
+  background-color: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.35);
+}

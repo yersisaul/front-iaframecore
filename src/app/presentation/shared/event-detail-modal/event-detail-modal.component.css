@@ -426,6 +426,38 @@
   color: var(--text-secondary);
 }
 
+.btn-pin-map {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s ease;
+}
+
+.btn-pin-map .icon-location-pin {
+  background-color: var(--color-azor-sky, #00a6f4) !important; /* Azul celeste */
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.18s ease;
+}
+
+.btn-pin-map:hover {
+  transform: scale(1.25);
+  opacity: 0.95;
+}
+
+.btn-pin-map:hover .icon-location-pin {
+  background-color: var(--color-azor-sky-hover, #0084d1) !important;
+}
+
+.btn-pin-map:active {
+  transform: scale(0.92);
+}
+
 .copied-flash {
   animation: spec-flash-green 0.8s ease-out;
 }

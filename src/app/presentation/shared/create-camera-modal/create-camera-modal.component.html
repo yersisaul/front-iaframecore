@@ -110,14 +110,13 @@
                         (click)="$event.stopPropagation()">
                         <!-- Barra de Búsqueda de Nodos -->
                         <div class="dropdown-search-header">
-                          <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
-                            style="background: #171717 !important; border: 1px solid var(--border-color, #e2e8f0);">
+                          <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1">
                             <span class="icon-svg icon-search opacity-50 icon-search-prefix"></span>
                             <input #nodeSearchInput type="text"
                               class="camera-search-input border-0 bg-transparent w-100"
                               placeholder="Ej. Servidor-1 o 192.168.1.50" [value]="hostSearch()"
                               (input)="hostSearch.set(nodeSearchInput.value)" (click)="$event.stopPropagation()"
-                              autocomplete="off" style="font-size: 0.8rem; outline: none; min-width: 0;" />
+                              autocomplete="off" />
                             @if (hostSearch()) {
                             <button type="button" class="btn-ghost p-0 d-flex" style="opacity: 0.5; line-height: 1;"
                               (click)="nodeSearchInput.value = ''; hostSearch.set(''); $event.stopPropagation()"
@@ -173,8 +172,7 @@
               <!-- Fila de Tipo de Flujo de Video y URL del Stream -->
               <div class="row g-3">
                 <!-- Dropdown de Tipo de Flujo de Video -->
-                <div
-                  [class]="!currentStreamType ? 'col-12' : (currentStreamType === 'nx' ? 'col-12 col-md-4' : (currentStreamType === 'Onvif' ? 'col-12' : 'col-12 col-md-5'))">
+                <div [class]="currentStreamType === 'nx' ? 'col-12 col-md-6' : 'col-12'">
                   <div class="premium-input-group position-relative">
                     <label class="premium-input-label">Tipo de Flujo de Video <span class="text-danger">*</span></label>
                     <div class="filter-dropdown-wrapper w-100 position-relative">
@@ -186,7 +184,7 @@
                           <span class="icon-svg filter-icon icon-input-prefix"
                             [class.icon-camara]="!isFieldInvalid('stream_type')"
                             [class.icon-warning]="isFieldInvalid('stream_type')"></span>
-                          <span [class.fw-semibold]="!!currentStreamType" [class.text-white]="!!currentStreamType"
+                          <span class="text-truncate" [class.fw-semibold]="!!currentStreamType"
                             [class.text-muted]="!currentStreamType">{{ currentStreamTypeLabel }}</span>
                         </div>
                         <span
@@ -219,9 +217,30 @@
                   </div>
                 </div>
 
-                <!-- Campos condicionales para RTSP / RTMP: en la misma fila -->
+                <!-- Campos condicionales para Nx Witness: ID de Cámara en la fila superior -->
+                @if (currentStreamType === 'nx') {
+                <div class="col-12 col-md-6">
+                  <div class="premium-input-group">
+                    <label class="premium-input-label">ID de Cámara NX <span class="text-danger">*</span></label>
+                    <div class="input-icon-wrapper">
+                      <span class="icon-svg input-icon icon-input-prefix"
+                        [class.icon-nx-witness]="!isFieldInvalid('nx_id')"
+                        [class.icon-warning]="isFieldInvalid('nx_id')"></span>
+                      <input type="text" class="premium-input-control"
+                        [class.is-invalid-warning]="isFieldInvalid('nx_id')" formControlName="nx_id"
+                        (focus)="clearFieldAlert('nx_id')" (click)="clearFieldAlert('nx_id')"
+                        placeholder="Ej. NX-ABC123XYZ" autocomplete="off" />
+                    </div>
+                    @if (isFieldInvalid('nx_id')) {
+                    <span class="premium-error-msg">El ID es requerido.</span>
+                    }
+                  </div>
+                </div>
+                }
+
+                <!-- Campos condicionales para RTSP / RTMP: URL del Stream en fila independiente a ancho completo -->
                 @if (currentStreamType === 'rtsp' || currentStreamType === 'rtmp') {
-                <div class="col-12 col-md-7">
+                <div class="col-12">
                   <div class="premium-input-group">
                     <label class="premium-input-label">
                       URL del Stream ({{ currentStreamType | uppercase }}) <span class="text-danger">*</span>
@@ -244,26 +263,9 @@
                 </div>
                 }
 
-                <!-- Campos condicionales para Nx Witness en la misma fila -->
+                <!-- Campos condicionales para Nx Witness: URL del Stream en fila independiente a ancho completo -->
                 @if (currentStreamType === 'nx') {
-                <div class="col-12 col-md-3">
-                  <div class="premium-input-group">
-                    <label class="premium-input-label">ID de Cámara NX <span class="text-danger">*</span></label>
-                    <div class="input-icon-wrapper">
-                      <span class="icon-svg input-icon icon-input-prefix"
-                        [class.icon-nx-witness]="!isFieldInvalid('nx_id')"
-                        [class.icon-warning]="isFieldInvalid('nx_id')"></span>
-                      <input type="text" class="premium-input-control"
-                        [class.is-invalid-warning]="isFieldInvalid('nx_id')" formControlName="nx_id"
-                        (focus)="clearFieldAlert('nx_id')" (click)="clearFieldAlert('nx_id')"
-                        placeholder="Ej. NX-ABC123XYZ" autocomplete="off" />
-                    </div>
-                    @if (isFieldInvalid('nx_id')) {
-                    <span class="premium-error-msg">El ID es requerido.</span>
-                    }
-                  </div>
-                </div>
-                <div class="col-12 col-md-5">
+                <div class="col-12">
                   <div class="premium-input-group">
                     <label class="premium-input-label">URL del Stream NX <span class="text-danger">*</span></label>
                     <div class="input-icon-wrapper">

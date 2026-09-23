@@ -21,6 +21,7 @@ export interface MetaPostura {
 export interface MetaBaseRecord {
   id: string;
   camara: string;
+  camara_id?: string;
   timestamp: Date;
   confiabilidad: number;
   imgMinioObjectName?: string;
@@ -28,6 +29,7 @@ export interface MetaBaseRecord {
   urlImg?: string;
   urlVideo?: string;
   embedding?: number[];
+  location?: { lat: number; lon: number };
 }
 
 export interface MetaPersona extends MetaBaseRecord {

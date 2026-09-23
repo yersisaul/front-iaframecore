@@ -181,7 +181,9 @@
   <div class="card dashboard-morph-card shadow-lg border-0" [ngStyle]="morphStyle()">
     <!-- Barra del lienzo sincronizada -->
     <div
-      class="browser-toolbar d-flex align-items-center justify-content-between px-3 py-2 overflow-hidden flex-shrink-0">
+      class="browser-toolbar d-flex align-items-center justify-content-between px-3 py-2 overflow-hidden flex-shrink-0"
+      (mouseenter)="onToolbarMouseEnter($event)"
+      (mouseleave)="onToolbarMouseLeave($event)">
       <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden me-3">
         <button type="button"
           class="btn-clean-back d-inline-flex align-items-center justify-content-center p-0 border-0 bg-transparent flex-shrink-0"
@@ -193,9 +195,17 @@
           </svg>
         </button>
         <div class="toolbar-meta-marquee-wrapper d-flex align-items-center gap-2.5 min-w-0 flex-grow-1 overflow-hidden">
-          <span class="fw-bold active-dashboard-title text-truncate">{{ morphItem()?.nombre }}</span>
+          <div class="toolbar-name-marquee-container min-w-0">
+            <span class="fw-bold active-dashboard-title text-truncate" [title]="morphItem()?.nombre">
+              {{ morphItem()?.nombre }}
+            </span>
+          </div>
           @if (morphItem()?.descripcion) {
-          <span class="active-dashboard-desc text-truncate text-muted small">{{ morphItem()?.descripcion }}</span>
+          <div class="toolbar-desc-marquee-container min-w-0">
+            <span class="active-dashboard-desc text-truncate text-muted small" [title]="morphItem()?.descripcion">
+              {{ morphItem()?.descripcion }}
+            </span>
+          </div>
           }
         </div>
       </div>
@@ -241,7 +251,9 @@
   <div class="card dashboard-browser-card shadow-sm border-0">
 
     <!-- BARRA SIMPLIFICADA DEL LIENZO -->
-    <div class="browser-toolbar d-flex align-items-center justify-content-between px-3 py-2 overflow-hidden">
+    <div class="browser-toolbar d-flex align-items-center justify-content-between px-3 py-2 overflow-hidden"
+      (mouseenter)="onToolbarMouseEnter($event)"
+      (mouseleave)="onToolbarMouseLeave($event)">
 
       <!-- Izquierda: Botón Retroceder, Título del Dashboard y Descripción -->
       <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden me-3">

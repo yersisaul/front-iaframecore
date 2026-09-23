@@ -69,28 +69,28 @@
   width: 100%;
   position: relative;
   z-index: 1;
-  overflow: visible !important;
+  align-items: start;
 }
 
 /* Event Card Design */
 .event-card {
   position: relative;
   z-index: 1;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color) !important;
   display: flex;
   flex-direction: column;
   width: 100%;
-  overflow: visible !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  border-radius: 12px !important;
 }
 
 .event-card:hover {
   z-index: 100 !important;
-}
-
-.event-card:has(.metadata-card-popover) {
-  z-index: 999999 !important;
 }
 
 .event-card .card-body {
@@ -100,6 +100,10 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden;
 }
 
 .card-img-wrapper {
@@ -129,59 +133,94 @@
 /* --- Cabecera de Cámara y Desplazamiento Reactivo con Marquee --- */
 .card-header-camera {
   position: relative;
-  overflow: hidden;
-  width: 100%;
+  overflow: hidden !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
 }
 
 .card-title-container {
-  overflow: hidden;
-  min-width: 0;
-  width: 100%;
+  overflow: hidden !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  flex: 1 1 0% !important;
+  width: auto !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+}
+
+.card-header-camera .card-title {
+  font-size: 0.9375rem !important;
+  font-weight: 700 !important;
+  line-height: 24px !important;
+  height: 24px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  white-space: nowrap !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  box-sizing: border-box !important;
 }
 
 .timestamp-row {
+  height: 24px !important;
+  line-height: 24px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
   transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
     max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
     opacity 0.2s ease,
     margin 0.25s ease;
-  white-space: nowrap;
 }
 
-/* En hover de la tarjeta: el timestamp colapsa a la derecha y el título de cámara toma todo el ancho */
-.event-card:hover .timestamp-row,
+/* Cuando el título supera el espacio asignado, el timestamp colapsa a la derecha y el título toma todo el ancho */
 .card-header-camera.camera-title-expand-space .timestamp-row {
   width: 0 !important;
   min-width: 0 !important;
   max-width: 0 !important;
-  flex: 0 0 0 !important;
+  flex: 0 0 0% !important;
   opacity: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden !important;
   pointer-events: none;
+  visibility: hidden;
 }
 
-.event-card:hover .card-title,
 .card-header-camera.camera-title-expand-space .card-title {
   display: inline-block !important;
   max-width: none !important;
   width: max-content !important;
 }
 
-/* Máscara de desvanecimiento suave solo si el título necesita marquee */
+/* Máscara de desvanecimiento suave a la izquierda y derecha cuando el título necesita marquee */
 .card-header-camera.camera-title-needs-marquee .card-title-container {
   mask-image: linear-gradient(90deg,
-      #000 0%,
+      transparent 0%,
+      #000 14px,
       #000 calc(100% - 16px),
       transparent 100%);
   -webkit-mask-image: linear-gradient(90deg,
-      #000 0%,
+      transparent 0%,
+      #000 14px,
       #000 calc(100% - 16px),
       transparent 100%);
 }
 
 /* CAPA 2: Si aún con todo el espacio expandido el texto sigue siendo insuficiente, se activa el marquee */
 .card-header-camera.camera-title-needs-marquee .card-title {
+  display: inline-block !important;
   padding-right: 24px !important;
   text-overflow: clip !important;
   overflow: visible !important;
@@ -201,85 +240,39 @@
   }
 }
 
-/* Floating Popover */
-.metadata-card-popover {
-  position: fixed !important;
-  top: 0;
-  left: 0;
-  width: 360px;
-  padding: 1rem !important;
-  background-color: var(--bg-popover-menu) !important;
-  backdrop-filter: blur(12px) !important;
-  border: 1px solid var(--border-popover-menu) !important;
-  border-radius: 12px;
-  z-index: 9999999 !important;
-  pointer-events: none;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.25), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-  animation: popoverAppear 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes popoverAppear {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(5px);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.popover-header {
-  border-bottom: 1px dashed var(--border-color);
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.popover-header-title {
-  font-size: 0.65rem;
-  letter-spacing: 0.07em;
-  color: var(--text-secondary);
-  font-weight: 700 !important;
-  padding-left: 0.25rem;
-}
-
-.popover-section {
-  margin-bottom: 0.85rem;
-}
-
-.popover-section:last-child {
-  margin-bottom: 0;
-}
-
-.popover-section-title {
-  font-size: 0.625rem;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.5rem;
-  color: var(--text-muted);
-}
-
-.attributes-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 8px;
-}
-
-.index-badge-overlay {
+/* Floating Analytic & Reliability Overlays (Top Corners of Thumbnail Image) */
+.index-badge-overlay,
+.reliability-badge-overlay {
   position: absolute;
   top: 10px;
-  right: 10px;
   background-color: var(--bg-backdrop);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   color: var(--text-on-primary-btn);
   font-size: 0.6875rem;
   font-weight: 600;
   padding: 0.25rem 0.5rem;
   border-radius: 6px;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
   z-index: 10;
   pointer-events: none;
+  line-height: 1.25;
+}
+
+.index-badge-overlay {
+  right: 10px;
+  text-transform: uppercase;
+}
+
+.reliability-badge-overlay {
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reliability-badge-overlay .icon-svg {
+  background-color: var(--text-on-primary-btn) !important;
 }
 
 /* Event Card Meta Badges - Elegant, high-contrast, harmonious in light & dark */
@@ -326,6 +319,51 @@
   background-color: var(--color-pill-cyan-bg);
   color: var(--color-pill-cyan);
   border: 1px solid var(--color-pill-cyan-border);
+}
+
+.event-meta-badge--objeto {
+  background-color: var(--color-pill-purple-bg);
+  color: var(--color-pill-purple);
+  border: 1px solid var(--color-pill-purple-border);
+}
+
+.event-meta-badge--objeto .icon-svg {
+  background-color: var(--color-pill-purple) !important;
+}
+
+
+
+/* Botón Pin de Google Maps directo sin contenedor */
+.btn-pin-map {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s ease;
+}
+
+.btn-pin-map .icon-location-pin {
+  background-color: var(--color-azor-sky, #00a6f4) !important; /* Azul celeste */
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.18s ease;
+}
+
+.btn-pin-map:hover {
+  transform: scale(1.25);
+  opacity: 0.95;
+}
+
+.btn-pin-map:hover .icon-location-pin {
+  background-color: var(--color-azor-sky-hover, #0084d1) !important;
+}
+
+.btn-pin-map:active {
+  transform: scale(0.92);
 }
 
 /* Reliability & Similarity Color Palette (Balanced for both themes) */
@@ -492,13 +530,18 @@
   background: var(--bg-surface, #ffffff) !important;
   border: 1px solid var(--border-color, #e2e8f0) !important;
   border-radius: 8px !important;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
+:host-context([data-bs-theme="dark"]) .camera-search-input-row,
+:host-context([data-theme="dark"]) .camera-search-input-row,
+:host-context(.dark) .camera-search-input-row,
+::ng-deep [data-bs-theme="dark"] .camera-search-input-row,
+::ng-deep .dark .camera-search-input-row,
 [data-bs-theme="dark"] .camera-search-input-row,
 [data-theme="dark"] .camera-search-input-row,
 .dark .camera-search-input-row {
-  background: #2d3e56 !important;
+  background: #171717 !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
 }
 
@@ -508,12 +551,35 @@
   box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.12) !important;
 }
 
+:host-context([data-bs-theme="dark"]) .camera-search-input-row:focus-within,
+:host-context([data-theme="dark"]) .camera-search-input-row:focus-within,
+:host-context(.dark) .camera-search-input-row:focus-within,
+::ng-deep [data-bs-theme="dark"] .camera-search-input-row:focus-within,
+::ng-deep .dark .camera-search-input-row:focus-within,
 [data-bs-theme="dark"] .camera-search-input-row:focus-within,
 [data-theme="dark"] .camera-search-input-row:focus-within,
 .dark .camera-search-input-row:focus-within {
-  background: #2d3e56 !important;
+  background: #171717 !important;
   border-color: var(--primary) !important;
   box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.25) !important;
+}
+
+.camera-search-input {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+  font-size: 0.8rem !important;
+  min-width: 0 !important;
+  transition: color 0.15s ease !important;
+}
+
+.camera-search-input::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.65;
+  transition: color 0.15s ease;
 }
 
 .filter-dropdown-menu.dropdown-analiticas {

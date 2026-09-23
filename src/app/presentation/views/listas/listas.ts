@@ -149,6 +149,8 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   readonly showAddPlateSubjectModal = signal<boolean>(false);
   readonly subjectName = signal<string>('');
   readonly subjectOwnerName = signal<string>('');
+  readonly selectedPlateFile = signal<File | null>(null);
+  readonly plateImagePreviewUrl = signal<string | null>(null);
   readonly activePlateTab = signal<'individual' | 'masivo'>('individual');
   readonly selectedCsvFile = signal<File | null>(null);
   readonly parsedCsvRows = signal<{ plate: string; owner: string }[]>([]);
@@ -159,10 +161,14 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   readonly editFaceSubjectName = signal<string>('');
   readonly selectedEditFaceFile = signal<File | null>(null);
   readonly editFaceImagePreviewUrl = signal<string | null>(null);
+  readonly isDraggingOverEditFace = signal<boolean>(false);
 
   readonly showEditPlateSubjectModal = signal<boolean>(false);
   readonly editPlateSubjectPlate = signal<string>('');
   readonly editPlateSubjectName = signal<string>('');
+  readonly selectedEditPlateFile = signal<File | null>(null);
+  readonly editPlateImagePreviewUrl = signal<string | null>(null);
+  readonly isDraggingOverEditPlate = signal<boolean>(false);
 
   readonly isUpdatingSubject = signal<boolean>(false);
   readonly selectedSubjectDetailId = signal<string | null>(null);
@@ -218,10 +224,12 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     const detections = this.subjectDetections();
 
     if (search) {
+      const searchNoDash = search.replace(/[-\s]/g, '');
       details = details.filter(d => {
         const name = d.nombre_asociado?.toLowerCase() || '';
         const plate = d.metadata?.text_placa?.toLowerCase() || '';
-        return name.includes(search) || plate.includes(search);
+        const plateNoDash = plate.replace(/[-\s]/g, '');
+        return name.includes(search) || plate.includes(search) || plateNoDash.includes(searchNoDash);
       });
     }
 
@@ -233,7 +241,9 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    // Ordenamiento: 1.° Mayor a menor cantidad de avistamientos, 2.° Alfabético por nombre
+    const isPlate = this.listType() === 'plate_recognition';
+
+    // Ordenamiento: 1.° Mayor a menor cantidad de avistamientos, 2.° Alfabético por placa (en LPR) o por nombre (en RF)
     return [...details].sort((a, b) => {
       const countA = detections[a.detail_id]?.count || 0;
       const countB = detections[b.detail_id]?.count || 0;
@@ -242,9 +252,20 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
         return countB - countA;
       }
 
-      const nameA = (a.nombre_asociado || a.metadata?.text_placa || '').trim();
-      const nameB = (b.nombre_asociado || b.metadata?.text_placa || '').trim();
-      return nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+      const labelA = isPlate
+        ? (a.metadata?.text_placa || a.nombre_asociado || '').trim()
+        : (a.nombre_asociado || a.metadata?.text_placa || '').trim();
+
+      const labelB = isPlate
+        ? (b.metadata?.text_placa || b.nombre_asociado || '').trim()
+        : (b.nombre_asociado || b.metadata?.text_placa || '').trim();
+
+      const cmp = labelA.localeCompare(labelB, undefined, { sensitivity: 'base', numeric: true });
+      if (cmp !== 0) return cmp;
+
+      const subA = (a.nombre_asociado || '').trim();
+      const subB = (b.nombre_asociado || '').trim();
+      return subA.localeCompare(subB, undefined, { sensitivity: 'base', numeric: true });
     });
   });
 
@@ -506,8 +527,22 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
         });
         this.subjectDetections.set(detectionsMap);
 
-        // Carga agregada batch instantánea desde el índice eventos estrictamente por match_detail.detail_id
-        this.listService.loadListEventSummaries(listId).subscribe({
+        const detailIds = details.map(d => d.detail_id).filter(id => Boolean(id && typeof id === 'string' && id.trim()));
+        if (detailIds.length === 0) {
+          this.subjectDetections.update(current => {
+            const updated = { ...current };
+            details.forEach(d => {
+              if (updated[d.detail_id]) {
+                updated[d.detail_id] = { ...updated[d.detail_id], loading: false };
+              }
+            });
+            return updated;
+          });
+          return;
+        }
+
+        // Carga agregada batch instantánea desde el índice eventos por detailIds y listId
+        this.listService.loadListEventSummaries(listId, detailIds).subscribe({
           next: (summaries) => {
             this.subjectDetections.update(current => {
               const updated = { ...current };
@@ -618,6 +653,42 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     return baseName.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
+  private backdropMouseDownTarget: EventTarget | null = null;
+
+  onBackdropMouseDown(event: MouseEvent): void {
+    if (event.button === 0) {
+      this.backdropMouseDownTarget = event.target;
+    }
+  }
+
+  onBackdropMouseUp(
+    event: MouseEvent,
+    modalType: 'drawer' | 'addFace' | 'addPlate' | 'list' | 'editFace' | 'editPlate' | 'fullscreen'
+  ): void {
+    if (
+      event.button === 0 &&
+      this.backdropMouseDownTarget === event.currentTarget &&
+      event.target === event.currentTarget
+    ) {
+      if (modalType === 'drawer') {
+        this.selectSubjectDetail(null);
+      } else if (modalType === 'addFace') {
+        this.closeAddFaceSubjectModal();
+      } else if (modalType === 'addPlate') {
+        if (!this.isSavingSubject()) this.closeAddPlateSubjectModal();
+      } else if (modalType === 'list') {
+        if (!this.isSavingList()) this.closeListModal();
+      } else if (modalType === 'editFace') {
+        if (!this.isUpdatingSubject()) this.closeEditFaceSubjectModal();
+      } else if (modalType === 'editPlate') {
+        if (!this.isUpdatingSubject()) this.closeEditPlateSubjectModal();
+      } else if (modalType === 'fullscreen') {
+        this.closeFullscreenImage();
+      }
+    }
+    this.backdropMouseDownTarget = null;
+  }
+
   openAddSubjectModal(): void {
     if (this.listType() === 'face_recognition') {
       this.faceImportDrafts.set([]);
@@ -656,10 +727,35 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     this.showAddPlateSubjectModal.set(false);
     this.subjectName.set('');
     this.subjectOwnerName.set('');
+    this.selectedPlateFile.set(null);
+    this.plateImagePreviewUrl.set(null);
     this.activePlateTab.set('individual');
     this.selectedCsvFile.set(null);
     this.parsedCsvRows.set([]);
     this.isDraggingOverCsv.set(false);
+  }
+
+  onPlateFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      if (file.type.startsWith('image/')) {
+        this.selectedPlateFile.set(file);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.plateImagePreviewUrl.set(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        alert('Por favor selecciona un archivo de imagen válido (JPG, PNG, WEBP).');
+      }
+    }
+  }
+
+  removePlateFile(event?: Event): void {
+    if (event) event.stopPropagation();
+    this.selectedPlateFile.set(null);
+    this.plateImagePreviewUrl.set(null);
   }
 
   onFilesSelected(event: Event): void {
@@ -820,18 +916,35 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     if (this.listType() === 'face_recognition') {
       this.editFaceSubjectName.set(detail.nombre_asociado || '');
       this.selectedEditFaceFile.set(null);
+      this.editFaceImagePreviewUrl.set(null);
       const objName = detail.img_minio_object_name || detail.metadata?.img_minio_object_name;
       if (objName) {
-        this.mediaFileService.getFileUrl(objName).subscribe(url => {
-          this.editFaceImagePreviewUrl.set(url);
+        this.mediaFileService.getFileUrl(objName).subscribe({
+          next: url => {
+            this.editFaceImagePreviewUrl.set(url && url.trim() ? url : null);
+          },
+          error: () => {
+            this.editFaceImagePreviewUrl.set(null);
+          }
         });
-      } else {
-        this.editFaceImagePreviewUrl.set(null);
       }
       this.showEditFaceSubjectModal.set(true);
     } else {
       this.editPlateSubjectPlate.set(detail.metadata?.text_placa || '');
       this.editPlateSubjectName.set(detail.nombre_asociado || '');
+      this.selectedEditPlateFile.set(null);
+      this.editPlateImagePreviewUrl.set(null);
+      const objName = detail.img_minio_object_name || detail.metadata?.img_minio_object_name;
+      if (objName) {
+        this.mediaFileService.getFileUrl(objName).subscribe({
+          next: url => {
+            this.editPlateImagePreviewUrl.set(url && url.trim() ? url : null);
+          },
+          error: () => {
+            this.editPlateImagePreviewUrl.set(null);
+          }
+        });
+      }
       this.showEditPlateSubjectModal.set(true);
     }
   }
@@ -857,8 +970,13 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     const detail = this.selectedSubjectDetail();
     const objName = detail?.img_minio_object_name || detail?.metadata?.img_minio_object_name;
     if (objName) {
-      this.mediaFileService.getFileUrl(objName).subscribe(url => {
-        this.editFaceImagePreviewUrl.set(url);
+      this.mediaFileService.getFileUrl(objName).subscribe({
+        next: url => {
+          this.editFaceImagePreviewUrl.set(url && url.trim() ? url : null);
+        },
+        error: () => {
+          this.editFaceImagePreviewUrl.set(null);
+        }
       });
     } else {
       this.editFaceImagePreviewUrl.set(null);
@@ -866,9 +984,112 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   }
 
   closeEditPlateSubjectModal(): void {
+    const preview = this.editPlateImagePreviewUrl();
+    if (preview && preview.startsWith('blob:')) {
+      URL.revokeObjectURL(preview);
+    }
     this.showEditPlateSubjectModal.set(false);
     this.editPlateSubjectPlate.set('');
     this.editPlateSubjectName.set('');
+    this.selectedEditPlateFile.set(null);
+    this.editPlateImagePreviewUrl.set(null);
+  }
+
+  onEditPlateFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      this.selectedEditPlateFile.set(file);
+
+      const preview = this.editPlateImagePreviewUrl();
+      if (preview && preview.startsWith('blob:')) {
+        URL.revokeObjectURL(preview);
+      }
+      this.editPlateImagePreviewUrl.set(URL.createObjectURL(file));
+    }
+  }
+
+  resetEditPlateFile(event?: Event): void {
+    if (event) event.stopPropagation();
+    const preview = this.editPlateImagePreviewUrl();
+    if (preview && preview.startsWith('blob:')) {
+      URL.revokeObjectURL(preview);
+    }
+    this.selectedEditPlateFile.set(null);
+    const detail = this.selectedSubjectDetail();
+    const objName = detail?.img_minio_object_name || detail?.metadata?.img_minio_object_name;
+    if (objName) {
+      this.mediaFileService.getFileUrl(objName).subscribe({
+        next: url => {
+          this.editPlateImagePreviewUrl.set(url && url.trim() ? url : null);
+        },
+        error: () => {
+          this.editPlateImagePreviewUrl.set(null);
+        }
+      });
+    } else {
+      this.editPlateImagePreviewUrl.set(null);
+    }
+  }
+
+  onEditFaceDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOverEditFace.set(true);
+  }
+
+  onEditFaceDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOverEditFace.set(false);
+  }
+
+  onEditFaceDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOverEditFace.set(false);
+
+    if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        this.selectedEditFaceFile.set(file);
+        const preview = this.editFaceImagePreviewUrl();
+        if (preview && preview.startsWith('blob:')) {
+          URL.revokeObjectURL(preview);
+        }
+        this.editFaceImagePreviewUrl.set(URL.createObjectURL(file));
+      }
+    }
+  }
+
+  onEditPlateDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOverEditPlate.set(true);
+  }
+
+  onEditPlateDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOverEditPlate.set(false);
+  }
+
+  onEditPlateDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOverEditPlate.set(false);
+
+    if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        this.selectedEditPlateFile.set(file);
+        const preview = this.editPlateImagePreviewUrl();
+        if (preview && preview.startsWith('blob:')) {
+          URL.revokeObjectURL(preview);
+        }
+        this.editPlateImagePreviewUrl.set(URL.createObjectURL(file));
+      }
+    }
   }
 
   onEditFaceFileSelected(event: Event): void {
@@ -900,7 +1121,7 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
       obs$.push(this.listService.updateFaceDetail(detail.detail_id, listId, this.editFaceSubjectName().trim()));
     }
     if (file) {
-      obs$.push(this.listService.updateFaceImg(detail.detail_id, file));
+      obs$.push(this.listService.updateDetailImg(detail.detail_id, file));
     }
 
     if (obs$.length === 0) {
@@ -931,18 +1152,39 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     this.isUpdatingSubject.set(true);
     const listId = this.selectedListId()!;
     const name = this.editPlateSubjectName().trim();
-    const plate = this.editPlateSubjectPlate().trim();
+    const plate = this.editPlateSubjectPlate().trim().replace(/[-\s]/g, '').toUpperCase();
+    const file = this.selectedEditPlateFile();
 
-    this.listService.updatePlateDetail(detail.detail_id, listId, plate, name).subscribe({
-      next: () => {
-        this.isUpdatingSubject.set(false);
-        this.closeEditPlateSubjectModal();
-      },
-      error: (err) => {
-        console.error('Error updating plate subject:', err);
-        this.isUpdatingSubject.set(false);
-        alert('Error al actualizar la placa.');
-      }
+    const currentPlate = (detail.metadata?.text_placa || '').trim().replace(/[-\s]/g, '').toUpperCase();
+    const currentName = (detail.nombre_asociado || '').trim();
+    const dataChanged = plate !== currentPlate || name !== currentName;
+
+    const obs$: import('rxjs').Observable<any>[] = [];
+    if (dataChanged) {
+      obs$.push(this.listService.updatePlateDetail(detail.detail_id, listId, plate, name));
+    }
+    if (file) {
+      obs$.push(this.listService.updateDetailImg(detail.detail_id, file));
+    }
+
+    if (obs$.length === 0) {
+      this.isUpdatingSubject.set(false);
+      this.closeEditPlateSubjectModal();
+      return;
+    }
+
+    import('rxjs').then(({ forkJoin }) => {
+      forkJoin(obs$).subscribe({
+        next: () => {
+          this.isUpdatingSubject.set(false);
+          this.closeEditPlateSubjectModal();
+        },
+        error: (err) => {
+          console.error('Error updating plate subject:', err);
+          this.isUpdatingSubject.set(false);
+          alert('Error al actualizar los datos de la placa.');
+        }
+      });
     });
   }
 
@@ -1081,13 +1323,28 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     this.faceImportStep.set('summary');
   }
 
+  formatPlate(plate?: string | null): string {
+    if (!plate) return '';
+    const clean = plate.replace(/[-\s]/g, '').trim().toUpperCase();
+    if (clean.length === 6) {
+      return `${clean.substring(0, 3)}-${clean.substring(3)}`;
+    }
+    return plate.trim().toUpperCase();
+  }
+
   savePlateSubject(): void {
     const listId = this.selectedListId();
     if (!listId || !this.subjectName().trim()) return;
 
     this.isSavingSubject.set(true);
+    const rawPlate = this.subjectName().trim().replace(/[-\s]/g, '').toUpperCase();
 
-    this.listService.addPlateSubject(listId, this.subjectName().trim(), this.subjectOwnerName().trim()).subscribe({
+    this.listService.addPlateSubject(
+      listId,
+      rawPlate,
+      this.subjectOwnerName().trim(),
+      this.selectedPlateFile() || undefined
+    ).subscribe({
       next: () => {
         this.isSavingSubject.set(false);
         this.closeAddPlateSubjectModal();
@@ -1188,7 +1445,8 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     this.isSavingSubject.set(true);
 
     const observables = this.parsedCsvRows().map(row => {
-      return this.listService.addPlateSubject(listId, row.plate, row.owner);
+      const rawPlate = row.plate.replace(/[-\s]/g, '').toUpperCase();
+      return this.listService.addPlateSubject(listId, rawPlate, row.owner);
     });
 
     import('rxjs').then(({ forkJoin }) => {
@@ -1412,7 +1670,7 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     const detail = this.listDetails().find(d => d.detail_id === detailId);
     if (detail) {
       this.subjectToDeleteId.set(detailId);
-      this.subjectToDeleteName.set(detail.nombre_asociado || detail.metadata?.text_placa || 'Sujeto sin nombre');
+      this.subjectToDeleteName.set(detail.nombre_asociado || this.formatPlate(detail.metadata?.text_placa) || 'Sujeto sin nombre');
       this.showDeleteSubjectModal.set(true);
     }
   }
@@ -1636,6 +1894,66 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
       descEl.style.removeProperty('--marquee-shift');
       descEl.classList.remove('animate-marquee');
     }
+  }
+
+  /**
+   * Control dinámico de marquee para las tarjetas de sujetos (grid de detalles).
+   * Solo activa el desplazamiento si el texto excede el ancho disponible del contenedor.
+   */
+  onSubjectCardMouseEnter(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const card = target.classList.contains('subject-card')
+      ? target
+      : (target.closest('.subject-card') as HTMLElement | null);
+    if (!card) return;
+
+    const containers = card.querySelectorAll<HTMLElement>(
+      '.subject-name-marquee-container, .subject-owner-marquee-container, .sighting-marquee-container'
+    );
+
+    containers.forEach(container => {
+      const textEl = container.querySelector<HTMLElement>('.subject-marquee-text, .sighting-marquee-text');
+      if (!textEl) return;
+
+      const containerWidth = container.clientWidth;
+      const textWidth = textEl.scrollWidth;
+
+      if (textWidth > containerWidth + 2) {
+        const shift = Math.ceil(textWidth - containerWidth) + 16;
+        textEl.style.setProperty('--subject-marquee-shift', `-${shift}px`);
+        textEl.classList.add('animate-marquee');
+        container.classList.add('subject-needs-marquee');
+      } else {
+        textEl.style.removeProperty('--subject-marquee-shift');
+        textEl.classList.remove('animate-marquee');
+        container.classList.remove('subject-needs-marquee');
+      }
+    });
+  }
+
+  onSubjectCardMouseLeave(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const card = target.classList.contains('subject-card')
+      ? target
+      : (target.closest('.subject-card') as HTMLElement | null);
+    if (!card) return;
+
+    const containers = card.querySelectorAll<HTMLElement>(
+      '.subject-name-marquee-container, .subject-owner-marquee-container, .sighting-marquee-container'
+    );
+
+    containers.forEach(container => {
+      const textEl = container.querySelector<HTMLElement>('.subject-marquee-text, .sighting-marquee-text');
+      if (textEl) {
+        textEl.style.removeProperty('--subject-marquee-shift');
+        textEl.classList.remove('animate-marquee');
+      }
+      container.classList.remove('subject-needs-marquee');
+    });
   }
 
 }

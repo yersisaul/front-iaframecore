@@ -46,13 +46,11 @@
         <div class="filter-dropdown-menu dropdown-camaras" (click)="$event.stopPropagation()">
           <!-- Searchbar interno de cámaras fijo arriba -->
           <div class="dropdown-search-header">
-            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
-              style="background: #171717 !important; border: 1px solid var(--border-color, #e2e8f0);">
+            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
               <input #cameraSearchInput type="text" class="camera-search-input border-0 bg-transparent w-100"
                 placeholder="Buscar cámara..." (input)="cameraSearch.set(cameraSearchInput.value)"
-                (click)="$event.stopPropagation()" autocomplete="off"
-                style="font-size: 0.8rem; outline: none; min-width: 0;" />
+                (click)="$event.stopPropagation()" autocomplete="off" />
               @if (cameraSearch()) {
               <button type="button" class="btn-ghost p-0 d-flex" style="opacity: 0.5; line-height: 1;"
                 (click)="cameraSearchInput.value = ''; cameraSearch.set(''); $event.stopPropagation()"
@@ -154,13 +152,12 @@
         <div class="filter-dropdown-menu dropdown-listas" (click)="$event.stopPropagation()">
           <!-- Searchbar interno de listas fijo arriba -->
           <div class="dropdown-search-header">
-            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
-              style="background: #171717 !important; border: 1px solid var(--border-color, #e2e8f0);">
+            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
               <input #listaSearchInput type="text" class="camera-search-input border-0 bg-transparent w-100"
                 placeholder="Buscar lista..." [value]="listaSearch()"
                 (input)="listaSearch.set($any($event.target).value)" (click)="$event.stopPropagation()"
-                autocomplete="off" style="font-size: 0.8rem; outline: none; min-width: 0;" />
+                autocomplete="off" />
               @if (listaSearch()) {
               <button type="button" class="btn-ghost p-0 d-flex" style="opacity: 0.5; line-height: 1;"
                 (click)="listaSearch.set(''); $event.stopPropagation()" title="Limpiar búsqueda">
@@ -203,13 +200,12 @@
         <div class="filter-dropdown-menu dropdown-sujetos" (click)="$event.stopPropagation()">
           <!-- Searchbar interno de sujetos fijo arriba -->
           <div class="dropdown-search-header">
-            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1"
-              style="background: #171717 !important; border: 1px solid var(--border-color, #e2e8f0);">
+            <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1">
               <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
               <input #sujetoSearchInput type="text" class="camera-search-input border-0 bg-transparent w-100"
                 placeholder="Buscar sujeto..." [value]="sujetoSearch()"
                 (input)="sujetoSearch.set($any($event.target).value)" (click)="$event.stopPropagation()"
-                autocomplete="off" style="font-size: 0.8rem; outline: none; min-width: 0;" />
+                autocomplete="off" />
               @if (sujetoSearch()) {
               <button type="button" class="btn-ghost p-0 d-flex" style="opacity: 0.5; line-height: 1;"
                 (click)="sujetoSearch.set(''); $event.stopPropagation()" title="Limpiar búsqueda">
@@ -483,9 +479,8 @@
       <div class="eventos-grid">
         @for (record of records(); track (record.id + '-' + $index)) {
         <div class="card event-card border-0 shadow-sm rounded-3 position-relative"
-          [class.event-card--live-new]="newRecordIds().has(record.id)" style="overflow: visible !important;"
-          (mouseenter)="onCardMouseEnter($event)" (mousemove)="onCardMouseMove($event, record.id)"
-          (mouseleave)="onCardMouseLeave($event)">
+          [class.event-card--live-new]="newRecordIds().has(record.id)"
+          (mouseenter)="onCardMouseEnter($event)" (mouseleave)="onCardMouseLeave($event)">
 
           <!-- Thumbnail Image -->
           <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center"
@@ -510,7 +505,25 @@
             }
             }
 
-            <!-- Floating Analytic Type Badge -->
+            <!-- Floating Reliability / Similarity Badge (Top-Left) -->
+            @if (isMatchingAnalytic(record.analitica)) {
+            @if (record.porcentajeSimilitud !== null && record.porcentajeSimilitud !== undefined) {
+            <div class="reliability-badge-overlay" [title]="'Similitud: ' + record.porcentajeSimilitud + '%'">
+              <span class="icon-svg icon-target flex-shrink-0" style="width: 10px; height: 10px;"></span>
+              <span>{{ record.porcentajeSimilitud }}%</span>
+            </div>
+            }
+            } @else {
+            @if (record.confiabilidad !== null && record.confiabilidad !== undefined) {
+            @let confPct = (record.confiabilidad > 1 ? record.confiabilidad : record.confiabilidad * 100);
+            <div class="reliability-badge-overlay" [title]="'Confiabilidad: ' + (confPct | number:'1.0-0') + '%'">
+              <span class="icon-svg icon-target flex-shrink-0" style="width: 10px; height: 10px;"></span>
+              <span>{{ confPct | number:'1.0-0' }}%</span>
+            </div>
+            }
+            }
+
+            <!-- Floating Analytic Type Badge (Top-Right) -->
             <div class="index-badge-overlay text-capitalize">
               {{ record.analitica }}
             </div>
@@ -519,10 +532,16 @@
           <!-- Card Body Details -->
           <div class="card-body p-3 d-flex flex-column justify-content-between">
             <div>
-              <!-- Cabecera: Nombre de Cámara y Timestamp -->
-              <div class="card-header-camera d-flex justify-content-between align-items-center mb-2 gap-2">
-                <div class="card-title-container min-w-0 flex-grow-1 d-flex align-items-center"
-                  style="overflow: hidden;">
+              <!-- Cabecera: Nombre de Cámara, Botón de Mapa (Pin) y Timestamp -->
+              <div class="card-header-camera d-flex align-items-center mb-2 gap-1">
+                @if (hasLocation(record)) {
+                <a [href]="getGoogleMapsUrl(record)" target="_blank" rel="noopener noreferrer"
+                  class="btn-pin-map d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                  (click)="$event.stopPropagation()" title="Ver ubicación en Google Maps">
+                  <span class="icon-svg icon-location-pin" style="width: 14px; height: 14px;"></span>
+                </a>
+                }
+                <div class="card-title-container min-w-0 flex-grow-1">
                   <h6 class="card-title fw-bold mb-0 text-truncate" [title]="record.nombreCamara">
                     {{ record.nombreCamara }}
                   </h6>
@@ -539,55 +558,35 @@
                 {{ record.detalleEvento }}
               </p>
 
-              <!-- Indicador de Similitud o Confiabilidad (Estilo Metadatos) -->
-              @if (isMatchingAnalytic(record.analitica)) {
-              @if (record.porcentajeSimilitud !== null && record.porcentajeSimilitud !== undefined) {
-              <div class="reliability-indicator mb-1">
-                <div class="d-flex justify-content-between small text-muted mb-1">
-                  <span>Similitud</span>
-                  <span class="fw-bold font-monospace" [ngClass]="{
-                          'reliability-val--low': record.porcentajeSimilitud < 65,
-                          'reliability-val--mid': record.porcentajeSimilitud >= 65 && record.porcentajeSimilitud < 80,
-                          'reliability-val--high': record.porcentajeSimilitud >= 80
-                        }">{{ record.porcentajeSimilitud }}%</span>
-                </div>
-                <div class="progress" style="height: 5px; background-color: var(--border-color);">
-                  <div class="progress-bar" role="progressbar" [style.width.%]="record.porcentajeSimilitud" [ngClass]="{
-                                'progress-bar--low': record.porcentajeSimilitud < 65,
-                                'progress-bar--mid': record.porcentajeSimilitud >= 65 && record.porcentajeSimilitud < 80,
-                                'progress-bar--high': record.porcentajeSimilitud >= 80
-                              }" [attr.aria-valuenow]="record.porcentajeSimilitud" aria-valuemin="0"
-                    aria-valuemax="100">
-                  </div>
-                </div>
-              </div>
-              }
-              } @else {
-              @if (record.confiabilidad !== null && record.confiabilidad !== undefined) {
-              @let confPct = (record.confiabilidad > 1 ? record.confiabilidad : record.confiabilidad * 100);
-              <div class="reliability-indicator mb-1">
-                <div class="d-flex justify-content-between small text-muted mb-1">
-                  <span>Confiabilidad</span>
-                  <span class="fw-bold font-monospace" [ngClass]="{
-                          'reliability-val--low': record.confiabilidad < 0.5,
-                          'reliability-val--mid': record.confiabilidad >= 0.5 && record.confiabilidad < 0.8,
-                          'reliability-val--high': record.confiabilidad >= 0.8
-                        }">{{ confPct | number:'1.0-0' }}%</span>
-                </div>
-                <div class="progress" style="height: 5px; background-color: var(--border-color);">
-                  <div class="progress-bar" role="progressbar" [style.width.%]="confPct" [ngClass]="{
-                                'progress-bar--low': record.confiabilidad < 0.5,
-                                'progress-bar--mid': record.confiabilidad >= 0.5 && record.confiabilidad < 0.8,
-                                'progress-bar--high': record.confiabilidad >= 0.8
-                              }" [attr.aria-valuenow]="confPct" aria-valuemin="0" aria-valuemax="100">
-                  </div>
-                </div>
-              </div>
-              }
-              }
-
-              <!-- Badges de Métricas Contextuales por Analítica (Diseño equilibrado con alto contraste y sin estridencia) -->
+              <!-- Badges de Métricas Contextuales por Analítica (Objeto, Lista, Sujeto y Similitud) -->
               <div class="d-flex flex-wrap gap-2 pt-2 align-items-center">
+                <!-- Objeto Detectado -->
+                @if (record.objeto; as objeto) {
+                <span class="event-meta-badge event-meta-badge--objeto text-capitalize text-truncate"
+                  [title]="'Objeto: ' + objeto">
+                  <span class="icon-svg icon-target flex-shrink-0" style="width: 10px; height: 10px;"></span>
+                  {{ objeto }}
+                </span>
+                }
+
+                <!-- Lista de Control Oficial -->
+                @if (record.matchDetail?.listName || record.grupoLista; as listName) {
+                <span class="event-meta-badge event-meta-badge--lista text-truncate" [title]="listName">
+                  <span class="icon-svg icon-listas flex-shrink-0" style="width: 10px; height: 10px;"></span>
+                  {{ listName }}
+                </span>
+                }
+
+                <!-- Sujeto Identificado (Persona o Placa) -->
+                @if (record.sujeto; as sujeto) {
+                <span class="event-meta-badge event-meta-badge--sujeto text-truncate" [title]="'Sujeto: ' + sujeto">
+                  <span class="icon-svg icon-usuarios flex-shrink-0" style="width: 10px; height: 10px;"></span>
+                  {{ sujeto }}
+                </span>
+                }
+
+
+
                 <!-- Sentido de Cruce de Línea -->
                 @if (record.direccion) {
                 @let isEntrada = record.direccion.toLowerCase().includes('entrada');
@@ -626,126 +625,12 @@
                   Libres: {{ record.espaciosLibres }}
                 </span>
                 }
-
-                <!-- Lista de Control Oficial -->
-                @if (record.matchDetail?.listName || record.grupoLista; as listName) {
-                <span class="event-meta-badge event-meta-badge--lista text-truncate" [title]="listName">
-                  <span class="icon-svg icon-listas flex-shrink-0" style="width: 10px; height: 10px;"></span>
-                  {{ listName }}
-                </span>
-                }
-
-                <!-- Sujeto Identificado (Persona o Placa) -->
-                @if (record.sujeto; as sujeto) {
-                <span class="event-meta-badge event-meta-badge--sujeto text-truncate" [title]="'Sujeto: ' + sujeto">
-                  <span class="icon-svg icon-usuarios flex-shrink-0" style="width: 10px; height: 10px;"></span>
-                  {{ sujeto }}
-                </span>
-                }
               </div>
             </div>
           </div>
         </div>
         }
       </div>
-
-      <!-- Floating popover on hover for attribute badges (Single global viewport-elevated overlay) -->
-      @if (activeHoverCardId() && activeHoverRecord(); as record) {
-      <div class="metadata-card-popover" [style.left.px]="mouseX()" [style.top.px]="mouseY()">
-        <div class="popover-header d-flex align-items-center justify-content-between">
-          <div class="d-flex align-items-center gap-1.5">
-            <span class="icon-svg icon-box text-primary popover-header-icon" style="width: 12px; height: 12px;"></span>
-            <span class="popover-header-title text-muted text-uppercase fw-bold">Atributos</span>
-          </div>
-          <span class="badge bg-secondary-light text-secondary text-capitalize"
-            style="font-size: 0.65rem; padding: 2px 6px;">
-            Eventos
-          </span>
-        </div>
-
-        <!-- Sección Identificación -->
-        <div class="popover-section">
-          <div class="popover-section-title text-muted text-uppercase fw-bold">Identificación</div>
-          <div class="attributes-grid">
-            <span class="attribute-pill object-type-pill text-capitalize">
-              <span class="pill-dot"></span>
-              Objeto: {{ record.objeto }}
-            </span>
-            @if (record.direccion) {
-            <span class="attribute-pill gender-pill text-capitalize">
-              Dirección: {{ record.direccion }}
-            </span>
-            }
-          </div>
-        </div>
-
-        <!-- Sección Lista de Control -->
-        @if (record.matchDetail || record.grupoLista) {
-        <div class="popover-section">
-          <div class="popover-section-title text-muted text-uppercase fw-bold">Lista de Control</div>
-          <div class="attributes-grid">
-            <span class="attribute-pill recognition-pill text-truncate"
-              [title]="record.matchDetail?.listName || record.grupoLista">
-              Lista: {{ record.matchDetail?.listName || record.grupoLista }}
-            </span>
-            @if (record.sujeto || record.matchDetail?.detailId; as sujetoName) {
-            <span class="attribute-pill gender-pill text-truncate font-semibold" style="font-size: 0.7rem;"
-              [title]="sujetoName">
-              Sujeto: {{ sujetoName }}
-            </span>
-            }
-            @if (record.idReportType) {
-            <span class="attribute-pill posture-pill text-capitalize">
-              Reporte: {{ record.idReportType }}
-            </span>
-            }
-          </div>
-        </div>
-        }
-
-        <!-- Sección Métricas -->
-        @if (record.conteoAforo !== null || record.tiempoPermanencia !== null || record.objetosEnArea !== null ||
-        record.espaciosLibres !== null) {
-        <div class="popover-section">
-          <div class="popover-section-title text-muted text-uppercase fw-bold">Métricas</div>
-          <div class="attributes-grid">
-            @if (record.conteoAforo !== null) {
-            <span class="attribute-pill age-pill text-capitalize">
-              Aforo: {{ record.conteoAforo }}
-            </span>
-            }
-            @if (record.tiempoPermanencia !== null) {
-            <span class="attribute-pill gender-pill text-capitalize">
-              Permanencia: {{ record.tiempoPermanencia | number:'1.1-2' }}s
-            </span>
-            }
-            @if (record.objetosEnArea !== null) {
-            <span class="attribute-pill object-type-pill text-capitalize">
-              Objetos en área: {{ record.objetosEnArea }}
-            </span>
-            }
-            @if (record.espaciosLibres !== null) {
-            <span class="attribute-pill recognition-pill text-capitalize">
-              Espacios Libres: {{ record.espaciosLibres }}
-            </span>
-            }
-          </div>
-        </div>
-        }
-
-        <!-- Sección Localización -->
-        @if (record.location) {
-        <div class="popover-section">
-          <div class="popover-section-title text-muted text-uppercase fw-bold">Localización</div>
-          <div class="attributes-grid">
-            <span class="attribute-pill posture-pill text-capitalize">
-              Geo: {{ record.location.lat | number:'1.4-4' }}, {{ record.location.lon | number:'1.4-4' }}
-            </span>
-          </div>
-        </div>
-        }
-      </div>
-      }
       }
 
       <!-- Pagination (REUTILIZABLE DRY) -->

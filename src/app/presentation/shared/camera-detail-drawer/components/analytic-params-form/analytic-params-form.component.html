@@ -35,8 +35,12 @@
           (click)="$event.stopPropagation()">
           <div class="multiselect-options-list pe-1" style="max-height: 18rem;">
 
-            <div class="optgroup-label text-micro text-uppercase fw-bold text-muted px-2 pt-1 pb-1">
-              🔷 Analíticas de Polígono (Área)
+            <div class="analytic-optgroup-header d-flex align-items-center gap-2 px-2 pt-1.5 pb-1">
+              <span class="analytic-optgroup-indicator indicator-polygon"></span>
+              <span class="analytic-optgroup-label text-micro text-uppercase fw-bold text-muted">
+                Analíticas de Polígono (Área)
+              </span>
+              <span class="analytic-optgroup-badge badge-polygon ms-auto">Área</span>
             </div>
             @for (type of analyticTypes; track type.id) {
             @if (type.geometryType === 'polygon') {
@@ -56,8 +60,12 @@
             }
             }
 
-            <div class="optgroup-label text-micro text-uppercase fw-bold text-muted px-2 pt-2 pb-1">
-              🔶 Analíticas de Tramo (Cuadrilátero A-B-C-D)
+            <div class="analytic-optgroup-header with-divider d-flex align-items-center gap-2 px-2 pt-2.5 pb-1">
+              <span class="analytic-optgroup-indicator indicator-speed-quad"></span>
+              <span class="analytic-optgroup-label text-micro text-uppercase fw-bold text-muted">
+                Analíticas de Tramo (Cuadrilátero A-B-C-D)
+              </span>
+              <span class="analytic-optgroup-badge badge-speed-quad ms-auto">Tramo</span>
             </div>
             @for (type of analyticTypes; track type.id) {
             @if (type.geometryType === 'speed_quad') {
@@ -77,8 +85,12 @@
             }
             }
 
-            <div class="optgroup-label text-micro text-uppercase fw-bold text-muted px-2 pt-2 pb-1">
-              🟢 Analíticas de Línea (Cruce / Conteo)
+            <div class="analytic-optgroup-header with-divider d-flex align-items-center gap-2 px-2 pt-2.5 pb-1">
+              <span class="analytic-optgroup-indicator indicator-line"></span>
+              <span class="analytic-optgroup-label text-micro text-uppercase fw-bold text-muted">
+                Analíticas de Línea (Cruce / Conteo)
+              </span>
+              <span class="analytic-optgroup-badge badge-line ms-auto">Línea</span>
             </div>
             @for (type of analyticTypes; track type.id) {
             @if (type.geometryType === 'line') {
@@ -956,6 +968,25 @@
         </div>
         }
       </div>
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Fotogramas consecutivos con coincidencia de proximidad requeridos para confirmar el evento (min: 2 - max: 30, default: 10).">Fotogramas
+          Consecutivos</label>
+        <div class="input-group rounded-3"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'consecutive_frames_matched'"
+          title="Fotogramas consecutivos con coincidencia de proximidad requeridos para confirmar el evento (min: 2 - max: 30, default: 10).">
+          <input type="number" class="form-control text-paragraph-sm rounded-start-3" min="2" max="30" step="1"
+            [class.is-invalid]="isParamInvalid('consecutive_frames_matched')"
+            [ngModel]="consecutiveFramesMatched()" (ngModelChange)="consecutiveFramesMatched.set($event)"
+            title="Fotogramas consecutivos con coincidencia de proximidad requeridos para confirmar el evento (min: 2 - max: 30, default: 10)." />
+          <span class="input-group-text text-micro font-monospace bg-light">frames</span>
+        </div>
+        @if (isParamInvalid('consecutive_frames_matched')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe ser un número entero entre 2 y 30
+        </div>
+        }
+      </div>
     </div>
     }
 
@@ -1182,7 +1213,7 @@
     <!-- 11. Comportamiento Humano -->
     @if (selectedType() === 'human_behavior') {
     <div class="row g-3 align-inputs-bottom">
-      <div class="col-4">
+      <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Lapso de tiempo en el que las personas deben estar realizando la acción seleccionada para completar una secuencia (min: 1 - max: 300).">Tiempo
           de Secuencia</label>
@@ -1201,7 +1232,22 @@
         </div>
         }
       </div>
-      <div class="col-4 position-relative">
+      <div class="col-6">
+        <label class="form-label text-muted small font-semibold mb-1"
+          title="Umbral de confianza del modelo de posturas humanas (min: 0.25 - max: 0.99).">Confianza Mínima de
+          Postura</label>
+        <input type="number" class="form-control text-paragraph-sm rounded-3" step="0.05" min="0.25" max="0.99"
+          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'confianza_postura'"
+          [class.is-invalid]="isParamInvalid('confianza_postura')"
+          [ngModel]="confianzaPostura()" (ngModelChange)="confianzaPostura.set($event)"
+          title="Umbral de confianza del modelo de posturas humanas (min: 0.25 - max: 0.99)." />
+        @if (isParamInvalid('confianza_postura')) {
+        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
+          Debe estar entre 0.25 y 0.99
+        </div>
+        }
+      </div>
+      <div class="col-6 position-relative">
         <label class="form-label text-muted small font-semibold mb-1"
           title="Parámetro que permite seleccionar la condición que dispara los eventos cuando se cumple o no la secuencia de los micromovimientos (Cumple / No cumple).">Condición
           de Disparo</label>
@@ -1233,21 +1279,6 @@
             </div>
             }
           </div>
-        </div>
-        }
-      </div>
-      <div class="col-4">
-        <label class="form-label text-muted small font-semibold mb-1"
-          title="Umbral de confianza del modelo de posturas humanas (min: 0.25 - max: 0.99).">Confianza Mínima de
-          Postura</label>
-        <input type="number" class="form-control text-paragraph-sm rounded-3" step="0.05" min="0.25" max="0.99"
-          [class.element-highlight-amber-pulse]="highlightErrorTarget === 'confianza_postura'"
-          [class.is-invalid]="isParamInvalid('confianza_postura')"
-          [ngModel]="confianzaPostura()" (ngModelChange)="confianzaPostura.set($event)"
-          title="Umbral de confianza del modelo de posturas humanas (min: 0.25 - max: 0.99)." />
-        @if (isParamInvalid('confianza_postura')) {
-        <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
-          Debe estar entre 0.25 y 0.99
         </div>
         }
       </div>

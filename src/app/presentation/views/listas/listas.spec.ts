@@ -22,6 +22,7 @@ describe('Listas', () => {
     registerListDetail: () => of({}),
     deleteListDetail: () => of(),
     updateList: () => of({}),
+    updateDetailImg: () => of({}),
     updateFaceImg: () => of({}),
     updateFaceDetail: () => of({}),
     updatePlateDetail: () => of({})

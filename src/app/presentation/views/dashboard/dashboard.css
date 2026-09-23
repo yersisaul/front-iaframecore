@@ -421,12 +421,11 @@
   align-items: center;
   gap: 0.75rem;
   overflow: hidden;
-  container-type: inline-size;
 }
 
 .toolbar-name-marquee-container {
   min-width: 0;
-  max-width: 50%;
+  max-width: 60%;
   flex: 0 1 auto;
   overflow: hidden;
   position: relative;
@@ -438,16 +437,20 @@
 
 .toolbar-desc-marquee-container {
   min-width: 0;
-  flex: 1 1 0%;
+  flex: 1 1 auto;
   overflow: hidden;
   position: relative;
-  container-type: inline-size;
 }
 
-.browser-toolbar:hover .toolbar-name-marquee-container,
-.browser-toolbar:hover .toolbar-desc-marquee-container {
-  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 0.875rem), transparent 100%);
-  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 0.875rem), transparent 100%);
+/* Solo aplicar máscara de desvanecimiento si el contenedor realmente necesita marquee */
+.toolbar-name-marquee-container.toolbar-title-needs-marquee {
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 1rem), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 1rem), transparent 100%);
+}
+
+.toolbar-desc-marquee-container.toolbar-desc-needs-marquee {
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 1rem), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 1rem), transparent 100%);
 }
 
 .active-dashboard-title {
@@ -460,7 +463,6 @@
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary, #0f172a);
-  width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -475,12 +477,12 @@
   font-size: 0.8125rem;
   color: var(--text-muted, #64748b);
   font-weight: 400;
-  width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
 
-.browser-toolbar:hover .active-dashboard-title {
+/* Animación SOLO cuando el texto desborda y se requiere marquee activo */
+.toolbar-name-marquee-container.toolbar-title-needs-marquee .active-dashboard-title.animate-marquee {
   width: max-content !important;
   max-width: none !important;
   text-align: left !important;
@@ -490,11 +492,7 @@
   animation: toolbarTitleMarquee 3.5s linear infinite alternate;
 }
 
-.toolbar-name-marquee-container:only-child .active-dashboard-title {
-  animation-name: toolbarTitleOnlyMarquee;
-}
-
-.browser-toolbar:hover .active-dashboard-desc {
+.toolbar-desc-marquee-container.toolbar-desc-needs-marquee .active-dashboard-desc.animate-marquee {
   width: max-content !important;
   max-width: none !important;
   text-align: left !important;
@@ -510,17 +508,7 @@
   }
 
   85%, 100% {
-    transform: translate3d(min(0px, calc(-100% + 50cqw + 2px)), 0, 0);
-  }
-}
-
-@keyframes toolbarTitleOnlyMarquee {
-  0%, 15% {
-    transform: translate3d(0, 0, 0);
-  }
-
-  85%, 100% {
-    transform: translate3d(min(0px, calc(-100% + 100cqw + 2px)), 0, 0);
+    transform: translate3d(var(--title-marquee-shift, -50px), 0, 0);
   }
 }
 
@@ -530,7 +518,7 @@
   }
 
   85%, 100% {
-    transform: translate3d(min(0px, calc(-100% + 100cqw + 2px)), 0, 0);
+    transform: translate3d(var(--desc-marquee-shift, -50px), 0, 0);
   }
 }
 

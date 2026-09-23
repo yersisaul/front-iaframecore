@@ -328,17 +328,6 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   // Local draft filter state
   readonly tempFilters = signal<EventFilters>(defaultEventFilters());
 
-  // Hover popover coordinate states
-  readonly activeHoverCardId = signal<string | null>(null);
-  readonly mouseX = signal<number>(0);
-  readonly mouseY = signal<number>(0);
-
-  readonly activeHoverRecord = computed<EventRecord | null>(() => {
-    const id = this.activeHoverCardId();
-    if (!id) return null;
-    return this.records().find(r => String(r.id) === String(id)) || null;
-  });
-
   // Modal state
   readonly selectedEventForModal = signal<EventRecord | null>(null);
   
@@ -968,32 +957,6 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  // --- Hover Popover Logic ---
-  onCardMouseMove(event: MouseEvent, cardId: string): void {
-    this.activeHoverCardId.set(cardId);
-    
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const tooltipWidth = 360;
-    const tooltipHeight = 220;
-    const margin = 20;
-    const verticalMargin = 85;
-    
-    let posX = event.clientX + 15;
-    let posY = event.clientY + 15;
-
-    if (event.clientX + tooltipWidth + 15 > viewportWidth - margin) {
-      posX = event.clientX - tooltipWidth - 15;
-    }
-
-    if (event.clientY + tooltipHeight + 15 > viewportHeight - verticalMargin) {
-      posY = event.clientY - tooltipHeight - 15;
-    }
-    
-    this.mouseX.set(posX);
-    this.mouseY.set(posY);
-  }
-
   onCardMouseEnter(event: MouseEvent): void {
     const card = event.currentTarget as HTMLElement | null;
     if (!card) return;
@@ -1001,31 +964,42 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     const headerBlock = card.querySelector('.card-header-camera') as HTMLElement | null;
     if (!headerBlock) return;
 
+    const titleContainer = headerBlock.querySelector('.card-title-container') as HTMLElement | null;
     const titleEl = headerBlock.querySelector('.card-title') as HTMLElement | null;
-    if (!titleEl) return;
+    if (!titleEl || !titleContainer) return;
 
-    // Al hacer hover en la tarjeta, colapsamos el timestamp y expandimos el título
+    // 1. Verificar si el título desborda su espacio actual (con la fecha visible)
+    const isTruncatedWithDate = titleEl.scrollWidth > titleContainer.clientWidth;
+
+    if (!isTruncatedWithDate) {
+      // Si el texto entra perfectamente en el espacio asignado junto a la fecha:
+      // No se oculta la fecha ni se activa el marquee.
+      headerBlock.classList.remove('camera-title-expand-space', 'camera-title-needs-marquee');
+      titleEl.style.removeProperty('--marquee-shift');
+      return;
+    }
+
+    // 2. Si el texto supera el espacio inicial con la fecha -> ocultamos la fecha para ganar todo el ancho
     headerBlock.classList.add('camera-title-expand-space');
 
-    // Ancho útil disponible (todo el ancho del encabezado sin el timestamp)
-    const availableFullWidth = headerBlock.clientWidth;
+    // Medimos el ancho completo disponible en titleContainer (el cual ya descuenta el botón de mapa si existe)
+    const availableFullWidth = titleContainer.clientWidth;
 
+    // 3. Verificar si en el ancho completo expandido el texto ahora entra completo o aún desborda
     if (titleEl.scrollWidth > availableFullWidth) {
-      // Si el nombre de la cámara desborda el espacio completo -> marquee exacto
-      // Offset de 24px para que la última letra pase completamente el gradiente de fade-out
+      // Sigue sin ser suficiente espacio -> recién aquí se activa el marquee
       const fadeOffset = 24;
       const shift = Math.ceil(titleEl.scrollWidth - availableFullWidth) + fadeOffset;
       titleEl.style.setProperty('--marquee-shift', `-${shift}px`);
       headerBlock.classList.add('camera-title-needs-marquee');
     } else {
-      // Si entra completo estático en el ancho disponible -> sin marquee
+      // Ahora entra completo estático sin la fecha -> no necesita marquee
       titleEl.style.removeProperty('--marquee-shift');
       headerBlock.classList.remove('camera-title-needs-marquee');
     }
   }
 
   onCardMouseLeave(event?: MouseEvent): void {
-    this.activeHoverCardId.set(null);
     if (event?.currentTarget) {
       const card = event.currentTarget as HTMLElement;
       const headerBlock = card.querySelector('.card-header-camera') as HTMLElement | null;
@@ -1063,16 +1037,23 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     }).catch(err => console.error('Error al copiar:', err));
   }
 
-  hasMetrics(record: EventRecord): boolean {
-    return record.conteoAforo !== null ||
-           record.tiempoPermanencia !== null ||
-           record.objetosEnArea !== null ||
-           record.espaciosLibres !== null;
+  hasLocation(record: EventRecord): boolean {
+    if (!record) return false;
+    if (record.location?.lat !== undefined && record.location?.lon !== undefined && record.location.lat !== null && record.location.lon !== null) {
+      return true;
+    }
+    if (record.nombreCamara || record.idCamara) return true;
+    return false;
   }
 
   getGoogleMapsUrl(record: EventRecord): string {
-    if (!record?.location) return '#';
-    return `https://maps.google.com?q=${record.location.lat},${record.location.lon}`;
+    if (record?.location?.lat !== undefined && record?.location?.lon !== undefined && record.location.lat !== null && record.location.lon !== null) {
+      return `https://www.google.com/maps/search/?api=1&query=${record.location.lat},${record.location.lon}`;
+    }
+    if (record?.nombreCamara) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.nombreCamara)}`;
+    }
+    return '#';
   }
 
   onImageError(event: Event): void {

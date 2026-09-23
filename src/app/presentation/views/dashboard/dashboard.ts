@@ -307,6 +307,88 @@ export class Dashboard implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Control dinámico de marquee en la barra del lienzo del dashboard.
+   * Solo activa el desplazamiento si el texto excede el ancho disponible del contenedor.
+   */
+  onToolbarMouseEnter(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const toolbar = target.classList.contains('browser-toolbar')
+      ? target
+      : (target.closest('.browser-toolbar') as HTMLElement | null);
+    if (!toolbar) return;
+
+    const nameEl = toolbar.querySelector('.active-dashboard-title') as HTMLElement | null;
+    const nameContainer = toolbar.querySelector('.toolbar-name-marquee-container') as HTMLElement | null;
+    const descEl = toolbar.querySelector('.active-dashboard-desc') as HTMLElement | null;
+    const descContainer = toolbar.querySelector('.toolbar-desc-marquee-container') as HTMLElement | null;
+
+    const fadeOffset = 24;
+
+    if (nameEl && nameContainer) {
+      if (nameEl.scrollWidth > nameContainer.clientWidth + 2) {
+        const shift = Math.ceil(nameEl.scrollWidth - nameContainer.clientWidth) + fadeOffset;
+        nameEl.style.setProperty('--title-marquee-shift', `-${shift}px`);
+        nameContainer.classList.add('toolbar-title-needs-marquee');
+        nameEl.classList.add('animate-marquee');
+      } else {
+        nameEl.style.removeProperty('--title-marquee-shift');
+        nameContainer.classList.remove('toolbar-title-needs-marquee');
+        nameEl.classList.remove('animate-marquee');
+      }
+    }
+
+    if (descEl && descContainer) {
+      if (descEl.scrollWidth > descContainer.clientWidth + 2) {
+        const shift = Math.ceil(descEl.scrollWidth - descContainer.clientWidth) + fadeOffset;
+        descEl.style.setProperty('--desc-marquee-shift', `-${shift}px`);
+        descContainer.classList.add('toolbar-desc-needs-marquee');
+        descEl.classList.add('animate-marquee');
+      } else {
+        descEl.style.removeProperty('--desc-marquee-shift');
+        descContainer.classList.remove('toolbar-desc-needs-marquee');
+        descEl.classList.remove('animate-marquee');
+      }
+    }
+  }
+
+  onToolbarMouseLeave(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+
+    const toolbar = target.classList.contains('browser-toolbar')
+      ? target
+      : (target.closest('.browser-toolbar') as HTMLElement | null);
+    if (!toolbar) return;
+
+    this.resetToolbarMarquee(toolbar);
+  }
+
+  private resetToolbarMarquee(toolbar: HTMLElement): void {
+    const nameEl = toolbar.querySelector('.active-dashboard-title') as HTMLElement | null;
+    const nameContainer = toolbar.querySelector('.toolbar-name-marquee-container') as HTMLElement | null;
+    const descEl = toolbar.querySelector('.active-dashboard-desc') as HTMLElement | null;
+    const descContainer = toolbar.querySelector('.toolbar-desc-marquee-container') as HTMLElement | null;
+
+    if (nameEl) {
+      nameEl.style.removeProperty('--title-marquee-shift');
+      nameEl.classList.remove('animate-marquee');
+    }
+    if (nameContainer) {
+      nameContainer.classList.remove('toolbar-title-needs-marquee');
+    }
+
+    if (descEl) {
+      descEl.style.removeProperty('--desc-marquee-shift');
+      descEl.classList.remove('animate-marquee');
+    }
+    if (descContainer) {
+      descContainer.classList.remove('toolbar-desc-needs-marquee');
+    }
+  }
+
   private setIframeLoading(loading: boolean): void {
     this.isIframeLoading.set(loading);
     if (this.iframeLoadingTimeoutId) {

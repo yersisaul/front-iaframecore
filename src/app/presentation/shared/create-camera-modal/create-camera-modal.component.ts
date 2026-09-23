@@ -36,9 +36,12 @@ export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy 
   @Input() preselectedHostName: string | null = null;
   @Input() hosts: Host[] = [];
 
+  private editingCameraSnapshot: Camera | null = null;
+
   get modalTitle(): string {
     if (this.mode === 'edit') {
-      return `Editar Cámara - ${this.camera?.name || 'Configuración'}`;
+      const cam = this.editingCameraSnapshot || this.camera;
+      return `Editar Cámara - ${cam?.name || 'Configuración'}`;
     }
     if (this.preselectedHostId) {
       const host = this.hosts?.find(h => h.fingerprint === this.preselectedHostId);
@@ -71,7 +74,7 @@ export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy 
 
   readonly resolutionOptions = [
     { label: '1920x1080 — Full HD 1080p', value: '1920x1080' },
-    { label: '1280x270 — Ultra panorámico', value: '1280x270' },
+    { label: '1280x720 — HD 720p', value: '1280x720' },
     { label: '1024x768 — 4:3 XGA', value: '1024x768' },
     { label: '800x600 — 4:3 SVGA', value: '800x600' },
     { label: '640x480 — 4:3 VGA', value: '640x480' },
@@ -107,7 +110,7 @@ export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy 
     const lat = this.cameraForm?.get('lat')?.value;
     const lon = this.cameraForm?.get('lon')?.value;
     return lat !== null && lat !== '' && !isNaN(Number(lat)) &&
-           lon !== null && lon !== '' && !isNaN(Number(lon));
+      lon !== null && lon !== '' && !isNaN(Number(lon));
   }
 
   private backdropMouseDownTarget: EventTarget | null = null;
@@ -120,17 +123,18 @@ export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy 
     if (changes['show']) {
       if (this.show) {
         if (this.mode === 'edit' && this.camera) {
-          this.populateForm(this.camera);
+          // Instantánea inmutable al momento de abrir para no sobreescribir lo que el usuario tipea
+          this.editingCameraSnapshot = { ...this.camera };
+          this.populateForm(this.editingCameraSnapshot);
         } else {
+          this.editingCameraSnapshot = null;
           this.resetForm();
         }
         this.scheduleMapInit();
       } else {
+        this.editingCameraSnapshot = null;
         this.destroyMap();
       }
-    } else if (changes['camera'] && this.show && this.mode === 'edit' && this.camera) {
-      this.populateForm(this.camera);
-      this.scheduleMapInit();
     }
     if (changes['preselectedHostId'] && this.cameraForm && this.mode === 'create') {
       if (this.preselectedHostId) {
@@ -498,8 +502,9 @@ export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy 
 
     const f = this.cameraForm.value;
     const streamType: StreamType = f.stream_type;
+    const targetCam = this.editingCameraSnapshot || this.camera;
 
-    if (this.mode === 'edit' && this.camera) {
+    if (this.mode === 'edit' && targetCam) {
       const updatePayload: CameraUpdateRequest = {
         camera_name: f.camera_name.trim(),
         fingerprint_host: f.fingerprint_host,
@@ -536,26 +541,26 @@ export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy 
         updatePayload.forced_fps = Number(f.forced_fps);
       }
 
-      this.cameraService.updateCamera(this.camera.id, updatePayload).subscribe({
+      this.cameraService.updateCamera(targetCam.id, updatePayload).subscribe({
         next: () => {
           this.isSubmitting.set(false);
           const updatedCam: Camera = {
-            ...this.camera!,
-            name: updatePayload.camera_name || this.camera!.name,
-            hostFingerprint: updatePayload.fingerprint_host || this.camera!.hostFingerprint,
-            streamType: (updatePayload.stream_type as string) || this.camera!.streamType,
-            decoder: (updatePayload.decoder as string) || this.camera!.decoder,
-            location: updatePayload.location || this.camera!.location,
-            streamUrl: updatePayload.stream_url !== undefined ? (updatePayload.stream_url || undefined) : this.camera!.streamUrl,
-            rtspUrl: updatePayload.stream_url !== undefined ? (updatePayload.stream_url || undefined) : this.camera!.rtspUrl,
-            nxId: updatePayload.nx_id !== undefined ? (updatePayload.nx_id || undefined) : this.camera!.nxId,
-            forcedResolution: updatePayload.forced_resolution !== undefined ? (updatePayload.forced_resolution || undefined) : this.camera!.forcedResolution,
-            forcedFps: updatePayload.forced_fps !== undefined ? (updatePayload.forced_fps ?? undefined) : this.camera!.forcedFps,
-            ipAddress: updatePayload.ip_address !== undefined ? (updatePayload.ip_address || undefined) : this.camera!.ipAddress,
-            user: updatePayload.user !== undefined ? (updatePayload.user || undefined) : this.camera!.user,
-            password: updatePayload.password !== undefined ? (updatePayload.password || undefined) : this.camera!.password,
-            httpPort: updatePayload.http_port !== undefined ? (updatePayload.http_port ?? undefined) : this.camera!.httpPort,
-            selectedStream: updatePayload.selected_stream !== undefined ? (updatePayload.selected_stream ?? undefined) : this.camera!.selectedStream
+            ...targetCam,
+            name: updatePayload.camera_name || targetCam.name,
+            hostFingerprint: updatePayload.fingerprint_host || targetCam.hostFingerprint,
+            streamType: (updatePayload.stream_type as string) || targetCam.streamType,
+            decoder: (updatePayload.decoder as string) || targetCam.decoder,
+            location: updatePayload.location || targetCam.location,
+            streamUrl: updatePayload.stream_url !== undefined ? (updatePayload.stream_url || undefined) : targetCam.streamUrl,
+            rtspUrl: updatePayload.stream_url !== undefined ? (updatePayload.stream_url || undefined) : targetCam.rtspUrl,
+            nxId: updatePayload.nx_id !== undefined ? (updatePayload.nx_id || undefined) : targetCam.nxId,
+            forcedResolution: updatePayload.forced_resolution !== undefined ? (updatePayload.forced_resolution || undefined) : targetCam.forcedResolution,
+            forcedFps: updatePayload.forced_fps !== undefined ? (updatePayload.forced_fps ?? undefined) : targetCam.forcedFps,
+            ipAddress: updatePayload.ip_address !== undefined ? (updatePayload.ip_address || undefined) : targetCam.ipAddress,
+            user: updatePayload.user !== undefined ? (updatePayload.user || undefined) : targetCam.user,
+            password: updatePayload.password !== undefined ? (updatePayload.password || undefined) : targetCam.password,
+            httpPort: updatePayload.http_port !== undefined ? (updatePayload.http_port ?? undefined) : targetCam.httpPort,
+            selectedStream: updatePayload.selected_stream !== undefined ? (updatePayload.selected_stream ?? undefined) : targetCam.selectedStream
           };
           this.cameraUpdated.emit(updatedCam);
           this.close.emit();
@@ -784,7 +789,7 @@ export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy 
     const lonVal = this.cameraForm.get('lon')?.value;
 
     if (latVal !== null && latVal !== '' && !isNaN(Number(latVal)) &&
-        lonVal !== null && lonVal !== '' && !isNaN(Number(lonVal))) {
+      lonVal !== null && lonVal !== '' && !isNaN(Number(lonVal))) {
       const lat = Number(latVal);
       const lon = Number(lonVal);
       if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {

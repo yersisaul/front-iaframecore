@@ -744,6 +744,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
           if (lower.includes('humbral_maximo')) return 'humbral_maximo';
           if (lower.includes('humbral_minmo') || lower.includes('humbral_minimo')) return 'humbral_minimo';
           if (lower.includes('n_objetos') || lower.includes('objetos')) return 'n_objetos';
+          if (lower.includes('consecutive_frames_matched') || lower.includes('consecutive_frames') || lower.includes('consecutive')) return 'consecutive_frames_matched';
           if (lower.includes('tiempo_descenso') || lower.includes('descenso')) return 'tiempo_descenso';
           if (lower.includes('similitud')) return 'similitud';
           if (lower.includes('embeding') || lower.includes('embedding')) return 'n_embeddings';

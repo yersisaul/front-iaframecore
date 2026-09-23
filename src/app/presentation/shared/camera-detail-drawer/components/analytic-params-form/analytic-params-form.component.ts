@@ -109,6 +109,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
   readonly humbralMaximo = signal<number>(60);
   readonly humbralMinimo = signal<number>(10);
   readonly nObjetosCercanos = signal<number>(1);
+  readonly consecutiveFramesMatched = signal<number>(10);
   readonly tiempoVigilanciaVehicular = signal<number>(5);
   readonly tiempoDescenso = signal<number>(60);
   readonly similitudProp = signal<number>(85);
@@ -539,6 +540,13 @@ export class AnalyticParamsFormComponent implements OnChanges {
         return sel === 'object_permanence' && (this.humbralMinimo() < 3 || this.humbralMinimo() > 600 || this.humbralMinimo() > this.humbralMaximo());
       case 'n_objetos':
         return sel === 'object_proximity' && (this.nObjetosCercanos() < 1 || this.nObjetosCercanos() > 10);
+      case 'consecutive_frames_matched': {
+        const val = this.consecutiveFramesMatched();
+        return sel === 'object_proximity' && (
+          val === null || val === undefined || (val as any) === '' || isNaN(Number(val)) ||
+          Number(val) < 2 || Number(val) > 30 || !Number.isInteger(Number(val))
+        );
+      }
       case 'tiempo_vigilancia':
         return sel === 'vehicle_surveillance' && (this.tiempoVigilanciaVehicular() < 5 || this.tiempoVigilanciaVehicular() > 60);
       case 'tiempo_descenso':
@@ -633,6 +641,17 @@ export class AnalyticParamsFormComponent implements OnChanges {
       }
       if (this.escalaOrbita() < 1.0 || this.escalaOrbita() > 1.9) {
         return { valid: false, target: 'escala_orbita', message: 'Radio de Órbita de Proximidad debe estar entre 1.0 y 1.9.' };
+      }
+      const cfm = this.consecutiveFramesMatched();
+      if (
+        cfm === null || cfm === undefined || (cfm as any) === '' || isNaN(Number(cfm)) ||
+        Number(cfm) < 2 || Number(cfm) > 30 || !Number.isInteger(Number(cfm))
+      ) {
+        return {
+          valid: false,
+          target: 'consecutive_frames_matched',
+          message: 'Fotogramas Consecutivos debe ser un número entero entre 2 y 30.'
+        };
       }
     } else if (sel === 'vehicle_surveillance') {
       if (this.tiempoVigilanciaVehicular() < 5 || this.tiempoVigilanciaVehicular() > 60) {
@@ -1199,6 +1218,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
       this.humbralMaximo();
       this.humbralMinimo();
       this.nObjetosCercanos();
+      this.consecutiveFramesMatched();
       this.tiempoVigilanciaVehicular();
       this.tiempoDescenso();
       this.similitudProp();
@@ -1443,6 +1463,12 @@ export class AnalyticParamsFormComponent implements OnChanges {
     if (params['humbral_maximo'] !== undefined) this.humbralMaximo.set(Number(params['humbral_maximo']));
     if (params['humbral_minmo'] !== undefined) this.humbralMinimo.set(Number(params['humbral_minmo']));
     if (params['N_objetos'] !== undefined) this.nObjetosCercanos.set(Number(params['N_objetos']));
+    if (params['consecutive_frames_matched'] !== undefined) {
+      const parsedVal = Number(params['consecutive_frames_matched']);
+      this.consecutiveFramesMatched.set(isNaN(parsedVal) ? 10 : Math.round(parsedVal));
+    } else {
+      this.consecutiveFramesMatched.set(10);
+    }
     if (params['tiempo_descenso'] !== undefined) this.tiempoDescenso.set(Number(params['tiempo_descenso']));
     if (params['similitud'] !== undefined) this.similitudProp.set(Number(params['similitud']));
     if (params['N_embedings'] !== undefined) this.nEmbeddings.set(Number(params['N_embedings']));
@@ -1653,6 +1679,8 @@ export class AnalyticParamsFormComponent implements OnChanges {
     } else if (selType === 'object_proximity') {
       specificParams['N_objetos'] = this.nObjetosCercanos();
       specificParams['escala_orbita'] = this.escalaOrbita();
+      const cfm = this.consecutiveFramesMatched();
+      specificParams['consecutive_frames_matched'] = Number.isInteger(Number(cfm)) ? Number(cfm) : Math.round(Number(cfm) || 10);
     } else if (selType === 'vehicle_surveillance') {
       specificParams['Tiempo'] = this.tiempoVigilanciaVehicular();
       specificParams['tiempo_descenso'] = this.tiempoDescenso();

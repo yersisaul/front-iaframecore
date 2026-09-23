@@ -365,8 +365,8 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
   }
 
   getGoogleMapsUrl(record: EventRecord): string {
-    if (!record?.location) return '#';
-    return `https://maps.google.com?q=${record.location.lat},${record.location.lon}`;
+    if (!record?.location?.lat || !record?.location?.lon) return '#';
+    return `https://www.google.com/maps/search/?api=1&query=${record.location.lat},${record.location.lon}`;
   }
 
   /**

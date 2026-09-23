@@ -265,19 +265,93 @@ export class OpenSearchRepository implements IMetadataRepository {
     }
 
     if (filters.colores && filters.colores.length > 0) {
+      const rawList = Array.isArray(filters.colores) ? filters.colores : [filters.colores];
+      const expandedVariants = new Set<string>();
+      rawList.forEach(v => {
+        const s = String(v).trim();
+        if (!s) return;
+        expandedVariants.add(s);
+        expandedVariants.add(s.toLowerCase());
+        expandedVariants.add(s.toUpperCase());
+        expandedVariants.add(s.charAt(0).toUpperCase() + s.slice(1).toLowerCase());
+      });
+      const variantsList = Array.from(expandedVariants);
+
       mustFilters.push({
-        nested: {
-          path: 'colores',
-          query: this.buildTermsFilter('colores.color_text', filters.colores)
+        bool: {
+          should: [
+            // 1. Mapeo Nested (si el índice tiene colores como nested)
+            {
+              nested: {
+                path: 'colores',
+                query: {
+                  bool: {
+                    should: [
+                      { terms: { 'colores.color_text': variantsList } },
+                      { terms: { 'colores.color_text.keyword': variantsList } },
+                      { match: { 'colores.color_text': variantsList.join(' ') } }
+                    ],
+                    minimum_should_match: 1
+                  }
+                },
+                ignore_unmapped: true
+              }
+            },
+            // 2. Mapeo Object / Array estándar (no nested)
+            { terms: { 'colores.color_text': variantsList } },
+            { terms: { 'colores.color_text.keyword': variantsList } },
+            { terms: { 'colores.color': variantsList } },
+            { terms: { 'colores.color.keyword': variantsList } },
+            { terms: { 'color_text': variantsList } },
+            { terms: { 'color_text.keyword': variantsList } },
+            { terms: { 'color': variantsList } },
+            { terms: { 'color.keyword': variantsList } },
+            { terms: { 'tez': variantsList } },
+            { terms: { 'tez.keyword': variantsList } },
+            { match: { 'colores.color_text': variantsList.join(' ') } }
+          ],
+          minimum_should_match: 1
         }
       });
     }
 
     if (filters.posturas && filters.posturas.length > 0 && index === 'personas') {
+      const rawPosturas = Array.isArray(filters.posturas) ? filters.posturas : [filters.posturas];
+      const expandedPosturas = new Set<string>();
+      rawPosturas.forEach(v => {
+        const s = String(v).trim();
+        if (!s) return;
+        expandedPosturas.add(s);
+        expandedPosturas.add(s.toLowerCase());
+        expandedPosturas.add(s.toUpperCase());
+        expandedPosturas.add(s.charAt(0).toUpperCase() + s.slice(1).toLowerCase());
+      });
+      const posturasList = Array.from(expandedPosturas);
+
       mustFilters.push({
-        nested: {
-          path: 'posturas',
-          query: this.buildTermsFilter('posturas.postura', filters.posturas)
+        bool: {
+          should: [
+            {
+              nested: {
+                path: 'posturas',
+                query: {
+                  bool: {
+                    should: [
+                      { terms: { 'posturas.postura': posturasList } },
+                      { terms: { 'posturas.postura.keyword': posturasList } }
+                    ],
+                    minimum_should_match: 1
+                  }
+                },
+                ignore_unmapped: true
+              }
+            },
+            { terms: { 'posturas.postura': posturasList } },
+            { terms: { 'posturas.postura.keyword': posturasList } },
+            { terms: { 'postura': posturasList } },
+            { terms: { 'postura.keyword': posturasList } }
+          ],
+          minimum_should_match: 1
         }
       });
     }
@@ -420,13 +494,29 @@ export class OpenSearchRepository implements IMetadataRepository {
 
     aggs.camara_vals = { terms: { field: 'camara', size: 100 } };
     aggs.confiabilidad_stats = { stats: { field: 'confiabilidad' } };
-    aggs.colores_vals = { terms: { field: 'colores.color_text', size: 100 } };
+    aggs.colores_vals = { terms: { field: 'colores.color_text.keyword', size: 100 } };
+    aggs.colores_vals_raw = { terms: { field: 'colores.color_text', size: 100 } };
+    aggs.colores_nested = {
+      nested: { path: 'colores' },
+      aggs: {
+        color_vals: { terms: { field: 'colores.color_text.keyword', size: 100 } },
+        color_vals_raw: { terms: { field: 'colores.color_text', size: 100 } }
+      }
+    };
 
     if (index === 'personas') {
       aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
       aggs.edad_vals = { terms: { field: 'edad', size: 50 } };
       aggs.genero_vals = { terms: { field: 'genero', size: 10 } };
-      aggs.postura_vals = { terms: { field: 'posturas.postura', size: 100 } };
+      aggs.posturas_nested = {
+        nested: { path: 'posturas' },
+        aggs: {
+          postura_vals: { terms: { field: 'posturas.postura.keyword', size: 100 } },
+          postura_vals_raw: { terms: { field: 'posturas.postura', size: 100 } }
+        }
+      };
+      aggs.postura_vals = { terms: { field: 'posturas.postura.keyword', size: 100 } };
+      aggs.postura_vals_raw = { terms: { field: 'posturas.postura', size: 100 } };
     } else if (index === 'vehiculos') {
       aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
     } else if (index === 'rostros') {
@@ -459,16 +549,33 @@ export class OpenSearchRepository implements IMetadataRepository {
     if (aggs.reconocimiento_vals && aggs.reconocimiento_vals.buckets) {
       options.reconocimientos = aggs.reconocimiento_vals.buckets.map((b: any) => b.key);
     }
-    if (aggs.colores_vals && aggs.colores_vals.buckets) {
+
+    // Extracción tolerante de opciones de color
+    if (aggs.colores_nested?.color_vals?.buckets?.length) {
+      options.colores = aggs.colores_nested.color_vals.buckets.map((b: any) => b.key);
+    } else if (aggs.colores_nested?.color_vals_raw?.buckets?.length) {
+      options.colores = aggs.colores_nested.color_vals_raw.buckets.map((b: any) => b.key);
+    } else if (aggs.colores_vals?.buckets?.length) {
       options.colores = aggs.colores_vals.buckets.map((b: any) => b.key);
-    } else if (aggs.colores_agg && aggs.colores_agg.color_vals && aggs.colores_agg.color_vals.buckets) {
+    } else if (aggs.colores_vals_raw?.buckets?.length) {
+      options.colores = aggs.colores_vals_raw.buckets.map((b: any) => b.key);
+    } else if (aggs.colores_agg?.color_vals?.buckets?.length) {
       options.colores = aggs.colores_agg.color_vals.buckets.map((b: any) => b.key);
     }
-    if (aggs.postura_vals && aggs.postura_vals.buckets) {
+
+    // Extracción tolerante de opciones de postura
+    if (aggs.posturas_nested?.postura_vals?.buckets?.length) {
+      options.posturas = aggs.posturas_nested.postura_vals.buckets.map((b: any) => b.key);
+    } else if (aggs.posturas_nested?.postura_vals_raw?.buckets?.length) {
+      options.posturas = aggs.posturas_nested.postura_vals_raw.buckets.map((b: any) => b.key);
+    } else if (aggs.postura_vals?.buckets?.length) {
       options.posturas = aggs.postura_vals.buckets.map((b: any) => b.key);
-    } else if (aggs.posturas_agg && aggs.posturas_agg.postura_vals && aggs.posturas_agg.postura_vals.buckets) {
+    } else if (aggs.postura_vals_raw?.buckets?.length) {
+      options.posturas = aggs.postura_vals_raw.buckets.map((b: any) => b.key);
+    } else if (aggs.posturas_agg?.postura_vals?.buckets?.length) {
       options.posturas = aggs.posturas_agg.postura_vals.buckets.map((b: any) => b.key);
     }
+
     if (aggs.confiabilidad_stats) {
       options.confiabilidadStats = {
         min: typeof aggs.confiabilidad_stats.min === 'number' ? aggs.confiabilidad_stats.min : 0,

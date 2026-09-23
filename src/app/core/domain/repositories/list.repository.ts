@@ -11,8 +11,9 @@ export abstract class IListRepository {
   abstract registerListDetail(detail: Partial<ListDetail>, file?: File): Observable<ListDetail>;
   abstract deleteListDetail(detailId: string): Observable<void>;
   abstract querySubjectDetections(detailId: string): Observable<any[]>;
-  abstract queryListEventSummaries(listId: string): Observable<Record<string, { count: number; latestHit?: any }>>;
+  abstract queryListEventSummaries(listId: string, detailIds?: string[]): Observable<Record<string, { count: number; latestHit?: any }>>;
   abstract updateList(list: List): Observable<List>;
+  abstract updateDetailImg(detailId: string, file: File): Observable<ListDetail>;
   abstract updateFaceImg(detailId: string, file: File): Observable<ListDetail>;
   abstract updateFaceDetail(detailId: string, listId: string, payload: { nombre_asociado: string }): Observable<ListDetail>;
   abstract updatePlateDetail(detailId: string, listId: string, payload: { nombre_asociado?: string, plate_text: string }): Observable<ListDetail>;

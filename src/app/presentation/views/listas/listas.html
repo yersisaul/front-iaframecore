@@ -68,7 +68,8 @@
               }
               @if (permissionsService.hasPermission('Listas', 'eliminar')) {
               <span role="button" tabindex="0" class="icon-svg icon-trash list-btn-action list-btn-delete"
-                (click)="onDeleteWatchlist(lst.list_id, $event)" (keydown.enter)="onDeleteWatchlist(lst.list_id, $event)"
+                (click)="onDeleteWatchlist(lst.list_id, $event)"
+                (keydown.enter)="onDeleteWatchlist(lst.list_id, $event)"
                 (keydown.space)="onDeleteWatchlist(lst.list_id, $event)" title="Eliminar Lista">
               </span>
               }
@@ -300,13 +301,15 @@
               [class.card-crud-new]="listNewIds().has(detail.detail_id)"
               [class.card-crud-updated]="listUpdatedIds().has(detail.detail_id)"
               [class.card-crud-deleting]="listDeletingIds().has(detail.detail_id)"
+              (mouseenter)="onSubjectCardMouseEnter($event)" (mouseleave)="onSubjectCardMouseLeave($event)"
               (click)="selectSubjectDetail(detail.detail_id); $event.stopPropagation()">
 
               <!-- Floating Sightings Count (Top-Left, No Container) -->
               <div class="subject-card-sightings position-absolute d-flex align-items-center gap-1.5"
                 title="Cantidad de avistamientos">
                 <span class="icon-svg icon-eye subject-sightings-icon"></span>
-                <span class="subject-sightings-count font-monospace">{{ subjectDetections()[detail.detail_id]?.count || 0 }}</span>
+                <span class="subject-sightings-count font-monospace">{{ subjectDetections()[detail.detail_id]?.count ||
+                  0 }}</span>
               </div>
 
               <!-- Selection Checkbox (Top-Right) -->
@@ -353,8 +356,8 @@
                 } @else {
                 <div class="subject-name-marquee-container">
                   <h6 class="fw-bold mb-0.5 font-monospace text-primary fs-plate-title subject-marquee-text"
-                    [title]="detail.metadata?.text_placa">
-                    {{ detail.metadata?.text_placa || 'PLACA DESCONOCIDA' }}
+                    [title]="formatPlate(detail.metadata?.text_placa)">
+                    {{ formatPlate(detail.metadata?.text_placa) || 'PLACA DESCONOCIDA' }}
                   </h6>
                 </div>
                 <div class="subject-owner-marquee-container">
@@ -417,7 +420,8 @@
   </div>
 
   <!-- Sighting Inspector Drawer overlay backdrop -->
-  <div class="drawer-backdrop" [class.show]="selectedSubjectDetailId()" (click)="selectSubjectDetail(null)"></div>
+  <div class="drawer-backdrop" [class.show]="selectedSubjectDetailId()" (mousedown)="onBackdropMouseDown($event)"
+    (mouseup)="onBackdropMouseUp($event, 'drawer')"></div>
 
   <!-- Sighting Inspector Drawer -->
   <div class="inspector-drawer" [class.open]="selectedSubjectDetailId()">
@@ -510,8 +514,8 @@
                         </span>
                         } @else {
                         <span class="identity-meta-value fw-bold font-monospace"
-                          [title]="activeDetail.metadata?.text_placa || 'DESCONOCIDA'">
-                          {{ activeDetail.metadata?.text_placa || 'DESCONOCIDA' }}
+                          [title]="formatPlate(activeDetail.metadata?.text_placa) || 'DESCONOCIDA'">
+                          {{ formatPlate(activeDetail.metadata?.text_placa) || 'DESCONOCIDA' }}
                         </span>
                         }
                       </div>
@@ -698,7 +702,8 @@
       @if (resolvedHitPreview) {
       <div class="sighting-preview-img-container w-100 h-100 position-relative cursor-pointer"
         (click)="openFullscreenImage(resolvedHitPreview, $event)" title="Clic para ver en pantalla completa">
-        <img [src]="resolvedHitPreview" (error)="onImageError($event)" (load)="onImageLoad($event)" class="sighting-preview-img" alt="Avistamiento" />
+        <img [src]="resolvedHitPreview" (error)="onImageError($event)" (load)="onImageLoad($event)"
+          class="sighting-preview-img" alt="Avistamiento" />
         <div class="sighting-preview-zoom-overlay">
           <span class="icon-svg icon-fullscreen"
             style="width: 20px; height: 20px; background-color: currentColor;"></span>
@@ -790,7 +795,7 @@
           <div class="sighting-preview-field">
             <span class="sp-label">Sujeto Asociado</span>
             <span class="sp-value fw-bold">{{ selectedSubjectDetail()?.nombre_asociado ||
-              selectedSubjectDetail()?.metadata?.text_placa || '—' }}</span>
+              formatPlate(selectedSubjectDetail()?.metadata?.text_placa) || '—' }}</span>
           </div>
         </div>
 
@@ -880,8 +885,8 @@
   <!-- Modal Agregar Sujeto / Fotos a Lista de Control (3 Pasos: Preparación -> Subiendo -> Resumen Exitosos vs Rechazados) -->
   @if (showAddFaceSubjectModal()) {
   <div class="modal-backdrop-custom glass-overlay d-flex align-items-center justify-content-center"
-    (click)="closeAddFaceSubjectModal()">
-    <div class="modal-card-custom modal-card-premium modal-card-large p-5 shadow-lg border position-relative"
+    (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event, 'addFace')">
+    <div class="modal-card-custom modal-card-premium modal-card-large p-4 shadow-lg border position-relative"
       style="max-width: 680px;" (click)="$event.stopPropagation()">
 
       <!-- Modal Header Dynamic per Step -->
@@ -1034,7 +1039,7 @@
         }
       </div>
 
-      <div class="d-flex gap-3 pt-4 mt-2">
+      <div class="d-flex gap-3 mt-2">
         <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
           (click)="closeAddFaceSubjectModal()">
           Cancelar
@@ -1187,7 +1192,7 @@
         </div>
       </div>
 
-      <div class="d-flex gap-3 pt-4 mt-2">
+      <div class="d-flex gap-3 mt-2">
         @if (failedUploads().length > 0) {
         <button class="btn btn-outline-danger flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
           (click)="retryFailedFaceUploads()">
@@ -1207,8 +1212,8 @@
   <!-- Modal Agregar Placa a Lista (Dual Mode: Individual y CSV) -->
   @if (showAddPlateSubjectModal()) {
   <div class="modal-backdrop-custom glass-overlay d-flex align-items-center justify-content-center"
-    (click)="closeAddPlateSubjectModal()">
-    <div class="modal-card-custom modal-card-premium p-5 shadow-lg border" (click)="$event.stopPropagation()">
+    (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event, 'addPlate')">
+    <div class="modal-card-custom modal-card-premium p-4 shadow-lg border" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
       <div class="d-flex justify-content-between align-items-start mb-4">
         <div class="d-flex align-items-start gap-3">
@@ -1247,17 +1252,59 @@
         <!-- Pestaña 1: Registro Individual -->
         @if (activePlateTab() === 'individual') {
         <!-- Placa (Texto) -->
-        <div class="mb-4">
-          <label class="form-label mb-1">Texto de la Placa</label>
+        <div class="mb-3">
+          <label class="form-label mb-1">Texto de la Placa <span class="text-danger">*</span></label>
           <input type="text" class="form-control" placeholder="Ej. ABC123" [value]="subjectName()"
             (input)="subjectName.set($any($event.target).value)" [disabled]="isSavingSubject()" />
         </div>
 
         <!-- Nombre del Propietario (Opcional) -->
-        <div class="mb-4">
+        <div class="mb-3">
           <label class="form-label mb-1">Nombre del Propietario (Opcional)</label>
           <input type="text" class="form-control" placeholder="Ej. Juan Pérez" [value]="subjectOwnerName()"
             (input)="subjectOwnerName.set($any($event.target).value)" [disabled]="isSavingSubject()" />
+        </div>
+
+        <!-- Foto del Vehículo / Placa (Opcional) -->
+        <div class="mb-3">
+          <label class="form-label mb-1">Foto del Vehículo / Placa (Opcional)</label>
+          @if (!selectedPlateFile()) {
+          <div
+            class="image-upload-zone p-3.5 border rounded-3 text-center position-relative transition-all d-flex flex-column align-items-center justify-content-center cursor-pointer"
+            (click)="plateFileInput.click()">
+            <input type="file" #plateFileInput class="d-none" accept="image/*" (change)="onPlateFileSelected($event)" />
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="icon-svg icon-camara text-primary opacity-75"
+                style="width: 20px; height: 20px; background-color: currentColor;"></span>
+              <span class="fw-bold text-body" style="font-size: 0.8rem;">Haz clic para adjuntar foto</span>
+            </div>
+            <span class="text-muted extra-small" style="font-size: 0.7rem;">Formatos soportados: JPG, PNG, WEBP</span>
+          </div>
+          } @else {
+          <div
+            class="d-flex align-items-center justify-content-between p-3 rounded-3 border bg-surface-card transition-all shadow-xs">
+            <div class="d-flex align-items-center gap-3 min-w-0">
+              @if (plateImagePreviewUrl()) {
+              <img [src]="plateImagePreviewUrl()" class="rounded-2 object-fit-cover flex-shrink-0 border"
+                style="width: 44px; height: 44px;" alt="Vista previa" />
+              }
+              <div class="min-w-0">
+                <span class="d-block fw-bold text-body extra-small text-truncate" style="max-width: 240px;"
+                  [title]="selectedPlateFile()?.name">
+                  {{ selectedPlateFile()?.name }}
+                </span>
+                <span class="text-muted extra-small d-block mt-0.5" style="font-size: 0.68rem;">
+                  {{ formatFileSize(selectedPlateFile()?.size || 0) }}
+                </span>
+              </div>
+            </div>
+            <button type="button" class="btn-icon-svg-action"
+              (click)="removePlateFile($event)" title="Remover imagen"
+              [disabled]="isSavingSubject()">
+              <span class="icon-svg icon-close text-danger" style="width: 15px; height: 15px;"></span>
+            </button>
+          </div>
+          }
         </div>
         }
 
@@ -1302,9 +1349,9 @@
                 {{ parsedCsvRows().length }} registros válidos</span>
             </div>
           </div>
-          <button class="btn-ghost rounded-circle p-1" (click)="removeCsvFile()" title="Remover archivo"
-            style="width: 28px; height: 28px;" [disabled]="isSavingSubject()">
-            <span class="icon-svg icon-close text-danger" style="width: 14px; height: 14px;"></span>
+          <button type="button" class="btn-icon-svg-action" (click)="removeCsvFile()" title="Remover archivo"
+            [disabled]="isSavingSubject()">
+            <span class="icon-svg icon-close text-danger" style="width: 15px; height: 15px;"></span>
           </button>
         </div>
 
@@ -1318,7 +1365,7 @@
               style="font-size: 0.72rem;">
               <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-primary text-white font-monospace rounded px-2 py-1"
-                  style="font-size: 0.68rem; letter-spacing: 0.05em;">{{ row.plate }}</span>
+                  style="font-size: 0.68rem; letter-spacing: 0.05em;">{{ formatPlate(row.plate) }}</span>
                 @if (row.owner) {
                 <span class="text-body fw-medium">{{ row.owner }}</span>
                 } @else {
@@ -1355,7 +1402,7 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="d-flex gap-3 pt-4 mt-2">
+      <div class="d-flex gap-3 mt-2">
         <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
           (click)="closeAddPlateSubjectModal()" [disabled]="isSavingSubject()">
           Cancelar
@@ -1379,8 +1426,9 @@
 
   <!-- Modal Crear/Editar Lista (Estilo Premium Unificado) -->
   @if (showListModal()) {
-  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center" (click)="closeListModal()">
-    <div class="modal-card-custom p-5 shadow-lg border" (click)="$event.stopPropagation()" style="max-width: 480px;">
+  <div class="modal-backdrop-custom d-flex align-items-center justify-content-center"
+    (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event, 'list')">
+    <div class="modal-card-custom p-4 shadow-lg border" (click)="$event.stopPropagation()" style="max-width: 480px;">
       <!-- Modal Header -->
       <div class="modal-header-custom d-flex justify-content-between align-items-center mb-4">
         <h4 class="fw-bold mb-0 text-primary">
@@ -1410,7 +1458,7 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="modal-footer-custom d-flex gap-3 pt-3 mt-4">
+      <div class="modal-footer-custom d-flex gap-3">
         <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8" (click)="closeListModal()"
           [disabled]="isSavingList()">
           Cancelar
@@ -1445,8 +1493,8 @@
   <!-- Modal Editar Persona (Rostros) -->
   @if (showEditFaceSubjectModal()) {
   <div class="modal-backdrop-custom d-flex align-items-center justify-content-center"
-    (click)="closeEditFaceSubjectModal()">
-    <div class="modal-card-custom p-5 shadow-lg border" (click)="$event.stopPropagation()">
+    (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event, 'editFace')">
+    <div class="modal-card-custom p-4 shadow-lg border" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h5 class="fw-bold mb-0 text-body fs-5">
@@ -1465,31 +1513,58 @@
 
         <!-- Carga/Reemplazo de Imagen -->
         <div class="mb-4">
-          <label class="form-label mb-2">Reemplazar Foto (Opcional)</label>
-          <div
-            class="image-upload-zone p-4 border rounded-3 text-center position-relative transition-all d-flex flex-column align-items-center justify-content-center has-preview"
-            (click)="editFaceFileInput.click()">
-            <input type="file" #editFaceFileInput class="d-none" accept="image/*"
-              (change)="onEditFaceFileSelected($event)" />
+          <label class="form-label fw-semibold small text-muted mb-1.5">
+            Foto del Sujeto (Opcional)
+          </label>
 
-            <div class="preview-container position-relative w-100">
-              <img [src]="editFaceImagePreviewUrl() || 'logo.svg'"
-                class="img-preview rounded shadow-sm max-preview-img" />
+          <input type="file" #editFaceFileInput class="d-none" accept="image/jpeg,image/png,image/webp,image/jpg"
+            (change)="onEditFaceFileSelected($event)" [disabled]="isUpdatingSubject()" />
+
+          @if (editFaceImagePreviewUrl()) {
+          <!-- Vista previa de la imagen con overlay centrado (Estilo Dashboard) -->
+          <div class="modal-image-preview-wrapper position-relative rounded-3 overflow-hidden border">
+            <img [src]="editFaceImagePreviewUrl()!" alt="Foto del sujeto"
+              class="modal-image-preview w-100 h-100 object-fit-contain" />
+
+            <!-- Overlay con fondo difuminado y botones centrados en el medio -->
+            <div
+              class="modal-image-overlay position-absolute start-0 top-0 w-100 h-100 d-flex align-items-center justify-content-center gap-3">
+              <button type="button" class="btn-image-center-action" (click)="editFaceFileInput.click()"
+                [disabled]="isUpdatingSubject()" title="Cambiar imagen" aria-label="Cambiar imagen">
+                <span class="icon-svg icon-edit" style="width: 1rem; height: 1rem;"></span>
+                <span>Cambiar imagen</span>
+              </button>
               @if (selectedEditFaceFile()) {
-              <button
-                class="btn-ghost remove-preview-btn position-absolute p-1 rounded-circle shadow border bg-body modal-remove-btn"
-                (click)="resetEditFaceFile($event)"
-                title="Deshacer Cambio" [disabled]="isUpdatingSubject()">
-                <span class="icon-svg icon-close text-danger" style="width: 14px; height: 14px;"></span>
+              <button type="button" class="btn-image-center-action btn-image-center-danger"
+                (click)="resetEditFaceFile($event)" [disabled]="isUpdatingSubject()" title="Deshacer cambio"
+                aria-label="Deshacer cambio">
+                <span class="icon-svg icon-close" style="width: 1rem; height: 1rem;"></span>
+                <span>Deshacer</span>
               </button>
               }
             </div>
           </div>
+          } @else {
+          <!-- Lienzo Limpio de Carga (Empty State Upload Canvas) -->
+          <div
+            class="edit-upload-zone d-flex flex-column align-items-center justify-content-center text-center position-relative transition-all"
+            [class.drag-over]="isDraggingOverEditFace()" (dragover)="onEditFaceDragOver($event)"
+            (dragleave)="onEditFaceDragLeave($event)" (drop)="onEditFaceDrop($event)"
+            (click)="editFaceFileInput.click()">
+            <div class="upload-icon-circle-premium mb-2.5">
+              <span class="icon-svg icon-user" style="width: 22px; height: 22px;"></span>
+            </div>
+            <span class="fw-bold text-body d-block" style="font-size: 0.85rem;">Arrastra una foto aquí o <span
+                class="text-primary text-decoration-underline cursor-pointer">explora</span></span>
+            <span class="text-muted extra-small mt-1" style="font-size: 0.72rem;">Soporta formatos JPG, PNG y
+              WEBP</span>
+          </div>
+          }
         </div>
       </div>
 
       <!-- Modal Footer -->
-      <div class="d-flex gap-3 pt-4 mt-2">
+      <div class="d-flex gap-3 mt-2">
         <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
           (click)="closeEditFaceSubjectModal()" [disabled]="isUpdatingSubject()">
           Cancelar
@@ -1512,8 +1587,8 @@
   <!-- Modal Editar Placa -->
   @if (showEditPlateSubjectModal()) {
   <div class="modal-backdrop-custom d-flex align-items-center justify-content-center"
-    (click)="closeEditPlateSubjectModal()">
-    <div class="modal-card-custom p-5 shadow-lg border" (click)="$event.stopPropagation()">
+    (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event, 'editPlate')">
+    <div class="modal-card-custom p-4 shadow-lg border" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h5 class="fw-bold mb-0 text-body fs-5">
@@ -1536,10 +1611,62 @@
           <input type="text" class="form-control" placeholder="Ej. Juan Pérez" [value]="editPlateSubjectName()"
             (input)="editPlateSubjectName.set($any($event.target).value)" [disabled]="isUpdatingSubject()" />
         </div>
+
+        <!-- Carga/Reemplazo de Imagen del Vehículo / Placa -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold small text-muted mb-1.5">
+            Foto del Vehículo / Placa (Opcional)
+          </label>
+
+          <input type="file" #editPlateFileInput class="d-none" accept="image/jpeg,image/png,image/webp,image/jpg"
+            (change)="onEditPlateFileSelected($event)" [disabled]="isUpdatingSubject()" />
+
+          @if (editPlateImagePreviewUrl()) {
+          <!-- Vista previa de la imagen con overlay centrado (Estilo Dashboard) -->
+          <div class="modal-image-preview-wrapper position-relative rounded-3 overflow-hidden border">
+            <img [src]="editPlateImagePreviewUrl()!" alt="Foto del vehículo o placa"
+              class="modal-image-preview w-100 h-100 object-fit-contain" />
+
+            <!-- Overlay con fondo difuminado y botones centrados en el medio -->
+            <div
+              class="modal-image-overlay position-absolute start-0 top-0 w-100 h-100 d-flex align-items-center justify-content-center gap-3">
+              <button type="button" class="btn-image-center-action" (click)="editPlateFileInput.click()"
+                [disabled]="isUpdatingSubject()" title="Cambiar imagen" aria-label="Cambiar imagen">
+                <span class="icon-svg icon-edit" style="width: 1rem; height: 1rem;"></span>
+                <span>Cambiar imagen</span>
+              </button>
+              @if (selectedEditPlateFile()) {
+              <button type="button" class="btn-image-center-action btn-image-center-danger"
+                (click)="resetEditPlateFile($event)" [disabled]="isUpdatingSubject()" title="Deshacer cambio"
+                aria-label="Deshacer cambio">
+                <span class="icon-svg icon-close" style="width: 1rem; height: 1rem;"></span>
+                <span>Deshacer</span>
+              </button>
+              }
+            </div>
+          </div>
+          } @else {
+          <!-- Lienzo Limpio de Carga (Empty State Upload Canvas) -->
+          <div
+            class="edit-upload-zone d-flex flex-column align-items-center justify-content-center text-center position-relative transition-all"
+            [class.drag-over]="isDraggingOverEditPlate()" (dragover)="onEditPlateDragOver($event)"
+            (dragleave)="onEditPlateDragLeave($event)" (drop)="onEditPlateDrop($event)"
+            (click)="editPlateFileInput.click()">
+            <div class="upload-icon-circle-premium mb-2.5">
+              <span class="icon-svg icon-camara"
+                style="width: 22px; height: 22px; background-color: currentColor;"></span>
+            </div>
+            <span class="fw-bold text-body d-block" style="font-size: 0.85rem;">Arrastra una foto aquí o <span
+                class="text-primary text-decoration-underline cursor-pointer">explora</span></span>
+            <span class="text-muted extra-small mt-1" style="font-size: 0.72rem;">Soporta fotos del vehículo o recorte
+              de placa</span>
+          </div>
+          }
+        </div>
       </div>
 
       <!-- Modal Footer -->
-      <div class="d-flex gap-3 pt-4 mt-2">
+      <div class="d-flex gap-3 mt-2">
         <button class="btn btn-outline-secondary flex-fill py-2 fw-semibold border-radius-8 fs-btn-cancel"
           (click)="closeEditPlateSubjectModal()" [disabled]="isUpdatingSubject()">
           Cancelar
@@ -1561,7 +1688,8 @@
 
   <!-- Vista Fullscreen de Imagen estilo Redes Sociales -->
   @if (fullscreenImgUrl()) {
-  <div class="fullscreen-image-overlay" (click)="closeFullscreenImage()" role="dialog" aria-modal="true">
+  <div class="fullscreen-image-overlay" (mousedown)="onBackdropMouseDown($event)"
+    (mouseup)="onBackdropMouseUp($event, 'fullscreen')" role="dialog" aria-modal="true">
     <img [src]="fullscreenImgUrl()!" class="fullscreen-image" (click)="$event.stopPropagation()"
       alt="Imagen completa" />
   </div>

@@ -163,16 +163,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   // Local draft filters state
   readonly tempFilters = signal<MetaFilterState>(this.getInitialFilters());
 
-  // Hover and mouse coordinates for floating metadata cards popover
-  readonly activeHoverCardId = signal<string | null>(null);
-  readonly mouseX = signal<number>(0);
-  readonly mouseY = signal<number>(0);
 
-  readonly activeHoverRecord = computed<MetaRecord | null>(() => {
-    const id = this.activeHoverCardId();
-    if (!id) return null;
-    return this.records().find(r => String(r.id) === String(id)) || null;
-  });
 
   // ── Custom Calendar & Time Picker State ──────────────────────────────────────
   readonly activeCalendarField = signal<'desde' | 'hasta' | null>(null);
@@ -974,51 +965,10 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     return ('posturas' in record) ? (record as any).posturas : [];
   }
 
-  onCardMouseMove(event: MouseEvent, recordId: string): void {
-    this.activeHoverCardId.set(recordId);
-    
-    // Viewport collision detection: popover has a width of 360px in CSS
-    const popoverWidth = 360;
-    const margin = 20;
-    const verticalMargin = 85;
-    
-    let popoverHeight = 160;
-    const record = this.records().find(r => String(r.id) === String(recordId));
-    if (record) {
-      const hasIdent = this.getTipoObjeto(record) || this.getEdad(record) || this.getGenero(record) || this.getReconocimiento(record);
-      if (hasIdent) {
-        popoverHeight += 60;
-      }
-      const posturas = this.getPosturas(record);
-      if (posturas && posturas.length > 0) {
-        popoverHeight += 60;
-        if (posturas.length > 3) {
-          popoverHeight += 35;
-        }
-      }
-      if (record.colores && record.colores.length > 0) {
-        popoverHeight += 60;
-        if (record.colores.length > 4) {
-          popoverHeight += 40;
-        }
-      }
-    }
-    
-    if (event.clientX + popoverWidth + 15 > window.innerWidth - margin) {
-      // Flip popover to the left of the cursor
-      this.mouseX.set(event.clientX - popoverWidth - 15);
-    } else {
-      // Default position to the right of the cursor
-      this.mouseX.set(event.clientX + 15);
-    }
-    
-    if (event.clientY + popoverHeight + 15 > window.innerHeight - verticalMargin) {
-      // Flip popover to the top of the cursor to prevent spawning vertical scrollbar
-      this.mouseY.set(event.clientY - popoverHeight - 15);
-    } else {
-      // Default position below the cursor
-      this.mouseY.set(event.clientY + 15);
-    }
+  getConfiabilidadPct(record: MetaRecord): number {
+    if (record.confiabilidad === null || record.confiabilidad === undefined) return 0;
+    const val = record.confiabilidad > 1 ? record.confiabilidad : record.confiabilidad * 100;
+    return Math.round(val);
   }
 
   onCardMouseEnter(event: MouseEvent): void {
@@ -1028,31 +978,42 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     const headerBlock = card.querySelector('.card-header-camera') as HTMLElement | null;
     if (!headerBlock) return;
 
+    const titleContainer = headerBlock.querySelector('.card-title-container') as HTMLElement | null;
     const titleEl = headerBlock.querySelector('.card-title') as HTMLElement | null;
-    if (!titleEl) return;
+    if (!titleEl || !titleContainer) return;
 
-    // Al hacer hover en la tarjeta, colapsamos el timestamp y expandimos el título
+    // 1. Verificar si el título desborda su espacio actual (con la fecha visible)
+    const isTruncatedWithDate = titleEl.scrollWidth > titleContainer.clientWidth;
+
+    if (!isTruncatedWithDate) {
+      // Si el texto entra perfectamente en el espacio asignado junto a la fecha:
+      // No se oculta la fecha ni se activa el marquee.
+      headerBlock.classList.remove('camera-title-expand-space', 'camera-title-needs-marquee');
+      titleEl.style.removeProperty('--marquee-shift');
+      return;
+    }
+
+    // 2. Si el texto supera el espacio inicial con la fecha -> ocultamos la fecha para ganar todo el ancho
     headerBlock.classList.add('camera-title-expand-space');
 
-    // Ancho útil disponible (todo el ancho del encabezado sin el timestamp)
-    const availableFullWidth = headerBlock.clientWidth;
+    // Medimos el ancho completo disponible en titleContainer (el cual ya descuenta el botón de mapa si existe)
+    const availableFullWidth = titleContainer.clientWidth;
 
+    // 3. Verificar si en el ancho completo expandido el texto ahora entra completo o aún desborda
     if (titleEl.scrollWidth > availableFullWidth) {
-      // Si el nombre de la cámara desborda el espacio completo -> marquee exacto
-      // Offset de 24px para que la última letra pase completamente el gradiente de fade-out
+      // Sigue sin ser suficiente espacio -> recién aquí se activa el marquee
       const fadeOffset = 24;
       const shift = Math.ceil(titleEl.scrollWidth - availableFullWidth) + fadeOffset;
       titleEl.style.setProperty('--marquee-shift', `-${shift}px`);
       headerBlock.classList.add('camera-title-needs-marquee');
     } else {
-      // Si entra completo estático en el ancho disponible -> sin marquee
+      // Ahora entra completo estático sin la fecha -> no necesita marquee
       titleEl.style.removeProperty('--marquee-shift');
       headerBlock.classList.remove('camera-title-needs-marquee');
     }
   }
 
   onCardMouseLeave(event?: MouseEvent): void {
-    this.activeHoverCardId.set(null);
     if (event?.currentTarget) {
       const card = event.currentTarget as HTMLElement;
       const headerBlock = card.querySelector('.card-header-camera') as HTMLElement | null;

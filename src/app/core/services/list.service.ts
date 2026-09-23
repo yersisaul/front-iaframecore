@@ -170,7 +170,7 @@ export class ListService {
     );
   }
 
-  addPlateSubject(listId: string, plateText: string, ownerName?: string): Observable<ListDetail> {
+  addPlateSubject(listId: string, plateText: string, ownerName?: string, file?: File): Observable<ListDetail> {
     this.isLoading.set(true);
     const detail: Partial<ListDetail> = {
       list_id: listId,
@@ -181,7 +181,7 @@ export class ListService {
         text_placa: plateText
       }
     };
-    return this.listRepository.registerListDetail(detail).pipe(
+    return this.listRepository.registerListDetail(detail, file).pipe(
       tap(registeredDetail => {
         this.listDetails.update(current => [...current, registeredDetail]);
         this.isLoading.set(false);
@@ -208,10 +208,10 @@ export class ListService {
   }
 
   /**
-   * Obtiene en lote el resumen de eventos (conteo y último avistamiento) para todos los sujetos de la lista estrictamente por listId.
+   * Obtiene en lote el resumen de eventos (conteo y último avistamiento) para todos los sujetos de la lista por listId y/o detailIds.
    */
-  loadListEventSummaries(listId: string): Observable<Record<string, { count: number; latestHit?: DetectionHit }>> {
-    return this.listRepository.queryListEventSummaries(listId);
+  loadListEventSummaries(listId: string, detailIds?: string[]): Observable<Record<string, { count: number; latestHit?: DetectionHit }>> {
+    return this.listRepository.queryListEventSummaries(listId, detailIds);
   }
 
   /**
@@ -293,9 +293,9 @@ export class ListService {
     this.listDetails.update(current => current.filter(d => d.detail_id !== detailId));
   }
 
-  updateFaceImg(detailId: string, file: File): Observable<ListDetail> {
+  updateDetailImg(detailId: string, file: File): Observable<ListDetail> {
     this.isLoading.set(true);
-    return this.listRepository.updateFaceImg(detailId, file).pipe(
+    return this.listRepository.updateDetailImg(detailId, file).pipe(
       tap(res => {
         const newObjName = res.img_minio_object_name || res.metadata?.img_minio_object_name;
         this.listDetails.update(current => current.map(d => d.detail_id === detailId ? {
@@ -310,6 +310,10 @@ export class ListService {
         throw err;
       })
     );
+  }
+
+  updateFaceImg(detailId: string, file: File): Observable<ListDetail> {
+    return this.updateDetailImg(detailId, file);
   }
 
   updateFaceDetail(detailId: string, listId: string, nombreAsociado: string): Observable<ListDetail> {

@@ -312,13 +312,40 @@ export class ListHttpRepository implements IListRepository {
     let request$: Observable<any>;
 
     if (isPlate) {
-      // Plates: plain JSON body
-      const payload = {
-        list_id: detail.list_id,
-        plate_text: detail.metadata?.text_placa || '',
-        nombre_asociado: detail.nombre_asociado || null
-      };
-      request$ = this.http.post<any>(url, payload);
+      if (!file) {
+        const objName = detail.img_minio_object_name || detail.metadata?.img_minio_object_name;
+        if (objName) {
+          return this.mediaFileService.getFileUrl(objName).pipe(
+            switchMap(url => this.http.get(url, { responseType: 'blob' })),
+            switchMap((blob: any) => {
+              const downloadedFile = new File([blob], 'plate.jpg', { type: 'image/jpeg' });
+              return this.registerListDetail(detail, downloadedFile);
+            }),
+            catchError(downloadErr => {
+              console.warn('[ListRepo] Failed to download plate image from MinIO, proceeding without file:', downloadErr);
+              const fallbackFormData = new FormData();
+              fallbackFormData.append('list_id', detail.list_id || '');
+              fallbackFormData.append('plate_text', detail.metadata?.text_placa || '');
+              if (detail.nombre_asociado) {
+                fallbackFormData.append('nombre_asociado', detail.nombre_asociado);
+              }
+              return this.http.post<any>(url, fallbackFormData);
+            })
+          );
+        }
+      }
+
+      // Plates: multipart/form-data
+      const formData = new FormData();
+      formData.append('list_id', detail.list_id || '');
+      formData.append('plate_text', detail.metadata?.text_placa || '');
+      if (detail.nombre_asociado) {
+        formData.append('nombre_asociado', detail.nombre_asociado);
+      }
+      if (file) {
+        formData.append('file', file, file.name);
+      }
+      request$ = this.http.post<any>(url, formData);
     } else {
       // Faces: multipart/form-data
       if (!file) {
@@ -398,39 +425,42 @@ export class ListHttpRepository implements IListRepository {
   }
 
   /**
-   * Consulta agregada masiva al índice `eventos` estrictamente por `match_detail.list_id`
+   * Consulta directa y eficiente al índice `eventos` por `detailIds` y/o `match_detail.list_id`
    * para obtener el conteo de avistamientos y el evento más reciente de cada sujeto por `match_detail.detail_id`.
    */
-  queryListEventSummaries(listId: string): Observable<Record<string, { count: number; latestHit?: any }>> {
-    if (!listId) return of({});
+  queryListEventSummaries(listId: string, detailIds?: string[]): Observable<Record<string, { count: number; latestHit?: any }>> {
+    const validDetailIds = (detailIds || []).filter(id => Boolean(id && typeof id === 'string' && id.trim()));
+    if (!listId && validDetailIds.length === 0) return of({});
+
+    const shouldQueries: any[] = [];
+
+    if (validDetailIds.length > 0) {
+      shouldQueries.push({ terms: { 'match_detail.detail_id': validDetailIds } });
+      shouldQueries.push({ terms: { 'match_detail.detail_id.keyword': validDetailIds } });
+    }
+
+    if (listId) {
+      shouldQueries.push({ term: { 'match_detail.list_id': listId } });
+      shouldQueries.push({ term: { 'match_detail.list_id.keyword': listId } });
+    }
 
     const queryBody = {
-      size: 0,
+      size: 5000,
       query: {
-        term: { 'match_detail.list_id': listId }
-      },
-      aggs: {
-        by_detail_id: {
-          terms: {
-            field: 'match_detail.detail_id.keyword',
-            size: 1000
-          },
-          aggs: {
-            latest_event: {
-              top_hits: {
-                size: 1,
-                sort: [{ 'timestamp': { order: 'desc' } }]
-              }
-            }
-          }
+        bool: {
+          should: shouldQueries,
+          minimum_should_match: 1
         }
-      }
+      },
+      sort: [
+        { 'timestamp': { 'order': 'desc' } }
+      ]
     };
 
     return this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/eventos/_search`, queryBody).pipe(
       map(res => {
         const result: Record<string, { count: number; latestHit?: any }> = {};
-        const detailBuckets = res.aggregations?.by_detail_id?.buckets || [];
+        const hits = res.hits?.hits || [];
 
         const extractEventId = (src: any, fallbackId: string): string => {
           if (src.event_id && typeof src.event_id === 'string' && src.event_id.trim()) {
@@ -446,18 +476,16 @@ export class ListHttpRepository implements IListRepository {
           return fallbackId;
         };
 
-        for (const bucket of detailBuckets) {
-          const detailId = bucket.key;
-          const count = bucket.doc_count || 0;
-          const topHit = bucket.latest_event?.hits?.hits?.[0];
-          let latestHit: any = undefined;
+        for (const hit of hits) {
+          const src = hit._source || {};
+          const detailId = src.match_detail?.detail_id || src.detail_id;
+          if (!detailId) continue;
 
-          if (topHit) {
-            const src = topHit._source || {};
+          if (!result[detailId]) {
             const conf = src.match_detail?.confianza ?? src.confiabilidad ?? 1.0;
-            latestHit = {
-              id: topHit._id,
-              eventId: extractEventId(src, topHit._id),
+            const latestHit = {
+              id: hit._id,
+              eventId: extractEventId(src, hit._id),
               camara: src.nombre_camara || 'Cámara',
               timestamp: parseUtcDate(src.timestamp),
               confiabilidad: typeof conf === 'number' ? (conf > 1 ? conf / 100 : conf) : 1.0,
@@ -469,15 +497,16 @@ export class ListHttpRepository implements IListRepository {
               posturas: [],
               colores: []
             };
+            result[detailId] = { count: 1, latestHit };
+          } else {
+            result[detailId].count++;
           }
-
-          result[detailId] = { count, latestHit };
         }
 
         return result;
       }),
       catchError(err => {
-        console.warn('[ListRepo] Error en agregación batch de eventos para la lista:', err);
+        console.warn('[ListRepo] Error al consultar resumen de eventos para la lista:', err);
         return of({});
       })
     );
@@ -567,13 +596,13 @@ export class ListHttpRepository implements IListRepository {
     );
   }
 
-  updateFaceImg(detailId: string, file: File): Observable<ListDetail> {
+  updateDetailImg(detailId: string, file: File): Observable<ListDetail> {
     const formData = new FormData();
     formData.append('file', file, file.name);
 
-    return this.http.put<any>(`${this.detailsUrl}/update_face_img/${detailId}`, formData).pipe(
+    return this.http.put<any>(`${this.detailsUrl}/update_detail_img/${detailId}`, formData).pipe(
       map(res => {
-        const objName = res.img_minio_object_name || res.metadata?.img_minio_object_name || '';
+        const objName = res.object_name || res.img_minio_object_name || res.metadata?.img_minio_object_name || '';
         return {
           detail_id: res.detail_id || detailId,
           list_id: res.list_id || '',
@@ -587,6 +616,10 @@ export class ListHttpRepository implements IListRepository {
         } as ListDetail;
       })
     );
+  }
+
+  updateFaceImg(detailId: string, file: File): Observable<ListDetail> {
+    return this.updateDetailImg(detailId, file);
   }
 
   updateFaceDetail(detailId: string, listId: string, payload: { nombre_asociado: string }): Observable<ListDetail> {

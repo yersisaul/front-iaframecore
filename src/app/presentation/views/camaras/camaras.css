@@ -1919,19 +1919,29 @@ code.code-badge {
 
 .camera-search-input-row,
 .node-search-input-row {
-  background: var(--bg-secondary, rgba(0, 0, 0, 0.04)) !important;
+  background: var(--bg-surface, #ffffff) !important;
   border: 1px solid var(--border-color, #e2e8f0) !important;
   border-radius: 8px !important;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
+:host-context([data-bs-theme="dark"]) .camera-search-input-row,
+:host-context([data-theme="dark"]) .camera-search-input-row,
+:host-context(.dark) .camera-search-input-row,
+:host-context([data-bs-theme="dark"]) .node-search-input-row,
+:host-context([data-theme="dark"]) .node-search-input-row,
+:host-context(.dark) .node-search-input-row,
+::ng-deep [data-bs-theme="dark"] .camera-search-input-row,
+::ng-deep .dark .camera-search-input-row,
+::ng-deep [data-bs-theme="dark"] .node-search-input-row,
+::ng-deep .dark .node-search-input-row,
 [data-bs-theme="dark"] .camera-search-input-row,
 [data-theme="dark"] .camera-search-input-row,
 .dark .camera-search-input-row,
 [data-bs-theme="dark"] .node-search-input-row,
 [data-theme="dark"] .node-search-input-row,
 .dark .node-search-input-row {
-  background: #2d3e56 !important;
+  background: #171717 !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
 }
 
@@ -1942,27 +1952,45 @@ code.code-badge {
   box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.12) !important;
 }
 
+:host-context([data-bs-theme="dark"]) .camera-search-input-row:focus-within,
+:host-context([data-theme="dark"]) .camera-search-input-row:focus-within,
+:host-context(.dark) .camera-search-input-row:focus-within,
+:host-context([data-bs-theme="dark"]) .node-search-input-row:focus-within,
+:host-context([data-theme="dark"]) .node-search-input-row:focus-within,
+:host-context(.dark) .node-search-input-row:focus-within,
+::ng-deep [data-bs-theme="dark"] .camera-search-input-row:focus-within,
+::ng-deep .dark .camera-search-input-row:focus-within,
+::ng-deep [data-bs-theme="dark"] .node-search-input-row:focus-within,
+::ng-deep .dark .node-search-input-row:focus-within,
 [data-bs-theme="dark"] .camera-search-input-row:focus-within,
 [data-theme="dark"] .camera-search-input-row:focus-within,
 .dark .camera-search-input-row:focus-within,
 [data-bs-theme="dark"] .node-search-input-row:focus-within,
 [data-theme="dark"] .node-search-input-row:focus-within,
 .dark .node-search-input-row:focus-within {
-  background: #2d3e56 !important;
+  background: #171717 !important;
   border-color: var(--primary) !important;
   box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.25) !important;
 }
 
 .camera-search-input,
 .node-search-input {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
   color: var(--text-primary) !important;
   font-size: 0.8rem !important;
+  min-width: 0 !important;
+  transition: color 0.15s ease !important;
 }
 
 .camera-search-input::placeholder,
 .node-search-input::placeholder {
   color: var(--text-muted) !important;
   opacity: 0.65;
+  transition: color 0.15s ease;
 }
 
 .btn-premium-action {
