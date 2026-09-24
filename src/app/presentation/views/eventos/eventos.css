@@ -133,7 +133,7 @@
 /* --- Cabecera de Cámara y Desplazamiento Reactivo con Marquee --- */
 .card-header-camera {
   position: relative;
-  overflow: hidden !important;
+  overflow: visible !important;
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
@@ -335,6 +335,8 @@
 
 /* Botón Pin de Google Maps directo sin contenedor */
 .btn-pin-map {
+  position: relative;
+  z-index: 2;
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
@@ -354,7 +356,7 @@
 }
 
 .btn-pin-map:hover {
-  transform: scale(1.25);
+  transform: scale(1.2);
   opacity: 0.95;
 }
 

@@ -301,9 +301,11 @@
             </span>
             @if (selectedEvent.location) {
             <a [href]="getGoogleMapsUrl(selectedEvent)" target="_blank" rel="noopener noreferrer"
-              class="btn-pin-map d-inline-flex align-items-center justify-content-center"
-              (click)="$event.stopPropagation()" title="Ver ubicación en Google Maps">
-              <span class="icon-svg icon-location-pin" style="width: 15px; height: 15px;"></span>
+              class="coords-map-btn" (click)="$event.stopPropagation()"
+              title="Ver ubicación en Google Maps">
+              <span class="icon-svg icon-location-pin coords-pin-svg"
+                style="width: 12px; height: 12px; margin-right: 4px;"></span>
+              <span class="font-monospace">{{ selectedEvent.location.lat | number:'1.1-4' }}, {{ selectedEvent.location.lon | number:'1.1-4' }}</span>
             </a>
             } @else {
             <span class="spec-val text-muted text-end" style="font-size: 0.78rem;">N/A</span>

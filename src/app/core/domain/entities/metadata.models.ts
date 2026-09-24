@@ -29,7 +29,6 @@ export interface MetaBaseRecord {
   urlImg?: string;
   urlVideo?: string;
   embedding?: number[];
-  location?: { lat: number; lon: number };
 }
 
 export interface MetaPersona extends MetaBaseRecord {

@@ -996,7 +996,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     // 2. Si el texto supera el espacio inicial con la fecha -> ocultamos la fecha para ganar todo el ancho
     headerBlock.classList.add('camera-title-expand-space');
 
-    // Medimos el ancho completo disponible en titleContainer (el cual ya descuenta el botón de mapa si existe)
+    // Medimos el ancho completo disponible en titleContainer
     const availableFullWidth = titleContainer.clientWidth;
 
     // 3. Verificar si en el ancho completo expandido el texto ahora entra completo o aún desborda
