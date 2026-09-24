@@ -612,9 +612,11 @@
 
       <!-- Vista previa del patrón de imagen para búsqueda -->
       @if (tempFilters().imageSearchUrl) {
+      @let previewUrl = (tempFilters().imageSearchUrl | mediaUrl | async) || tempFilters().imageSearchUrl;
       <div class="image-search-preview-pill d-flex align-items-center gap-2 border rounded-pill px-3 py-1 shadow-sm">
-        <img [src]="tempFilters().imageSearchUrl"
-          style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;" />
+        <img [src]="previewUrl"
+          style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;"
+          alt="Patrón" />
         <span class="small text-muted fw-semibold">Patrón de Imagen</span>
         <button type="button" class="btn-close btn-close-xs" (click)="clearImageSearch()"></button>
       </div>
