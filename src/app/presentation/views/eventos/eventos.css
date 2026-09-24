@@ -607,6 +607,8 @@
 .filter-dropdown-menu.dropdown-fechas {
   width: 380px;
   min-width: 380px;
+  right: 0 !important;
+  left: auto !important;
 }
 
 .filter-dropdown-menu .dropdown-item {

@@ -357,6 +357,7 @@
   <div #camerasGrid class="hosts-grid mb-4">
     @for (camera of pagedCameras(); track camera.id) {
     <div class="card host-card h-100" [class.is-active]="isCameraOnline(camera)"
+      [class.host-card--selected]="activeCamera()?.id === camera.id"
       [class.card-crud-new]="cameraNewIds().has(camera.id)"
       [class.card-crud-updated]="cameraUpdatedIds().has(camera.id)"
       [class.card-crud-deleting]="cameraDeletingIds().has(camera.id)"
@@ -663,7 +664,9 @@
         </thead>
         <tbody>
           @for (camera of pagedCameras(); track camera.id) {
-          <tr class="nm-table-tr align-middle" [class.card-crud-new]="cameraNewIds().has(camera.id)"
+          <tr class="nm-table-tr align-middle"
+            [class.nm-table-tr--selected]="activeCamera()?.id === camera.id"
+            [class.card-crud-new]="cameraNewIds().has(camera.id)"
             [class.card-crud-updated]="cameraUpdatedIds().has(camera.id)"
             [class.card-crud-deleting]="cameraDeletingIds().has(camera.id)"
             [class.card-crud-status-active]="cameraActiveStatusIds().has(camera.id)"

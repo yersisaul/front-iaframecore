@@ -17,23 +17,26 @@
   cursor: pointer !important;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Solid Minimalist User Control Bar
+   ───────────────────────────────────────────────────────────── */
 .user-control {
   height: 48px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;
-  background-color: var(--border-color) !important;
-  color: var(--text-primary) !important;
-  border: 1px solid var(--border-color) !important;
+  border-radius: 8px;
+  background-color: var(--card, #ffffff);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.user-control span {
-  color: var(--text-primary) !important;
+/* Dark mode override */
+::ng-deep .dark .user-control:not(.collapsed-mode),
+::ng-deep [data-bs-theme="dark"] .user-control:not(.collapsed-mode) {
+  background-color: var(--card, #1e293b);
+  border-color: var(--border, rgba(255, 255, 255, 0.1));
 }
 
-.user-control .text-muted {
-  color: var(--text-secondary) !important;
-}
-
+/* Collapsed Mode */
 .user-control.collapsed-mode {
   background-color: transparent !important;
   border-color: transparent !important;
@@ -41,34 +44,112 @@
 }
 
 .user-control.collapsed-mode:hover {
-  background-color: var(--border-color) !important;
+  background-color: var(--border) !important;
   border-radius: 8px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   User Information Typography
+   ───────────────────────────────────────────────────────────── */
+.user-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.user-role {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .user-icon {
   background-color: var(--text-primary) !important;
 }
 
-.btn-theme-switcher {
-  background-color: var(--bg-surface) !important;
-  color: var(--text-primary) !important;
-  border: 1px solid var(--border-color) !important;
-  transition: all 0.2s ease;
+/* ─────────────────────────────────────────────────────────────
+   Direct Naked SVG Action Buttons (Zero Containers)
+   ───────────────────────────────────────────────────────────── */
+.btn-session-theme,
+.btn-session-logout {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer !important;
+  outline: none;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
 }
 
-.btn-theme-switcher:hover {
-  background-color: var(--border-color) !important;
+.session-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-block;
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s ease, background-color 0.25s ease;
+  will-change: transform, filter;
 }
 
-.btn-theme-switcher .icon-svg {
-  background-color: var(--text-primary) !important;
+/* Theme Switcher Hover & Active Animations */
+.btn-session-theme .icon-theme-light {
+  background-color: #f59e0b !important;
 }
 
-.btn-danger .logout-icon {
-  background-color: var(--text-on-primary-btn) !important;
+.btn-session-theme .icon-theme-dark {
+  background-color: #3b82f6 !important;
 }
 
-/* Floating Popover/Dropdown Menu when collapsed */
+.btn-session-theme:hover {
+  transform: scale(1.24);
+}
+
+.btn-session-theme:hover .icon-theme-light {
+  background-color: #fbbf24 !important;
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.85));
+  transform: rotate(45deg);
+}
+
+.btn-session-theme:hover .icon-theme-dark {
+  background-color: #38bdf8 !important;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.85));
+  transform: rotate(-25deg);
+}
+
+.btn-session-theme:active {
+  transform: scale(0.84) !important;
+  transition: transform 0.08s ease-out;
+}
+
+/* Logout Button Hover & Active Animations */
+.btn-session-logout .icon-logout {
+  background-color: #ef4444 !important;
+}
+
+.btn-session-logout:hover {
+  transform: scale(1.24);
+}
+
+.btn-session-logout:hover .icon-logout {
+  background-color: #ff2b42 !important;
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.85));
+  transform: translateX(2.5px);
+}
+
+.btn-session-logout:active {
+  transform: scale(0.84) translateX(2px) !important;
+  transition: transform 0.08s ease-out;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Floating Popover/Dropdown Menu when collapsed
+   ───────────────────────────────────────────────────────────── */
 .floating-user-menu {
   bottom: 0px;
   left: 64px;
@@ -91,10 +172,37 @@
   }
 }
 
-/* Dark mode overrides */
+/* Dark mode overrides for menu */
 ::ng-deep .dark .floating-user-menu,
 ::ng-deep [data-bs-theme="dark"] .floating-user-menu {
   background-color: var(--bg-popover-menu) !important;
   border-color: var(--border-popover-menu) !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+}
+
+.floating-user-menu .icon-theme-light {
+  background-color: #f59e0b !important;
+}
+
+.floating-user-menu .icon-theme-dark {
+  background-color: #3b82f6 !important;
+}
+
+.btn-theme-switcher {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: all 0.2s ease;
+}
+
+.btn-theme-switcher:hover {
+  background-color: var(--border-color) !important;
+}
+
+.btn-theme-switcher .icon-svg {
+  background-color: var(--text-primary) !important;
+}
+
+.btn-danger .logout-icon {
+  background-color: var(--text-on-primary-btn) !important;
 }

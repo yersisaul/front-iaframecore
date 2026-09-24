@@ -4493,19 +4493,74 @@ code.code-badge {
   border-bottom: none !important;
 }
 
-/* Hover general */
+/* ── Hover y Selección Activa de Filas de Tabla (Diseño UX/UI Premium / Glassmorphism) ── */
+.nm-table-tr {
+  cursor: pointer;
+  transition: background 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 3.75rem;
+}
+
 .nm-table-tr:hover {
-  background-color: rgba(var(--primary-rgb, 13, 110, 253), 0.03) !important;
+  background: linear-gradient(90deg, rgba(var(--primary-rgb, 0, 166, 244), 0.055) 0%, rgba(var(--primary-rgb, 0, 166, 244), 0.015) 60%, transparent 100%) !important;
 }
 
-/* Bordes decorativos interactivos a la izquierda */
+.nm-table-tr.nm-table-tr--selected {
+  background: linear-gradient(90deg, rgba(var(--primary-rgb, 0, 166, 244), 0.10) 0%, rgba(var(--primary-rgb, 0, 166, 244), 0.025) 65%, transparent 100%) !important;
+}
+
+.nm-table-tr.nm-table-tr--selected:hover {
+  background: linear-gradient(90deg, rgba(var(--primary-rgb, 0, 166, 244), 0.14) 0%, rgba(var(--primary-rgb, 0, 166, 244), 0.045) 70%, transparent 100%) !important;
+}
+
+.nm-table-tr:hover td,
+.nm-table-tr.nm-table-tr--selected td {
+  border-bottom-color: rgba(var(--primary-rgb, 0, 166, 244), 0.20) !important;
+}
+
+/* Indicador lateral luminoso flotante (cápsula neón suave presente en hover y fija en selected) */
 .nm-table-tr td:first-child {
-  box-shadow: inset 3.5px 0 0 transparent !important;
-  transition: box-shadow 0.2s ease;
+  position: relative;
+  box-shadow: none !important;
 }
 
-.nm-table-tr:hover td:first-child {
-  box-shadow: inset 3.5px 0 0 var(--color-online, #10b981) !important;
+.nm-table-tr td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 3.5px;
+  border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, #38bdf8 0%, var(--color-azor-sky, #00a6f4) 100%);
+  box-shadow: 0 0 10px rgba(0, 166, 244, 0.55);
+  opacity: 0;
+  transform: scaleY(0.4);
+  transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s ease;
+}
+
+.nm-table-tr:hover td:first-child::before {
+  opacity: 0.75;
+  transform: scaleY(0.85);
+}
+
+.nm-table-tr.nm-table-tr--selected td:first-child::before {
+  opacity: 1;
+  transform: scaleY(1);
+  box-shadow: 0 0 12px rgba(0, 166, 244, 0.65);
+}
+
+.nm-table-tr:hover .camera-table-name-text,
+.nm-table-tr.nm-table-tr--selected .camera-table-name-text {
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+
+/* Card view selected - Premium Ambient Glow */
+.host-card.host-card--selected {
+  border-color: rgba(var(--primary-rgb, 0, 166, 244), 0.55) !important;
+  background: linear-gradient(180deg, rgba(var(--primary-rgb, 0, 166, 244), 0.05) 0%, transparent 60%), var(--bg-card) !important;
+  box-shadow: 0 0 0 1px rgba(var(--primary-rgb, 0, 166, 244), 0.35), 0 8px 24px -4px rgba(var(--primary-rgb, 0, 166, 244), 0.2) !important;
+  transform: translateY(-2px);
 }
 
 /* Nombre de cámara con ellipsis (...) en reposo y marquesina en hover */

@@ -5,6 +5,8 @@ import { AppEnvironment } from '../config/app-environment';
 import { forkJoin, Observable, of } from 'rxjs';
 import { tap, map, catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
+import { UserDTO } from '../../data/repositories/dtos/user-dto';
+import { User } from '../domain/entities/user.entity';
 
 // Interfaz para un permiso del backend
 export interface BackendPermiso {
@@ -108,9 +110,12 @@ export class PermissionsService {
 
     return forkJoin({
       roles: this.http.get<BackendRol[]>(`${AppEnvironment.apiUrl}/frontend/roles/`),
-      permisos: this.http.get<BackendPermiso[]>(`${AppEnvironment.apiUrl}/frontend/permisos/`)
+      permisos: this.http.get<BackendPermiso[]>(`${AppEnvironment.apiUrl}/frontend/permisos/`),
+      users: this.http.get<UserDTO[]>(`${AppEnvironment.apiUrl}/frontend/users/`).pipe(
+        catchError(() => of([] as UserDTO[]))
+      )
     }).pipe(
-      map(({ roles, permisos }) => {
+      map(({ roles, permisos, users }) => {
         const userRole = roles.find(r => r.rol_id === rolId);
         if (!userRole) {
           this.clearPermissions();
@@ -150,16 +155,49 @@ export class PermissionsService {
         const roleName = userRole.nombre.toUpperCase();
         const currentUser = this.authService.currentUser();
         if (currentUser) {
-          this.authService.currentUser.set({
-            ...currentUser,
-            role: roleName
-          });
-          const userJson = sessionStorage.getItem('auth_user');
-          if (userJson) {
-            const parsed = JSON.parse(userJson);
-            parsed.role = roleName;
-            sessionStorage.setItem('auth_user', JSON.stringify(parsed));
+          const matchedUser = (users || []).find(u =>
+            (u.user_id && currentUser.id && u.user_id === currentUser.id) ||
+            (u.email && currentUser.email && u.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+            (u.email && currentUser.name && u.email.toLowerCase().includes(currentUser.name.toLowerCase())) ||
+            (u.nombres && currentUser.name && u.nombres.toLowerCase() === currentUser.name.toLowerCase()) ||
+            (u.rol_id === rolId && (!currentUser.firstName || currentUser.firstName === ''))
+          );
+
+          let firstName = currentUser.firstName || '';
+          let lastName = currentUser.lastName || '';
+          let finalName = currentUser.name;
+          let userEmail = currentUser.email;
+          let userId = currentUser.id;
+
+          if (matchedUser) {
+            firstName = matchedUser.nombres || '';
+            lastName = matchedUser.apellidos || '';
+            finalName = matchedUser.nombres || `${matchedUser.nombres || ''} ${matchedUser.apellidos || ''}`.trim() || currentUser.name;
+            userEmail = matchedUser.email || currentUser.email;
+            userId = matchedUser.user_id || currentUser.id;
           }
+
+          const updatedUser: User = {
+            ...currentUser,
+            id: userId,
+            email: userEmail,
+            name: finalName,
+            firstName: firstName,
+            lastName: lastName,
+            role: roleName
+          };
+
+          this.authService.currentUser.set(updatedUser);
+          sessionStorage.setItem('auth_user', JSON.stringify({
+            id: updatedUser.id,
+            email: updatedUser.email,
+            name: updatedUser.name,
+            firstName: updatedUser.firstName,
+            lastName: updatedUser.lastName,
+            role: roleName,
+            roleId: rolId,
+            createdAt: updatedUser.createdAt ? (updatedUser.createdAt instanceof Date ? updatedUser.createdAt.toISOString() : updatedUser.createdAt) : new Date().toISOString()
+          }));
         }
 
         // Validar si el usuario actual sigue teniendo acceso a la ruta activa tras el cambio de permisos

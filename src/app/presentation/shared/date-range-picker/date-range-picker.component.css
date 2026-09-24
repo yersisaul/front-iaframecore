@@ -1,5 +1,7 @@
 .dropdown-fechas {
-  min-width: 280px;
+  min-width: 380px;
+  right: 0 !important;
+  left: auto !important;
 }
 
 .preset-btn {

@@ -1,4 +1,4 @@
-import { Component, inject, input, signal, HostListener } from '@angular/core';
+import { Component, inject, input, signal, computed, HostListener } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ThemeService } from '../../../core/services/theme.service';
@@ -18,6 +18,23 @@ export class SessionControl {
 
   readonly currentUser = this.authService.currentUser;
   readonly isDarkMode = this.themeService.darkMode;
+
+  readonly displayName = computed(() => {
+    const user = this.currentUser();
+    if (!user) return 'Usuario';
+    if (user.firstName && user.firstName.trim().length > 0) {
+      return user.firstName.trim();
+    }
+    if (user.name) {
+      // Si el name contiene '@', extraer solo el usuario antes del dominio
+      return user.name.includes('@') ? user.name.split('@')[0] : user.name;
+    }
+    return 'Usuario';
+  });
+
+  readonly displayRole = computed(() => {
+    return this.currentUser()?.role || 'Usuario';
+  });
   
   // Propiedad responsiva para colapso del sidebar
   readonly isCollapsed = input<boolean>(false);

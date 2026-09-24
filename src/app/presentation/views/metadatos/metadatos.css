@@ -833,6 +833,8 @@
 
 .filter-dropdown-menu.dropdown-fechas {
   min-width: 380px;
+  right: 0 !important;
+  left: auto !important;
 }
 
 @keyframes dropdownFadeIn {

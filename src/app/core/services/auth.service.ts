@@ -84,6 +84,8 @@ export class AuthService {
           id: parsed.id,
           email: parsed.email,
           name: parsed.name,
+          firstName: parsed.firstName || '',
+          lastName: parsed.lastName || '',
           role: parsed.role,
           roleId: parsed.roleId,
           createdAt: new Date(parsed.createdAt)

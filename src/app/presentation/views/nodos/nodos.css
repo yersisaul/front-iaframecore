@@ -2359,7 +2359,7 @@ option {
 
 .nm-table-tr {
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nm-table td {
@@ -2375,42 +2375,73 @@ option {
   border-bottom: none !important;
 }
 
-/* Hover general */
+/* ── Hover y Selección Activa con Gradientes Glassmorphic por OS ── */
 .nm-table-tr:hover {
-  background-color: rgba(var(--primary-rgb, 13, 110, 253), 0.03) !important;
+  background: linear-gradient(90deg, rgba(var(--primary-rgb, 0, 166, 244), 0.055) 0%, rgba(var(--primary-rgb, 0, 166, 244), 0.015) 60%, transparent 100%) !important;
 }
 
-/* Hover especializado por OS */
 .nm-table-tr.ubuntu-tr:hover {
-  background-color: rgba(232, 114, 52, 0.04) !important;
+  background: linear-gradient(90deg, rgba(232, 114, 52, 0.08) 0%, rgba(232, 114, 52, 0.018) 60%, transparent 100%) !important;
 }
 
 .nm-table-tr.windows-tr:hover {
-  background-color: rgba(0, 120, 215, 0.04) !important;
+  background: linear-gradient(90deg, rgba(0, 120, 215, 0.08) 0%, rgba(0, 120, 215, 0.018) 60%, transparent 100%) !important;
 }
 
-/* Bordes decorativos interactivos a la izquierda (según OS) */
+.nm-table-tr:hover td {
+  border-bottom-color: rgba(var(--primary-rgb, 0, 166, 244), 0.20) !important;
+}
+
+.nm-table-tr.ubuntu-tr:hover td {
+  border-bottom-color: rgba(232, 114, 52, 0.24) !important;
+}
+
+.nm-table-tr.windows-tr:hover td {
+  border-bottom-color: rgba(0, 120, 215, 0.24) !important;
+}
+
+/* Indicador lateral luminoso flotante (cápsula neón suave según OS) */
 .nm-table-tr td:first-child {
-  box-shadow: inset 3.5px 0 0 transparent !important;
-  transition: box-shadow 0.2s ease;
+  position: relative;
+  box-shadow: none !important;
 }
 
-.nm-table-tr.ubuntu-tr:hover td:first-child {
-  box-shadow: inset 3.5px 0 0 rgba(232, 114, 52, 1) !important;
+.nm-table-tr td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 3.5px;
+  border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, #38bdf8 0%, var(--color-azor-sky, #00a6f4) 100%);
+  box-shadow: 0 0 10px rgba(0, 166, 244, 0.55);
+  opacity: 0;
+  transform: scaleY(0.4);
+  transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s ease;
 }
 
-.nm-table-tr.windows-tr:hover td:first-child {
-  box-shadow: inset 3.5px 0 0 rgba(0, 120, 215, 1) !important;
+.nm-table-tr:hover td:first-child::before {
+  opacity: 0.85;
+  transform: scaleY(0.9);
 }
 
-.nm-table-tr:not(.ubuntu-tr):not(.windows-tr):hover td:first-child {
-  box-shadow: inset 3.5px 0 0 var(--primary) !important;
+/* Cápsula Linux / Ubuntu */
+.nm-table-tr.ubuntu-tr td:first-child::before {
+  background: linear-gradient(180deg, #ff8c42 0%, var(--color-os-ubuntu, #e87234) 100%);
+  box-shadow: 0 0 10px rgba(232, 114, 52, 0.6);
+}
+
+/* Cápsula Windows */
+.nm-table-tr.windows-tr td:first-child::before {
+  background: linear-gradient(180deg, #38bdf8 0%, var(--color-os-windows, #0078d7) 100%);
+  box-shadow: 0 0 10px rgba(0, 120, 215, 0.6);
 }
 
 /* Iconos de OS y status dot */
 .table-os-icon {
   background-color: var(--text-muted);
-  transition: background-color 0.2s ease;
+  transition: background-color 0.22s ease;
 }
 
 .nm-table-tr.ubuntu-tr:hover .table-os-icon {
@@ -2423,6 +2454,11 @@ option {
 
 .nm-table-tr:not(.ubuntu-tr):not(.windows-tr):hover .table-os-icon {
   background-color: var(--primary) !important;
+}
+
+.nm-table-tr:hover .host-table-name-text {
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
 }
 
 /* Hostname marquesina en hover de fila */

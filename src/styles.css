@@ -1213,6 +1213,11 @@ body:not(.dark) .form-select option {
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
 }
 
+.filter-dropdown-menu.dropdown-fechas {
+  right: 0 !important;
+  left: auto !important;
+}
+
 /* ── Dropdown Search Fixed Header & Scrollable Items ── */
 .dropdown-search-header {
   position: sticky;

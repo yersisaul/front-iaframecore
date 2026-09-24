@@ -1,5 +1,5 @@
 import {
-  Component, inject, signal, computed,
+  Component, inject, signal, computed, effect,
   OnInit, OnDestroy, AfterViewInit,
   HostListener, ViewChild, ElementRef
 } from '@angular/core';
@@ -262,7 +262,9 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   // ── Client-side pagination over filtered results ─────────────────────────────
   readonly pagedHosts = computed<Host[]>(() => {
     const list = this.filteredHosts();
-    const start = (this.currentPage() - 1) * this.limit();
+    const total = this.totalPages();
+    const page = Math.min(Math.max(1, this.currentPage()), total);
+    const start = (page - 1) * this.limit();
     return list.slice(start, start + this.limit());
   });
 
@@ -324,6 +326,15 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   }
 
   constructor() {
+    // Auto-ajuste de paginación si se eliminan elementos o se filtran y totalPages se reduce
+    effect(() => {
+      const total = this.totalPages();
+      const current = this.currentPage();
+      if (current > total && total > 0) {
+        this.currentPage.set(total);
+      }
+    }, { allowSignalWrites: true });
+
     // Restore state from URL query params
     const savedMode = localStorage.getItem('nodos_view_mode') as 'cards' | 'list';
     if (savedMode) {

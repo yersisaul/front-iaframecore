@@ -809,7 +809,9 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   // Paginación reactiva calculada en el cliente
   readonly pagedCameras = computed(() => {
     const list = this.filteredCameras();
-    const start = (this.currentPage() - 1) * this.limit();
+    const total = this.totalPages();
+    const page = Math.min(Math.max(1, this.currentPage()), total);
+    const start = (page - 1) * this.limit();
     const end = start + this.limit();
     return list.slice(start, end);
   });
@@ -909,6 +911,15 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
 
   constructor() {
+    // Auto-ajuste de paginación si se eliminan elementos o se filtran y totalPages se reduce
+    effect(() => {
+      const total = this.totalPages();
+      const current = this.currentPage();
+      if (current > total && total > 0) {
+        this.currentPage.set(total);
+      }
+    }, { allowSignalWrites: true });
+
     effect(() => {
       const pCamId = this.pendingCameraId();
       const pAnId = this.pendingAnalyticId();
