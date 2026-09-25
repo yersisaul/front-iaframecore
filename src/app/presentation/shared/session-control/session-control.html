@@ -1,91 +1,42 @@
 @if (currentUser()) {
-<div class="session-container position-relative">
-  <!-- Main trigger row -->
-  <div class="user-control d-flex align-items-center justify-content-between px-3 py-2"
-    [class.collapsed-mode]="isCollapsed()" [class.cursor-pointer]="isCollapsed()" (click)="onUserControlClick($event)">
+<div class="session-control" [class.is-collapsed]="isCollapsed()">
 
-    @if (isCollapsed()) {
-    <div class="d-flex align-items-center justify-content-center w-100">
-      <span class="icon-svg icon-user user-icon" style="width: 20px; height: 20px;"></span>
-    </div>
-    } @else {
-    <!-- User profile info -->
-    <div class="d-flex flex-column lh-sm overflow-hidden pe-2">
-      <span class="user-name text-truncate" [title]="displayName()">
-        {{ displayName() }}
-      </span>
-      <span class="user-role text-truncate">
-        {{ displayRole() }}
-      </span>
-    </div>
-
-    <!-- Action buttons (direct naked SVGs without containers) -->
-    <div class="d-flex align-items-center gap-3">
-      <!-- Botón de Tema (Claro / Oscuro) -->
-      <button type="button" class="btn-session-theme"
-        (click)="toggleTheme(); $event.stopPropagation()" [title]="isDarkMode() ? 'Modo Claro' : 'Modo Oscuro'">
-        @if (isDarkMode()) {
-        <span class="icon-svg icon-theme-light session-icon"></span>
-        } @else {
-        <span class="icon-svg icon-theme-dark session-icon"></span>
-        }
-      </button>
-
-      <!-- Botón Cerrar Sesión -->
-      <button type="button" class="btn-session-logout" (click)="onLogout(); $event.stopPropagation()"
-        [title]="'Cerrar Sesión'">
-        <span class="icon-svg icon-logout session-icon"></span>
-      </button>
-    </div>
-    }
-  </div>
-
-  <!-- Floating Dropdown menu when collapsed (shows name, role, theme toggle, unfold sidebar and logout) -->
-  @if (isCollapsed() && showDropdown()) {
-  <div class="floating-user-menu shadow p-3 rounded-3 position-absolute" (click)="$event.stopPropagation()">
-    <div class="d-flex align-items-center gap-2 pb-2 mb-2 border-bottom border-secondary-subtle">
-      <span class="icon-svg icon-user user-icon" style="width: 22px; height: 22px;"></span>
-      <div class="d-flex flex-column lh-sm overflow-hidden">
-        <span class="user-name text-truncate" [title]="displayName()">
-          {{ displayName() }}
-        </span>
-        <span class="user-role text-truncate">
-          {{ displayRole() }}
-        </span>
+  <!-- Monogram Avatar -->
+  <div class="sc-avatar" (click)="onUserControlClick($event)">
+    <div class="avatar-ring">
+      <div class="avatar-mono">
+        {{ displayName().charAt(0).toUpperCase() }}
       </div>
     </div>
-
-    <div class="d-flex flex-column gap-2">
-      <!-- Option: Expand Sidebar -->
-      <button
-        class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center gap-2 py-2 px-3 rounded text-start cursor-pointer"
-        (click)="toggleSidebar($event)">
-        <span class="icon-svg icon-chevron-right" style="width: 14px; height: 14px;"></span>
-        <span>Desplegar Menú</span>
-      </button>
-
-      <!-- Option: Switch Theme -->
-      <button
-        class="btn btn-sm btn-theme-switcher w-100 d-flex align-items-center gap-2 py-2 px-3 rounded text-start cursor-pointer"
-        (click)="toggleTheme(); toggleDropdown($event)">
-        @if (isDarkMode()) {
-        <span class="icon-svg icon-theme-light" style="width: 14px; height: 14px;"></span>
-        <span>Modo Claro</span>
-        } @else {
-        <span class="icon-svg icon-theme-dark" style="width: 14px; height: 14px;"></span>
-        <span>Modo Oscuro</span>
-        }
-      </button>
-
-      <!-- Option: Logout -->
-      <button
-        class="btn btn-sm btn-outline-danger w-100 d-flex align-items-center gap-2 py-2 px-3 rounded text-start cursor-pointer"
-        (click)="onLogout()">
-        <span class="icon-svg icon-logout logout-icon bg-danger" style="width: 14px; height: 14px;"></span>
-        <span>Cerrar Sesión</span>
-      </button>
-    </div>
   </div>
-  }
+
+  <!-- Identity -->
+  <div class="sc-identity">
+    <span class="user-name text-truncate" [title]="displayName()">
+      {{ displayName() }}
+    </span>
+    <span class="user-role text-truncate">
+      {{ displayRole() }}
+    </span>
+  </div>
+
+  <!-- Theme Toggle -->
+  <button type="button" class="btn-action btn-theme"
+    (click)="toggleTheme(); $event.stopPropagation()"
+    [title]="isDarkMode() ? 'Modo Claro' : 'Modo Oscuro'">
+    @if (isDarkMode()) {
+    <span class="icon-svg icon-theme-light action-icon"></span>
+    } @else {
+    <span class="icon-svg icon-theme-dark action-icon"></span>
+    }
+  </button>
+
+  <!-- Logout -->
+  <button type="button" class="btn-action btn-logout"
+    (click)="onLogout(); $event.stopPropagation()"
+    title="Cerrar Sesión">
+    <span class="icon-svg icon-logout action-icon"></span>
+  </button>
+
 </div>
 }

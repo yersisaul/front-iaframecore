@@ -1,9 +1,9 @@
 <nav class="sidebar-nav">
   <!-- Cabecera del Sidebar con Marca -->
-  <div class="sidebar-header d-flex align-items-center mb-4 px-3" [class.justify-content-center]="isCollapsed()">
-    <div class="logo-wrapper d-flex align-items-center gap-2">
-      <img src="logo.svg" alt="AZOR" style="width: 24px; height: 24px;" />
-      <span class="fw-bold fs-5 text-gradient" [class.d-none]="isCollapsed()">Azor analytics</span>
+  <div class="sidebar-header d-flex align-items-center mb-4">
+    <div class="logo-wrapper d-flex align-items-center">
+      <img src="logo.svg" alt="AZOR" class="brand-logo" />
+      <span class="fw-bold fs-5 text-gradient sidebar-label">Azor analytics</span>
     </div>
   </div>
 
@@ -12,12 +12,11 @@
     @if (permissionsService.hasPermission('Hosts', 'ver')) {
     <li class="nav-item mb-2">
       <a routerLink="/dashboard/nodos" routerLinkActive="active"
-        class="nav-link text-body fw-500 d-flex align-items-center rounded"
-        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Nodos' : ''">
+        class="nav-link text-body fw-500 rounded"
+        [title]="isCollapsed() ? 'Nodos' : ''">
         <div class="active-indicator"></div>
-        <span class="icon-svg icon-nodos nav-icon" [class.me-3]="!isCollapsed()"
-          style="width: 18px; height: 18px;"></span>
-        <span [class.d-none]="isCollapsed()">Nodos</span>
+        <span class="icon-svg icon-nodos nav-icon"></span>
+        <span class="sidebar-label">Nodos</span>
       </a>
     </li>
     }
@@ -26,12 +25,11 @@
     @if (permissionsService.hasPermission('Cámaras', 'ver')) {
     <li class="nav-item mb-2">
       <a routerLink="/dashboard/camaras" routerLinkActive="active"
-        class="nav-link text-body fw-500 d-flex align-items-center rounded"
-        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Cámaras' : ''">
+        class="nav-link text-body fw-500 rounded"
+        [title]="isCollapsed() ? 'Cámaras' : ''">
         <div class="active-indicator"></div>
-        <span class="icon-svg icon-camara nav-icon" [class.me-3]="!isCollapsed()"
-          style="width: 18px; height: 18px;"></span>
-        <span [class.d-none]="isCollapsed()">Cámaras</span>
+        <span class="icon-svg icon-camara nav-icon"></span>
+        <span class="sidebar-label">Cámaras</span>
       </a>
     </li>
     }
@@ -39,25 +37,21 @@
     <!-- 3. Monitoreo -->
     <li class="nav-item mb-2">
       <a routerLink="/dashboard/monitoreo" routerLinkActive="active"
-        class="nav-link text-body fw-500 d-flex align-items-center rounded"
-        [class.justify-content-center]="isCollapsed()"
+        class="nav-link text-body fw-500 rounded"
         [title]="isCollapsed() ? (unseenMonitoringEventsCount() > 0 ? 'Monitoreo (' + unseenMonitoringEventsCount() + ')' : 'Monitoreo') : ''">
         <div class="active-indicator"></div>
-        <div class="position-relative d-inline-flex align-items-center justify-content-center flex-shrink-0"
-          [class.me-3]="!isCollapsed()">
-          <span class="icon-svg icon-grid nav-icon" style="width: 18px; height: 18px;"></span>
-          @if (unseenMonitoringEventsCount() > 0 && isCollapsed()) {
-          <span
-            class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
-            style="margin-top: 2px; margin-left: -2px;">
+        <div class="nav-icon-wrap position-relative d-inline-flex align-items-center justify-content-center flex-shrink-0">
+          <span class="icon-svg icon-grid nav-icon"></span>
+          @if (unseenMonitoringEventsCount() > 0) {
+          <span class="monitoring-dot position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
             <span class="visually-hidden">Nuevos eventos</span>
           </span>
           }
         </div>
-        <span [class.d-none]="isCollapsed()" class="text-truncate flex-grow-1">Monitoreo</span>
+        <span class="sidebar-label text-truncate flex-grow-1">Monitoreo</span>
 
-        @if (unseenMonitoringEventsCount() > 0 && !isCollapsed()) {
-        <span class="badge rounded-pill bg-danger text-white fw-bold ms-auto px-2 py-0.5"
+        @if (unseenMonitoringEventsCount() > 0) {
+        <span class="badge rounded-pill bg-danger text-white fw-bold ms-auto px-2 py-0.5 sidebar-label sidebar-badge"
           style="font-size: 0.7rem; letter-spacing: -0.02em; box-shadow: 0 0 10px rgba(239, 68, 68, 0.45);">
           {{ unseenMonitoringEventsCount() > 99 ? '99+' : unseenMonitoringEventsCount() }}
         </span>
@@ -69,12 +63,11 @@
     @if (permissionsService.hasPermission('Horarios', 'ver')) {
     <li class="nav-item mb-2">
       <a routerLink="/dashboard/horarios" routerLinkActive="active"
-        class="nav-link text-body fw-500 d-flex align-items-center rounded"
-        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Horarios' : ''">
+        class="nav-link text-body fw-500 rounded"
+        [title]="isCollapsed() ? 'Horarios' : ''">
         <div class="active-indicator"></div>
-        <span class="icon-svg icon-horarios nav-icon" [class.me-3]="!isCollapsed()"
-          style="width: 18px; height: 18px;"></span>
-        <span [class.d-none]="isCollapsed()">Horarios</span>
+        <span class="icon-svg icon-horarios nav-icon"></span>
+        <span class="sidebar-label">Horarios</span>
       </a>
     </li>
     }
@@ -83,15 +76,14 @@
     @if (permissionsService.hasPermission('Listas', 'ver')) {
     <li class="nav-item mb-2">
       <a style="cursor: pointer;" (click)="toggleListasSubmenu($event)"
-        class="nav-link text-body fw-500 d-flex align-items-center rounded position-relative"
-        [class.justify-content-center]="isCollapsed()" [class.active]="isListasActive()"
+        class="nav-link text-body fw-500 rounded position-relative"
+        [class.active]="isListasActive()"
         [title]="isCollapsed() ? 'Listas de Control' : ''">
         <div class="active-indicator"></div>
-        <span class="icon-svg icon-listas nav-icon" [class.me-3]="!isCollapsed()"
-          style="width: 18px; height: 18px;"></span>
-        <span [class.d-none]="isCollapsed()" class="flex-grow-1">Listas de Control</span>
+        <span class="icon-svg icon-listas nav-icon"></span>
+        <span class="sidebar-label flex-grow-1">Listas de Control</span>
 
-        <span [class.d-none]="isCollapsed()" class="submenu-chevron ms-auto" [class.open]="isListasOpen()">
+        <span class="submenu-chevron ms-auto sidebar-label" [class.open]="isListasOpen()">
           <span class="icon-svg icon-chevron-down" style="width: 12px; height: 12px;"></span>
         </span>
       </a>
@@ -118,15 +110,14 @@
     <!-- 6. Metadatos -->
     <li class="nav-item mb-2">
       <a style="cursor: pointer;" (click)="toggleMetadataSubmenu($event)"
-        class="nav-link text-body fw-500 d-flex align-items-center rounded position-relative"
-        [class.justify-content-center]="isCollapsed()" [class.active]="isMetadataActive()"
+        class="nav-link text-body fw-500 rounded position-relative"
+        [class.active]="isMetadataActive()"
         [title]="isCollapsed() ? 'Metadatos' : ''">
         <div class="active-indicator"></div>
-        <span class="icon-svg icon-metadatos nav-icon" [class.me-3]="!isCollapsed()"
-          style="width: 18px; height: 18px;"></span>
-        <span [class.d-none]="isCollapsed()" class="flex-grow-1">Metadatos</span>
+        <span class="icon-svg icon-metadatos nav-icon"></span>
+        <span class="sidebar-label flex-grow-1">Metadatos</span>
 
-        <span [class.d-none]="isCollapsed()" class="submenu-chevron ms-auto" [class.open]="isMetadataOpen()">
+        <span class="submenu-chevron ms-auto sidebar-label" [class.open]="isMetadataOpen()">
           <span class="icon-svg icon-chevron-down" style="width: 12px; height: 12px;"></span>
         </span>
       </a>
@@ -152,12 +143,11 @@
     @if (permissionsService.hasPermission('Dashboard', 'ver')) {
     <li class="nav-item mb-2">
       <a routerLink="/dashboard/dashboards" routerLinkActive="active"
-        class="nav-link text-body fw-500 d-flex align-items-center rounded"
-        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Dashboard' : ''">
+        class="nav-link text-body fw-500 rounded"
+        [title]="isCollapsed() ? 'Dashboard' : ''">
         <div class="active-indicator"></div>
-        <span class="icon-svg icon-dashboard nav-icon" [class.me-3]="!isCollapsed()"
-          style="width: 18px; height: 18px;"></span>
-        <span [class.d-none]="isCollapsed()">Dashboard</span>
+        <span class="icon-svg icon-dashboard nav-icon"></span>
+        <span class="sidebar-label">Dashboard</span>
       </a>
     </li>
     }
@@ -165,12 +155,11 @@
     <!-- 8. Eventos -->
     <li class="nav-item mb-2">
       <a routerLink="/dashboard/eventos" routerLinkActive="active"
-        class="nav-link text-body fw-500 d-flex align-items-center rounded"
-        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Eventos' : ''">
+        class="nav-link text-body fw-500 rounded"
+        [title]="isCollapsed() ? 'Eventos' : ''">
         <div class="active-indicator"></div>
-        <span class="icon-svg icon-eventos nav-icon" [class.me-3]="!isCollapsed()"
-          style="width: 18px; height: 18px;"></span>
-        <span [class.d-none]="isCollapsed()">Eventos</span>
+        <span class="icon-svg icon-eventos nav-icon"></span>
+        <span class="sidebar-label">Eventos</span>
       </a>
     </li>
 
@@ -178,12 +167,11 @@
     @if (permissionsService.hasPermission('Usuarios', 'ver') || permissionsService.hasPermission('Roles', 'ver')) {
     <li class="nav-item mb-2">
       <a routerLink="/dashboard/usuarios" routerLinkActive="active"
-        class="nav-link text-body fw-500 d-flex align-items-center rounded"
-        [class.justify-content-center]="isCollapsed()" [title]="isCollapsed() ? 'Usuarios' : ''">
+        class="nav-link text-body fw-500 rounded"
+        [title]="isCollapsed() ? 'Usuarios' : ''">
         <div class="active-indicator"></div>
-        <span class="icon-svg icon-usuarios nav-icon" [class.me-3]="!isCollapsed()"
-          style="width: 18px; height: 18px;"></span>
-        <span [class.d-none]="isCollapsed()">Usuarios</span>
+        <span class="icon-svg icon-usuarios nav-icon"></span>
+        <span class="sidebar-label">Usuarios</span>
       </a>
     </li>
     }

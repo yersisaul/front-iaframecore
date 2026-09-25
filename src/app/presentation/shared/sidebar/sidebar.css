@@ -33,32 +33,43 @@
 .text-gradient {
   background: linear-gradient(45deg, var(--primary), var(--color-vehiculos));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .sidebar-header {
-  height: 48px; /* Strict fixed height for the header */
+  height: 48px;
   display: flex;
   align-items: center;
+  padding: 0 15px;
+}
+
+.logo-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.brand-logo {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }
 
 .nav-link {
   position: relative;
-  height: 44px; /* Strict fixed height for navigation links */
-  padding: 0 1rem;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 44px;
+  padding: 0 18px;
   display: flex;
   align-items: center;
+  gap: 14px;
   overflow: hidden;
   border-radius: 8px;
   color: var(--text-sidebar) !important;
   text-decoration: none !important;
   cursor: pointer;
-}
-
-:host(.collapsed) .nav-link {
-  padding: 0;
-  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .nav-link:hover {
@@ -94,12 +105,32 @@
 }
 
 .nav-link .icon-svg {
-  transition: color 0.2s, transform 0.2s, background-color 0.2s;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
+  transition: color 0.2s, transform 0.2s, background-color 0.2s;
 }
 
 .nav-link:hover .icon-svg {
   transform: scale(1.08);
+}
+
+.nav-icon-wrap {
+  width: 18px;
+  height: 18px;
+}
+
+.monitoring-dot {
+  opacity: 0;
+  transform: scale(0);
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  margin-top: 2px;
+  margin-left: -2px;
+}
+
+:host(.collapsed) .monitoring-dot {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .sidebar-footer {
@@ -111,10 +142,6 @@
   align-items: center;
   justify-content: center;
   color: var(--text-muted) !important;
-}
-
-:host(.collapsed) .version-info {
-  justify-content: center;
 }
 
 .version-info .icon-info {
@@ -136,13 +163,15 @@
 .submenu-list {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+  opacity: 0;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, padding 0.3s ease;
   padding-left: 2.75rem;
   margin: 0;
 }
 
 .submenu-list.open {
   max-height: 200px;
+  opacity: 1;
   padding-top: 0.25rem;
   padding-bottom: 0.25rem;
 }
@@ -204,9 +233,42 @@
   border-color: var(--primary-light) !important;
 }
 
-/* Hide submenu when sidebar is collapsed to avoid layout shifting */
+/* Smoothly hide submenu when sidebar is collapsed */
 :host(.collapsed) .submenu-list {
-  display: none !important;
+  max-height: 0 !important;
+  opacity: 0 !important;
+  padding: 0 !important;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Smooth Text Collapse Transitions
+   ═══════════════════════════════════════════════════════════════════ */
+.sidebar-label {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 1;
+  max-width: 180px;
+  transform: translateX(0);
+  transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:host(.collapsed) .sidebar-label {
+  opacity: 0;
+  max-width: 0;
+  transform: translateX(-6px);
+  pointer-events: none;
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Badge in monitoreo */
+.sidebar-badge {
+  max-width: 60px;
 }
 
 /* Responsive overlay drawer for screens under 750px */
@@ -234,6 +296,7 @@
     box-shadow: none !important;
   }
 }
+
 
 
 

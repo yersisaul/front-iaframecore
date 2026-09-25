@@ -1,4 +1,4 @@
-import { Component, inject, input, signal, computed, HostListener } from '@angular/core';
+import { Component, inject, input, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ThemeService } from '../../../core/services/theme.service';
@@ -35,35 +35,15 @@ export class SessionControl {
   readonly displayRole = computed(() => {
     return this.currentUser()?.role || 'Usuario';
   });
-  
+
   // Propiedad responsiva para colapso del sidebar
   readonly isCollapsed = input<boolean>(false);
-
-  // Estado del menú desplegable cuando está colapsado
-  readonly showDropdown = signal<boolean>(false);
 
   onUserControlClick(event: Event): void {
     if (this.isCollapsed()) {
       event.stopPropagation();
       this.sidebarService.toggleSidebar();
-      this.showDropdown.set(false);
     }
-  }
-
-  toggleDropdown(event: Event): void {
-    event.stopPropagation();
-    this.showDropdown.update(v => !v);
-  }
-
-  toggleSidebar(event: Event): void {
-    event.stopPropagation();
-    this.sidebarService.toggleSidebar();
-    this.showDropdown.set(false);
-  }
-
-  @HostListener('document:click')
-  closeDropdown(): void {
-    this.showDropdown.set(false);
   }
 
   onLogout(): void {
