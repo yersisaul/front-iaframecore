@@ -4275,8 +4275,8 @@ code.code-badge {
 
 /* Anchos y proporciones de columnas (Estrategia Fijo rem + Absorción Elástica) */
 .nm-table .col-status {
-  width: 5.5rem;
-  min-width: 5.5rem;
+  width: 5rem;
+  min-width: 5rem;
   text-align: center;
 }
 

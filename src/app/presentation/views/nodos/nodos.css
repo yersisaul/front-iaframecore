@@ -2287,25 +2287,25 @@ option {
 }
 
 .nm-table .col-hostname {
-  width: 12.5rem;
-  min-width: 12.5rem;
+  width: 14rem;
+  min-width: 14rem;
 }
 
 .nm-table .col-cameras {
-  width: 5rem;
-  min-width: 5rem;
+  width: 4rem;
+  min-width: 4rem;
   text-align: center;
 }
 
 .nm-table .col-version {
-  width: 5rem;
-  min-width: 5rem;
+  width: 4rem;
+  min-width: 4rem;
   text-align: center;
 }
 
 .nm-table .col-ip {
-  width: 7.5rem;
-  min-width: 7.5rem;
+  width: 7rem;
+  min-width: 7rem;
   text-align: center;
 }
 

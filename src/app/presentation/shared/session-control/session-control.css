@@ -43,16 +43,20 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  padding: 2px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa);
+  background-color: var(--role-bg, var(--border-color));
+  color: var(--role-color, var(--text-secondary));
+  border: 2px solid var(--role-border, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  box-shadow: 0 0 0 0 transparent;
   transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
               height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
               box-shadow 0.25s ease,
-              transform 0.25s ease;
+              transform 0.25s ease,
+              border-color 0.3s ease,
+              background-color 0.3s ease,
+              color 0.3s ease;
 }
 
 .is-collapsed .avatar-ring {
@@ -61,12 +65,12 @@
 }
 
 .avatar-ring:hover {
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--role-color, var(--primary)) 20%, transparent);
 }
 
 .sc-avatar:hover .avatar-ring {
   transform: scale(1.06);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.22);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--role-color, var(--primary)) 25%, transparent);
 }
 
 .sc-avatar:active .avatar-ring {
@@ -74,11 +78,7 @@
 }
 
 .avatar-mono {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: var(--bg-surface, #ffffff);
-  color: #6366f1;
+  color: var(--role-color, var(--text-secondary));
   font-size: 14px;
   font-weight: 700;
   display: flex;
@@ -87,7 +87,7 @@
   letter-spacing: -0.02em;
   line-height: 1;
   user-select: none;
-  transition: font-size 0.35s ease, background-color 0.3s ease, color 0.3s ease;
+  transition: font-size 0.35s ease, color 0.3s ease;
 }
 
 .is-collapsed .avatar-mono {
@@ -277,12 +277,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    DARK MODE OVERRIDES
    ═══════════════════════════════════════════════════════════════════ */
-::ng-deep .dark .avatar-mono,
-::ng-deep [data-bs-theme="dark"] .avatar-mono {
-  background: rgba(30, 41, 59, 1);
-  color: #a78bfa;
-}
-
 ::ng-deep .dark .btn-action:hover,
 ::ng-deep [data-bs-theme="dark"] .btn-action:hover {
   background-color: rgba(255, 255, 255, 0.06);

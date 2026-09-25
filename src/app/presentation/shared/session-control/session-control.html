@@ -1,5 +1,5 @@
 @if (currentUser()) {
-<div class="session-control" [class.is-collapsed]="isCollapsed()">
+<div class="session-control" [class.is-collapsed]="isCollapsed()" [ngStyle]="roleStyle()">
 
   <!-- Monogram Avatar -->
   <div class="sc-avatar" (click)="onUserControlClick($event)">
