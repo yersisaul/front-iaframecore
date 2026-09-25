@@ -1,1 +1,6 @@
 <router-outlet></router-outlet>
+
+<!-- ── Overlay Global de Transición Cinematográfica con Máscara del Ojo de Azor (Canvas2D GPU Nativo) ── -->
+<div class="azor-aperture-portal-overlay" [class.active]="authTransitionService.isZoomTransitioning()" aria-hidden="true">
+  <canvas #portalCanvas class="azor-portal-canvas"></canvas>
+</div>

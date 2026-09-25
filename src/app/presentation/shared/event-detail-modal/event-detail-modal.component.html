@@ -52,6 +52,9 @@
             } @else {
             @if (resolvedImageUrl()) {
             <img [src]="resolvedImageUrl()" (load)="onImageLoad($event)" (error)="onImageError($event)"
+              [attr.data-src]="resolvedImageUrl()"
+              [attr.data-minio-object]="selectedEvent.imgMinioObjectName"
+              [attr.data-raw-src]="selectedEvent.imgMinioObjectName || selectedEvent.urlImg"
               class="stage-media-element img-element select-none" alt="Captura del evento"
               [style.display]="hasImageError() ? 'none' : 'block'" />
 
@@ -66,13 +69,21 @@
             }
 
             @if (hasImageError()) {
-            <div class="comparison-img-fallback select-none">
+            <div class="comparison-img-fallback select-none"
+              [attr.data-img-url]="resolvedImageUrl() || 'SIN_URL_RESUELTA'"
+              [attr.data-minio-object]="selectedEvent.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
+              [attr.data-raw-src]="selectedEvent.imgMinioObjectName || selectedEvent.urlImg || 'NULL'"
+              [title]="'Origen: ' + (resolvedImageUrl() || selectedEvent.imgMinioObjectName || selectedEvent.urlImg || 'Sin imagen en payload')">
               <span class="icon-svg icon-warning fallback-icon" style="background-color: #f59e0b;"></span>
               <span>Captura no disponible</span>
             </div>
             }
             } @else {
-            <div class="comparison-img-fallback select-none">
+            <div class="comparison-img-fallback select-none"
+              [attr.data-img-url]="resolvedImageUrl() || 'SIN_URL_RESUELTA'"
+              [attr.data-minio-object]="selectedEvent.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
+              [attr.data-raw-src]="selectedEvent.imgMinioObjectName || selectedEvent.urlImg || 'NULL'"
+              [title]="'Origen: ' + (resolvedImageUrl() || selectedEvent.imgMinioObjectName || selectedEvent.urlImg || 'Sin imagen en payload')">
               @if (selectedEvent.imgMinioObjectName || selectedEvent.urlImg) {
                 <span class="spinner-border spinner-border-sm text-primary mb-2" role="status"></span>
                 <span class="text-muted small">Cargando captura...</span>
@@ -97,7 +108,9 @@
             <span>Foto de Lista</span>
           </div>
 
-          <div class="stage-img-box">
+          <div class="stage-img-box"
+            [attr.data-img-url]="matchData()?.matchImgUrl || 'SIN_URL_RESUELTA'"
+            [attr.data-raw-src]="matchData()?.matchImgUrl || 'NULL'">
             @if (isMatchLoading()) {
             <div class="comparison-img-fallback select-none">
               <span class="spinner-border spinner-border-sm text-primary mb-2" role="status"></span>
@@ -105,16 +118,21 @@
             </div>
             } @else if (matchData()?.matchImgUrl) {
             <img [src]="matchData()?.matchImgUrl" (load)="onMatchImageLoad($event)" (error)="onMatchImageError($event)"
+              [attr.data-src]="matchData()?.matchImgUrl"
               class="stage-media-element img-element select-none" alt="Fotografía en Lista de Control"
               [style.display]="hasMatchImageError() ? 'none' : 'block'" />
             @if (hasMatchImageError()) {
-            <div class="comparison-img-fallback select-none">
+            <div class="comparison-img-fallback select-none"
+              [attr.data-img-url]="matchData()?.matchImgUrl || 'SIN_URL_RESUELTA'"
+              [title]="'Origen: ' + (matchData()?.matchImgUrl || 'Sin imagen en payload')">
               <span class="icon-svg icon-user fallback-icon text-muted" style="width: 28px; height: 28px;"></span>
               <span class="text-muted small">Foto no disponible</span>
             </div>
             }
             } @else {
-            <div class="comparison-img-fallback select-none">
+            <div class="comparison-img-fallback select-none"
+              [attr.data-img-url]="matchData()?.matchImgUrl || 'SIN_URL_RESUELTA'"
+              [title]="'Origen: ' + (matchData()?.matchImgUrl || 'Sin foto asociada a la coincidencia')">
               <span class="icon-svg icon-user fallback-icon text-muted" style="width: 28px; height: 28px;"></span>
               <span class="text-muted small">Foto no disponible</span>
             </div>
@@ -379,14 +397,19 @@
           <div class="d-flex gap-3 align-items-center">
             <!-- Columna Izquierda: Fotografía o Icono -->
             <div class="identity-photo-col flex-shrink-0"
+              [attr.data-img-url]="matchData()?.matchImgUrl || 'SIN_URL_RESUELTA'"
+              [attr.data-raw-src]="matchData()?.matchImgUrl || 'NULL'"
               [style.border-color]="getSimilarityColor(getDisplaySimilarity())">
               @if (matchData()?.matchImgUrl) {
               <img [src]="matchData()?.matchImgUrl" (load)="onMatchImageLoad($event)" (error)="onMatchImageError($event)"
+                [attr.data-src]="matchData()?.matchImgUrl"
                 class="identity-photo-img" [style.display]="hasMatchImageError() ? 'none' : 'block'" alt="Foto en Lista de Control" />
               }
               @if (!matchData()?.matchImgUrl || hasMatchImageError()) {
               <div
-                class="identity-photo-placeholder d-flex flex-column align-items-center justify-content-center h-100">
+                class="identity-photo-placeholder d-flex flex-column align-items-center justify-content-center h-100"
+                [attr.data-img-url]="matchData()?.matchImgUrl || 'SIN_URL_RESUELTA'"
+                [title]="'Origen: ' + (matchData()?.matchImgUrl || 'Sin foto asociada')">
                 <span class="icon-svg identity-photo-placeholder-icon" [class.icon-user]="!isPlateEvent(selectedEvent)"
                   [class.icon-box]="isPlateEvent(selectedEvent)"
                   [style.color]="getSimilarityColor(getDisplaySimilarity())"></span>

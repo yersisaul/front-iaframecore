@@ -681,16 +681,24 @@
           (mouseenter)="onCardMouseEnter($event)" (mouseleave)="onCardMouseLeave($event)">
 
           <!-- Image section with overlay -->
-          <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center">
+          @let resolvedImg = record.imgMinioObjectName | mediaUrl | async;
+          <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center"
+            [attr.data-img-url]="resolvedImg || 'SIN_URL_RESUELTA'"
+            [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
+            [attr.data-raw-src]="record.imgMinioObjectName || 'NULL'">
             <!-- Fallback placeholder (visible if no image or if image fails 404) -->
-            <div class="placeholder-img-icon">
+            <div class="placeholder-img-icon"
+              [attr.data-img-url]="resolvedImg || 'SIN_URL_RESUELTA'"
+              [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
+              [title]="'Origen: ' + (resolvedImg || record.imgMinioObjectName || 'Sin imagen en payload')">
               <span class="icon-svg icon-warning fallback-icon"></span>
               <span class="fallback-text">SIN IMAGEN</span>
             </div>
 
-            @let resolvedImg = record.imgMinioObjectName | mediaUrl | async;
             @if (resolvedImg) {
             <img [src]="resolvedImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
+              [attr.data-src]="resolvedImg"
+              [attr.data-minio-object]="record.imgMinioObjectName"
               class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
               alt="Thumbnail" />
             }
@@ -841,9 +849,14 @@
           @let modalImg = record.imgMinioObjectName | mediaUrl | async;
           @if (modalImg) {
           <img [src]="modalImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
+            [attr.data-src]="modalImg"
+            [attr.data-minio-object]="record.imgMinioObjectName"
             class="rounded object-fit-contain shadow-sm border bg-dark" style="width: 60px; height: 60px;" />
           } @else {
           <div class="rounded d-flex align-items-center justify-content-center border bg-dark text-muted"
+            [attr.data-img-url]="modalImg || 'SIN_URL_RESUELTA'"
+            [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
+            [title]="'Origen: ' + (modalImg || record.imgMinioObjectName || 'Sin imagen en payload')"
             style="width: 60px; height: 60px; font-size: 0.6rem;">
             @if (record.imgMinioObjectName) {
             <span class="spinner-border spinner-border-sm text-primary" role="status"></span>

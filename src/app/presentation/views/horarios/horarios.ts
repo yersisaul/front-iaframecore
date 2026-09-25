@@ -77,14 +77,18 @@ export class Horarios implements OnInit, OnDestroy {
     return this.allAnalyticsList().filter(a => sched.analyticIds.includes(a.id));
   });
 
+  getAnalyticSignature(a: { type: string; detectionClasses?: string[] }): string {
+    const typeLabel = this.getAnalyticLabel(a.type);
+    const classesStr = (a.detectionClasses || []).slice().sort().join(',');
+    return `${typeLabel}_${classesStr}`;
+  }
+
   readonly uniqueSelectedScheduleAnalytics = computed(() => {
     const analytics = this.selectedScheduleAnalytics();
     const seen = new Set<string>();
     const unique: Analytic[] = [];
     analytics.forEach(a => {
-      const typeLabel = this.getAnalyticLabel(a.type);
-      const classesStr = (a.detectionClasses || []).slice().sort().join(',');
-      const key = `${typeLabel}_${classesStr}`;
+      const key = this.getAnalyticSignature(a);
       if (!seen.has(key)) {
         seen.add(key);
         unique.push(a);
@@ -99,90 +103,80 @@ export class Horarios implements OnInit, OnDestroy {
 
   readonly filteredScheduleHosts = computed(() => {
     const hosts = this.selectedScheduleHosts();
+    const allAnalytics = this.selectedScheduleAnalytics();
     const activeCams = this.activeCameraFilters();
     const activeAns = this.activeAnalyticFilters();
 
-    if (activeCams.length > 0) {
-      const cameras = this.selectedScheduleCameras().filter(c => activeCams.includes(c.id));
-      const fingerprints = cameras.map(c => c.hostFingerprint);
-      return hosts.filter(h => fingerprints.includes(h.fingerprint));
+    if (activeCams.length === 0 && activeAns.length === 0) {
+      return hosts;
     }
 
-    if (activeAns.length > 0) {
-      const allAnalytics = this.selectedScheduleAnalytics();
-      const uniqueAnalytics = this.uniqueSelectedScheduleAnalytics();
-      const activeSigs = uniqueAnalytics
-        .filter(ua => activeAns.includes(ua.id))
-        .map(ua => `${ua.type}_${(ua.detectionClasses || []).slice().sort().join(',')}`);
-      
-      const matchingAnalytics = allAnalytics.filter(a => {
-        const sig = `${a.type}_${(a.detectionClasses || []).slice().sort().join(',')}`;
-        return activeSigs.includes(sig);
-      });
-      const fingerprints = matchingAnalytics.map(a => a.hostFingerprint);
-      return hosts.filter(h => fingerprints.includes(h.fingerprint));
-    }
+    const uniqueAnalytics = this.uniqueSelectedScheduleAnalytics();
+    const activeSigs = activeAns.length > 0
+      ? new Set(uniqueAnalytics.filter(ua => activeAns.includes(ua.id)).map(ua => this.getAnalyticSignature(ua)))
+      : null;
 
-    return hosts;
+    const matchingAnalytics = allAnalytics.filter(a => {
+      const matchesCam = activeCams.length === 0 ||
+        (a.targetCameraIds && a.targetCameraIds.some(id => activeCams.includes(id)));
+      const matchesAn = !activeSigs || activeSigs.has(this.getAnalyticSignature(a)) || activeAns.includes(a.id);
+      return matchesCam && matchesAn;
+    });
+
+    const matchingHostFps = new Set(matchingAnalytics.map(a => a.hostFingerprint));
+    return hosts.filter(h => matchingHostFps.has(h.fingerprint));
   });
 
   readonly filteredScheduleCameras = computed(() => {
     const cameras = this.selectedScheduleCameras();
+    const allAnalytics = this.selectedScheduleAnalytics();
     const activeHosts = this.activeHostFilters();
     const activeAns = this.activeAnalyticFilters();
 
-    if (activeHosts.length > 0) {
-      return cameras.filter(c => activeHosts.includes(c.hostFingerprint));
+    if (activeHosts.length === 0 && activeAns.length === 0) {
+      return cameras;
     }
 
-    if (activeAns.length > 0) {
-      const allAnalytics = this.selectedScheduleAnalytics();
-      const uniqueAnalytics = this.uniqueSelectedScheduleAnalytics();
-      const activeSigs = uniqueAnalytics
-        .filter(ua => activeAns.includes(ua.id))
-        .map(ua => `${ua.type}_${(ua.detectionClasses || []).slice().sort().join(',')}`);
+    const uniqueAnalytics = this.uniqueSelectedScheduleAnalytics();
+    const activeSigs = activeAns.length > 0
+      ? new Set(uniqueAnalytics.filter(ua => activeAns.includes(ua.id)).map(ua => this.getAnalyticSignature(ua)))
+      : null;
 
-      const matchingAnalytics = allAnalytics.filter(a => {
-        const sig = `${a.type}_${(a.detectionClasses || []).slice().sort().join(',')}`;
-        return activeSigs.includes(sig);
-      });
-      
-      const camIds = new Set<string>();
-      matchingAnalytics.forEach(a => {
-        if (a.targetCameraIds) {
-          a.targetCameraIds.forEach(id => camIds.add(id));
-        }
-      });
-      return cameras.filter(c => camIds.has(c.id));
-    }
+    const matchingAnalytics = allAnalytics.filter(a => {
+      const matchesHost = activeHosts.length === 0 || activeHosts.includes(a.hostFingerprint);
+      const matchesAn = !activeSigs || activeSigs.has(this.getAnalyticSignature(a)) || activeAns.includes(a.id);
+      return matchesHost && matchesAn;
+    });
 
-    return cameras;
+    const matchingCamIds = new Set<string>();
+    matchingAnalytics.forEach(a => {
+      if (a.targetCameraIds) {
+        a.targetCameraIds.forEach(id => matchingCamIds.add(id));
+      }
+    });
+
+    return cameras.filter(c => matchingCamIds.has(c.id));
   });
 
   readonly filteredScheduleAnalytics = computed(() => {
     const uniqueAnalytics = this.uniqueSelectedScheduleAnalytics();
+    const allAnalytics = this.selectedScheduleAnalytics();
     const activeHosts = this.activeHostFilters();
     const activeCams = this.activeCameraFilters();
 
-    if (activeHosts.length > 0) {
-      return uniqueAnalytics.filter(ua => activeHosts.includes(ua.hostFingerprint));
+    if (activeHosts.length === 0 && activeCams.length === 0) {
+      return uniqueAnalytics;
     }
 
-    if (activeCams.length > 0) {
-      const allAnalytics = this.selectedScheduleAnalytics();
-      const matchingAnalytics = allAnalytics.filter(a => 
-        a.targetCameraIds && a.targetCameraIds.some(id => activeCams.includes(id))
-      );
-      const matchingSigs = new Set(matchingAnalytics.map(a => 
-        `${a.type}_${(a.detectionClasses || []).slice().sort().join(',')}`
-      ));
-      return uniqueAnalytics.filter(ua => {
-        const sig = `${ua.type}_${(ua.detectionClasses || []).slice().sort().join(',')}`;
-        return matchingSigs.has(sig);
-      });
-    }
+    const matchingAnalytics = allAnalytics.filter(a => {
+      const matchesHost = activeHosts.length === 0 || activeHosts.includes(a.hostFingerprint);
+      const matchesCam = activeCams.length === 0 ||
+        (a.targetCameraIds && a.targetCameraIds.some(id => activeCams.includes(id)));
+      return matchesHost && matchesCam;
+    });
 
-    return uniqueAnalytics;
+    const matchingSigs = new Set(matchingAnalytics.map(a => this.getAnalyticSignature(a)));
+    return uniqueAnalytics.filter(ua => matchingSigs.has(this.getAnalyticSignature(ua)));
   });
 
   readonly selectedScheduleHosts = computed(() => {
@@ -1375,8 +1369,6 @@ export class Horarios implements OnInit, OnDestroy {
   }
 
   toggleHostFilter(fingerprint: string): void {
-    this.activeCameraFilters.set([]);
-    this.activeAnalyticFilters.set([]);
     const current = this.activeHostFilters();
     if (current.includes(fingerprint)) {
       this.activeHostFilters.set(current.filter(f => f !== fingerprint));
@@ -1386,8 +1378,6 @@ export class Horarios implements OnInit, OnDestroy {
   }
 
   toggleCameraFilter(cameraId: string): void {
-    this.activeHostFilters.set([]);
-    this.activeAnalyticFilters.set([]);
     const current = this.activeCameraFilters();
     if (current.includes(cameraId)) {
       this.activeCameraFilters.set(current.filter(id => id !== cameraId));
@@ -1397,8 +1387,6 @@ export class Horarios implements OnInit, OnDestroy {
   }
 
   toggleAnalyticFilter(analyticId: string): void {
-    this.activeHostFilters.set([]);
-    this.activeCameraFilters.set([]);
     const current = this.activeAnalyticFilters();
     if (current.includes(analyticId)) {
       this.activeAnalyticFilters.set(current.filter(id => id !== analyticId));

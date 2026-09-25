@@ -483,10 +483,18 @@
           (mouseenter)="onCardMouseEnter($event)" (mouseleave)="onCardMouseLeave($event)">
 
           <!-- Thumbnail Image -->
+          @let rawImgTarget = record.imgMinioObjectName || record.urlImg;
+          @let resolvedImgUrl = rawImgTarget ? (rawImgTarget | mediaUrl | async) : null;
           <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center"
+            [attr.data-img-url]="resolvedImgUrl || 'SIN_URL_RESUELTA'"
+            [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
+            [attr.data-raw-src]="rawImgTarget || 'NULL'"
             (click)="openImageDetailsModal(record); $event.stopPropagation()">
             <!-- Fallback placeholder (visible if no image or if image fails 404) -->
-            <div class="placeholder-img-icon">
+            <div class="placeholder-img-icon"
+              [attr.data-img-url]="resolvedImgUrl || 'SIN_URL_RESUELTA'"
+              [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
+              [title]="'Origen: ' + (resolvedImgUrl || rawImgTarget || 'Sin imagen en payload')">
               <span class="icon-svg icon-warning fallback-icon"></span>
               <span class="fallback-text">SIN IMAGEN</span>
             </div>
@@ -496,13 +504,12 @@
               <span class="icon-svg icon-magnify magnify-icon" style="width: 32px; height: 32px;"></span>
             </div>
 
-            @if (record.imgMinioObjectName || record.urlImg) {
-            @let resolvedImgUrl = (record.imgMinioObjectName || record.urlImg) | mediaUrl | async;
             @if (resolvedImgUrl) {
             <img [src]="resolvedImgUrl" (load)="onImageLoad($event)" (error)="onImageError($event)"
+              [attr.data-src]="resolvedImgUrl"
+              [attr.data-minio-object]="record.imgMinioObjectName"
               class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
               alt="Event Thumbnail" />
-            }
             }
 
             <!-- Floating Reliability / Similarity Badge (Top-Left) -->

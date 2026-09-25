@@ -120,19 +120,26 @@
           <div class="card-body p-3 d-flex flex-column justify-content-center flex-grow-1">
             <div
               class="dashboard-preview-container position-relative overflow-hidden rounded-3 d-flex align-items-center justify-content-center w-100 flex-grow-1"
-              [class.has-image]="!!item.url_img">
+              [class.has-image]="!!item.url_img"
+              [attr.data-img-url]="item.url_img || 'SIN_URL'"
+              [attr.data-raw-src]="item.url_img || 'NULL'">
               @if (item.url_img) {
               <img [src]="getSanitizedImg(item.url_img)" class="dashboard-preview-img w-100 h-100 object-fit-contain"
+                [attr.data-src]="item.url_img"
                 [alt]="item.nombre" (error)="onCardImageError($event)">
               <div
-                class="dashboard-preview-placeholder d-none flex-column align-items-center justify-content-center text-muted">
+                class="dashboard-preview-placeholder d-none flex-column align-items-center justify-content-center text-muted"
+                [attr.data-img-url]="item.url_img || 'SIN_URL'"
+                [title]="'Origen: ' + (item.url_img || 'Sin imagen en payload')">
                 <span class="icon-svg icon-dashboard opacity-40 mb-2" style="width: 2rem; height: 2rem;"></span>
                 <span class="small opacity-60 fw-medium">Vista previa del tablero</span>
               </div>
               } @else {
               <!-- Espacio libre para foto del dashboard -->
               <div
-                class="dashboard-preview-placeholder d-flex flex-column align-items-center justify-content-center text-muted">
+                class="dashboard-preview-placeholder d-flex flex-column align-items-center justify-content-center text-muted"
+                [attr.data-img-url]="'SIN_URL'"
+                [title]="'Origen: Sin imagen configurada'">
                 <span class="icon-svg icon-dashboard opacity-40 mb-2" style="width: 2rem; height: 2rem;"></span>
                 <span class="small opacity-60 fw-medium">Vista previa del tablero</span>
               </div>

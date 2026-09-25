@@ -46,6 +46,7 @@ export class MetadataService {
   readonly pageSize = signal<number>(60);
   readonly newRecordIds = signal<Set<string>>(new Set());
   readonly bufferedEvents = signal<MetaRecord[]>([]);
+  readonly allImageSearchResults = signal<MetaRostro[]>([]);
 
   markAsNew(id: string): void {
     this.newRecordIds.update(s => new Set([...s, id]));
@@ -169,7 +170,7 @@ export class MetadataService {
       this.totalRecords.update(t => t + buffer.length);
       buffer.forEach(e => this.markAsNew(e.id));
     } else {
-      // 🌐 NAVEGACIÓN (Página > 1 a Página 1): Carga los 24 registros reales de la Página 1
+      // 🌐 NAVEGACIÓN (Página > 1 a Página 1): Carga los registros reales de la Página 1
       this.currentPage.set(1);
       this.loadCurrentPage(buffer);
     }
@@ -235,6 +236,7 @@ export class MetadataService {
 
   setActiveIndex(index: MetaIndexName): void {
     this.bufferedEvents.set([]);
+    this.allImageSearchResults.set([]);
     this.activeIndex.set(index);
     this.currentPage.set(1);
     this.resetFilters();
@@ -242,6 +244,9 @@ export class MetadataService {
 
   updateFilters(newFilters: Partial<MetaFilterState>): void {
     this.bufferedEvents.set([]);
+    if (newFilters.imageFile === null || (newFilters.imageFile === undefined && !this.filters().imageFile)) {
+      this.allImageSearchResults.set([]);
+    }
     this.filters.update(current => ({
       ...current,
       ...newFilters
@@ -252,6 +257,7 @@ export class MetadataService {
 
   resetFilters(): void {
     this.bufferedEvents.set([]);
+    this.allImageSearchResults.set([]);
     this.filters.set(defaultFilterState());
     this.currentPage.set(1);
     this.loadCurrentPage();
@@ -314,6 +320,31 @@ export class MetadataService {
 
   private activeSubscription?: Subscription;
 
+  private applyImagePagination(bufferPrefix?: MetaRecord[]): void {
+    const all = this.allImageSearchResults();
+    const page = this.currentPage();
+    const pageSize = this.pageSize();
+    const total = all.length;
+    this.totalRecords.set(total);
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize;
+    let pageRecords = all.slice(from, to);
+
+    if (bufferPrefix && bufferPrefix.length > 0) {
+      const combined = [...bufferPrefix, ...pageRecords];
+      pageRecords = (combined as MetaRostro[]).filter((item, index, self) =>
+        index === self.findIndex(t => t.id === item.id)
+      ).slice(0, pageSize);
+      bufferPrefix.forEach(r => this.markAsNew(r.id));
+    }
+
+    this.records.set(pageRecords);
+    if (this.activeIndex()) {
+      this.syncIndexCount(this.activeIndex()!, total);
+    }
+  }
+
   loadCurrentPage(bufferPrefix?: MetaRecord[]): void {
     const idx = this.activeIndex();
     if (!idx) return;
@@ -324,23 +355,21 @@ export class MetadataService {
 
     const filters = this.filters();
     if (idx === 'rostros' && filters.imageFile) {
+      if (this.allImageSearchResults().length > 0) {
+        this.applyImagePagination(bufferPrefix);
+        return;
+      }
+
       this.isLoading.set(true);
-      this.activeSubscription = this.repository.searchFacesByImage(filters.imageFile, this.pageSize()).subscribe({
+      this.activeSubscription = this.repository.searchFacesByImage(filters.imageFile, 100).subscribe({
         next: records => {
-          let finalRecords = records;
-          if (bufferPrefix && bufferPrefix.length > 0) {
-            const combined = [...bufferPrefix, ...records];
-            finalRecords = (combined as MetaRostro[]).filter((item, index, self) =>
-              index === self.findIndex(t => t.id === item.id)
-            ).slice(0, this.pageSize());
-            bufferPrefix.forEach(r => this.markAsNew(r.id));
-          }
-          this.records.set(finalRecords);
-          this.totalRecords.set(records.length);
+          this.allImageSearchResults.set(records);
+          this.applyImagePagination(bufferPrefix);
           this.isLoading.set(false);
         },
         error: err => {
           console.error('Error searching faces by image in loadCurrentPage:', err);
+          this.allImageSearchResults.set([]);
           this.records.set([]);
           this.totalRecords.set(0);
           this.isLoading.set(false);
@@ -396,22 +425,21 @@ export class MetadataService {
       imageSearchUrl: searchUrl || current.imageSearchUrl
     }));
     this.currentPage.set(1);
-
     this.isLoading.set(true);
-    const size = this.pageSize();
 
     if (this.activeSubscription) {
       this.activeSubscription.unsubscribe();
     }
 
-    const searchObs = this.repository.searchFacesByImage(file, size).pipe(
+    const searchObs = this.repository.searchFacesByImage(file, 100).pipe(
       tap(records => {
-        this.records.set(records);
-        this.totalRecords.set(records.length);
+        this.allImageSearchResults.set(records);
+        this.applyImagePagination();
         this.isLoading.set(false);
       }),
       catchError(err => {
         console.error('Error searching faces by image in service:', err);
+        this.allImageSearchResults.set([]);
         this.records.set([]);
         this.totalRecords.set(0);
         this.isLoading.set(false);

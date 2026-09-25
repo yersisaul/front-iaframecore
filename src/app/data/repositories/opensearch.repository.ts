@@ -586,11 +586,12 @@ export class OpenSearchRepository implements IMetadataRepository {
     return options;
   }
 
-  searchFacesByImage(file: File, size: number): Observable<MetaRostro[]> {
+  searchFacesByImage(file: File, size: number = 100): Observable<MetaRostro[]> {
+    const safeSize = Math.min(Math.max(1, size || 100), 100);
     const formData = new FormData();
     formData.append('file', file);
 
-    return this.http.post<any[]>(`${AppEnvironment.apiUrl}/frontend/extra/search_faces_by_img?size=${size}`, formData).pipe(
+    return this.http.post<any[]>(`${AppEnvironment.apiUrl}/frontend/extra/search_faces_by_img?size=${safeSize}`, formData).pipe(
       map(items => (items || []).map((item, idx) => ({
         id: `face-img-search-${idx}-${Date.now()}`,
         camara: item.camara || '',

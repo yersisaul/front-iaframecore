@@ -377,15 +377,17 @@
       <!-- Imagen de Evento / Instantánea Persistente (Modo Reproducción Histórica o Fallback Estático) -->
       @if (fslot.camera) {
       @let displayImgEvent = getDisplayedEventForSlot(fslot);
-      @if (displayImgEvent && (displayImgEvent.imgMinioObjectName || displayImgEvent.urlImg)) {
-      @let resolvedFslotImgUrl = (displayImgEvent.imgMinioObjectName || displayImgEvent.urlImg) | mediaUrl | async;
+      @let rawFslotTarget = displayImgEvent?.imgMinioObjectName || displayImgEvent?.urlImg;
+      @let resolvedFslotImgUrl = rawFslotTarget ? (rawFslotTarget | mediaUrl | async) : null;
       @if (resolvedFslotImgUrl) {
       <img [src]="resolvedFslotImgUrl" (load)="onImageLoad($event)" (error)="onImageError($event)"
+        [attr.data-src]="resolvedFslotImgUrl"
+        [attr.data-minio-object]="displayImgEvent?.imgMinioObjectName"
+        [attr.data-raw-src]="rawFslotTarget"
         class="w-100 h-100 object-fit-contain position-absolute top-0 start-0"
         style="z-index: 4;"
         [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)" alt=""
         draggable="false" />
-      }
       } @else if (!isSlotPlayingLiveVideo(fslot)) {
       @if (webRtcStates()[fslot.id] === 'connecting' || isLoadingEvents()) {
       <div class="waiting-event-placeholder d-flex flex-column align-items-center justify-content-center text-white-50 position-absolute top-0 start-0 w-100 h-100" style="z-index: 3;">
@@ -398,7 +400,12 @@
       </div>
       } @else {
       <div
-        class="no-image-placeholder d-flex flex-column align-items-center justify-content-center w-100 h-100 text-white-50 select-none position-absolute top-0 start-0" style="z-index: 3;">
+        class="no-image-placeholder d-flex flex-column align-items-center justify-content-center w-100 h-100 text-white-50 select-none position-absolute top-0 start-0"
+        [attr.data-img-url]="resolvedFslotImgUrl || 'SIN_URL_RESUELTA'"
+        [attr.data-minio-object]="displayImgEvent?.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
+        [attr.data-raw-src]="rawFslotTarget || 'NULL'"
+        [title]="'Origen: ' + (resolvedFslotImgUrl || rawFslotTarget || 'Sin evento/imagen disponible')"
+        style="z-index: 3;">
         <span class="icon-svg icon-camara text-white-50 opacity-40 mb-2"
           style="width: 28px; height: 28px; background-color: currentColor;"></span>
         <span class="text-uppercase fw-semibold tracking-wider small">Sin imagen</span>

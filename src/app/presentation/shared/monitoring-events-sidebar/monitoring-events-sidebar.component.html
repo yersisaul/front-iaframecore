@@ -72,11 +72,21 @@
             <!-- Body: Miniatura 16:9 Ampliada (Izquierda) | Detalles y Fecha con Atributos (Derecha) -->
             <div class="vms-evt-card__body">
               <!-- Miniatura Widescreen 16:9 -->
-              <div class="vms-evt-card__media">
-                <span class="vms-evt-card__placeholder">SIN IMAGEN</span>
-                @let resolvedEvtImgUrl = (event.imgMinioObjectName || event.urlImg) | mediaUrl | async;
+              @let rawEvtTarget = event.imgMinioObjectName || event.urlImg;
+              @let resolvedEvtImgUrl = rawEvtTarget ? (rawEvtTarget | mediaUrl | async) : null;
+              <div class="vms-evt-card__media"
+                [attr.data-img-url]="resolvedEvtImgUrl || 'SIN_URL_RESUELTA'"
+                [attr.data-minio-object]="event.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
+                [attr.data-raw-src]="rawEvtTarget || 'NULL'">
+                <span class="vms-evt-card__placeholder"
+                  [attr.data-img-url]="resolvedEvtImgUrl || 'SIN_URL_RESUELTA'"
+                  [attr.data-minio-object]="event.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
+                  [title]="'Origen: ' + (resolvedEvtImgUrl || rawEvtTarget || 'Sin imagen en payload')">SIN IMAGEN</span>
                 @if (resolvedEvtImgUrl) {
-                <img [src]="resolvedEvtImgUrl" (load)="onImageLoad($event)" (error)="onImageError($event)" class="vms-evt-card__img" loading="lazy"
+                <img [src]="resolvedEvtImgUrl" (load)="onImageLoad($event)" (error)="onImageError($event)"
+                  [attr.data-src]="resolvedEvtImgUrl"
+                  [attr.data-minio-object]="event.imgMinioObjectName"
+                  class="vms-evt-card__img" loading="lazy"
                   alt="" />
                 }
               </div>

@@ -1,41 +1,69 @@
 import { Routes } from '@angular/router';
-
-import { Login } from './presentation/views/login/login';
-import { DashboardLayout } from './presentation/layouts/dashboard-layout/dashboard-layout';
-import { Usuarios } from './presentation/views/usuarios/usuarios';
-import { Nodos } from './presentation/views/nodos/nodos';
-import { Horarios } from './presentation/views/horarios/horarios';
-import { Metadatos } from './presentation/views/metadatos/metadatos';
-import { Camaras } from './presentation/views/camaras/camaras';
-import { Listas } from './presentation/views/listas/listas';
-import { Eventos } from './presentation/views/eventos/eventos';
-import { Monitoreo } from './presentation/views/monitoreo/monitoreo';
-import { Dashboard } from './presentation/views/dashboard/dashboard';
 import { authGuard } from './presentation/guards/auth.guard';
 
 export const routes: Routes = [
-    { path: '', redirectTo: '/dashboard', pathMatch: 'full' }, // Redirige a dashboard por defecto
-    { path: 'login', component: Login },
+    { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
+    { 
+        path: 'login', 
+        loadComponent: () => import('./presentation/views/login/login').then(m => m.Login) 
+    },
     {
-        path: 'dashboard', // Ruta protegida para el dashboard
-        component: DashboardLayout,
+        path: 'dashboard',
+        loadComponent: () => import('./presentation/layouts/dashboard-layout/dashboard-layout').then(m => m.DashboardLayout),
         canActivate: [authGuard],
-        canActivateChild: [authGuard], // Valida permisos en rutas hijas al navegar directamente
+        canActivateChild: [authGuard],
         children: [
-            { path: '', redirectTo: 'nodos', pathMatch: 'full' }, // Redirección por defecto
-            { path: 'dashboards', component: Dashboard, data: { permissions: ['dashboard.read'] } },
-            { path: 'usuarios', component: Usuarios, data: { permissions: ['users.read', 'roles.read'], anyPermission: true } },
-            { path: 'nodos', component: Nodos, data: { permissions: ['hosts.read'] } },
-            { path: 'nodos/:hostId/camaras', component: Camaras, data: { permissions: ['cameras.read'] } },
-            { path: 'camaras', component: Camaras, data: { permissions: ['cameras.read'] } },
-            { path: 'horarios', component: Horarios, data: { permissions: ['schedules.read'] } },
+            { path: '', redirectTo: 'nodos', pathMatch: 'full' },
+            { 
+                path: 'dashboards', 
+                loadComponent: () => import('./presentation/views/dashboard/dashboard').then(m => m.Dashboard), 
+                data: { permissions: ['dashboard.read'] } 
+            },
+            { 
+                path: 'usuarios', 
+                loadComponent: () => import('./presentation/views/usuarios/usuarios').then(m => m.Usuarios), 
+                data: { permissions: ['users.read', 'roles.read'], anyPermission: true } 
+            },
+            { 
+                path: 'nodos', 
+                loadComponent: () => import('./presentation/views/nodos/nodos').then(m => m.Nodos), 
+                data: { permissions: ['hosts.read'] } 
+            },
+            { 
+                path: 'nodos/:hostId/camaras', 
+                loadComponent: () => import('./presentation/views/camaras/camaras').then(m => m.Camaras), 
+                data: { permissions: ['cameras.read'] } 
+            },
+            { 
+                path: 'camaras', 
+                loadComponent: () => import('./presentation/views/camaras/camaras').then(m => m.Camaras), 
+                data: { permissions: ['cameras.read'] } 
+            },
+            { 
+                path: 'horarios', 
+                loadComponent: () => import('./presentation/views/horarios/horarios').then(m => m.Horarios), 
+                data: { permissions: ['schedules.read'] } 
+            },
             { path: 'metadatos', redirectTo: 'metadatos/personas', pathMatch: 'full' },
-            { path: 'metadatos/:indexName', component: Metadatos },
+            { 
+                path: 'metadatos/:indexName', 
+                loadComponent: () => import('./presentation/views/metadatos/metadatos').then(m => m.Metadatos) 
+            },
             { path: 'listas', redirectTo: 'listas/rostros', pathMatch: 'full' },
-            { path: 'listas/:listType', component: Listas, data: { permissions: ['lists.read'] } },
-            { path: 'eventos', component: Eventos },
-            { path: 'monitoreo', component: Monitoreo }
+            { 
+                path: 'listas/:listType', 
+                loadComponent: () => import('./presentation/views/listas/listas').then(m => m.Listas), 
+                data: { permissions: ['lists.read'] } 
+            },
+            { 
+                path: 'eventos', 
+                loadComponent: () => import('./presentation/views/eventos/eventos').then(m => m.Eventos) 
+            },
+            { 
+                path: 'monitoreo', 
+                loadComponent: () => import('./presentation/views/monitoreo/monitoreo').then(m => m.Monitoreo) 
+            }
         ]
     },
-    { path: '**', redirectTo: '/dashboard' } // Redirige a dashboard para cualquier ruta no definida
+    { path: '**', redirectTo: '/dashboard' }
 ];

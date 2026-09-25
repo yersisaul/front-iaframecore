@@ -1,0 +1,41 @@
+:host {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   AZOR EYE DIRECT APERTURE ZOOM TRANSITION OVERLAY (NATIVE CANVAS2D GPU)
+   ========================================================================== */
+
+.azor-aperture-portal-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  pointer-events: none;
+  overflow: hidden;
+  background: transparent;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.azor-aperture-portal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+  transition: none;
+}
+
+.azor-portal-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+  pointer-events: none;
+}

@@ -1,35 +1,135 @@
 <div class="login-wrapper d-flex align-items-center justify-content-center min-vh-100 position-relative">
-  <!-- Dynamic geometric background elements -->
-  <div class="bg-grid-overlay"></div>
-  <div class="bg-glow-orb orb-1"></div>
-  <div class="bg-glow-orb orb-2"></div>
-  <div class="bg-glow-orb orb-3"></div>
+  <!-- ── 1. Capas Ambientales & Gradientes Volumétricos ────────────── -->
+  <div class="bg-ambient-layer"></div>
+  <div class="bg-glow-orb orb-primary"></div>
+  <div class="bg-glow-orb orb-secondary"></div>
+  <div class="bg-glow-orb orb-amber"></div>
 
-  <div class="glass-card shadow-2xl p-5 border border-white/10 rounded-3xl animate-fade-in-up">
-    <!-- Header Block with SVG Brand Logo -->
-    <div class="text-center mb-5">
-      <div class="logo-container mb-4 mx-auto d-flex align-items-center justify-content-center">
-        <!-- Official Azor Logo Vector SVG -->
-        <img src="logo.svg" alt="AZOR" style="width: 44px; height: 44px; color: #ffffff;" />
+  <!-- ── 2. Cuadrícula Cibernética ─────────────────────────────────── -->
+  <div class="bg-cyber-grid"></div>
+
+  <!-- ── 3. HUD Táctico de Radar y Miras (Caza & Vigilancia Azor) ─── -->
+  <div class="bg-tactical-hud" aria-hidden="true">
+    <!-- Círculos concéntricos de radar -->
+    <div class="radar-center-ring ring-1"></div>
+    <div class="radar-center-ring ring-2"></div>
+    <div class="radar-center-ring ring-3"></div>
+
+    <!-- Línea de barrido de radar -->
+    <div class="radar-sweep-beam"></div>
+
+    <!-- Ejes de mira telescópica -->
+    <div class="hud-axis hud-axis-horizontal"></div>
+    <div class="hud-axis hud-axis-vertical"></div>
+
+    <!-- Silueta Alar Vectorial (Alas del Azor) -->
+    <svg class="hawk-wing-svg wing-left" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0 250 C 120 220, 260 160, 400 0 C 280 80, 150 180, 20 280 Z" fill="url(#wingGradLeft)" opacity="0.07" />
+      <path d="M50 280 C 160 230, 280 140, 390 40 C 270 120, 160 210, 60 300 Z" fill="url(#wingGradLeft)"
+        opacity="0.04" />
+      <defs>
+        <linearGradient id="wingGradLeft" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#06b6d4" />
+          <stop offset="100%" stop-color="#3b82f6" />
+        </linearGradient>
+      </defs>
+    </svg>
+
+    <svg class="hawk-wing-svg wing-right" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M400 250 C 280 220, 140 160, 0 0 C 120 80, 250 180, 380 280 Z" fill="url(#wingGradRight)"
+        opacity="0.07" />
+      <path d="M350 280 C 240 230, 120 140, 10 40 C 130 120, 240 210, 340 300 Z" fill="url(#wingGradRight)"
+        opacity="0.04" />
+      <defs>
+        <linearGradient id="wingGradRight" x1="100%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%" stop-color="#06b6d4" />
+          <stop offset="100%" stop-color="#3b82f6" />
+        </linearGradient>
+      </defs>
+    </svg>
+
+    <!-- Brackets de Enfoque en Esquinas (HUD Corners) -->
+    <div class="hud-corner-bracket corner-top-left">
+      <span class="corner-line line-h"></span>
+      <span class="corner-line line-v"></span>
+      <span class="corner-tag font-monospace">AZOR // OPT-01</span>
+    </div>
+
+    <div class="hud-corner-bracket corner-top-right">
+      <span class="corner-line line-h"></span>
+      <span class="corner-line line-v"></span>
+      <span class="corner-tag font-monospace">RECON // AI-CORE</span>
+    </div>
+
+    <div class="hud-corner-bracket corner-bottom-left">
+      <span class="corner-line line-h"></span>
+      <span class="corner-line line-v"></span>
+      <span class="corner-tag font-monospace">LAT --°--'N - LON --°--'W</span>
+    </div>
+
+    <div class="hud-corner-bracket corner-bottom-right">
+      <span class="corner-line line-h"></span>
+      <span class="corner-line line-v"></span>
+      <span class="corner-tag font-monospace">TARGET: TRACKING</span>
+    </div>
+
+    <!-- Nodos tácticos flotantes -->
+    <div class="hud-tactical-node node-1">
+      <span class="node-pulse"></span>
+      <span class="node-label font-monospace">NODE-CAM-01</span>
+    </div>
+    <div class="hud-tactical-node node-2">
+      <span class="node-pulse"></span>
+      <span class="node-label font-monospace">ANALYTIC-STREAM</span>
+    </div>
+    <div class="hud-tactical-node node-3">
+      <span class="node-pulse"></span>
+      <span class="node-label font-monospace"> AI-READY // SYS.ONLINE </span>
+    </div>
+  </div>
+
+  <!-- ── 4. Formulario de Acceso Táctico Directo (Sin Caja/Borde) ─── -->
+  <div class="login-direct-container animate-fade-in-up">
+    <!-- Header Block with Brand Logo & Tactical Badge -->
+    <div class="text-center mb-4">
+
+      <!-- Official Azor Logo Vector SVG Inline -->
+      <div class="logo-hero-wrapper mb-3">
+        <svg class="login-brand-logo mx-auto d-block" viewBox="0 0 1025 1025" fill="none"
+          xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AZOR">
+          <path fill-rule="evenodd" clip-rule="evenodd"
+            d="M466.752 499.066C435.601 519.641 407.606 546.78 385.001 579.976C297.828 707.995 323.847 877.613 443.117 958.829C549.693 1031.4 694.663 1008.83 786.511 911.865C714.52 941.042 629.749 934.838 560.726 887.837C497.246 844.61 460.992 776.348 456.177 705.238C470.605 764.819 505.188 818.351 558.177 854.434C677.447 935.65 844.803 897.709 931.976 769.69C976.061 704.949 991.197 629.569 979.963 560.364C999.663 515.273 1007.24 467.385 1003.43 421.406C997.11 461.562 982.022 500.987 957.623 536.818C869.405 666.371 692.867 699.879 563.314 611.661C520.147 582.267 487.643 543.066 466.752 499.066ZM937.076 677.868C960.724 643.139 974.044 604.425 977.727 565.357C970.808 580.432 962.519 595.172 952.832 609.397C865.659 737.416 698.303 775.357 579.033 694.141C552.855 676.315 531.169 654.23 514.186 629.261C531.147 673.251 561.194 712.712 603.113 741.257C712.839 815.974 862.359 787.593 937.076 677.868Z"
+            fill="currentColor" />
+          <path
+            d="M496.348 986.258C416.994 975.201 6.37543 896.233 150.32 597.186C206.552 480.363 437.643 342.068 543.478 300.412L615.907 279.536C659.038 264.498 723.375 307.395 658.056 361.082C667.835 306.475 663.228 306.764 629.188 308.896C614.797 309.798 595.147 311.029 569.099 308.581C537.299 326.416 475.705 390.091 465.824 499.682C435.045 520.182 407.381 547.111 385.001 579.977C297.828 707.995 323.848 877.613 443.118 958.829C460.017 970.337 477.882 979.452 496.348 986.258Z"
+            fill="#5b78a7" />
+          <path fill-rule="evenodd" clip-rule="evenodd"
+            d="M658.103 361.043C658.056 361.105 658.009 361.168 657.961 361.23C809.232 340.102 767.849 275.119 685.672 174.855C707.443 126.032 611.883 18.8 464.305 22.568C316.727 26.3359 159.991 238.178 100.07 343.628C110.014 334.993 139.791 314.583 179.354 302.024C146.123 322.957 72.7528 381.936 45.1212 450.386C15.4734 523.832 -41.2758 768.898 266.587 915.105C158.598 858.295 71.6623 760.598 150.32 597.186C206.552 480.362 437.643 342.068 543.478 300.412L615.907 279.536C659.027 264.502 723.344 307.374 658.103 361.043ZM488.626 166.329C523.614 189.284 547.367 203.198 563.895 211.326C581.246 219.859 579.648 224.411 560.316 224.762C506.388 225.744 476.69 213.901 457.091 195.579C441.75 181.239 471.068 154.809 488.626 166.329Z"
+            fill="currentColor" />
+          <path
+            d="M449.742 978C449.998 978.062 450.254 978.124 450.51 978.186C450.504 978.176 450.498 978.166 450.493 978.156C450.243 978.104 449.993 978.052 449.742 978Z"
+            fill="currentColor" />
+        </svg>
+        <div class="logo-aura-glow"></div>
       </div>
-      <h2 class="brand-title fw-extrabold mb-1">AZOR ANALYTICS</h2>
-      <p class="brand-subtitle text-slate-400 small">Inteligencia artificial para análisis de videovigilancia</p>
+
+      <h1 class="brand-title fw-extrabold mb-1">AZOR ANALYTICS</h1>
+      <p class="brand-subtitle text-slate-400 small mb-0">Inteligencia artificial para análisis de videovigilancia</p>
     </div>
 
     <!-- Alarm / Error Alerts -->
     @if (errorMessage()) {
-    <div
-      class="custom-alert-shake alert-error d-flex align-items-center gap-2 p-3 mb-4 rounded-xl border border-rose-500/20"
+    <div class="custom-alert-shake alert-error d-flex align-items-center gap-2 p-3 mb-4 rounded-xl border"
       role="alert">
-      <span class="icon-svg icon-warning text-rose-500 flex-shrink-0" style="width: 16px; height: 16px;"></span>
-      <span class="small fw-semibold text-rose-200">{{ errorMessage() }}</span>
+      <span class="icon-svg icon-warning alert-error-icon flex-shrink-0" style="width: 16px; height: 16px;"></span>
+      <span class="small fw-semibold alert-error-text">{{ errorMessage() }}</span>
     </div>
     }
 
     <!-- Form Block -->
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
       <!-- Email input -->
-      <div class="mb-4">
+      <div class="mb-3">
         <label for="email" class="input-label-primary text-slate-300 small mb-2 d-block">Correo Electrónico</label>
         <div class="premium-field-group">
           <span class="field-icon-prefix">
@@ -40,12 +140,12 @@
             [class.input-box-error]="loginForm.get('email')?.touched && loginForm.get('email')?.invalid" />
         </div>
         @if (loginForm.get('email')?.touched && loginForm.get('email')?.errors?.['required']) {
-        <div class="validation-error-msg mt-1.5 d-flex align-items-center gap-1">
+        <div class="validation-error-msg mt-1 d-flex align-items-center gap-1">
           <span class="error-dot"></span>El correo electrónico es requerido.
         </div>
         }
         @if (loginForm.get('email')?.touched && loginForm.get('email')?.errors?.['email']) {
-        <div class="validation-error-msg mt-1.5 d-flex align-items-center gap-1">
+        <div class="validation-error-msg mt-1 d-flex align-items-center gap-1">
           <span class="error-dot"></span>Introduce un correo electrónico válido.
         </div>
         }
@@ -71,12 +171,12 @@
           </button>
         </div>
         @if (loginForm.get('password')?.touched && loginForm.get('password')?.errors?.['required']) {
-        <div class="validation-error-msg mt-1.5 d-flex align-items-center gap-1">
+        <div class="validation-error-msg mt-1 d-flex align-items-center gap-1">
           <span class="error-dot"></span>La contraseña es requerida.
         </div>
         }
         @if (loginForm.get('password')?.touched && loginForm.get('password')?.errors?.['minlength']) {
-        <div class="validation-error-msg mt-1.5 d-flex align-items-center gap-1">
+        <div class="validation-error-msg mt-1 d-flex align-items-center gap-1">
           <span class="error-dot"></span>La contraseña debe tener al menos 6 caracteres.
         </div>
         }
@@ -84,14 +184,17 @@
 
       <!-- Action Button -->
       <button type="submit"
-        class="premium-btn-submit w-100 py-3 mt-4 fw-semibold d-flex align-items-center justify-content-center gap-2"
+        class="login-submit-btn w-100 py-3 mt-4 d-flex align-items-center justify-content-center gap-2 position-relative overflow-hidden"
         [disabled]="loginForm.invalid || isLoading()">
+        <span class="btn-glow-layer" aria-hidden="true"></span>
         @if (isLoading()) {
         <span class="btn-spinner"></span>
-        <span>Verificando Credenciales...</span>
+        <span class="btn-label font-monospace">VERIFICANDO CREDENCIALES...</span>
         } @else {
-        <span class="icon-svg icon-login-arrow" style="width: 18px; height: 18px;"></span>
-        <span>Ingresar a la Plataforma</span>
+        <span class="btn-label">Ingresar a la Plataforma</span>
+        <span class="btn-icon-wrapper d-inline-flex align-items-center justify-content-center">
+          <span class="icon-svg icon-arrow-right" style="width: 14px; height: 14px;"></span>
+        </span>
         }
       </button>
     </form>
