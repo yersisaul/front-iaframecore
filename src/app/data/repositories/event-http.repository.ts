@@ -16,7 +16,7 @@ interface InternalEventSearchResult extends EventSearchResult {
   providedIn: 'root'
 })
 export class EventHttpRepository implements IEventRepository {
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   search(
     filters: EventFilters,
@@ -60,11 +60,16 @@ export class EventHttpRepository implements IEventRepository {
     const mustFilters = this.buildMustFilters(filters);
 
     const aggs = {
-      camara_vals: { terms: { field: 'nombre_camara.keyword', size: 100 } },
-      analitica_vals: { terms: { field: 'analitica.keyword', size: 100 } },
-      objeto_vals: { terms: { field: 'objeto.keyword', size: 100 } },
-      lista_vals: { terms: { field: 'match_detail.list_name.keyword', size: 50 } },
-      direccion_vals: { terms: { field: 'direccion.keyword', size: 10 } }
+      global_options: {
+        global: {},
+        aggs: {
+          camara_vals: { terms: { field: 'nombre_camara', size: 1000 } },
+          analitica_vals: { terms: { field: 'analitica', size: 100 } },
+          objeto_vals: { terms: { field: 'objeto', size: 100 } },
+          lista_vals: { terms: { field: 'match_detail.list_name', size: 100 } },
+          direccion_vals: { terms: { field: 'direccion', size: 50 } }
+        }
+      }
     };
 
     const queryBody: any = {
@@ -122,9 +127,16 @@ export class EventHttpRepository implements IEventRepository {
     const mustFilters = this.buildMustFilters(filters);
 
     const aggs = {
-      camara_vals: { terms: { field: 'nombre_camara.keyword', size: 100 } },
-      analitica_vals: { terms: { field: 'analitica.keyword', size: 100 } },
-      objeto_vals: { terms: { field: 'objeto.keyword', size: 100 } }
+      global_options: {
+        global: {},
+        aggs: {
+          camara_vals: { terms: { field: 'nombre_camara', size: 1000 } },
+          analitica_vals: { terms: { field: 'analitica', size: 100 } },
+          objeto_vals: { terms: { field: 'objeto', size: 100 } },
+          lista_vals: { terms: { field: 'match_detail.list_name', size: 100 } },
+          direccion_vals: { terms: { field: 'direccion', size: 50 } }
+        }
+      }
     };
 
     const queryBody = {
@@ -386,14 +398,16 @@ export class EventHttpRepository implements IEventRepository {
     const options = defaultEventFilterOptions();
     if (!aggs) return options;
 
-    if (aggs.camara_vals && aggs.camara_vals.buckets) {
-      options.camaras = aggs.camara_vals.buckets.map((b: any) => b.key);
+    const sourceAggs = aggs.global_options || aggs;
+
+    if (sourceAggs.camara_vals && sourceAggs.camara_vals.buckets) {
+      options.camaras = sourceAggs.camara_vals.buckets.map((b: any) => b.key);
     }
-    if (aggs.analitica_vals && aggs.analitica_vals.buckets) {
-      options.analiticas = aggs.analitica_vals.buckets.map((b: any) => b.key);
+    if (sourceAggs.analitica_vals && sourceAggs.analitica_vals.buckets) {
+      options.analiticas = sourceAggs.analitica_vals.buckets.map((b: any) => b.key);
     }
-    if (aggs.objeto_vals && aggs.objeto_vals.buckets) {
-      const rawObjs: string[] = aggs.objeto_vals.buckets.map((b: any) => b.key);
+    if (sourceAggs.objeto_vals && sourceAggs.objeto_vals.buckets) {
+      const rawObjs: string[] = sourceAggs.objeto_vals.buckets.map((b: any) => b.key);
       const cleaned = new Set<string>();
       for (const raw of rawObjs) {
         if (!raw) continue;
@@ -408,11 +422,11 @@ export class EventHttpRepository implements IEventRepository {
       }
       options.objetos = Array.from(cleaned).sort();
     }
-    if (aggs.lista_vals && aggs.lista_vals.buckets) {
-      options.listas = aggs.lista_vals.buckets.map((b: any) => b.key).filter((k: string) => !!k);
+    if (sourceAggs.lista_vals && sourceAggs.lista_vals.buckets) {
+      options.listas = sourceAggs.lista_vals.buckets.map((b: any) => b.key).filter((k: string) => !!k);
     }
-    if (aggs.direccion_vals && aggs.direccion_vals.buckets) {
-      options.direcciones = aggs.direccion_vals.buckets.map((b: any) => b.key).filter((k: string) => !!k);
+    if (sourceAggs.direccion_vals && sourceAggs.direccion_vals.buckets) {
+      options.direcciones = sourceAggs.direccion_vals.buckets.map((b: any) => b.key).filter((k: string) => !!k);
     }
 
     return options;
@@ -428,10 +442,24 @@ export class EventHttpRepository implements IEventRepository {
     return this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/eventos/_search`, {
       size: 0,
       aggs: {
-        lists: {
-          terms: { field: 'match_detail.list_name.keyword', size: 100 },
+        details_direct: {
+          terms: { field: 'match_detail.detail_id', size: 10000 },
           aggs: {
-            detail_ids: { terms: { field: 'match_detail.detail_id.keyword', size: 100 } }
+            list_names: { terms: { field: 'match_detail.list_name', size: 10 } },
+            list_names_kw: { terms: { field: 'match_detail.list_name.keyword', size: 10 } }
+          }
+        },
+        details_kw: {
+          terms: { field: 'match_detail.detail_id.keyword', size: 10000 },
+          aggs: {
+            list_names: { terms: { field: 'match_detail.list_name', size: 10 } },
+            list_names_kw: { terms: { field: 'match_detail.list_name.keyword', size: 10 } }
+          }
+        },
+        lists: {
+          terms: { field: 'match_detail.list_name.keyword', size: 500 },
+          aggs: {
+            detail_ids: { terms: { field: 'match_detail.detail_id.keyword', size: 10000 } }
           }
         },
         legacy_facial: {
@@ -445,17 +473,40 @@ export class EventHttpRepository implements IEventRepository {
       }
     }).pipe(
       switchMap(res => {
-        const listBuckets = res?.aggregations?.lists?.buckets || [];
         const detailIdToListMap = new Map<string, string>();
-        const detailIds: string[] = [];
+        const detailIdsSet = new Set<string>();
 
+        const processDetailBuckets = (buckets: any[]) => {
+          if (!Array.isArray(buckets)) return;
+          buckets.forEach((db: any) => {
+            const detailId = db.key;
+            if (detailId && typeof detailId === 'string' && detailId.trim()) {
+              const cleanId = detailId.trim();
+              detailIdsSet.add(cleanId);
+              const listName = db.list_names?.buckets?.[0]?.key || db.list_names_kw?.buckets?.[0]?.key || '';
+              if (listName && !detailIdToListMap.has(cleanId)) {
+                detailIdToListMap.set(cleanId, listName);
+              }
+            }
+          });
+        };
+
+        const directBuckets = res?.aggregations?.details_direct?.buckets || [];
+        const kwBuckets = res?.aggregations?.details_kw?.buckets || [];
+        processDetailBuckets(directBuckets);
+        processDetailBuckets(kwBuckets);
+
+        const listBuckets = res?.aggregations?.lists?.buckets || [];
         listBuckets.forEach((lb: any) => {
           const listName = lb.key;
           const dBuckets = lb.detail_ids?.buckets || [];
           dBuckets.forEach((db: any) => {
             if (db.key) {
-              detailIds.push(db.key);
-              detailIdToListMap.set(db.key, listName);
+              const cleanId = String(db.key).trim();
+              detailIdsSet.add(cleanId);
+              if (listName && !detailIdToListMap.has(cleanId)) {
+                detailIdToListMap.set(cleanId, listName);
+              }
             }
           });
         });
@@ -472,24 +523,36 @@ export class EventHttpRepository implements IEventRepository {
           }
         });
 
+        const detailIds = Array.from(detailIdsSet);
         if (detailIds.length === 0) {
           return of(legacyItems);
         }
 
         return this.http.post<any>(`${AppEnvironment.openSearchBaseUrl}/detalle_listas/_search`, {
-          size: detailIds.length,
+          size: Math.max(100, detailIds.length),
           query: {
-            ids: { values: detailIds }
+            bool: {
+              should: [
+                { ids: { values: detailIds } },
+                { terms: { 'detail_id': detailIds } },
+                { terms: { 'detail_id.keyword': detailIds } },
+                { terms: { 'id': detailIds } },
+                { terms: { 'id.keyword': detailIds } }
+              ],
+              minimum_should_match: 1
+            }
           },
-          _source: ['nombre_asociado', 'metadata.text_placa', 'list_id']
+          _source: ['detail_id', 'id', 'nombre_asociado', 'metadata.text_placa', 'list_id']
         }).pipe(
           map(detailsRes => {
             const hits = detailsRes?.hits?.hits || [];
             const result: EventSubjectItem[] = [...legacyItems];
+            const seenNames = new Set<string>();
 
             hits.forEach((hit: any) => {
               const src = hit._source || {};
-              const listName = detailIdToListMap.get(hit._id) || '';
+              const dId = src.detail_id || src.id || hit._id || '';
+              const listName = detailIdToListMap.get(dId) || detailIdToListMap.get(hit._id) || '';
               const placa = src.metadata?.text_placa?.trim() || '';
               const nombre = src.nombre_asociado?.trim() || '';
 
@@ -500,11 +563,12 @@ export class EventHttpRepository implements IEventRepository {
                 displayName = placa;
               }
 
-              if (displayName) {
+              if (displayName && !seenNames.has(displayName.toLowerCase())) {
+                seenNames.add(displayName.toLowerCase());
                 result.push({
                   name: displayName,
                   listName,
-                  detailId: hit._id
+                  detailId: dId
                 });
               }
             });

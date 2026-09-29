@@ -1,6 +1,96 @@
 <router-outlet></router-outlet>
 
-<!-- ── Overlay Global de Transición Cinematográfica con Máscara del Ojo de Azor (Canvas2D GPU Nativo) ── -->
+<!-- ── Overlay Global de Transición Cinematográfica con Máscara del Ojo de Azor ── -->
 <div class="azor-aperture-portal-overlay" [class.active]="authTransitionService.isZoomTransitioning()" aria-hidden="true">
+  <!-- Fondo EXACTO del Login con todos sus componentes tácticos y máscara de apertura radial del ojo -->
+  <div #loginBackdrop class="portal-login-backdrop">
+    <!-- 1. Capas Ambientales & Gradientes Volumétricos -->
+    <div class="bg-ambient-layer"></div>
+    <div class="bg-glow-orb orb-primary"></div>
+    <div class="bg-glow-orb orb-secondary"></div>
+    <div class="bg-glow-orb orb-amber"></div>
+
+    <!-- 2. Cuadrícula Cibernética -->
+    <div class="bg-cyber-grid"></div>
+
+    <!-- 3. HUD Táctico de Radar, Miras, Alas Azor y Nodos -->
+    <div class="bg-tactical-hud" aria-hidden="true">
+      <!-- Círculos concéntricos de radar -->
+      <div class="radar-center-ring ring-1"></div>
+      <div class="radar-center-ring ring-2"></div>
+      <div class="radar-center-ring ring-3"></div>
+
+      <!-- Línea de barrido de radar -->
+      <div class="radar-sweep-beam"></div>
+
+      <!-- Ejes de mira telescópica -->
+      <div class="hud-axis hud-axis-horizontal"></div>
+      <div class="hud-axis hud-axis-vertical"></div>
+
+      <!-- Siluetas Alares Vectoriales Azor Exactas -->
+      <svg class="hawk-wing-svg wing-left" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0 250 C 120 220, 260 160, 400 0 C 280 80, 150 180, 20 280 Z" fill="url(#portalWingGradLeft)" opacity="0.07" />
+        <path d="M50 280 C 160 230, 280 140, 390 40 C 270 120, 160 210, 60 300 Z" fill="url(#portalWingGradLeft)" opacity="0.04" />
+        <defs>
+          <linearGradient id="portalWingGradLeft" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#06b6d4" />
+            <stop offset="100%" stop-color="#3b82f6" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <svg class="hawk-wing-svg wing-right" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M400 250 C 280 220, 140 160, 0 0 C 120 80, 250 180, 380 280 Z" fill="url(#portalWingGradRight)" opacity="0.07" />
+        <path d="M350 280 C 240 230, 120 140, 10 40 C 130 120, 240 210, 340 300 Z" fill="url(#portalWingGradRight)" opacity="0.04" />
+        <defs>
+          <linearGradient id="portalWingGradRight" x1="100%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stop-color="#06b6d4" />
+            <stop offset="100%" stop-color="#3b82f6" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <!-- Brackets de Enfoque en Esquinas (HUD Corners) -->
+      <div class="hud-corner-bracket corner-top-left">
+        <span class="corner-line line-h"></span>
+        <span class="corner-line line-v"></span>
+        <span class="corner-tag font-monospace">AZOR // OPT-01</span>
+      </div>
+
+      <div class="hud-corner-bracket corner-top-right">
+        <span class="corner-line line-h"></span>
+        <span class="corner-line line-v"></span>
+        <span class="corner-tag font-monospace">RECON // AI-CORE</span>
+      </div>
+
+      <div class="hud-corner-bracket corner-bottom-left">
+        <span class="corner-line line-h"></span>
+        <span class="corner-line line-v"></span>
+        <span class="corner-tag font-monospace">LAT --°--'N - LON --°--'W</span>
+      </div>
+
+      <div class="hud-corner-bracket corner-bottom-right">
+        <span class="corner-line line-h"></span>
+        <span class="corner-line line-v"></span>
+        <span class="corner-tag font-monospace">TARGET: TRACKING</span>
+      </div>
+
+      <!-- Nodos tácticos flotantes con pulsación -->
+      <div class="hud-tactical-node node-1">
+        <span class="node-pulse"></span>
+        <span class="node-label font-monospace">NODE-CAM-01</span>
+      </div>
+      <div class="hud-tactical-node node-2">
+        <span class="node-pulse"></span>
+        <span class="node-label font-monospace">ANALYTIC-STREAM</span>
+      </div>
+      <div class="hud-tactical-node node-3">
+        <span class="node-pulse"></span>
+        <span class="node-label font-monospace"> AI-READY // SYS.ONLINE </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Canvas vectorial que renderiza el Azor con zoom cinemático -->
   <canvas #portalCanvas class="azor-portal-canvas"></canvas>
 </div>

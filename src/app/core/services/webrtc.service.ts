@@ -4,8 +4,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { AppEnvironment } from '../config/app-environment';
 
 export interface StreamingResponse {
-  host: string;
-  port: number;
+  server: string;
   camera_id: string;
 }
 
@@ -32,12 +31,12 @@ export class WebRtcService {
 
     // 1. Obtener la información del streaming desde el backend
     const streamInfo = await firstValueFrom(this.requestStreaming(cameraId));
-    if (!streamInfo || !streamInfo.host || !streamInfo.port) {
+    if (!streamInfo || !streamInfo.server || !streamInfo.camera_id) {
       console.error(`[WebRTC Frontend] No se pudo obtener la información de streaming para cámara ${cameraId}:`, streamInfo);
       throw new Error('No se pudo obtener la información de streaming de la cámara.');
     }
 
-    console.log(`%c[WebRTC Frontend] Información de streaming recibida -> Host: ${streamInfo.host}, Port: ${streamInfo.port}, Camera ID: ${streamInfo.camera_id}`, 'color: #2ed573; font-weight: bold;');
+    console.log(`%c[WebRTC Frontend] Información de streaming recibida -> Server: ${streamInfo.server}, Camera ID: ${streamInfo.camera_id}`, 'color: #2ed573; font-weight: bold;');
 
     // 2. Crear RTCPeerConnection con STUN básico
     const pc = new RTCPeerConnection({
@@ -124,44 +123,83 @@ export class WebRtcService {
       });
     }
 
-    // 7. Enviar la Offer al servidor de medios con timeout de 10s
-    let targetHost = (streamInfo.host || '').trim();
-    const isLoopback = !targetHost || targetHost === 'localhost' || targetHost === '127.0.0.1' || targetHost === '0.0.0.0';
-    if (isLoopback && typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      targetHost = window.location.hostname;
-      console.info(`[WebRtcService] Host WebRTC loopback del backend corregido a hostname '${targetHost}'`);
+    // 7. Enviar la Offer al endpoint WHEP de MediaMTX
+    let serverBase = streamInfo.server.trim();
+    try {
+      const parsedUrl = new URL(serverBase);
+      const isLoopback = parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1' || parsedUrl.hostname === '0.0.0.0';
+      if (isLoopback && typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        parsedUrl.hostname = window.location.hostname;
+        console.info(`[WebRtcService] Host WebRTC loopback del backend corregido a hostname '${window.location.hostname}'`);
+      }
+      const cleanPath = parsedUrl.pathname.replace(/\/+$/, '');
+      serverBase = `${parsedUrl.origin}${cleanPath}`;
+    } catch {
+      serverBase = serverBase.replace(/\/+$/, '');
     }
-    const offerUrl = `http://${targetHost}:${streamInfo.port}/offer`;
-    console.log(`%c[WebRTC Frontend] Enviando POST /offer a: ${offerUrl}`, 'color: #ff6348; font-weight: bold;', {
+
+    // Endpoint WHEP estándar para MediaMTX
+    const whepUrl = `${serverBase}/${streamInfo.camera_id}/whep`;
+    console.log(`%c[WebRTC WHEP MediaMTX] Enviando POST a: ${whepUrl}`, 'color: #ff6348; font-weight: bold;', {
       camera_id: streamInfo.camera_id,
-      sdp_type: pc.localDescription?.type
+      sdp_length: pc.localDescription?.sdp?.length
     });
 
-    const response = await window.fetch(offerUrl, {
+    const response = await window.fetch(whepUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/sdp'
       },
       signal: AbortSignal.timeout(10000),
-      body: JSON.stringify({
-        sdp: pc.localDescription?.sdp,
-        type: pc.localDescription?.type,
-        camera_id: streamInfo.camera_id
-      })
+      body: pc.localDescription?.sdp || ''
     });
 
-    if (!response.ok) {
-      console.error(`[WebRTC Frontend] Error en POST /offer: HTTP ${response.status} ${response.statusText}`);
-      throw new Error(`Error en el servidor de medios al enviar la oferta: ${response.statusText}`);
+    if (response.status !== 201 && !response.ok) {
+      const errorMsg = await response.text().catch(() => response.statusText);
+      console.error(`[WebRTC Frontend] Error en WHEP POST (${whepUrl}): HTTP ${response.status} ${response.statusText} - ${errorMsg}`);
+      throw new Error(`Error en el servidor de medios MediaMTX WHEP: ${response.statusText} (${errorMsg})`);
     }
 
-    const answer = await response.json();
-    console.log(`%c[WebRTC Frontend] SDP Answer recibida (HTTP ${response.status}). Aplicando setRemoteDescription...`, 'color: #2ed573; font-weight: bold;', answer);
+    // Guardar URL de sesión WHEP si viene en la cabecera Location (para DELETE al cerrar)
+    const locationHeader = response.headers.get('Location');
+    if (locationHeader) {
+      const sessionUrl = new URL(locationHeader, whepUrl).toString();
+      (pc as any)._whepSessionUrl = sessionUrl;
+      console.log(`[WebRTC WHEP MediaMTX] Sesión registrada: ${sessionUrl}`);
+    }
 
-    // 8. Establecer descripción remota con la Answer recibida
-    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+    const answerSdp = await response.text();
+    console.log(`%c[WebRTC Frontend] SDP Answer recibida de MediaMTX (HTTP ${response.status}, ${answerSdp.length} bytes). Aplicando setRemoteDescription...`, 'color: #2ed573; font-weight: bold;');
+
+    // 8. Establecer descripción remota con la Answer recibida en formato SDP texto plano
+    await pc.setRemoteDescription(new RTCSessionDescription({
+      type: 'answer',
+      sdp: answerSdp
+    }));
     console.log(`%c[WebRTC Frontend] setRemoteDescription aplicado con éxito. Negociación SDP completada.`, 'color: #2ed573; font-weight: bold;');
 
     return pc;
+  }
+
+  /**
+   * Cierra de forma limpia la conexión WebRTC y notifica a MediaMTX mediante HTTP DELETE
+   * para liberar inmediatamente los recursos y puertos del servidor.
+   */
+  stopStream(pc: RTCPeerConnection | null | undefined): void {
+    if (!pc) return;
+
+    const sessionUrl = (pc as any)._whepSessionUrl;
+    if (sessionUrl) {
+      window.fetch(sessionUrl, { method: 'DELETE' }).catch(err => {
+        console.warn('[WebRtcService] Advertencia al cerrar sesión WHEP en MediaMTX:', err);
+      });
+      delete (pc as any)._whepSessionUrl;
+    }
+
+    try {
+      pc.close();
+    } catch (e) {
+      console.warn('[WebRtcService] Error al cerrar RTCPeerConnection:', e);
+    }
   }
 }

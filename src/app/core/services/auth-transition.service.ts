@@ -21,15 +21,21 @@ export class AuthTransitionService {
   readonly transformParams = signal<TransitionTransformParams>({ dx: 0, dy: 0, s0: 0.09 });
 
   /**
+   * Duración configurada de la transición en milisegundos (por defecto 1800ms).
+   */
+  readonly transitionDurationMs = signal<number>(1800);
+
+  /**
    * Inicia la secuencia de transición en alta resolución vectorial con final dinámico y fluido.
    * @param params Parámetros geométricos iniciales (desplazamiento y escala inicial).
-   * @param durationMs Duración de la animación en milisegundos (1200ms).
+   * @param durationMs Duración de la animación en milisegundos (1800ms).
    * @param onComplete Callback opcional al finalizar la animación.
    */
-  startEyeZoomTransition(params?: TransitionTransformParams, durationMs: number = 1200, onComplete?: () => void): void {
+  startEyeZoomTransition(params?: TransitionTransformParams, durationMs: number = 1800, onComplete?: () => void): void {
     if (params) {
       this.transformParams.set(params);
     }
+    this.transitionDurationMs.set(durationMs);
     this.isZoomTransitioning.set(true);
 
     setTimeout(() => {

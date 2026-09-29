@@ -18,7 +18,7 @@ interface InternalMetadataSearchResult extends MetadataSearchResult {
   providedIn: 'root'
 })
 export class OpenSearchRepository implements IMetadataRepository {
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getAvailableIndices(): Observable<MetaIndexInfo[]> {
     const validNames: MetaIndexName[] = ['personas', 'vehiculos', 'rostros', 'otros'];
@@ -490,96 +490,95 @@ export class OpenSearchRepository implements IMetadataRepository {
   }
 
   private buildAggs(index: MetaIndexName): any {
-    const aggs: any = {};
+    const innerAggs: any = {};
 
-    aggs.camara_vals = { terms: { field: 'camara', size: 100 } };
-    aggs.confiabilidad_stats = { stats: { field: 'confiabilidad' } };
-    aggs.colores_vals = { terms: { field: 'colores.color_text.keyword', size: 100 } };
-    aggs.colores_vals_raw = { terms: { field: 'colores.color_text', size: 100 } };
-    aggs.colores_nested = {
+    innerAggs.camara_vals = { terms: { field: 'camara', size: 1000 } };
+    innerAggs.confiabilidad_stats = { stats: { field: 'confiabilidad' } };
+
+    // Colores como campo nested en personas, vehiculos, rostros, otros
+    innerAggs.colores_nested = {
       nested: { path: 'colores' },
       aggs: {
-        color_vals: { terms: { field: 'colores.color_text.keyword', size: 100 } },
+        color_vals: { terms: { field: 'colores.color_text', size: 100 } },
         color_vals_raw: { terms: { field: 'colores.color_text', size: 100 } }
       }
     };
 
     if (index === 'personas') {
-      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
-      aggs.edad_vals = { terms: { field: 'edad', size: 50 } };
-      aggs.genero_vals = { terms: { field: 'genero', size: 10 } };
-      aggs.posturas_nested = {
+      innerAggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
+      innerAggs.edad_vals = { terms: { field: 'edad', size: 50 } };
+      innerAggs.genero_vals = { terms: { field: 'genero', size: 10 } };
+      innerAggs.posturas_nested = {
         nested: { path: 'posturas' },
         aggs: {
-          postura_vals: { terms: { field: 'posturas.postura.keyword', size: 100 } },
+          postura_vals: { terms: { field: 'posturas.postura', size: 100 } },
           postura_vals_raw: { terms: { field: 'posturas.postura', size: 100 } }
         }
       };
-      aggs.postura_vals = { terms: { field: 'posturas.postura.keyword', size: 100 } };
-      aggs.postura_vals_raw = { terms: { field: 'posturas.postura', size: 100 } };
     } else if (index === 'vehiculos') {
-      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
+      innerAggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
+      innerAggs.reconocimiento_vals = { terms: { field: 'reconocimiento', size: 1000 } };
     } else if (index === 'rostros') {
-      aggs.edad_vals = { terms: { field: 'edad', size: 50 } };
-      aggs.genero_vals = { terms: { field: 'genero', size: 10 } };
-      aggs.reconocimiento_vals = { terms: { field: 'reconocimiento', size: 50 } };
+      innerAggs.edad_vals = { terms: { field: 'edad', size: 50 } };
+      innerAggs.genero_vals = { terms: { field: 'genero', size: 10 } };
+      innerAggs.reconocimiento_vals = { terms: { field: 'reconocimiento', size: 1000 } };
     } else if (index === 'otros') {
-      aggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
+      innerAggs.tipo_objeto_vals = { terms: { field: 'tipo_objeto', size: 100 } };
     }
 
-    return aggs;
+    return {
+      global_options: {
+        global: {},
+        aggs: innerAggs
+      }
+    };
   }
 
   private parseFilterOptions(aggs: any): MetaFilterOptions {
     const options = defaultFilterOptions();
     if (!aggs) return options;
 
-    if (aggs.tipo_objeto_vals && aggs.tipo_objeto_vals.buckets) {
-      options.tipoObjeto = aggs.tipo_objeto_vals.buckets.map((b: any) => b.key);
+    const source = aggs.global_options || aggs;
+
+    if (source.tipo_objeto_vals && source.tipo_objeto_vals.buckets) {
+      options.tipoObjeto = source.tipo_objeto_vals.buckets.map((b: any) => b.key);
     }
-    if (aggs.edad_vals && aggs.edad_vals.buckets) {
-      options.edades = aggs.edad_vals.buckets.map((b: any) => b.key);
+    if (source.edad_vals && source.edad_vals.buckets) {
+      options.edades = source.edad_vals.buckets.map((b: any) => b.key);
     }
-    if (aggs.genero_vals && aggs.genero_vals.buckets) {
-      options.generos = aggs.genero_vals.buckets.map((b: any) => b.key);
+    if (source.genero_vals && source.genero_vals.buckets) {
+      options.generos = source.genero_vals.buckets.map((b: any) => b.key);
     }
-    if (aggs.camara_vals && aggs.camara_vals.buckets) {
-      options.camaras = aggs.camara_vals.buckets.map((b: any) => b.key);
+    if (source.camara_vals && source.camara_vals.buckets) {
+      options.camaras = source.camara_vals.buckets.map((b: any) => b.key);
     }
-    if (aggs.reconocimiento_vals && aggs.reconocimiento_vals.buckets) {
-      options.reconocimientos = aggs.reconocimiento_vals.buckets.map((b: any) => b.key);
+    if (source.reconocimiento_vals && source.reconocimiento_vals.buckets) {
+      options.reconocimientos = source.reconocimiento_vals.buckets.map((b: any) => b.key);
     }
 
     // Extracción tolerante de opciones de color
-    if (aggs.colores_nested?.color_vals?.buckets?.length) {
-      options.colores = aggs.colores_nested.color_vals.buckets.map((b: any) => b.key);
-    } else if (aggs.colores_nested?.color_vals_raw?.buckets?.length) {
-      options.colores = aggs.colores_nested.color_vals_raw.buckets.map((b: any) => b.key);
-    } else if (aggs.colores_vals?.buckets?.length) {
-      options.colores = aggs.colores_vals.buckets.map((b: any) => b.key);
-    } else if (aggs.colores_vals_raw?.buckets?.length) {
-      options.colores = aggs.colores_vals_raw.buckets.map((b: any) => b.key);
-    } else if (aggs.colores_agg?.color_vals?.buckets?.length) {
-      options.colores = aggs.colores_agg.color_vals.buckets.map((b: any) => b.key);
+    const colorBuckets = source.colores_nested?.color_vals?.buckets ||
+                         source.colores_nested?.color_vals_raw?.buckets ||
+                         source.colores_vals?.buckets ||
+                         source.colores_vals_raw?.buckets;
+    if (colorBuckets && colorBuckets.length > 0) {
+      options.colores = colorBuckets.map((b: any) => b.key);
     }
 
     // Extracción tolerante de opciones de postura
-    if (aggs.posturas_nested?.postura_vals?.buckets?.length) {
-      options.posturas = aggs.posturas_nested.postura_vals.buckets.map((b: any) => b.key);
-    } else if (aggs.posturas_nested?.postura_vals_raw?.buckets?.length) {
-      options.posturas = aggs.posturas_nested.postura_vals_raw.buckets.map((b: any) => b.key);
-    } else if (aggs.postura_vals?.buckets?.length) {
-      options.posturas = aggs.postura_vals.buckets.map((b: any) => b.key);
-    } else if (aggs.postura_vals_raw?.buckets?.length) {
-      options.posturas = aggs.postura_vals_raw.buckets.map((b: any) => b.key);
-    } else if (aggs.posturas_agg?.postura_vals?.buckets?.length) {
-      options.posturas = aggs.posturas_agg.postura_vals.buckets.map((b: any) => b.key);
+    const posturaBuckets = source.posturas_nested?.postura_vals?.buckets ||
+                           source.posturas_nested?.postura_vals_raw?.buckets ||
+                           source.postura_vals?.buckets ||
+                           source.postura_vals_raw?.buckets;
+    if (posturaBuckets && posturaBuckets.length > 0) {
+      options.posturas = posturaBuckets.map((b: any) => b.key);
     }
 
-    if (aggs.confiabilidad_stats) {
+    const confStats = source.confiabilidad_stats || aggs.confiabilidad_stats;
+    if (confStats) {
       options.confiabilidadStats = {
-        min: typeof aggs.confiabilidad_stats.min === 'number' ? aggs.confiabilidad_stats.min : 0,
-        max: typeof aggs.confiabilidad_stats.max === 'number' ? aggs.confiabilidad_stats.max : 1
+        min: typeof confStats.min === 'number' ? confStats.min : 0,
+        max: typeof confStats.max === 'number' ? confStats.max : 1
       };
     }
 
@@ -589,11 +588,11 @@ export class OpenSearchRepository implements IMetadataRepository {
   searchFacesByImage(file: File, size: number = 100): Observable<MetaRostro[]> {
     const safeSize = Math.min(Math.max(1, size || 100), 100);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', file, file.name);
 
     return this.http.post<any[]>(`${AppEnvironment.apiUrl}/frontend/extra/search_faces_by_img?size=${safeSize}`, formData).pipe(
       map(items => (items || []).map((item, idx) => ({
-        id: `face-img-search-${idx}-${Date.now()}`,
+        id: item.id || `face-img-search-${idx}-${Date.now()}`,
         camara: item.camara || '',
         timestamp: parseUtcDate(item.timestamp),
         confiabilidad: typeof item.confiabilidad === 'number' ? item.confiabilidad : 0,
@@ -601,7 +600,7 @@ export class OpenSearchRepository implements IMetadataRepository {
         urlImg: item.img_minio_object_name || '',
         edad: item.edad || '',
         genero: item.genero || '',
-        colores: [],
+        colores: Array.isArray(item.colores) ? item.colores : [],
         reconocimiento: item.reconocimiento || ''
       } as MetaRostro)))
     );

@@ -212,17 +212,17 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       const limit = this.maxShapes || 10;
       if (this.shapes().length > limit) {
         this.shapes.update(list => list.slice(0, limit));
-        this.emitGeometry();
+        this.emitGeometry(true);
       }
     }
     if (changes['zoneWidth']) {
       if (this.shapes().length > 0) {
-        this.emitGeometry();
+        this.emitGeometry(!changes['zoneWidth'].firstChange);
       }
     }
     if (changes['scaleFactor']) {
       if (this.shapes().length > 0) {
-        this.emitGeometry();
+        this.emitGeometry(!changes['scaleFactor'].firstChange);
       }
     }
     if (changes['geometryType']) {
@@ -244,7 +244,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
           this.undoStack.set([]);
           this.redoStack.set([]);
           this.closeContextMenu();
-          this.emitGeometry();
+          this.emitGeometry(true);
         }
       }
     }
@@ -274,6 +274,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   }
 
   private cachedInitialData: any = null;
+  private hasAppliedInitialData = false;
 
   onImageLoad(event: Event): void {
     const img = event.target as HTMLImageElement;
@@ -288,11 +289,13 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       this.imageAspectRatio.set(newW / newH);
       this.hasDeterminedResolution.set(true);
 
-      // Si teníamos datos iniciales esperando la resolución real de la cámara, re-aplicarlos con la resolución nativa
-      if (this.cachedInitialData) {
+      const currentShapes = this.shapes();
+
+      // Si aún no se habían cargado las formas y tenemos datos iniciales en espera
+      if (this.cachedInitialData && !this.hasAppliedInitialData && currentShapes.length === 0) {
         this.loadInitialData(this.cachedInitialData);
-      } else if (this.shapes().length > 0 && (oldW !== newW || oldH !== newH)) {
-        // Si el usuario ya había modificado o dibujado puntos, re-escalar proporcionalmente al nuevo tamaño
+      } else if (currentShapes.length > 0 && oldW > 0 && oldH > 0 && (oldW !== newW || oldH !== newH)) {
+        // Si ya hay formas en el lienzo (editadas o cargadas), re-escalar proporcionalmente sin borrar nada
         this.shapes.update(shapesList =>
           shapesList.map(s => ({
             ...s,
@@ -302,7 +305,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
             }))
           }))
         );
-        this.emitGeometry();
+        this.emitGeometry(this.hasUserModifiedGeometry());
       }
     }
     this.updateCanvasAspectRatio();
@@ -326,6 +329,8 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   private loadInitialData(data: any): void {
     if (!data) return;
     this.cachedInitialData = data;
+    this.hasAppliedInitialData = true;
+    this.hasUserModifiedGeometry.set(false);
 
     const currentW = this.naturalImageWidth() || 1920;
     const currentH = this.naturalImageHeight() || 1080;
@@ -364,7 +369,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
         };
       });
       this.shapes.set(loaded);
-      this.emitGeometry();
+      this.emitGeometry(false);
     } else if (Array.isArray(lineList) && lineList.length > 0) {
       const loaded: CanvasShape[] = lineList.map((l: any, idx: number) => {
         const raw = l.extreme_points || l.points || l.analysis_zone || [];
@@ -376,14 +381,14 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
         };
       });
       this.shapes.set(loaded);
-      this.emitGeometry();
+      this.emitGeometry(false);
     } else if (Array.isArray(pointsList) && pointsList.length > 0) {
       this.shapes.set([{
         id: 'shape_init_0',
         points: parseAndScalePoints(pointsList),
         isClosed: data.isClosed ?? true
       }]);
-      this.emitGeometry();
+      this.emitGeometry(false);
     }
   }
 
@@ -427,7 +432,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     this.hoverEdgeInfo.set(null);
     this.isMagnetSnapped.set(false);
     this.closeContextMenu();
-    this.emitGeometry();
+    this.emitGeometry(true);
   }
 
   redo(): void {
@@ -456,7 +461,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     this.hoverEdgeInfo.set(null);
     this.isMagnetSnapped.set(false);
     this.closeContextMenu();
-    this.emitGeometry();
+    this.emitGeometry(true);
   }
 
   private justFinishedDrag = false;
@@ -492,7 +497,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       this.activeDragInfo.set(null);
     }
 
-    this.emitGeometry();
+    this.emitGeometry(true);
   }
 
   onCanvasDblClick(event: MouseEvent): void {
@@ -564,7 +569,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
           return copy;
         });
         this.triggerCloseAnimation(activeShapeIdx);
-        this.emitGeometry();
+        this.emitGeometry(true);
         return;
       }
     }
@@ -600,7 +605,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     }
 
     this.isMagnetSnapped.set(false);
-    this.emitGeometry();
+    this.emitGeometry(true);
   }
 
   removeLastPoint(): void {
@@ -627,7 +632,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       return copy;
     });
 
-    this.emitGeometry();
+    this.emitGeometry(true);
   }
 
   clearCanvas(): void {
@@ -642,7 +647,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     this.selectedShapeIndexes.set(new Set());
     this.isMagnetSnapped.set(false);
     this.closeContextMenu();
-    this.emitGeometry();
+    this.emitGeometry(true);
   }
 
   // --- Menú Contextual (Click Derecho) ---
@@ -697,7 +702,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     this.hoverEdgeInfo.set(null);
     this.isMagnetSnapped.set(false);
     this.closeContextMenu();
-    this.emitGeometry();
+    this.emitGeometry(true);
   }
 
   deleteSelectedShapes(): void {
@@ -713,7 +718,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     this.hoverEdgeInfo.set(null);
     this.isMagnetSnapped.set(false);
     this.closeContextMenu();
-    this.emitGeometry();
+    this.emitGeometry(true);
   }
 
   toggleShapeSelection(shapeIndex: number, event?: MouseEvent): void {
@@ -774,7 +779,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     this.activeDragInfo.set(null);
     this.hoverEdgeInfo.set(null);
     this.isMagnetSnapped.set(false);
-    this.emitGeometry();
+    this.emitGeometry(true);
   }
 
   // --- Dividir Arista e Insertar Punto (Edge Splitting) ---
@@ -802,7 +807,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     this.hoverEdgeInfo.set(null);
     // Activar inmediatamente el arrastre (drag) del nuevo punto creado al presionar '+'
     this.activeDragInfo.set({ shapeIndex: info.shapeIndex, pointIndex: newPointIdx });
-    this.emitGeometry();
+    this.emitGeometry(true);
   }
 
   // --- Mover Formas Seleccionadas en Grupo (Group Dragging) ---
@@ -907,7 +912,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       });
       this.triggerCloseAnimation(shapeIndex);
       this.selectedShapeIndexes.set(new Set());
-      this.emitGeometry();
+      this.emitGeometry(true);
       return;
     }
 
@@ -959,7 +964,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
         }
         return copy;
       });
-      this.emitGeometry();
+      this.emitGeometry(true);
       return;
     }
 
@@ -984,7 +989,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
         }
         return copy;
       });
-      this.emitGeometry();
+      this.emitGeometry(true);
       return;
     }
 
@@ -1129,7 +1134,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       setTimeout(() => {
         this.justFinishedDrag = false;
       }, 100);
-      this.emitGeometry();
+      this.emitGeometry(true);
       return;
     }
 
@@ -1140,6 +1145,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       setTimeout(() => {
         this.justFinishedDrag = false;
       }, 100);
+      this.emitGeometry(true);
     }
   }
 
@@ -1242,7 +1248,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     this.selectedShapeIndexes.set(new Set()); // No seleccionar por defecto al crear área
     this.activeDragInfo.set(null);
     this.triggerCloseAnimation(0);
-    this.emitGeometry();
+    this.emitGeometry(true);
   }
 
   // --- Cálculo Matemático Inteligente de Posicionamiento Exterior (Smart Outward Offset) ---

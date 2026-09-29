@@ -285,6 +285,7 @@ export class MetadataService {
 
     if (this.activeIndex() !== index) {
       this.activeIndex.set(index);
+      this.filterOptions.set(defaultFilterOptions());
       changed = true;
       indexChanged = true;
     }
@@ -405,7 +406,20 @@ export class MetadataService {
         const finalCount = Math.max(res.total, finalRecords.length);
         this.records.set(finalRecords);
         this.totalRecords.set(finalCount);
-        this.filterOptions.set(res.filterOptions);
+        this.filterOptions.update(prev => {
+          const incoming = res.filterOptions;
+          if (!incoming) return prev;
+          return {
+            tipoObjeto: incoming.tipoObjeto && incoming.tipoObjeto.length > 0 ? incoming.tipoObjeto : prev.tipoObjeto,
+            edades: incoming.edades && incoming.edades.length > 0 ? incoming.edades : prev.edades,
+            generos: incoming.generos && incoming.generos.length > 0 ? incoming.generos : prev.generos,
+            camaras: incoming.camaras && incoming.camaras.length > 0 ? incoming.camaras : prev.camaras,
+            reconocimientos: incoming.reconocimientos && incoming.reconocimientos.length > 0 ? incoming.reconocimientos : prev.reconocimientos,
+            colores: incoming.colores && incoming.colores.length > 0 ? incoming.colores : prev.colores,
+            posturas: incoming.posturas && incoming.posturas.length > 0 ? incoming.posturas : prev.posturas,
+            confiabilidadStats: incoming.confiabilidadStats || prev.confiabilidadStats
+          };
+        });
         this.syncIndexCount(idx, finalCount);
         this.isLoading.set(false);
       },

@@ -23,6 +23,7 @@ export class Login {
   readonly isLoading = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly showPassword = signal(false);
+  readonly isTransitioning = signal(false);
 
   constructor() {
     this.loginForm = this.fb.group({
@@ -76,11 +77,14 @@ export class Login {
           s0: scale0
         };
 
+        // Activar estado de transición para pausar animaciones de fondo y ocultar logo/formulario
+        this.isTransitioning.set(true);
+
         // Iniciar la máscara de transición fluida y opaca
-        this.authTransitionService.startEyeZoomTransition(params, 1200);
+        this.authTransitionService.startEyeZoomTransition(params, 1800);
         setTimeout(() => {
           this.router.navigate(['/dashboard']);
-        }, 60);
+        }, 100);
       },
       error: (err) => {
         this.isLoading.set(false);

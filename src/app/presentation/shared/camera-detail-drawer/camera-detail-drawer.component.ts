@@ -169,6 +169,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
   readonly schedules = this.scheduleService.schedules;
   readonly lastEventImageUrl = signal<string>('');
   readonly liveWebRtcFrameUrl = signal<string>('');
+  readonly analyticCanvasSnapshotUrl = signal<string>('');
 
   // Sub-drawer secundario de configuración de analítica
   readonly showAnalyticConfigDrawer = signal<boolean>(false);
@@ -254,17 +255,21 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
 
   get cameraSnapshotUrl(): string {
     // Orden de prioridad estricto:
-    // 1. WEBRTC: Captura en tiempo real del video WebRTC activo
+    // 1. CAPTURA CONGELADA: Imagen única establecida para la sesión del lienzo
+    if (this.analyticCanvasSnapshotUrl()) {
+      return this.analyticCanvasSnapshotUrl();
+    }
+    // 2. WEBRTC: Captura en tiempo real del video WebRTC activo
     if (this.liveWebRtcFrameUrl()) {
       return this.liveWebRtcFrameUrl();
     }
-    // 2. EVENTO: Foto del último evento registrado si no hay WebRTC activo
+    // 3. EVENTO: Foto del último evento registrado si no hay WebRTC activo
     if (this.lastEventImageUrl()) {
       return this.lastEventImageUrl();
     }
     if (!this.camera) return '';
     const cam = this.camera as any;
-    // 3. Fallback de propiedades de la cámara
+    // 4. Fallback de propiedades de la cámara
     return cam.lastSnapshotUrl || cam.snapshotUrl || cam.urlImg || cam.snapshot || cam.lastEventImg || '';
   }
 
@@ -273,8 +278,14 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
     const frameDataUrl = this.captureWebRtcFrameForCamera(this.camera);
     if (frameDataUrl && frameDataUrl.length > 5000) {
       this.liveWebRtcFrameUrl.set(frameDataUrl);
-      console.log(`[CameraDetailDrawer] ✅ Fotograma WebRTC capturado exitosamente para cámara "${this.camera.name}" (${frameDataUrl.length} bytes). Deteniendo stream WebRTC (webrtc_stop)...`);
-      this.cleanupWebRtcForDrawer();
+      this.analyticCanvasSnapshotUrl.set(frameDataUrl);
+      console.log(`[CameraDetailDrawer] ✅ Fotograma WebRTC capturado exitosamente para cámara "${this.camera.name}" (${frameDataUrl.length} bytes).`);
+      if (this.openedWebRtcForDrawer()) {
+        console.log(`[CameraDetailDrawer] Deteniendo stream WebRTC exclusivo del drawer (webrtc_stop)...`);
+        this.cleanupWebRtcForDrawer();
+      } else {
+        console.log(`[CameraDetailDrawer] Stream WebRTC global preservado ininterrumpido.`);
+      }
       return true;
     }
     return false;
@@ -347,6 +358,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
 
   openCreateAnalytic(): void {
     this.liveWebRtcFrameUrl.set('');
+    this.analyticCanvasSnapshotUrl.set('');
     this.selectedAnalyticForConfig.set(null);
     this.selectedScheduleId.set(null);
     this.hasAttemptedSubmitAnalytic.set(false);
@@ -790,11 +802,14 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
         if (res.records && res.records.length > 0) {
           const withImg = res.records.find(r => !!(r.imgMinioObjectName || r.urlImg));
           if (withImg) {
-            const rawTarget = withImg.imgMinioObjectName || withImg.urlImg;
+             const rawTarget = withImg.imgMinioObjectName || withImg.urlImg;
             if (rawTarget) {
               this.mediaFileService.getFileUrl(rawTarget).subscribe(resolvedUrl => {
                 if (resolvedUrl) {
                   this.lastEventImageUrl.set(resolvedUrl);
+                  if (!this.liveWebRtcFrameUrl() && !this.analyticCanvasSnapshotUrl()) {
+                    this.analyticCanvasSnapshotUrl.set(resolvedUrl);
+                  }
                 }
               });
             }
@@ -813,6 +828,9 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
       this.mediaFileService.getFileUrl(fallbackRaw).subscribe(resolvedUrl => {
         if (resolvedUrl && !this.lastEventImageUrl()) {
           this.lastEventImageUrl.set(resolvedUrl);
+          if (!this.liveWebRtcFrameUrl() && !this.analyticCanvasSnapshotUrl()) {
+            this.analyticCanvasSnapshotUrl.set(resolvedUrl);
+          }
         }
       });
     }
@@ -891,9 +909,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
    */
   cleanupWebRtcForDrawer(): void {
     if (this.activePeerConnection) {
-      try {
-        this.activePeerConnection.close();
-      } catch (e) {}
+      this.webRtcService.stopStream(this.activePeerConnection);
       this.activePeerConnection = null;
     }
 
@@ -928,6 +944,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
 
   openEditAnalytic(analytic: Analytic): void {
     this.liveWebRtcFrameUrl.set('');
+    this.analyticCanvasSnapshotUrl.set('');
     this.selectedAnalyticForConfig.set(analytic);
     this.hasAttemptedSubmitAnalytic.set(false);
     this.hasUserModifiedCanvas.set(false);
@@ -992,6 +1009,9 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
     this.cleanupWebRtcForDrawer();
     this.showAnalyticConfigDrawer.set(false);
     this.selectedAnalyticForConfig.set(null);
+    this.analyticCanvasSnapshotUrl.set('');
+    this.liveWebRtcFrameUrl.set('');
+    this.lastEventImageUrl.set('');
     this.hasAttemptedSubmitAnalytic.set(false);
     this.hasUserModifiedCanvas.set(false);
     this.clearNotification();

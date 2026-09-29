@@ -238,12 +238,10 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     const fromRecords: EventSubjectItem[] = [];
     for (const r of this.records()) {
       const listName = r.matchDetail?.listName || r.grupoLista || '';
-      const placaMatch = r.detalleEvento?.match(/placa\s+([A-Z0-9]+)/i);
-      const nameMatch = r.detalleEvento?.match(/se ha identificado a\s+([^,]+?)(?:\s+que pertenece|\s+en|\s*$)/i);
-      const name = placaMatch ? placaMatch[1].trim() : (nameMatch ? nameMatch[1].trim() : (r.matchDetail ? r.objeto : ''));
+      const name = r.sujeto || (r.matchDetail ? r.objeto : '');
       if (name && !['persona', 'auto', 'moto', 'rostro', 'con_casco'].includes(name.toLowerCase())) {
         fromRecords.push({
-          name,
+          name: name.trim(),
           listName,
           detailId: r.matchDetail?.detailId
         });
@@ -272,8 +270,8 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       }
     }
 
-    // 2. Extraer nombres únicos
-    const uniqueNames = Array.from(new Set(filteredByContext.map(s => s.name).filter(Boolean))).sort();
+    // 2. Extraer nombres únicos ordenados
+    const uniqueNames = Array.from(new Set(filteredByContext.map(s => s.name).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 
     // 3. Filtrar por búsqueda en tiempo real
     return q ? uniqueNames.filter(name => name.toLowerCase().includes(q)) : uniqueNames;

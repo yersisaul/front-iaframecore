@@ -381,11 +381,7 @@ export class MonitoringStateService {
   stopWebRtcStreamByKey(connKey: string): void {
     const pc = this.activeWebRtcConnections.get(connKey);
     if (pc) {
-      try {
-        pc.close();
-      } catch (e) {
-        console.error(`[MonitoringStateService] Error al cerrar peer connection ${connKey}:`, e);
-      }
+      this.webRtcService.stopStream(pc);
       this.activeWebRtcConnections.delete(connKey);
     }
 

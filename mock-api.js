@@ -1767,7 +1767,7 @@ const server = http.createServer((req, res) => {
           reconocimiento: "Juan Perez",
           camara: "Av. Javier prado",
           timestamp: new Date().toISOString(),
-          url_img: "https://randomuser.me/api/portraits/men/10.jpg",
+          img_minio_object_name: "https://randomuser.me/api/portraits/men/10.jpg",
           permanencia: 45.2
         },
         {
@@ -1777,7 +1777,7 @@ const server = http.createServer((req, res) => {
           reconocimiento: "Maria Gomez",
           camara: "Caminos del inca",
           timestamp: new Date(Date.now() - 3600000).toISOString(),
-          url_img: "https://randomuser.me/api/portraits/women/44.jpg",
+          img_minio_object_name: "https://randomuser.me/api/portraits/women/44.jpg",
           permanencia: 120.0
         },
         {
@@ -1787,7 +1787,7 @@ const server = http.createServer((req, res) => {
           reconocimiento: "Desconocido",
           camara: "Mall del Sur",
           timestamp: new Date(Date.now() - 7200000).toISOString(),
-          url_img: "https://randomuser.me/api/portraits/men/32.jpg",
+          img_minio_object_name: "https://randomuser.me/api/portraits/men/32.jpg",
           permanencia: null
         }
       ];

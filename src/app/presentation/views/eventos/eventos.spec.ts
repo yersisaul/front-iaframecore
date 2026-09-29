@@ -46,6 +46,7 @@ describe('Eventos', () => {
   };
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [Eventos],
       providers: [

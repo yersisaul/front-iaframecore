@@ -36,6 +36,8 @@ export class App {
     M 937.076 677.868 C 960.724 643.139 974.044 604.425 977.727 565.357 C 970.808 580.432 962.519 595.172 952.832 609.397 C 865.659 737.416 698.303 775.357 579.033 694.141 C 552.855 676.315 531.169 654.23 514.186 629.261 C 531.147 673.251 561.194 712.712 603.113 741.257 C 712.839 815.974 862.359 787.593 937.076 677.868 Z
   `);
 
+  private loginBackdrop = viewChild<ElementRef<HTMLDivElement>>('loginBackdrop');
+
   private animFrameId: number | null = null;
 
   constructor() {
@@ -52,18 +54,29 @@ export class App {
           const ctx = canvas.getContext('2d');
           if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
+        const backdrop = this.loginBackdrop()?.nativeElement;
+        if (backdrop) {
+          backdrop.style.maskImage = '';
+          backdrop.style.webkitMaskImage = '';
+          backdrop.style.opacity = '0';
+        }
       }
     });
   }
 
   /**
    * Motor de renderizado vectorial continuo con Canvas2D y aceleración por GPU.
-   * Apertura concéntrica del ojo de Azor ultra-fluida que oculta el montaje de la ruta.
+   * Apertura concéntrica del ojo de Azor ultra-fluida con el fondo real del login como máscara.
    */
   private runNativeVectorZoom(): void {
     if (this.animFrameId !== null) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
+    }
+
+    const backdropEl = this.loginBackdrop()?.nativeElement;
+    if (backdropEl) {
+      backdropEl.style.opacity = '1';
     }
 
     const canvas = this.portalCanvas()?.nativeElement;
@@ -79,7 +92,7 @@ export class App {
     canvas.width = vw * dpr;
     canvas.height = vh * dpr;
 
-    const duration = 1200;
+    const duration = this.authTransitionService.transitionDurationMs();
     const startTime = performance.now();
 
     const params = this.authTransitionService.transformParams();
@@ -91,9 +104,11 @@ export class App {
     const eyeSvgX = 512.5;
     const eyeSvgY = 192.5;
 
-    // Curva de progresión cinemática con aceleración suave
+    // Curva de progresión cinemática: easeInOutCubic para arranque inmediato y frenado suave
     const easeProgress = (t: number): number => {
-      return Math.pow(t, 2.4);
+      return t < 0.5
+        ? 4 * t * t * t
+        : 1 - Math.pow(-2 * t + 2, 3) / 2;
     };
 
     const render = (currentTime: number) => {
@@ -104,38 +119,63 @@ export class App {
       const curDy = startDy * (1 - eased);
       const curScale = startScale + (targetScale - startScale) * eased;
 
-      // Desvanecimiento suave en los últimos instantes
-      let opacity = 1;
-      if (rawProgress > 0.82) {
-        opacity = Math.max(0, 1 - (rawProgress - 0.82) / 0.18);
+      // ─────────────────────────────────────────────────────────────
+      // JERARQUÍA DE DESVANECIMIENTO:
+      // 1. El fondo del login desaparece PRIMERO (entre 35% y 65% del tiempo)
+      // 2. El logo del Azor permanece visible y desaparece DESPUÉS (entre 70% y 95%)
+      // ─────────────────────────────────────────────────────────────
+      let backdropOpacity = 1;
+      if (rawProgress > 0.35) {
+        backdropOpacity = Math.max(0, Math.cos((rawProgress - 0.35) / 0.30 * Math.PI / 2));
       }
 
-      ctx.save();
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.scale(dpr, dpr);
-      ctx.globalAlpha = opacity;
+      let azorOpacity = 1;
+      if (rawProgress > 0.70) {
+        azorOpacity = Math.max(0, Math.cos((rawProgress - 0.70) / 0.25 * Math.PI / 2));
+      }
 
       // Posición concéntrica del ojo: siempre centrado horizontalmente en el viewport
       const screenEyeX = vw / 2;
       const screenEyeY = (vh - fullSize) / 2 + fullSize * (eyeSvgY / 1025) + curDy;
 
+      // 1. Apertura concéntrica del ojo sobre el fondo idéntico del login (se desvanece antes)
+      const backdrop = this.loginBackdrop()?.nativeElement;
+      if (backdrop) {
+        const baseRx = 72;
+        const baseRy = 40;
+
+        const expansionMultiplier = 1 + eased * 1.5;
+        const rx = Math.max(0, baseRx * curScale * expansionMultiplier);
+
+        const morphProgress = Math.min(eased * 1.8, 1);
+        const morphRy = baseRy + (baseRx - baseRy) * morphProgress;
+        const ry = Math.max(0, morphRy * curScale * expansionMultiplier);
+
+        const maskVal = `radial-gradient(ellipse ${rx}px ${ry}px at ${screenEyeX}px ${screenEyeY}px, transparent 0%, transparent 60%, rgba(0, 0, 0, 0.4) 85%, black 100%)`;
+        backdrop.style.maskImage = maskVal;
+        backdrop.style.webkitMaskImage = maskVal;
+        backdrop.style.opacity = String(backdropOpacity);
+      }
+
+      // 2. Renderizado vectorial en Canvas del Azor (permanece más tiempo y se desvanece al final)
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(dpr, dpr);
+      ctx.globalAlpha = azorOpacity;
+
       ctx.translate(screenEyeX, screenEyeY);
       ctx.scale(curScale, curScale);
       ctx.translate(-eyeSvgX, -eyeSvgY);
 
-      // 1. Fondo oscuro con apertura transparente en el ojo
-      ctx.fillStyle = '#030712';
-      ctx.fill(this.darkMaskPath, 'evenodd');
-
-      // 2. Alas azul azor
+      // Alas azul azor
       ctx.fillStyle = '#5b78a7';
       ctx.fill(this.wingPath);
 
-      // 3. Cabeza y cresta con recorte natural del ojo
+      // Cabeza y cresta con recorte natural del ojo
       ctx.fillStyle = '#f8fafc';
       ctx.fill(this.headPath, 'evenodd');
 
-      // 4. Cuerpo inferior
+      // Cuerpo inferior
       ctx.fillStyle = '#f8fafc';
       ctx.fill(this.bodyPath, 'evenodd');
 
@@ -149,7 +189,7 @@ export class App {
       }
     };
 
-    // Pintar fotograma 0 de inmediato (bloquea la vista del login antes de la navegación)
+    // Pintar fotograma 0 de inmediato
     render(performance.now());
   }
 }

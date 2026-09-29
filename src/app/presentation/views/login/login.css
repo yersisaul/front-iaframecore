@@ -336,94 +336,23 @@
   0% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.6; }
   100% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
 }
-
-.iris-portal-flare {
-  position: absolute;
-  top: 19%;
-  left: 50.2%;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  transform: translate(-50%, -50%) scale(0);
-  background: radial-gradient(circle, #ffffff 0%, #38bdf8 30%, #06b6d4 55%, #1d4ed8 75%, transparent 100%);
-  filter: blur(4px);
-  pointer-events: none;
-  z-index: 1000;
-  opacity: 0;
-}
-
-/* ── Transición Cinematográfica "Ojo del Azor" ─────────────── */
-.login-wrapper.login-success-zoom {
+/* ── Transición activa: congelar fondo y ocultar UI ─────────── */
+.login-wrapper.transitioning {
   pointer-events: none;
 }
 
-.login-wrapper.login-success-zoom .bg-ambient-layer,
-.login-wrapper.login-success-zoom .bg-glow-orb,
-.login-wrapper.login-success-zoom .bg-cyber-grid,
-.login-wrapper.login-success-zoom .bg-tactical-hud,
-.login-wrapper.login-success-zoom .brand-title,
-.login-wrapper.login-success-zoom .brand-subtitle,
-.login-wrapper.login-success-zoom form,
-.login-wrapper.login-success-zoom .alert-error {
+/* Ocultar de inmediato el formulario y el logo SVG original para evitar que se vea a través del ojo durante el zoom */
+.login-wrapper.transitioning .login-direct-container,
+.login-wrapper.transitioning .logo-hero-wrapper,
+.login-wrapper.transitioning .login-brand-logo,
+.login-wrapper.transitioning .logo-aura-glow {
   opacity: 0 !important;
-  filter: blur(10px) !important;
-  transform: scale(0.92) !important;
-  transition: opacity 0.22s ease-out, filter 0.22s ease-out, transform 0.22s ease-out !important;
+  visibility: hidden !important;
+  transition: none !important;
 }
 
-.login-wrapper.login-success-zoom .logo-hero-wrapper {
-  z-index: 999;
-}
-
-.login-wrapper.login-success-zoom .login-brand-logo {
-  transform-origin: 50.2% 19.0%;
-  animation: azorEyeZoomWarp 0.75s cubic-bezier(0.7, 0, 0.15, 1) forwards !important;
-}
-
-.login-wrapper.login-success-zoom .iris-portal-flare {
-  animation: irisFlarePulse 0.75s cubic-bezier(0.7, 0, 0.15, 1) forwards !important;
-}
-
-@keyframes azorEyeZoomWarp {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-    filter: drop-shadow(0 4px 16px rgba(56, 189, 248, 0.45));
-  }
-  25% {
-    transform: scale(1.3);
-    opacity: 1;
-    filter: drop-shadow(0 0 25px rgba(6, 182, 212, 0.85));
-  }
-  80% {
-    opacity: 0.95;
-    filter: drop-shadow(0 0 60px rgba(6, 182, 212, 1));
-  }
-  100% {
-    transform: scale(52);
-    opacity: 0.2;
-    filter: drop-shadow(0 0 100px rgba(6, 182, 212, 1));
-  }
-}
-
-@keyframes irisFlarePulse {
-  0% {
-    transform: translate(-50%, -50%) scale(0);
-    opacity: 0;
-  }
-  20% {
-    opacity: 0.5;
-    transform: translate(-50%, -50%) scale(2);
-  }
-  60% {
-    opacity: 0.9;
-    transform: translate(-50%, -50%) scale(15);
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(75);
-    opacity: 1;
-    background: radial-gradient(circle, #06b6d4 0%, #1e3a8a 45%, #030712 85%);
-  }
+.login-wrapper.transitioning * {
+  animation-play-state: paused !important;
 }
 
 .login-brand-logo:hover {

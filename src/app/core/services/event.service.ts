@@ -284,7 +284,17 @@ export class EventService {
 
         this.records.set(finalRecords);
         this.totalRecords.set(Math.max(res.total, finalRecords.length));
-        this.filterOptions.set(res.filterOptions);
+        this.filterOptions.update(prev => {
+          const incoming = res.filterOptions;
+          if (!incoming) return prev;
+          return {
+            camaras: incoming.camaras && incoming.camaras.length > 0 ? incoming.camaras : prev.camaras,
+            analiticas: incoming.analiticas && incoming.analiticas.length > 0 ? incoming.analiticas : prev.analiticas,
+            objetos: incoming.objetos && incoming.objetos.length > 0 ? incoming.objetos : prev.objetos,
+            listas: incoming.listas && incoming.listas.length > 0 ? incoming.listas : prev.listas,
+            direcciones: incoming.direcciones && incoming.direcciones.length > 0 ? incoming.direcciones : prev.direcciones
+          };
+        });
         this.isLoading.set(false);
       },
       error: err => {

@@ -22,7 +22,7 @@
   background: transparent;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.15s ease, visibility 0.15s ease;
+  transition: none;
 }
 
 .azor-aperture-portal-overlay.active {
@@ -38,4 +38,276 @@
   height: 100vh;
   display: block;
   pointer-events: none;
+  z-index: 2;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PORTAL LOGIN BACKDROP (Fondo idéntico al login original)
+   ═══════════════════════════════════════════════════════════════ */
+.portal-login-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #030712;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+  will-change: mask-image, -webkit-mask-image, opacity;
+}
+
+/* ── 1. Capas Ambientales & Gradientes Volumétricos ─────────── */
+.portal-login-backdrop .bg-ambient-layer {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.8) 0%, #030712 100%),
+    radial-gradient(circle at 20% 20%, rgba(30, 58, 138, 0.25) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.portal-login-backdrop .bg-glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(140px);
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform, opacity;
+}
+
+.portal-login-backdrop .orb-primary {
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.22) 0%, rgba(37, 99, 235, 0) 70%);
+  top: -12%;
+  left: 15%;
+  animation: portalFloatOrb 22s infinite alternate ease-in-out;
+}
+
+.portal-login-backdrop .orb-secondary {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.18) 0%, rgba(124, 58, 237, 0) 70%);
+  bottom: -15%;
+  right: 12%;
+  animation: portalFloatOrb 28s infinite alternate-reverse ease-in-out;
+}
+
+.portal-login-backdrop .orb-amber {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.12) 0%, rgba(6, 182, 212, 0) 70%);
+  top: 35%;
+  right: 30%;
+  animation: portalFloatOrb 18s infinite alternate ease-in-out;
+}
+
+@keyframes portalFloatOrb {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, 20px) scale(1.08); }
+  100% { transform: translate(-25px, 35px) scale(0.95); }
+}
+
+/* ── 2. Cuadrícula Cibernética con Máscara Radial ──────────── */
+.portal-login-backdrop .bg-cyber-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(56, 189, 248, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: center center;
+  mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.1) 75%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.1) 75%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── 3. HUD Táctico de Radar, Miras y Alas Azor ────────────── */
+.portal-login-backdrop .bg-tactical-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+/* Círculos Concéntricos de Radar */
+.portal-login-backdrop .radar-center-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.portal-login-backdrop .ring-1 {
+  width: 520px;
+  height: 520px;
+  border: 1px dashed rgba(56, 189, 248, 0.09);
+  animation: portalRadarRotate 90s linear infinite;
+}
+
+.portal-login-backdrop .ring-2 {
+  width: 780px;
+  height: 780px;
+  border: 1px solid rgba(56, 189, 248, 0.05);
+  box-shadow: 0 0 60px rgba(6, 182, 212, 0.02);
+}
+
+.portal-login-backdrop .ring-3 {
+  width: 1040px;
+  height: 1040px;
+  border: 1px dashed rgba(56, 189, 248, 0.04);
+  animation: portalRadarRotateReverse 120s linear infinite;
+}
+
+@keyframes portalRadarRotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes portalRadarRotateReverse {
+  from { transform: translate(-50%, -50%) rotate(360deg); }
+  to { transform: translate(-50%, -50%) rotate(0deg); }
+}
+
+/* Línea de Barrido Radar (Sweep Beam) */
+.portal-login-backdrop .radar-sweep-beam {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 520px;
+  height: 520px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(6, 182, 212, 0.06) 0deg, rgba(59, 130, 246, 0.02) 45deg, transparent 60deg, transparent 360deg);
+  animation: portalRadarBeamSpin 14s linear infinite;
+}
+
+@keyframes portalRadarBeamSpin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Ejes de Mira Telescópica */
+.portal-login-backdrop .hud-axis {
+  position: absolute;
+  background-color: rgba(56, 189, 248, 0.04);
+}
+
+.portal-login-backdrop .hud-axis-horizontal {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+}
+
+.portal-login-backdrop .hud-axis-vertical {
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+}
+
+/* Siluetas Alares Vectoriales Azor */
+.portal-login-backdrop .hawk-wing-svg {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.portal-login-backdrop .wing-left {
+  top: 15%;
+  left: -50px;
+  width: 480px;
+  height: 360px;
+  filter: drop-shadow(0 0 30px rgba(6, 182, 212, 0.15));
+}
+
+.portal-login-backdrop .wing-right {
+  bottom: 12%;
+  right: -50px;
+  width: 480px;
+  height: 360px;
+  filter: drop-shadow(0 0 30px rgba(59, 130, 246, 0.15));
+}
+
+/* Brackets de Enfoque en Esquinas (HUD Corners) */
+.portal-login-backdrop .hud-corner-bracket {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  pointer-events: none;
+}
+
+.portal-login-backdrop .corner-line {
+  position: absolute;
+  background-color: rgba(56, 189, 248, 0.28);
+}
+
+.portal-login-backdrop .corner-tag {
+  position: absolute;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  color: rgba(148, 163, 184, 0.55);
+  white-space: nowrap;
+  font-family: var(--font-mono, monospace);
+}
+
+.portal-login-backdrop .corner-top-left { top: 32px; left: 36px; }
+.portal-login-backdrop .corner-top-left .line-h { top: 0; left: 0; width: 36px; height: 1.5px; }
+.portal-login-backdrop .corner-top-left .line-v { top: 0; left: 0; width: 1.5px; height: 36px; }
+.portal-login-backdrop .corner-top-left .corner-tag { top: 8px; left: 8px; }
+
+.portal-login-backdrop .corner-top-right { top: 32px; right: 36px; }
+.portal-login-backdrop .corner-top-right .line-h { top: 0; right: 0; width: 36px; height: 1.5px; }
+.portal-login-backdrop .corner-top-right .line-v { top: 0; right: 0; width: 1.5px; height: 36px; }
+.portal-login-backdrop .corner-top-right .corner-tag { top: 8px; right: 8px; }
+
+.portal-login-backdrop .corner-bottom-left { bottom: 32px; left: 36px; }
+.portal-login-backdrop .corner-bottom-left .line-h { bottom: 0; left: 0; width: 36px; height: 1.5px; }
+.portal-login-backdrop .corner-bottom-left .line-v { bottom: 0; left: 0; width: 1.5px; height: 36px; }
+.portal-login-backdrop .corner-bottom-left .corner-tag { bottom: 8px; left: 8px; }
+
+.portal-login-backdrop .corner-bottom-right { bottom: 32px; right: 36px; }
+.portal-login-backdrop .corner-bottom-right .line-h { bottom: 0; right: 0; width: 36px; height: 1.5px; }
+.portal-login-backdrop .corner-bottom-right .line-v { bottom: 0; right: 0; width: 1.5px; height: 36px; }
+.portal-login-backdrop .corner-bottom-right .corner-tag { bottom: 8px; right: 8px; }
+
+/* Nodos Tácticos Flotantes */
+.portal-login-backdrop .hud-tactical-node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.portal-login-backdrop .node-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #06b6d4;
+  box-shadow: 0 0 10px #06b6d4;
+  animation: portalNodeBlink 3s ease-in-out infinite;
+}
+
+.portal-login-backdrop .node-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: rgba(56, 189, 248, 0.45);
+  font-family: var(--font-mono, monospace);
+}
+
+.portal-login-backdrop .node-1 { top: 22%; left: 12%; }
+.portal-login-backdrop .node-2 { bottom: 25%; left: 16%; }
+.portal-login-backdrop .node-3 { top: 28%; right: 12%; }
+
+@keyframes portalNodeBlink {
+  0%, 100% { opacity: 0.3; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 14px #06b6d4; }
 }
