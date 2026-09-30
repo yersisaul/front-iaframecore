@@ -53,7 +53,7 @@ server {
     }
 
     # Secure API proxying to FastAPI Backend
-    location /api/ {
+    location ^~ /api/ {
         proxy_pass ${API_HOST}/;
         proxy_set_header Host $proxy_host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -130,7 +130,7 @@ server {
     }
 
     # PROXY INVERSO PARA WEBSOCKETS (FastAPI)
-    location /ws/ {
+    location ^~ /ws/ {
         proxy_pass ${API_HOST}/ws/; 
         
         # Habilitar protocolo WebSocket
@@ -176,7 +176,7 @@ server {
 #         try_files $uri $uri/ /index.html;
 #     }
 # 
-#     location /api/ {
+#     location ^~ /api/ {
 #         proxy_pass ${API_HOST}/;
 #         proxy_set_header Host $proxy_host;
 #         proxy_set_header X-Real-IP $remote_addr;

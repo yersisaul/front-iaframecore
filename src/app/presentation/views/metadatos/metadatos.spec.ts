@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of } from 'rxjs';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 import { Metadatos } from './metadatos';
 import { IStorageRepository } from '../../../core/domain/repositories/storage.repository';
@@ -80,6 +81,26 @@ describe('Metadatos', () => {
 
     expect(component.columns()).toBe(4);
     expect(spySetPageSize).toHaveBeenCalledWith(40);
+  });
+
+  it('should correctly evaluate canAddToList for faces and vehicles based on embedding and recognition', () => {
+    // Simular permisos de creación de detalles de listas
+    vi.spyOn(component.permissionsService, 'hasPermission').mockReturnValue(true);
+
+    // 1. Rostros con embedding
+    component.activeIndex.set('rostros');
+    expect(component.canAddToList({ embedding: [0.12, 0.34] })).toBe(true);
+
+    // 2. Rostros sin embedding
+    expect(component.canAddToList({ embedding: [] })).toBe(false);
+    expect(component.canAddToList({ embedding: null })).toBe(false);
+    expect(component.canAddToList({})).toBe(false);
+
+    // 3. Vehículos con reconocimiento (placa)
+    component.activeIndex.set('vehiculos');
+    expect(component.canAddToList({ reconocimiento: 'ABC-123' })).toBe(true);
+    expect(component.canAddToList({ reconocimiento: '' })).toBe(false);
+    expect(component.canAddToList({})).toBe(false);
   });
 });
 

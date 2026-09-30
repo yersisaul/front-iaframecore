@@ -1090,7 +1090,23 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   }
 
   // ── Watchlist Modal Methods ──
+  canAddToList(record: any): boolean {
+    if (!record || !this.permissionsService.hasPermission('Detalles Listas', 'crear')) {
+      return false;
+    }
+    if (this.activeIndex() === 'rostros') {
+      return !!(record.embedding && record.embedding.length > 0);
+    }
+    if (this.activeIndex() === 'vehiculos') {
+      return !!this.getReconocimiento(record);
+    }
+    return false;
+  }
+
   openAddToListModal(record: any): void {
+    if (!this.canAddToList(record)) {
+      return;
+    }
     this.selectedRecordForWatchlist.set(record);
     this.selectedWatchlistId.set('');
     // Prefill name if available

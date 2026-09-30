@@ -718,11 +718,11 @@
             </div>
 
             <!-- Glassmorphism Quick Action Strip (Bottom of Image) -->
-            @if ((record.embedding && record.embedding.length > 0) ||
-                 ((activeIndex() === 'rostros' || (activeIndex() === 'vehiculos' && getReconocimiento(record))) &&
-                 permissionsService.hasPermission('Detalles Listas', 'crear'))) {
+            @let hasEmbedding = record.embedding && record.embedding.length > 0;
+            @let canAdd = canAddToList(record);
+            @if (hasEmbedding || canAdd) {
             <div class="ed-img-overlay">
-              @if (record.embedding && record.embedding.length > 0) {
+              @if (hasEmbedding) {
               <button type="button" class="btn-overlay-action btn-coincidence"
                 (click)="filtrarPorCoincidencia(record); $event.stopPropagation()"
                 title="Filtrar por coincidencia vectorial">
@@ -731,8 +731,7 @@
               </button>
               }
 
-              @if ((activeIndex() === 'rostros' || (activeIndex() === 'vehiculos' && getReconocimiento(record))) &&
-              permissionsService.hasPermission('Detalles Listas', 'crear')) {
+              @if (canAdd) {
               <button type="button" class="btn-overlay-action btn-watchlist"
                 (click)="openAddToListModal(record); $event.stopPropagation()"
                 title="Agregar a lista de control">
