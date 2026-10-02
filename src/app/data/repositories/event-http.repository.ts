@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of, EMPTY } from 'rxjs';
 import { map, catchError, expand, reduce, switchMap } from 'rxjs/operators';
 import { AppEnvironment } from '../../core/config/app-environment';
-import { EventFilters, EventFilterOptions, defaultEventFilterOptions, EventRecord, EventSubjectItem } from '../../core/domain/entities/event.models';
+import { EventFilters, EventFilterOptions, defaultEventFilterOptions, EventRecord, EventSubjectItem, isTrafficAnalytic } from '../../core/domain/entities/event.models';
 import { IEventRepository, EventSearchResult } from '../../core/domain/repositories/event.repository';
 import { EventMapper } from '../mappers/event.mapper';
 import { OsResponse } from './dtos/opensearch-response.dto';
@@ -17,6 +17,26 @@ interface InternalEventSearchResult extends EventSearchResult {
 })
 export class EventHttpRepository implements IEventRepository {
   constructor(private http: HttpClient) { }
+
+  private getTrafficExclusionClauses(): any[] {
+    return [
+      { wildcard: { 'analitica': { value: '*trafico*', case_insensitive: true } } },
+      { wildcard: { 'analitica.keyword': { value: '*trafico*', case_insensitive: true } } },
+      { wildcard: { 'analitica': { value: '*traffic*', case_insensitive: true } } },
+      { wildcard: { 'analitica.keyword': { value: '*traffic*', case_insensitive: true } } },
+      { match_phrase: { 'analitica': 'Analisis de Trafico' } },
+      { match_phrase: { 'analitica': 'Análisis de Tráfico' } }
+    ];
+  }
+
+  private buildQuery(mustFilters: any[]): any {
+    return {
+      bool: {
+        filter: mustFilters.length > 0 ? mustFilters : [{ match_all: {} }],
+        must_not: this.getTrafficExclusionClauses()
+      }
+    };
+  }
 
   search(
     filters: EventFilters,
@@ -78,7 +98,7 @@ export class EventHttpRepository implements IEventRepository {
       sort: [
         { timestamp: { order: 'desc' } }
       ],
-      query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} },
+      query: this.buildQuery(mustFilters),
       aggs: aggs
     };
 
@@ -146,7 +166,7 @@ export class EventHttpRepository implements IEventRepository {
       sort: [
         { timestamp: { order: 'desc' } }
       ],
-      query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} },
+      query: this.buildQuery(mustFilters),
       aggs: aggs
     };
 
@@ -157,7 +177,7 @@ export class EventHttpRepository implements IEventRepository {
       sort: [
         { timestamp: { order: 'desc' } }
       ],
-      query: mustFilters.length > 0 ? { bool: { filter: mustFilters } } : { match_all: {} }
+      query: this.buildQuery(mustFilters)
     };
 
     const parseResult = (res: OsResponse<any>): EventSearchResult => {
@@ -404,7 +424,9 @@ export class EventHttpRepository implements IEventRepository {
       options.camaras = sourceAggs.camara_vals.buckets.map((b: any) => b.key);
     }
     if (sourceAggs.analitica_vals && sourceAggs.analitica_vals.buckets) {
-      options.analiticas = sourceAggs.analitica_vals.buckets.map((b: any) => b.key);
+      options.analiticas = sourceAggs.analitica_vals.buckets
+        .map((b: any) => b.key)
+        .filter((a: string) => !!a && !isTrafficAnalytic(a));
     }
     if (sourceAggs.objeto_vals && sourceAggs.objeto_vals.buckets) {
       const rawObjs: string[] = sourceAggs.objeto_vals.buckets.map((b: any) => b.key);

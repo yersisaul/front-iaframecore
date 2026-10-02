@@ -16,6 +16,8 @@ import { Schedule } from '../../../core/domain/entities/schedule.models';
 import { Analytic } from '../../../core/domain/entities/analytic.models';
 import { Camera } from '../../../core/domain/entities/camera.models';
 import { Host } from '../../../core/domain/entities/host.models';
+import { ReliabilityAlert } from '../../../core/domain/entities/reliability-alert.models';
+import { ReliabilityAlertService } from '../../../core/services/reliability-alert.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
@@ -47,6 +49,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   private sidebarService = inject(SidebarService);
   private hostService = inject(HostService);
   private listService = inject(ListService);
+  private reliabilityAlertService = inject(ReliabilityAlertService);
   public permissionsService = inject(PermissionsService);
 
   @ViewChild('camerasContainer', { static: false }) camerasContainer!: ElementRef<HTMLDivElement>;
@@ -79,6 +82,185 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly showCreateCameraModal = signal<boolean>(false);
   readonly licenseScrolledToBottom = signal<boolean>(false);
   readonly viewMode = signal<'cards' | 'list'>('cards');
+
+  // --- Modal de Alertas de Fiabilidad del Nodo ---
+  readonly showAlertsModal = signal<boolean>(false);
+  readonly hostAlerts = signal<ReliabilityAlert[]>([]);
+  readonly isLoadingAlerts = signal<boolean>(false);
+  readonly alertsError = signal<string | null>(null);
+
+  // Filtros internos del modal de alertas
+  readonly alertSeverityFilter = signal<string>('all'); // 'all' | 'critical' | 'warning' | 'info'
+  readonly alertStatusFilter = signal<string>('all'); // 'all' | 'unresolved' | 'resolved'
+  readonly alertTypeFilter = signal<string>('all');
+  readonly expandedAlertDetails = signal<Set<string>>(new Set());
+  readonly copiedAlertId = signal<string | null>(null);
+
+  openAlertsModal(): void {
+    this.resetAlertFilters();
+    this.showAlertsModal.set(true);
+    this.loadHostAlerts();
+  }
+
+  closeAlertsModal(): void {
+    this.showAlertsModal.set(false);
+  }
+
+  loadHostAlerts(): void {
+    const fingerprint = this.hostId();
+    if (!fingerprint) return;
+
+    this.isLoadingAlerts.set(true);
+    this.alertsError.set(null);
+
+    this.reliabilityAlertService.getAlertsByHost(fingerprint, 1000).subscribe({
+      next: (alerts) => {
+        this.hostAlerts.set(alerts);
+        this.isLoadingAlerts.set(false);
+      },
+      error: (err) => {
+        console.error('Error al cargar alertas del nodo:', err);
+        this.alertsError.set('Ocurrió un error al cargar las alertas del nodo. Por favor, intente de nuevo.');
+        this.isLoadingAlerts.set(false);
+      }
+    });
+  }
+
+  resetAlertFilters(): void {
+    this.alertSeverityFilter.set('all');
+    this.alertStatusFilter.set('all');
+    this.alertTypeFilter.set('all');
+    this.expandedAlertDetails.set(new Set());
+  }
+
+  toggleAlertDetails(alertId: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.expandedAlertDetails.update(set => {
+      const next = new Set(set);
+      if (next.has(alertId)) {
+        next.delete(alertId);
+      } else {
+        next.add(alertId);
+      }
+      return next;
+    });
+  }
+
+  copyAlertId(id: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    if (!id) return;
+    copyToClipboard(id)
+      .then(() => {
+        this.copiedAlertId.set(id);
+        setTimeout(() => {
+          if (this.copiedAlertId() === id) {
+            this.copiedAlertId.set(null);
+          }
+        }, 2000);
+      })
+      .catch(err => console.error('Error copying alert ID to clipboard:', err));
+  }
+
+  // Computed signals para filtros y estadísticas de alertas
+  readonly availableAlertTypes = computed(() => {
+    const alerts = this.hostAlerts();
+    const map = new Map<string, string>();
+    alerts.forEach(a => {
+      if (a.type && !map.has(a.type)) {
+        map.set(a.type, a.typeLabel);
+      }
+    });
+    return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
+  });
+
+  readonly alertCounts = computed(() => {
+    const alerts = this.hostAlerts();
+    let critical = 0;
+    let warning = 0;
+    let info = 0;
+    let unresolved = 0;
+
+    alerts.forEach(a => {
+      if (a.severity === 'critical') critical++;
+      else if (a.severity === 'warning') warning++;
+      else if (a.severity === 'info') info++;
+
+      if (!a.isResolved) unresolved++;
+    });
+
+    return {
+      total: alerts.length,
+      critical,
+      warning,
+      info,
+      unresolved,
+      resolved: alerts.length - unresolved
+    };
+  });
+
+  readonly unresolvedAlertsCount = computed(() => this.alertCounts().unresolved);
+
+  readonly filteredHostAlerts = computed(() => {
+    let list = this.hostAlerts();
+    const severity = this.alertSeverityFilter();
+    const status = this.alertStatusFilter();
+    const type = this.alertTypeFilter();
+
+    if (severity !== 'all') {
+      list = list.filter(a => a.severity === severity);
+    }
+
+    if (status === 'unresolved') {
+      list = list.filter(a => !a.isResolved);
+    } else if (status === 'resolved') {
+      list = list.filter(a => a.isResolved);
+    }
+
+    if (type !== 'all') {
+      list = list.filter(a => a.type === type);
+    }
+
+    return list;
+  });
+
+  readonly hasActiveAlertFilters = computed(() => {
+    return this.alertSeverityFilter() !== 'all' ||
+      this.alertStatusFilter() !== 'all' ||
+      this.alertTypeFilter() !== 'all';
+  });
+
+  getAlertSeverityColor(severity: string): string {
+    return this.reliabilityAlertService.getSeverityColor(severity);
+  }
+
+  getAlertSeverityBgColor(severity: string): string {
+    return this.reliabilityAlertService.getSeverityBgColor(severity);
+  }
+
+  getAlertSeverityLabel(severity: string): string {
+    return this.reliabilityAlertService.getSeverityLabel(severity);
+  }
+
+  getSelectedAlertTypeLabel(): string {
+    const current = this.alertTypeFilter();
+    if (current === 'all') return 'Tipo: Todos';
+    const found = this.availableAlertTypes().find(t => t.value === current);
+    return found ? found.label : current;
+  }
+
+  hasDetailsData(details: any): boolean {
+    if (!details || typeof details !== 'object') return false;
+    return Object.keys(details).length > 0;
+  }
+
+  formatDetailsJson(details: any): string {
+    if (!details) return '';
+    try {
+      return JSON.stringify(details, null, 2);
+    } catch {
+      return String(details);
+    }
+  }
 
   openCreateCameraModal(): void {
     this.showCreateCameraModal.set(true);
@@ -150,6 +332,26 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   openLicenseModal(): void {
     this.licenseScrolledToBottom.set(false);
     this.showLicenseModal.set(true);
+  }
+
+  readonly isReenrolling = signal<boolean>(false);
+
+  refreshHostToken(): void {
+    const fingerprint = this.hostId();
+    if (!fingerprint || this.isReenrolling()) return;
+
+    this.isReenrolling.set(true);
+    this.hostService.allowReenroll(fingerprint).subscribe({
+      next: () => {
+        this.isReenrolling.set(false);
+        alert('Se ha autorizado el re-registro para este nodo.');
+      },
+      error: (err) => {
+        this.isReenrolling.set(false);
+        console.error('Error al autorizar re-registro del nodo:', err);
+        alert('Error al autorizar el re-registro del nodo. Por favor, intente de nuevo.');
+      }
+    });
   }
 
   onLicenseScroll(event: Event): void {
@@ -256,6 +458,7 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   readonly showFilterPanel = signal<boolean>(true);
   readonly activeDropdown = signal<string | null>(null);
   readonly showExportDropdown = signal<boolean>(false);
+  readonly showNodeOptionsDropdown = signal<boolean>(false);
   readonly hostSearch = signal<string>('');
 
   // ── Control de Visibilidad de Columnas de Tabla ──────────────────────────
@@ -1059,13 +1262,21 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
 
   toggleExportDropdown(event: Event): void {
     event.stopPropagation();
+    this.showNodeOptionsDropdown.set(false);
     this.showExportDropdown.update(v => !v);
+  }
+
+  toggleNodeOptionsDropdown(event: Event): void {
+    event.stopPropagation();
+    this.showExportDropdown.set(false);
+    this.showNodeOptionsDropdown.update(v => !v);
   }
 
   @HostListener('document:click')
   closeAllDropdowns(): void {
     this.activeDropdown.set(null);
     this.showExportDropdown.set(false);
+    this.showNodeOptionsDropdown.set(false);
     this.activeAddScheduleDropdown.set(null);
   }
 

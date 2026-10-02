@@ -32,6 +32,7 @@ const dashboardPath =
   getEnvValue('DASHBOARD_DEFAULT_PATH') || '/app/dashboards';
 
 const isDebug = getEnvValue('DEBUG') === 'true';
+const appVersion = getEnvValue('APP_VERSION');
 
 const normalizedPath = dashboardPath.startsWith('/')
   ? dashboardPath
@@ -39,7 +40,7 @@ const normalizedPath = dashboardPath.startsWith('/')
 
 const appEnvContent = `export const AppEnvironment = {
   production: true,
-  version: '1.0.0',
+  version: '${appVersion}',
   debug: ${isDebug},
 
   enableBackendWorkarounds: true,

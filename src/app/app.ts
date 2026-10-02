@@ -2,6 +2,7 @@ import { Component, signal, inject, effect, ElementRef, viewChild } from '@angul
 import { RouterOutlet } from '@angular/router';
 import { WebsocketService } from './core/services/websocket.service';
 import { AuthTransitionService } from './core/services/auth-transition.service';
+import { AppEnvironment } from './core/config/app-environment';
 
 @Component({
   selector: 'app-root',
@@ -13,6 +14,7 @@ export class App {
   private websocketService = inject(WebsocketService);
   protected readonly authTransitionService = inject(AuthTransitionService);
   protected readonly title = signal('iaframecore');
+  readonly appVersion = AppEnvironment.version;
 
   private portalCanvas = viewChild<ElementRef<HTMLCanvasElement>>('portalCanvas');
 

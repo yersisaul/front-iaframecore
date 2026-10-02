@@ -15,6 +15,17 @@ export interface HostGpuInfo {
   computeCapability: string;
 }
 
+export interface GpuObservability {
+  gpu_id: number;
+  alive: boolean;
+  fps: number;
+  latency_ms: number;
+  queue: number;
+  queue_max: number;
+  dropped_s: number;
+  result_dropped_s: number;
+}
+
 export interface HostMetrics {
   lastSeen: Date;
   cpu: number;
@@ -22,6 +33,7 @@ export interface HostMetrics {
   vram: number;
   memory: number;
   serverTime?: Date;
+  gpusObservability?: GpuObservability[];
 }
 
 export interface LicenseFeatures {

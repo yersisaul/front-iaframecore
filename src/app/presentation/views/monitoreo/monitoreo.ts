@@ -17,7 +17,7 @@ import { IEventRepository } from '../../../core/domain/repositories/event.reposi
 import { Camera } from '../../../core/domain/entities/camera.models';
 import { Host } from '../../../core/domain/entities/host.models';
 import { Analytic } from '../../../core/domain/entities/analytic.models';
-import { EventRecord } from '../../../core/domain/entities/event.models';
+import { EventRecord, isTrafficAnalytic } from '../../../core/domain/entities/event.models';
 import { parseUtcDate } from '../../../core/utils/date-utils';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
 import { getCameraEffectiveStatus, getCameraStatusCssClass, getCameraStatusFilterLabel } from '../../../core/utils/camera-status.utils';
@@ -74,6 +74,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   private get activeWebRtcConnections() { return this.monitoringStateService.activeWebRtcConnections; }
   private get activeGridCamerasMap() { return this.monitoringStateService.activeGridCamerasMap; }
   readonly webRtcStates = this.monitoringStateService.webRtcStates;
+  readonly webRtcDebugInfo = this.monitoringStateService.webRtcDebugInfo;
 
   // Layout Grid States (Coordinate slots) - Persistentes en MonitoringStateService
   readonly rows = this.monitoringStateService.rows;
@@ -777,6 +778,10 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
         this.eventRepository.getById(docId).subscribe({
           next: (event) => {
+            if (!event || isTrafficAnalytic(event.analitica)) {
+              return;
+            }
+
             const activeCams = this.gridSlots()
               .map(s => s.camera)
               .filter((c): c is Camera => c !== null);
@@ -2944,13 +2949,14 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   isSlotPlayingLiveVideo(slot: GridSlot): boolean {
     if (!slot || !slot.camera) return false;
     if (this.isSlotInPlaybackMode(slot)) return false;
-    return this.monitoringStateService.isSlotVideoPlaying(slot.id);
+    return this.monitoringStateService.isSlotVideoPlaying(slot.id) ||
+           this.monitoringStateService.isSlotWebRtcActive(slot.id);
   }
 
   onVideoPlaying(slotId: string, event: Event): void {
     const video = event.target as HTMLVideoElement;
     console.log(`%c[Monitoreo Fullscreen Slot ${slotId}] Evento 'playing' disparado -> Dimensiones: ${video?.videoWidth}x${video?.videoHeight}, currentTime: ${video?.currentTime}`, 'color: #2ed573; font-weight: bold;');
-    if (video && (video.videoWidth > 0 || video.currentTime > 0)) {
+    if (video && (!video.paused || video.videoWidth > 0 || video.currentTime > 0 || video.readyState >= 2 || !!video.srcObject)) {
       this.monitoringStateService.setSlotVideoPlaying(slotId, true);
     }
   }
@@ -2958,7 +2964,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   onVideoLoadedData(slotId: string, event: Event): void {
     const video = event.target as HTMLVideoElement;
     console.log(`[Monitoreo Fullscreen Slot ${slotId}] Evento 'loadeddata' / frame recibido -> Dimensiones: ${video?.videoWidth}x${video?.videoHeight}`);
-    if (video && video.videoWidth > 0 && !video.paused) {
+    if (video && (!video.paused || video.videoWidth > 0 || video.readyState >= 2 || !!video.srcObject)) {
       this.monitoringStateService.setSlotVideoPlaying(slotId, true);
     }
   }
@@ -2976,8 +2982,8 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
   isSlotShowingEventPhoto(slot: GridSlot): boolean {
     if (!slot || !slot.camera) return false;
 
-    // Si la celda está reproduciendo video WebRTC en vivo y no en reproducción histórica, no se muestra badge de foto
-    if (this.isSlotPlayingLiveVideo(slot)) {
+    // Si la celda está reproduciendo video WebRTC en vivo o la conexión está activa, no se muestra badge de foto
+    if (this.isSlotPlayingLiveVideo(slot) || this.monitoringStateService.isSlotWebRtcActive(slot.id)) {
       return false;
     }
 

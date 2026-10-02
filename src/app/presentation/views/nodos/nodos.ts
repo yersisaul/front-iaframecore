@@ -13,7 +13,7 @@ import { HostService, HostFilterOptions } from '../../../core/services/host.serv
 import { CameraService } from '../../../core/services/camera.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
-import { Host } from '../../../core/domain/entities/host.models';
+import { Host, GpuObservability } from '../../../core/domain/entities/host.models';
 import { getCameraStatusFilterLabel } from '../../../core/utils/camera-status.utils';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
 import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
@@ -823,8 +823,126 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
   }
 
+  // ── Observabilidad de GPU: Popover Flotante ──────────────────────────────────
+  readonly activeGpuPopover = signal<{
+    host: Host;
+    top: number;
+    left: number;
+    placement: 'top' | 'bottom';
+    activeGpuIndex: number;
+  } | null>(null);
+  private popoverOpenTimer: any = null;
+  private popoverCloseTimer: any = null;
+  private currentMousePos = { x: 0, y: 0 };
+
+  onGpuMouseMove(event: MouseEvent, host?: Host): void {
+    const clientX = event.clientX;
+    const clientY = event.clientY;
+    this.currentMousePos = { x: clientX, y: clientY };
+
+    const popover = this.activeGpuPopover();
+    if (popover) {
+      const targetHost = host || popover.host;
+      this.renderGpuPopoverAtCursor(clientX, clientY, targetHost);
+    }
+  }
+
+  openGpuPopover(event: MouseEvent, host: Host): void {
+    if (this.popoverCloseTimer) {
+      clearTimeout(this.popoverCloseTimer);
+      this.popoverCloseTimer = null;
+    }
+
+    this.currentMousePos = {
+      x: event.clientX ?? (event.currentTarget as HTMLElement)?.getBoundingClientRect().left ?? 0,
+      y: event.clientY ?? (event.currentTarget as HTMLElement)?.getBoundingClientRect().top ?? 0
+    };
+
+    if (this.popoverOpenTimer) {
+      clearTimeout(this.popoverOpenTimer);
+    }
+
+    // Retardo de intención breve (100ms) para evitar apariciones accidentales al cruzar el cursor
+    this.popoverOpenTimer = setTimeout(() => {
+      this.popoverOpenTimer = null;
+      this.renderGpuPopoverAtCursor(this.currentMousePos.x, this.currentMousePos.y, host);
+    }, 100);
+  }
+
+  private renderGpuPopoverAtCursor(clientX: number, clientY: number, host: Host): void {
+    const popoverWidth = 264;
+    const popoverHeight = 168;
+
+    // Fijo al cursor en su esquina izquierda superior
+    let left = clientX;
+    let top = clientY;
+    let placement: 'top' | 'bottom' = 'bottom';
+
+    // Si se sale de la pantalla por la derecha, ajustar a la izquierda del cursor
+    if (left + popoverWidth > window.innerWidth - 12) {
+      left = clientX - popoverWidth;
+    }
+    if (left < 12) {
+      left = Math.max(12, window.innerWidth - popoverWidth - 12);
+    }
+
+    // Si se sale de la pantalla por abajo, colocar arriba del cursor
+    if (top + popoverHeight > window.innerHeight - 12) {
+      top = clientY - popoverHeight;
+      placement = 'top';
+    }
+    if (top < 12) {
+      top = Math.max(12, window.innerHeight - popoverHeight - 12);
+    }
+
+    const current = this.activeGpuPopover();
+    const activeGpuIndex = (current && current.host.fingerprint === host.fingerprint) ? current.activeGpuIndex : 0;
+
+    this.activeGpuPopover.set({
+      host,
+      top,
+      left,
+      placement,
+      activeGpuIndex
+    });
+  }
+
+  closeGpuPopover(delay = 150): void {
+    if (this.popoverOpenTimer) {
+      clearTimeout(this.popoverOpenTimer);
+      this.popoverOpenTimer = null;
+    }
+    if (this.popoverCloseTimer) {
+      clearTimeout(this.popoverCloseTimer);
+    }
+    this.popoverCloseTimer = setTimeout(() => {
+      this.activeGpuPopover.set(null);
+      this.popoverCloseTimer = null;
+    }, delay);
+  }
+
+  cancelCloseGpuPopover(): void {
+    if (this.popoverCloseTimer) {
+      clearTimeout(this.popoverCloseTimer);
+      this.popoverCloseTimer = null;
+    }
+  }
+
+  selectGpuTab(index: number, event?: Event): void {
+    if (event) event.stopPropagation();
+    const current = this.activeGpuPopover();
+    if (!current) return;
+    this.activeGpuPopover.set({
+      ...current,
+      activeGpuIndex: index
+    });
+  }
+
   // ── 2 Capas Lógicas para Título de GPU en Tarjeta ───────────────────────────
-  onGpuMouseEnter(event: MouseEvent): void {
+  onGpuMouseEnter(event: MouseEvent, host?: Host): void {
+    if (host) {
+      this.openGpuPopover(event, host);
+    }
     const panel = event.currentTarget as HTMLElement | null;
     if (!panel) return;
 
@@ -866,6 +984,7 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onGpuMouseLeave(event: MouseEvent): void {
+    this.closeGpuPopover();
     const panel = event.currentTarget as HTMLElement | null;
     if (panel) {
       panel.classList.remove('gpu-expand-space', 'gpu-needs-marquee');

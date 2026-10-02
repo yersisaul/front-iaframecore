@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { AuthTransitionService, TransitionTransformParams } from '../../../core/services/auth-transition.service';
 import { LoginRequestDTO } from '../../../data/repositories/dtos/login-request.dto';
+import { AppEnvironment } from '../../../core/config/app-environment';
 
 @Component({
   selector: 'app-login',
@@ -16,6 +17,8 @@ export class Login {
   private authService = inject(AuthService);
   private router = inject(Router);
   private authTransitionService = inject(AuthTransitionService);
+
+  readonly appVersion = AppEnvironment.version;
 
   loginForm: FormGroup;
 

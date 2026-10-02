@@ -24,6 +24,7 @@ import { CreateCameraModalComponent } from '../create-camera-modal/create-camera
 import { AnalyticCanvasComponent } from './components/analytic-canvas/analytic-canvas.component';
 import { AnalyticParamsFormComponent } from './components/analytic-params-form/analytic-params-form.component';
 import { AnalyticActionsBuilderComponent } from './components/analytic-actions-builder/analytic-actions-builder.component';
+import { AnalyticCommandTerminalComponent } from '../analytic-command-terminal/analytic-command-terminal.component';
 
 @Component({
   selector: 'app-camera-detail-drawer',
@@ -37,7 +38,8 @@ import { AnalyticActionsBuilderComponent } from './components/analytic-actions-b
     CreateCameraModalComponent,
     AnalyticCanvasComponent,
     AnalyticParamsFormComponent,
-    AnalyticActionsBuilderComponent
+    AnalyticActionsBuilderComponent,
+    AnalyticCommandTerminalComponent
   ],
   templateUrl: './camera-detail-drawer.component.html',
   styleUrl: './camera-detail-drawer.component.css'
@@ -1280,6 +1282,12 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
     return colors[norm] ?? 'var(--color-analytic-unknown)';
   }
 
+  readonly refreshCommandTrigger = signal<Record<string, number>>({});
+
+  getCommandRefreshTrigger(analyticId: string): number {
+    return this.refreshCommandTrigger()[analyticId] || 0;
+  }
+
   toggleAnalyticStatus(analytic: Analytic): void {
     const newStatus = analytic.status === 'active' ? 'inactive' : 'active';
     this.analyticService.updateAnalyticStatus(analytic.id, newStatus).subscribe({
@@ -1287,6 +1295,10 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
         this.analyticService.analytics.update(all =>
           all.map(a => a.id === analytic.id ? { ...a, status: newStatus } : a)
         );
+        // Solo una consulta después de 2s para sincronizar el estado real del comando despachado
+        setTimeout(() => {
+          this.refreshCommandTrigger.update(m => ({ ...m, [analytic.id]: Date.now() }));
+        }, 2000);
       },
       error: (err) => {
         console.error('Error toggling analytic status:', err);

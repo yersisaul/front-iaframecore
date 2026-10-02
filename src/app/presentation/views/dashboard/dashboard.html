@@ -68,11 +68,9 @@
 
           <!-- Cabecera de la tarjeta -->
           <div
-            class="card-header bg-transparent border-bottom-0 pt-3 px-3 pb-2 d-flex align-items-center justify-content-between gap-2 overflow-hidden flex-shrink-0">
+            class="card-header bg-transparent border-bottom-0 pt-3 px-3 d-flex align-items-center justify-content-between gap-2 overflow-hidden flex-shrink-0">
             <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden">
-              <div class="dashboard-icon-wrap d-flex align-items-center justify-content-center flex-shrink-0">
-                <span class="icon-svg icon-dashboard" style="width: 1.125rem; height: 1.125rem;"></span>
-              </div>
+              <span class="icon-svg icon-dashboard dashboard-header-icon flex-shrink-0"></span>
               <div
                 class="dashboard-meta-marquee-wrapper d-flex flex-column min-w-0 flex-grow-1 justify-content-center overflow-hidden">
                 <div class="dashboard-name-marquee-container min-w-0">
@@ -80,39 +78,37 @@
                     {{ item.nombre }}
                   </h6>
                 </div>
-                @if (item.descripcion) {
                 <div class="dashboard-desc-marquee-container min-w-0">
+                  @if (item.descripcion) {
                   <span class="dashboard-card-desc" [title]="item.descripcion">
                     {{ item.descripcion }}
                   </span>
+                  } @else {
+                  <span class="dashboard-card-desc dashboard-card-desc--empty" title="Sin descripción">
+                    Sin descripción
+                  </span>
+                  }
                 </div>
-                }
               </div>
             </div>
 
-            <!-- Acciones de la tarjeta (fijas internamente sin ser empujadas) -->
-            <div class="d-flex align-items-center gap-1 flex-shrink-0 ms-2" (click)="$event.stopPropagation()">
+            <!-- Acciones de la tarjeta (SVG directo como botón) -->
+            <div class="d-flex align-items-center gap-3 flex-shrink-0 ms-2" (click)="$event.stopPropagation()">
               <!-- Botón Editar -->
               @if (permissionsService.hasPermission('Dashboard', 'editar')) {
-              <button type="button" class="btn btn-icon-action" title="Editar Dashboard"
-                (click)="openEditModal(item, $event)" aria-label="Editar">
-                <span class="icon-svg icon-edit" style="width: 0.875rem; height: 0.875rem;"></span>
-              </button>
+              <button type="button" class="btn-card-svg icon-svg icon-edit" title="Editar Dashboard"
+                (click)="openEditModal(item, $event)" aria-label="Editar"></button>
               }
 
               <!-- Botón Eliminar -->
               @if (permissionsService.hasPermission('Dashboard', 'eliminar')) {
-              <button type="button" class="btn btn-icon-action btn-icon-delete" title="Eliminar Dashboard"
-                (click)="confirmDelete(item, $event)" aria-label="Eliminar">
-                <span class="icon-svg icon-trash" style="width: 0.875rem; height: 0.875rem;"></span>
-              </button>
+              <button type="button" class="btn-card-svg btn-card-svg-delete icon-svg icon-trash"
+                title="Eliminar Dashboard" (click)="confirmDelete(item, $event)" aria-label="Eliminar"></button>
               }
 
               <!-- Botón Abrir en nueva pestaña -->
-              <button type="button" class="btn btn-icon-action" title="Abrir en pestaña nueva"
-                (click)="openExternal(item.url, $event)" aria-label="Abrir enlace externo">
-                <span class="icon-svg icon-external-link" style="width: 0.875rem; height: 0.875rem;"></span>
-              </button>
+              <button type="button" class="btn-card-svg icon-svg icon-external-link" title="Abrir en pestaña nueva"
+                (click)="openExternal(item.url, $event)" aria-label="Abrir enlace externo"></button>
             </div>
           </div>
 
@@ -120,13 +116,11 @@
           <div class="card-body p-3 d-flex flex-column justify-content-center flex-grow-1">
             <div
               class="dashboard-preview-container position-relative overflow-hidden rounded-3 d-flex align-items-center justify-content-center w-100 flex-grow-1"
-              [class.has-image]="!!item.url_img"
-              [attr.data-img-url]="item.url_img || 'SIN_URL'"
+              [class.has-image]="!!item.url_img" [attr.data-img-url]="item.url_img || 'SIN_URL'"
               [attr.data-raw-src]="item.url_img || 'NULL'">
               @if (item.url_img) {
               <img [src]="getSanitizedImg(item.url_img)" class="dashboard-preview-img w-100 h-100 object-fit-contain"
-                [attr.data-src]="item.url_img"
-                [alt]="item.nombre" (error)="onCardImageError($event)">
+                [attr.data-src]="item.url_img" [alt]="item.nombre" (error)="onCardImageError($event)">
               <div
                 class="dashboard-preview-placeholder d-none flex-column align-items-center justify-content-center text-muted"
                 [attr.data-img-url]="item.url_img || 'SIN_URL'"
@@ -138,8 +132,7 @@
               <!-- Espacio libre para foto del dashboard -->
               <div
                 class="dashboard-preview-placeholder d-flex flex-column align-items-center justify-content-center text-muted"
-                [attr.data-img-url]="'SIN_URL'"
-                [title]="'Origen: Sin imagen configurada'">
+                [attr.data-img-url]="'SIN_URL'" [title]="'Origen: Sin imagen configurada'">
                 <span class="icon-svg icon-dashboard opacity-40 mb-2" style="width: 2rem; height: 2rem;"></span>
                 <span class="small opacity-60 fw-medium">Vista previa del tablero</span>
               </div>
@@ -149,11 +142,11 @@
 
           <!-- Pie de la tarjeta: Barra de URL con copiado idéntico a otros componentes -->
           <div class="card-footer bg-transparent border-top-0 px-3 pb-3 pt-0 flex-shrink-0 mt-auto">
-            <div class="spec-row position-relative d-flex justify-content-between align-items-center"
+            <div class="spec-row position-relative d-flex align-items-center"
               [class.copied-flash]="copiedDashboardId() === item.id"
               (click)="copyDashboardUrl(item.url, item.id, $event)" title="Clic para copiar URL">
-              <span class="spec-lbl d-inline-flex align-items-center flex-shrink-0">
-                <span class="icon-svg icon-copy me-2"
+              <span class="spec-lbl d-inline-flex align-items-center flex-shrink-0 me-1">
+                <span class="icon-svg icon-copy me-1"
                   style="width: 14px; height: 14px; background-color: currentColor;"></span>
                 URL
               </span>
@@ -163,7 +156,7 @@
                 <span class="copied-badge text-success fw-bold">¡Copiado!</span>
               </div>
               } @else {
-              <div class="spec-val-container min-w-0 ms-auto text-end">
+              <div class="spec-val-container min-w-0 flex-grow-1 text-start">
                 <span class="spec-val spec-val-scrollable font-monospace d-block" [title]="item.url">
                   {{ item.url }}
                 </span>
@@ -189,8 +182,7 @@
     <!-- Barra del lienzo sincronizada -->
     <div
       class="browser-toolbar d-flex align-items-center justify-content-between px-3 py-2 overflow-hidden flex-shrink-0"
-      (mouseenter)="onToolbarMouseEnter($event)"
-      (mouseleave)="onToolbarMouseLeave($event)">
+      (mouseenter)="onToolbarMouseEnter($event)" (mouseleave)="onToolbarMouseLeave($event)">
       <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden me-3">
         <button type="button"
           class="btn-clean-back d-inline-flex align-items-center justify-content-center p-0 border-0 bg-transparent flex-shrink-0"
@@ -259,8 +251,7 @@
 
     <!-- BARRA SIMPLIFICADA DEL LIENZO -->
     <div class="browser-toolbar d-flex align-items-center justify-content-between px-3 py-2 overflow-hidden"
-      (mouseenter)="onToolbarMouseEnter($event)"
-      (mouseleave)="onToolbarMouseLeave($event)">
+      (mouseenter)="onToolbarMouseEnter($event)" (mouseleave)="onToolbarMouseLeave($event)">
 
       <!-- Izquierda: Botón Retroceder, Título del Dashboard y Descripción -->
       <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden me-3">

@@ -90,3 +90,14 @@ export function defaultEventFilterOptions(): EventFilterOptions {
     direcciones: []
   };
 }
+
+export function isTrafficAnalytic(analytic: string | null | undefined): boolean {
+  if (!analytic) return false;
+  const normalized = analytic
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return normalized.includes('trafico') || normalized.includes('traffic');
+}
+

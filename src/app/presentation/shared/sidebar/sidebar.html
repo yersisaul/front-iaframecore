@@ -1,9 +1,15 @@
 <nav class="sidebar-nav">
   <!-- Cabecera del Sidebar con Marca -->
-  <div class="sidebar-header d-flex align-items-center mb-4">
-    <div class="logo-wrapper d-flex align-items-center">
+  <div class="sidebar-header d-flex align-items-center justify-content-center mb-4">
+    <div class="logo-wrapper d-flex align-items-center justify-content-center">
       <img src="logo.svg" alt="AZOR" class="brand-logo" />
-      <span class="fw-bold fs-5 text-gradient sidebar-label">Azor analytics</span>
+      <div class="brand-text-block sidebar-label d-flex flex-column">
+        <span class="brand-title brand-title-main fw-extrabold">AZOR</span>
+        <div class="d-flex align-items-baseline gap-1">
+          <span class="brand-title brand-title-sub fw-bold">ANALYTICS</span>
+          <span class="brand-title brand-title-version fw-bold">v.{{ environment.version }}</span>
+        </div>
+      </div>
     </div>
   </div>
 

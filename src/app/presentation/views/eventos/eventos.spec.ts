@@ -106,4 +106,22 @@ describe('Eventos', () => {
     component.toggleSidebar();
     expect(spyToggleSidebar).toHaveBeenCalled();
   });
+
+  it('should exclude traffic analysis events from filteredAnaliticasOptions', () => {
+    component.filterOptions.set({
+      camaras: [],
+      analiticas: ['Cruce de Linea', 'Analisis de Trafico', 'Análisis de Tráfico', 'Aglomeracion', 'traffic_analysis'],
+      objetos: [],
+      listas: [],
+      sujetos: [],
+      direcciones: []
+    });
+
+    const options = component.filteredAnaliticasOptions();
+    expect(options).toContain('Aglomeracion');
+    expect(options).toContain('Cruce de Linea');
+    expect(options).not.toContain('Analisis de Trafico');
+    expect(options).not.toContain('Análisis de Tráfico');
+    expect(options).not.toContain('traffic_analysis');
+  });
 });

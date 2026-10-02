@@ -421,7 +421,7 @@
                 <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
                   <span class="resource-lbl">CPU</span>
                   @if (host.hwInfo?.arch) {
-                  <span class="resource-name text-truncate" [title]="host.hwInfo?.arch">
+                  <span class="resource-name text-truncate">
                     {{ host.hwInfo?.arch }}
                   </span>
                   }
@@ -469,14 +469,14 @@
 
           <!-- Bloque GPU (actualizado con métricas del heartbeat) -->
           @if (host.gpuInfo; as gpu) {
-          <div class="resource-panel gpu-panel" (mouseenter)="onGpuMouseEnter($event)"
-            (mouseleave)="onGpuMouseLeave($event)">
+          <div class="resource-panel gpu-panel" (mouseenter)="onGpuMouseEnter($event, host)"
+            (mousemove)="onGpuMouseMove($event, host)" (mouseleave)="onGpuMouseLeave($event)">
             <div class="resource-panel-header">
               <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0;">
                 <span class="icon-svg resource-icon icon-gpu"></span>
                 <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
                   <span class="resource-lbl">GPU</span>
-                  <span class="resource-name text-truncate" [title]="(gpu?.gpu || '') + ' ' + (gpu?.model || '')">
+                  <span class="resource-name text-truncate">
                     {{ gpu?.model }}
                   </span>
 
@@ -665,7 +665,8 @@
               </div>
             </td>
             <!-- GPU -->
-            <td class="col-gpu">
+            <td class="col-gpu" (mouseenter)="openGpuPopover($event, host)" (mousemove)="onGpuMouseMove($event, host)"
+              (mouseleave)="closeGpuPopover()">
               @if (host.gpuInfo; as gpu) {
               <div class="d-flex flex-column gap-1" style="width: 100%;">
                 <!-- Fila Superior: Modelo + % Uso -->
@@ -932,4 +933,107 @@
     messageSuffix="? Esta acción desconectará y eliminará de forma permanente el nodo y todas sus cámaras asociadas."
     [isDeleting]="isDeletingHost()" (confirm)="confirmDeleteHost()" (cancel)="closeDeleteHostModal()">
   </app-confirm-delete-modal>
+
+  <!-- Popover Flotante Global: Observabilidad de GPU (Single Column HUD) -->
+  @if (activeGpuPopover(); as popover) {
+  <div class="gpu-observability-popover" [style.top.px]="popover.top" [style.left.px]="popover.left"
+    [class.placement-top]="popover.placement === 'top'" [class.placement-bottom]="popover.placement === 'bottom'"
+    (mouseenter)="cancelCloseGpuPopover()" (mouseleave)="closeGpuPopover()">
+
+    @let gpus = popover.host.metrics?.gpusObservability || [];
+    @let activeGpu = gpus.length > 0 ? (gpus[popover.activeGpuIndex] || gpus[0]) : null;
+
+    <!-- Pestañas Multi-GPU si hay más de 1 GPU (Sin nombre redundante) -->
+    @if (gpus.length > 1) {
+    <div class="popover-multi-gpu-bar">
+      <span class="popover-tabs-label">GPU {{ activeGpu?.gpu_id ?? 0 }}</span>
+      <div class="popover-mini-tabs flex-shrink-0">
+        @for (gpuItem of gpus; track gpuItem.gpu_id; let idx = $index) {
+        <button type="button" class="mini-tab-btn" [class.active]="popover.activeGpuIndex === idx"
+          (click)="selectGpuTab(idx, $event)">
+          GPU {{ gpuItem.gpu_id }}
+        </button>
+        }
+      </div>
+    </div>
+    }
+
+    <!-- Lista Vertical de Telemetría (Una Sola Columna) -->
+    @if (activeGpu) {
+    <div class="popover-telemetry-list">
+      <!-- Fila 1: Estado Live -->
+      <div class="telemetry-row">
+        <span class="telemetry-label d-flex align-items-center gap-1">
+          <span class="icon-svg resource-icon icon-gpu gpu-row-icon flex-shrink-0"></span>
+          <span>Estado</span>
+        </span>
+        <span class="telemetry-val d-flex align-items-center gap-1" [class.text-live-ok]="activeGpu.alive"
+          [class.text-live-off]="!activeGpu.alive">
+          <span class="gpu-obs-live-dot" [class.dot-offline]="!activeGpu.alive"></span>
+          <strong>{{ activeGpu.alive ? 'Activo' : 'Detenido' }}</strong>
+        </span>
+      </div>
+
+      <!-- Fila 2: Inferencia -->
+      <div class="telemetry-row">
+        <span class="telemetry-label">Inferencia</span>
+        <span class="telemetry-val font-monospace">
+          <strong>{{ activeGpu.fps | number:'1.0-1' }}</strong>
+          <span class="telemetry-unit">FPS</span>
+        </span>
+      </div>
+
+      <!-- Fila 2: Latencia -->
+      <div class="telemetry-row">
+        <span class="telemetry-label">Latencia media</span>
+        <span class="telemetry-val font-monospace" [class.text-latency-good]="activeGpu.latency_ms <= 25"
+          [class.text-latency-warn]="activeGpu.latency_ms > 25 && activeGpu.latency_ms <= 50"
+          [class.text-latency-crit]="activeGpu.latency_ms > 50">
+          <strong>{{ activeGpu.latency_ms | number:'1.0-1' }}</strong>
+          <span class="telemetry-unit">ms</span>
+        </span>
+      </div>
+
+      <!-- Fila 3: Cola de Tareas -->
+      <div class="telemetry-queue-item">
+        <div class="telemetry-row mb-1">
+          <span class="telemetry-label">Cola tareas GPU</span>
+          <span class="telemetry-val font-monospace">
+            <strong>{{ activeGpu.queue }}</strong> / {{ activeGpu.queue_max }}
+          </span>
+        </div>
+        @let queueRatio = activeGpu.queue_max > 0 ? (activeGpu.queue / activeGpu.queue_max) * 100 : 0;
+        <div class="queue-track-linear">
+          <div class="queue-bar-fill" [style.width.%]="queueRatio > 100 ? 100 : queueRatio"
+            [class.queue-ok]="queueRatio <= 60" [class.queue-warn]="queueRatio > 60 && queueRatio <= 85"
+            [class.queue-crit]="queueRatio > 85">
+          </div>
+        </div>
+      </div>
+
+      <!-- Fila 4: Rechazos a la Entrada -->
+      <div class="telemetry-row" [class.telemetry-alert]="activeGpu.dropped_s > 0">
+        <span class="telemetry-label">Rechazos entrada</span>
+        <span class="telemetry-val font-monospace" [class.text-danger]="activeGpu.dropped_s > 0">
+          <strong>{{ activeGpu.dropped_s }}</strong>
+          <span class="telemetry-unit">/s</span>
+        </span>
+      </div>
+
+      <!-- Fila 5: Descartes a la Salida -->
+      <div class="telemetry-row" [class.telemetry-alert]="activeGpu.result_dropped_s > 0">
+        <span class="telemetry-label">Descartes salida</span>
+        <span class="telemetry-val font-monospace" [class.text-danger]="activeGpu.result_dropped_s > 0">
+          <strong>{{ activeGpu.result_dropped_s }}</strong>
+          <span class="telemetry-unit">/s</span>
+        </span>
+      </div>
+    </div>
+    } @else {
+    <div class="popover-empty-single">
+      <span class="text-muted" style="font-size: 0.75rem;">Sin datos de observabilidad</span>
+    </div>
+    }
+  </div>
+  }
 </div>

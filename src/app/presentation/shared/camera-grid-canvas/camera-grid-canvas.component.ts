@@ -104,6 +104,7 @@ export class CameraGridCanvasComponent implements OnInit, OnDestroy, AfterViewIn
   readonly pipZoom = this.monitoringStateService.pipZoom;
   readonly isCanvasPinned = this.monitoringStateService.isCanvasPinned;
   readonly webRtcStates = this.monitoringStateService.webRtcStates;
+  readonly webRtcDebugInfo = this.monitoringStateService.webRtcDebugInfo;
   readonly livePlayingSlots = this.monitoringStateService.livePlayingSlots;
 
   readonly isCanvasMode = computed(() => this.gridSlots().some(s => s.camera !== null));
@@ -322,13 +323,14 @@ export class CameraGridCanvasComponent implements OnInit, OnDestroy, AfterViewIn
   isSlotPlayingLiveVideo(slot: GridSlot): boolean {
     if (!slot || !slot.camera) return false;
     if (this.isSlotInPlaybackMode(slot)) return false;
-    return this.monitoringStateService.isSlotVideoPlaying(slot.id);
+    return this.monitoringStateService.isSlotVideoPlaying(slot.id) ||
+           this.monitoringStateService.isSlotWebRtcActive(slot.id);
   }
 
   onVideoPlaying(slotId: string, event: Event): void {
     const video = event.target as HTMLVideoElement;
     console.log(`%c[CameraGridCanvas Slot ${slotId}] Evento 'playing' disparado -> Dimensiones de video: ${video?.videoWidth}x${video?.videoHeight}, currentTime: ${video?.currentTime}`, 'color: #2ed573; font-weight: bold;');
-    if (video && (video.videoWidth > 0 || video.currentTime > 0)) {
+    if (video && (!video.paused || video.videoWidth > 0 || video.currentTime > 0 || video.readyState >= 2 || !!video.srcObject)) {
       this.monitoringStateService.setSlotVideoPlaying(slotId, true);
     }
   }
@@ -336,7 +338,7 @@ export class CameraGridCanvasComponent implements OnInit, OnDestroy, AfterViewIn
   onVideoLoadedData(slotId: string, event: Event): void {
     const video = event.target as HTMLVideoElement;
     console.log(`[CameraGridCanvas Slot ${slotId}] Evento 'loadeddata' / frame recibido -> Dimensiones: ${video?.videoWidth}x${video?.videoHeight}`);
-    if (video && video.videoWidth > 0 && !video.paused) {
+    if (video && (!video.paused || video.videoWidth > 0 || video.readyState >= 2 || !!video.srcObject)) {
       this.monitoringStateService.setSlotVideoPlaying(slotId, true);
     }
   }
@@ -353,7 +355,7 @@ export class CameraGridCanvasComponent implements OnInit, OnDestroy, AfterViewIn
 
   isSlotShowingEventPhoto(slot: GridSlot): boolean {
     if (!slot || !slot.camera) return false;
-    if (this.isSlotPlayingLiveVideo(slot)) {
+    if (this.isSlotPlayingLiveVideo(slot) || this.monitoringStateService.isSlotWebRtcActive(slot.id)) {
       return false;
     }
     const displayedEvt = this.getDisplayedEventForSlot(slot);

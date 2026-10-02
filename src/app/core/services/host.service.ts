@@ -197,7 +197,12 @@ export class HostService {
                 updated.metrics = null;
               }
             } else {
-              updated.metrics = metrics;
+              updated.metrics = {
+                ...metrics,
+                gpusObservability: metrics.gpusObservability !== undefined
+                  ? metrics.gpusObservability
+                  : h.metrics?.gpusObservability
+              };
             }
           }
           return updated;
@@ -245,6 +250,10 @@ export class HostService {
         this.loadAllHosts().subscribe();
       })
     );
+  }
+
+  allowReenroll(fingerprint: string): Observable<any> {
+    return this.hostRepository.allowReenroll(fingerprint);
   }
 
   deleteHost(fingerprint: string): Observable<void> {

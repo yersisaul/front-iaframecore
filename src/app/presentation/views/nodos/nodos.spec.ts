@@ -264,4 +264,75 @@ describe('Nodos', () => {
     expect(component.currentPage()).toBe(2);
     expect(mockJumpInput.target.value).toBe('');
   });
+
+  it('should handle GPU observability popover open, tab selection and close', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    flushHosts();
+    fixture.detectChanges();
+
+    const hostWithGpu = {
+      ...component.filteredHosts()[0],
+      metrics: {
+        lastSeen: new Date(),
+        cpu: 10,
+        gpu: 50,
+        vram: 45,
+        memory: 60,
+        gpusObservability: [
+          { gpu_id: 0, alive: true, fps: 28.5, latency_ms: 18.2, queue: 1, queue_max: 5, dropped_s: 0, result_dropped_s: 0 },
+          { gpu_id: 1, alive: false, fps: 0, latency_ms: 0, queue: 0, queue_max: 5, dropped_s: 0, result_dropped_s: 0 }
+        ]
+      }
+    };
+
+    const mockTarget = document.createElement('div');
+    vi.spyOn(mockTarget, 'getBoundingClientRect').mockReturnValue({
+      top: 300, bottom: 340, left: 200, right: 300, width: 100, height: 40, x: 200, y: 300, toJSON: () => {}
+    });
+
+    const mockEvent = {
+      currentTarget: mockTarget,
+      clientX: 250,
+      clientY: 300
+    } as unknown as MouseEvent;
+
+    // Open popover (uses 100ms hover delay)
+    component.openGpuPopover(mockEvent, hostWithGpu);
+    expect(component.activeGpuPopover()).toBeNull();
+
+    await wait(150);
+
+    const active = component.activeGpuPopover();
+    expect(active).not.toBeNull();
+    expect(active?.host.fingerprint).toBe('FP-LINUX-1');
+    expect(active?.activeGpuIndex).toBe(0);
+    expect(active?.left).toBe(250);
+    expect(active?.top).toBe(300);
+
+    // Move cursor while popover is active -> popover must follow cursor
+    component.onGpuMouseMove({ clientX: 280, clientY: 340 } as MouseEvent, hostWithGpu);
+    const moved = component.activeGpuPopover();
+    expect(moved?.left).toBe(280);
+    expect(moved?.top).toBe(340);
+
+    // Switch tab to GPU 1
+    component.selectGpuTab(1);
+    expect(component.activeGpuPopover()?.activeGpuIndex).toBe(1);
+
+    // Close popover (uses delay)
+    component.closeGpuPopover(50);
+    expect(component.activeGpuPopover()).not.toBeNull();
+
+    // Cancel close
+    component.cancelCloseGpuPopover();
+    await wait(80);
+    expect(component.activeGpuPopover()).not.toBeNull();
+
+    // Close now
+    component.closeGpuPopover(10);
+    await wait(30);
+    expect(component.activeGpuPopover()).toBeNull();
+  });
 });
+

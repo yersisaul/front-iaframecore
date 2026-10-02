@@ -1234,6 +1234,16 @@ body:not(.dark) .form-select option {
   background-color: var(--bg-filter-dropdown-menu) !important;
 }
 
+/* ── Popover de Observabilidad GPU — Dark Mode Global ── */
+[data-bs-theme="dark"] .gpu-observability-popover,
+[data-theme="dark"] .gpu-observability-popover,
+.dark .gpu-observability-popover {
+  background-color: #18181b !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 20px 48px -6px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+  color: #fafafa !important;
+}
+
 .dropdown-items-scroll {
   max-height: 280px;
   overflow-y: auto;
@@ -1747,6 +1757,17 @@ body[data-bs-theme="dark"] .node-search-input-row:focus-within {
 .icon-save {
   -webkit-mask-image: url('/assets/icons/crud/save.svg');
   mask-image: url('/assets/icons/crud/save.svg');
+}
+
+.icon-warning,
+.icon-alert-triangle {
+  -webkit-mask-image: url('/assets/icons/global/warning.svg');
+  mask-image: url('/assets/icons/global/warning.svg');
+}
+
+.icon-shield {
+  -webkit-mask-image: url('/assets/icons/global/shield.svg');
+  mask-image: url('/assets/icons/global/shield.svg');
 }
 
 .icon-webrtc {
@@ -2830,3 +2851,8 @@ body.is-timeline-dragging * {
   user-select: none !important;
   -webkit-user-select: none !important;
 }
+
+/* Typography utilities */
+.fw-extrabold {
+  font-weight: 800 !important;
+}

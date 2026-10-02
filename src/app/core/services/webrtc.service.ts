@@ -6,6 +6,15 @@ import { AppEnvironment } from '../config/app-environment';
 export interface StreamingResponse {
   server: string;
   camera_id: string;
+  [key: string]: any;
+}
+
+export interface WebRtcDebugInfo {
+  server: string;
+  cleanServer: string;
+  cameraId: string;
+  whepUrl: string;
+  timestamp: string;
 }
 
 @Injectable({
@@ -13,6 +22,27 @@ export interface StreamingResponse {
 })
 export class WebRtcService {
   private http = inject(HttpClient);
+  readonly debugInfoMap = new Map<string, WebRtcDebugInfo>();
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      (window as any).__webrtcDebug = {
+        streams: this.debugInfoMap,
+        getInfo: (cameraId?: string) => {
+          if (cameraId) return this.debugInfoMap.get(cameraId);
+          return Object.fromEntries(this.debugInfoMap.entries());
+        },
+        setOverrideServer: (serverUrl: string) => {
+          (window as any).__webrtc_override_server = serverUrl;
+          console.log(`%c[WebRTC Debug] Servidor sobreescrito para próximas peticiones: "${serverUrl}"`, 'color: #00d2ff; font-weight: bold;');
+        },
+        clearOverrideServer: () => {
+          delete (window as any).__webrtc_override_server;
+          console.log('%c[WebRTC Debug] Sobreescritura eliminada. Se usará el endpoint backend tal cual.', 'color: #2ed573; font-weight: bold;');
+        }
+      };
+    }
+  }
 
   requestStreaming(cameraId: string): Observable<StreamingResponse> {
     return this.http.post<StreamingResponse>(
@@ -27,7 +57,6 @@ export class WebRtcService {
     onStreamReceived?: (stream: MediaStream) => void
   ): Promise<RTCPeerConnection> {
     const timestamp = new Date().toISOString();
-    console.log(`%c[WebRTC Frontend ${timestamp}] Solicitando endpoint de streaming para cámara: ${cameraId}`, 'color: #00d2ff; font-weight: bold;');
 
     // 1. Obtener la información del streaming desde el backend
     const streamInfo = await firstValueFrom(this.requestStreaming(cameraId));
@@ -36,9 +65,49 @@ export class WebRtcService {
       throw new Error('No se pudo obtener la información de streaming de la cámara.');
     }
 
-    console.log(`%c[WebRTC Frontend] Información de streaming recibida -> Server: ${streamInfo.server}, Camera ID: ${streamInfo.camera_id}`, 'color: #2ed573; font-weight: bold;');
+    // 2. Determinar el servidor base limpio (permitiendo override manual desde DevTools para pruebas)
+    let rawServer = (streamInfo.server || '').trim();
+    if (typeof window !== 'undefined' && (window as any).__webrtc_override_server) {
+      rawServer = String((window as any).__webrtc_override_server).trim();
+      console.warn(`%c[WebRTC Debug Override] Usando servidor personalizado desde DevTools: "${rawServer}"`, 'color: #ffa502; font-weight: bold;');
+    }
 
-    // 2. Crear RTCPeerConnection con STUN básico
+    // Asegurar esquema si el backend devuelve solo dominio o dominio:puerto (evita que el navegador lo trate como ruta relativa local)
+    let serverBase = rawServer;
+    if (!/^https?:\/\//i.test(serverBase)) {
+      const defaultProtocol = (typeof window !== 'undefined' && window.location.protocol === 'https:') ? 'https://' : 'https://';
+      serverBase = `${defaultProtocol}${serverBase}`;
+    }
+    serverBase = serverBase.replace(/\/+$/, '');
+
+    // Construir la URL WHEP exacta
+    const whepUrl = `${serverBase}/${streamInfo.camera_id}/whep`;
+
+    console.group(`%c[WebRTC DEBUG] Conectando Cámara: ${cameraId}`, 'color: #00d2ff; font-weight: bold;');
+    console.log('📡 1. Payload recibido del backend:', streamInfo);
+    console.log('🌐 2. Servidor base procesado:', serverBase);
+    console.log('🎯 3. URL exacta que consultará fetch():', whepUrl);
+    console.groupEnd();
+
+    // Guardar información en el mapa de depuración
+    const debugEntry: WebRtcDebugInfo = {
+      server: streamInfo.server,
+      cleanServer: serverBase,
+      cameraId: streamInfo.camera_id,
+      whepUrl,
+      timestamp
+    };
+    this.debugInfoMap.set(cameraId, debugEntry);
+
+    // Asignar atributos al videoElement para inspección directa en el DOM (DevTools -> Elements)
+    if (videoElement) {
+      videoElement.setAttribute('data-webrtc-server', streamInfo.server);
+      videoElement.setAttribute('data-webrtc-clean-server', serverBase);
+      videoElement.setAttribute('data-webrtc-url', whepUrl);
+      videoElement.setAttribute('data-camera-id', streamInfo.camera_id);
+    }
+
+    // 3. Crear RTCPeerConnection con STUN básico
     const pc = new RTCPeerConnection({
       iceServers: [
         {
@@ -46,8 +115,7 @@ export class WebRtcService {
         }
       ]
     });
-
-    console.log(`[WebRTC Frontend] RTCPeerConnection inicializada con STUN stun:stun.l.google.com:19302`);
+    (pc as any)._streamDebugInfo = debugEntry;
 
     // Monitoreo de candidatos locales generados por el cliente
     pc.onicecandidate = (event) => {
@@ -71,7 +139,7 @@ export class WebRtcService {
       console.log(`[WebRTC Frontend PeerConnection] State: %c${pc.connectionState}`, 'color: #3742fa; font-weight: bold;');
     };
 
-    // 3. Asignar el stream cuando se reciba el track
+    // 4. Asignar el stream cuando se reciba el track
     pc.ontrack = (event) => {
       console.log(`%c[WebRTC Frontend ontrack] ¡Track de video recibido para cámara ${cameraId}!`, 'color: #2ed573; font-size: 1.1em; font-weight: bold;', {
         kind: event.track?.kind,
@@ -96,20 +164,20 @@ export class WebRtcService {
       }
     };
 
-    // 4. Agregar transceiver para recibir video
+    // 5. Agregar transceiver para recibir video
     pc.addTransceiver('video', { direction: 'recvonly' });
 
-    // 5. Crear y establecer descripción local
+    // 6. Crear y establecer descripción local
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     console.log(`[WebRTC Frontend Local SDP Offer creada] Type: ${offer.type}`);
 
-    // 6. Esperar a que el ICE gathering esté completo de forma reactiva
+    // 7. Esperar a que el ICE gathering esté completo de forma reactiva
     if (pc.iceGatheringState !== 'complete') {
       await new Promise<void>((resolve) => {
         const timer = setTimeout(() => {
           pc.removeEventListener('icegatheringstatechange', checkState);
-          resolve(); // Continuar tras timeout de 2.5s para permitir recopilar candidatos sin congelar
+          resolve(); // Continuar tras timeout de 2.5s
         }, 2500);
 
         const checkState = () => {
@@ -123,23 +191,7 @@ export class WebRtcService {
       });
     }
 
-    // 7. Enviar la Offer al endpoint WHEP de MediaMTX
-    let serverBase = streamInfo.server.trim();
-    try {
-      const parsedUrl = new URL(serverBase);
-      const isLoopback = parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1' || parsedUrl.hostname === '0.0.0.0';
-      if (isLoopback && typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        parsedUrl.hostname = window.location.hostname;
-        console.info(`[WebRtcService] Host WebRTC loopback del backend corregido a hostname '${window.location.hostname}'`);
-      }
-      const cleanPath = parsedUrl.pathname.replace(/\/+$/, '');
-      serverBase = `${parsedUrl.origin}${cleanPath}`;
-    } catch {
-      serverBase = serverBase.replace(/\/+$/, '');
-    }
-
-    // Endpoint WHEP estándar para MediaMTX
-    const whepUrl = `${serverBase}/${streamInfo.camera_id}/whep`;
+    // 8. Enviar la Offer al endpoint WHEP de MediaMTX
     console.log(`%c[WebRTC WHEP MediaMTX] Enviando POST a: ${whepUrl}`, 'color: #ff6348; font-weight: bold;', {
       camera_id: streamInfo.camera_id,
       sdp_length: pc.localDescription?.sdp?.length
@@ -171,7 +223,7 @@ export class WebRtcService {
     const answerSdp = await response.text();
     console.log(`%c[WebRTC Frontend] SDP Answer recibida de MediaMTX (HTTP ${response.status}, ${answerSdp.length} bytes). Aplicando setRemoteDescription...`, 'color: #2ed573; font-weight: bold;');
 
-    // 8. Establecer descripción remota con la Answer recibida en formato SDP texto plano
+    // 9. Establecer descripción remota con la Answer recibida en formato SDP texto plano
     await pc.setRemoteDescription(new RTCSessionDescription({
       type: 'answer',
       sdp: answerSdp

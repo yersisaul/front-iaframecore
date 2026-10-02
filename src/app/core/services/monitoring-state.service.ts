@@ -1,7 +1,7 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { Camera } from '../domain/entities/camera.models';
-import { WebRtcService } from './webrtc.service';
+import { WebRtcService, WebRtcDebugInfo } from './webrtc.service';
 import { WebsocketService } from './websocket.service';
 import { WebsocketConnectionService } from './websocket-connection.service';
 import { IEventRepository } from '../domain/repositories/event.repository';
@@ -159,6 +159,7 @@ export class MonitoringStateService {
   readonly activeGridCamerasMap = new Map<string, { cameraId: string; hostFingerprint: string }>();
   readonly mediaStreamsMap = new Map<string, MediaStream>();
   readonly webRtcStates = signal<Record<string, 'connecting' | 'connected' | 'failed'>>({});
+  readonly webRtcDebugInfo = signal<Record<string, WebRtcDebugInfo>>({});
   // Signal para registrar qué slots están reproduciendo video real con frames decodificados
   readonly livePlayingSlots = signal<Record<string, boolean>>({});
 
@@ -329,6 +330,10 @@ export class MonitoringStateService {
       this.activeWebRtcConnections.set(connKey, pc);
       this.webRtcStates.update(prev => ({ ...prev, [slot.id]: 'connected' }));
 
+      if ((pc as any)._streamDebugInfo) {
+        this.webRtcDebugInfo.update(prev => ({ ...prev, [slot.id]: (pc as any)._streamDebugInfo }));
+      }
+
       // Si el stream ya fue capturado en _remoteStream
       const remoteStream = (pc as any)._remoteStream;
       if (remoteStream) {
@@ -376,6 +381,23 @@ export class MonitoringStateService {
   }
 
   /**
+   * Determina si una conexión WebRTC está activa o conectada para un slot dado
+   */
+  isSlotWebRtcActive(slotId: string): boolean {
+    if (!slotId) return false;
+    const state = this.webRtcStates()[slotId];
+    if (state === 'connected') return true;
+
+    const stream = this.mediaStreamsMap.get(slotId);
+    if (stream) {
+      const activeVideoTracks = stream.getVideoTracks().filter(t => t.readyState === 'live' && t.enabled);
+      if (activeVideoTracks.length > 0) return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Detiene una conexión WebRTC por clave de conexión
    */
   stopWebRtcStreamByKey(connKey: string): void {
@@ -402,6 +424,12 @@ export class MonitoringStateService {
     });
 
     this.webRtcStates.update(prev => {
+      const next = { ...prev };
+      delete next[slotId];
+      return next;
+    });
+
+    this.webRtcDebugInfo.update(prev => {
       const next = { ...prev };
       delete next[slotId];
       return next;

@@ -598,12 +598,27 @@ export class WebsocketService {
       const fingerprint = body.fingerprint_host;
       if (!fingerprint) return;
 
+      const rawGpus = body.gpus_observability ?? body.metrics?.gpus_observability;
+      const gpusObservability = Array.isArray(rawGpus)
+        ? rawGpus.map((g: any) => ({
+            gpu_id: Number(g.gpu_id ?? 0),
+            alive: Boolean(g.alive),
+            fps: Number(g.fps ?? 0),
+            latency_ms: Number(g.latency_ms ?? 0),
+            queue: Number(g.queue ?? 0),
+            queue_max: Number(g.queue_max ?? 0),
+            dropped_s: Number(g.dropped_s ?? 0),
+            result_dropped_s: Number(g.result_dropped_s ?? 0)
+          }))
+        : undefined;
+
       const newMetrics: HostMetrics = {
         lastSeen: new Date(),
         cpu: body.cpu ?? 0,
         memory: body.memory ?? 0,
         gpu: body.gpu ?? 0,
-        vram: body.vram ?? 0
+        vram: body.vram ?? 0,
+        ...(gpusObservability ? { gpusObservability } : {})
       };
 
       console.log(`[WebSocket] Métricas en tiempo real recibidas para nodo: ${fingerprint}`);

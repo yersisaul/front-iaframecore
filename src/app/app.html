@@ -1,7 +1,8 @@
 <router-outlet></router-outlet>
 
 <!-- ── Overlay Global de Transición Cinematográfica con Máscara del Ojo de Azor ── -->
-<div class="azor-aperture-portal-overlay" [class.active]="authTransitionService.isZoomTransitioning()" aria-hidden="true">
+<div class="azor-aperture-portal-overlay" [class.active]="authTransitionService.isZoomTransitioning()"
+  aria-hidden="true">
   <!-- Fondo EXACTO del Login con todos sus componentes tácticos y máscara de apertura radial del ojo -->
   <div #loginBackdrop class="portal-login-backdrop">
     <!-- 1. Capas Ambientales & Gradientes Volumétricos -->
@@ -29,8 +30,10 @@
 
       <!-- Siluetas Alares Vectoriales Azor Exactas -->
       <svg class="hawk-wing-svg wing-left" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0 250 C 120 220, 260 160, 400 0 C 280 80, 150 180, 20 280 Z" fill="url(#portalWingGradLeft)" opacity="0.07" />
-        <path d="M50 280 C 160 230, 280 140, 390 40 C 270 120, 160 210, 60 300 Z" fill="url(#portalWingGradLeft)" opacity="0.04" />
+        <path d="M0 250 C 120 220, 260 160, 400 0 C 280 80, 150 180, 20 280 Z" fill="url(#portalWingGradLeft)"
+          opacity="0.07" />
+        <path d="M50 280 C 160 230, 280 140, 390 40 C 270 120, 160 210, 60 300 Z" fill="url(#portalWingGradLeft)"
+          opacity="0.04" />
         <defs>
           <linearGradient id="portalWingGradLeft" x1="0%" y1="100%" x2="100%" y2="0%">
             <stop offset="0%" stop-color="#06b6d4" />
@@ -40,8 +43,10 @@
       </svg>
 
       <svg class="hawk-wing-svg wing-right" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M400 250 C 280 220, 140 160, 0 0 C 120 80, 250 180, 380 280 Z" fill="url(#portalWingGradRight)" opacity="0.07" />
-        <path d="M350 280 C 240 230, 120 140, 10 40 C 130 120, 240 210, 340 300 Z" fill="url(#portalWingGradRight)" opacity="0.04" />
+        <path d="M400 250 C 280 220, 140 160, 0 0 C 120 80, 250 180, 380 280 Z" fill="url(#portalWingGradRight)"
+          opacity="0.07" />
+        <path d="M350 280 C 240 230, 120 140, 10 40 C 130 120, 240 210, 340 300 Z" fill="url(#portalWingGradRight)"
+          opacity="0.04" />
         <defs>
           <linearGradient id="portalWingGradRight" x1="100%" y1="100%" x2="0%" y2="0%">
             <stop offset="0%" stop-color="#06b6d4" />
@@ -54,7 +59,7 @@
       <div class="hud-corner-bracket corner-top-left">
         <span class="corner-line line-h"></span>
         <span class="corner-line line-v"></span>
-        <span class="corner-tag font-monospace">AZOR // OPT-01</span>
+        <span class="corner-tag font-monospace">AZOR ANALYTICS v.{{ appVersion }}</span>
       </div>
 
       <div class="hud-corner-bracket corner-top-right">

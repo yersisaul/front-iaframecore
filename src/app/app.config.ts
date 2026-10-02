@@ -30,6 +30,10 @@ import { IEventRepository } from './core/domain/repositories/event.repository';
 import { EventHttpRepository } from './data/repositories/event-http.repository';
 import { IDashboardRepository } from './core/domain/repositories/dashboard.repository';
 import { DashboardHttpRepository } from './data/repositories/dashboard-http.repository';
+import { IReliabilityAlertRepository } from './core/domain/repositories/reliability-alert.repository';
+import { ReliabilityAlertHttpRepository } from './data/repositories/reliability-alert-http.repository';
+import { IReliabilityCommandRepository } from './core/domain/repositories/reliability-command.repository';
+import { ReliabilityCommandHttpRepository } from './data/repositories/reliability-command-http.repository';
 
 export function initializeApp(authService: AuthService) {
   return () => authService.checkSession();
@@ -62,7 +66,9 @@ export const appConfig: ApplicationConfig = {
     { provide: IStorageRepository, useClass: StorageHttpRepository },
     { provide: IListRepository, useClass: ListHttpRepository },
     { provide: IEventRepository, useClass: EventHttpRepository },
-    { provide: IDashboardRepository, useClass: DashboardHttpRepository }
+    { provide: IDashboardRepository, useClass: DashboardHttpRepository },
+    { provide: IReliabilityAlertRepository, useClass: ReliabilityAlertHttpRepository },
+    { provide: IReliabilityCommandRepository, useClass: ReliabilityCommandHttpRepository }
   ]
 };
 

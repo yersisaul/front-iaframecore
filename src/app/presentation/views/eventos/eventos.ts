@@ -10,7 +10,7 @@ import { EventService } from '../../../core/services/event.service';
 import { CameraService } from '../../../core/services/camera.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
-import { EventFilters, EventRecord, defaultEventFilters } from '../../../core/domain/entities/event.models';
+import { EventFilters, EventRecord, defaultEventFilters, isTrafficAnalytic } from '../../../core/domain/entities/event.models';
 import { parseUtcDate } from '../../../core/utils/date-utils';
 import { copyToClipboard as utilCopyToClipboard } from '../../../core/utils/clipboard.util';
 import { EventDetailModalComponent } from '../../shared/event-detail-modal/event-detail-modal.component';
@@ -285,7 +285,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
 
     const set = new Set<string>();
     [...raw, ...fromRecords, ...temp].forEach(a => {
-      if (a && typeof a === 'string' && a.trim()) {
+      if (a && typeof a === 'string' && a.trim() && !isTrafficAnalytic(a)) {
         set.add(a.trim());
       }
     });

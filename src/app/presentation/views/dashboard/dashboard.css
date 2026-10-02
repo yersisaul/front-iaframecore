@@ -66,9 +66,11 @@
     transform: scale(0.96);
     box-shadow: 0 0 0 4px rgba(43, 127, 255, 0.45) !important;
   }
+
   50% {
     box-shadow: 0 0 0 6px rgba(43, 127, 255, 0.25) !important;
   }
+
   100% {
     transform: scale(1);
     box-shadow: none !important;
@@ -79,9 +81,11 @@
   0% {
     box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.45) !important;
   }
+
   50% {
     box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.25) !important;
   }
+
   100% {
     box-shadow: none !important;
   }
@@ -92,25 +96,30 @@
     opacity: 1;
     transform: scale(1);
   }
+
   100% {
     opacity: 0;
     transform: scale(0.9);
   }
 }
 
-.dashboard-icon-wrap {
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 0.625rem;
-  background-color: rgba(43, 127, 255, 0.1);
+.dashboard-header-icon {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  margin-left: 0.5rem;
   color: var(--primary, #2b7fff);
-  transition: transform 0.2s ease, background-color 0.2s ease;
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease, filter 0.25s ease;
 }
 
-.dashboard-item-card:hover .dashboard-icon-wrap {
-  transform: scale(1.06);
-  background-color: var(--primary, #2b7fff);
-  color: #ffffff;
+.dashboard-item-card:hover .dashboard-header-icon {
+  transform: scale(1.12);
+  color: var(--primary-hover, #1d4ed8);
+  filter: drop-shadow(0 0 6px rgba(43, 127, 255, 0.45));
 }
 
 /* Contenedores de Marquee y Textos del Dashboard */
@@ -172,12 +181,17 @@
   padding: 0 !important;
 }
 
+.dashboard-card-desc--empty {
+  opacity: 0.5;
+  font-style: italic;
+}
+
 .dashboard-item-card:hover .dashboard-card-title {
   color: var(--primary, #2b7fff);
 }
 
 .dashboard-item-card:hover .dashboard-card-title,
-.dashboard-item-card:hover .dashboard-card-desc {
+.dashboard-item-card:hover .dashboard-card-desc:not(.dashboard-card-desc--empty) {
   display: block !important;
   width: max-content !important;
   max-width: none !important;
@@ -191,40 +205,62 @@
 }
 
 @keyframes dashboardCardMarquee {
-  0%, 15% {
+
+  0%,
+  15% {
     transform: translate3d(0, 0, 0);
   }
 
-  85%, 100% {
+  85%,
+  100% {
     transform: translate3d(min(0px, calc(-100% + 100cqw + 2px)), 0, 0);
   }
 }
 
-/* Botones de acción rápida en la tarjeta */
-.btn-icon-action {
-  width: 1.875rem;
-  height: 1.875rem;
+/* Botones de acción rápida en la tarjeta (SVG directo como botón) */
+.btn-card-svg {
+  display: inline-block;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
   padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 0.5rem;
-  background: transparent;
-  color: var(--text-muted, #64748b);
+  margin: 0;
+  border: 0;
+  outline: none;
+  background-color: currentColor !important;
+  color: var(--text-muted, #94a3b8);
   cursor: pointer;
-  transition: all 0.15s ease;
+  opacity: 0.75;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 0.18s ease,
+    opacity 0.18s ease,
+    filter 0.18s ease;
+  flex-shrink: 0;
+  vertical-align: middle;
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
 }
 
-.btn-icon-action:hover {
-  background-color: var(--bg-secondary, rgba(0, 0, 0, 0.05));
+.btn-card-svg:hover {
+  transform: scale(1.22);
+  opacity: 1;
   color: var(--primary, #2b7fff);
-  transform: scale(1.1);
+  filter: drop-shadow(0 0 6px rgba(43, 127, 255, 0.5));
 }
 
-.btn-icon-action.btn-icon-delete:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+.btn-card-svg:active {
+  transform: scale(0.92);
+}
+
+.btn-card-svg.btn-card-svg-delete:hover {
+  transform: scale(1.22) rotate(4deg);
+  opacity: 1;
   color: var(--color-danger, #ef4444);
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.55));
 }
 
 /* Contenedor central reservado para la foto / captura del dashboard */
@@ -267,12 +303,11 @@
 /* Fila de especificación/metadato con copiado idéntico al estándar del sistema (cámaras y nodos) */
 .spec-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 4px 8px;
   border-radius: 6px;
   transition: background 0.15s ease, border-color 0.15s ease;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
   cursor: pointer;
   height: 28px;
@@ -310,7 +345,8 @@
   flex: 1;
   min-width: 0;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .spec-val-scrollable {
@@ -321,7 +357,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
-  display: inline-block;
+  display: block;
+  text-align: left;
 }
 
 .copied-flash {
@@ -503,21 +540,27 @@
 }
 
 @keyframes toolbarTitleMarquee {
-  0%, 15% {
+
+  0%,
+  15% {
     transform: translate3d(0, 0, 0);
   }
 
-  85%, 100% {
+  85%,
+  100% {
     transform: translate3d(var(--title-marquee-shift, -50px), 0, 0);
   }
 }
 
 @keyframes toolbarDescMarquee {
-  0%, 15% {
+
+  0%,
+  15% {
     transform: translate3d(0, 0, 0);
   }
 
-  85%, 100% {
+  85%,
+  100% {
     transform: translate3d(var(--desc-marquee-shift, -50px), 0, 0);
   }
 }
@@ -852,7 +895,7 @@
   opacity: 0.35;
   filter: blur(1.5px);
   transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-              filter 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    filter 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
 }
 

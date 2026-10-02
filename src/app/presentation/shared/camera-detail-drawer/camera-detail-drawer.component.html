@@ -225,8 +225,7 @@
                 <div class="analytic-card-hover-actions d-flex align-items-center gap-3">
                   <!-- Botón Editar Analítica -->
                   @if (permissionsService.hasPermission('Analíticas', 'editar')) {
-                  <button type="button"
-                    class="icon-svg icon-edit cam-direct-icon-btn cam-icon-btn-edit flex-shrink-0"
+                  <button type="button" class="icon-svg icon-edit cam-direct-icon-btn cam-icon-btn-edit flex-shrink-0"
                     (click)="openEditAnalytic(analytic); $event.stopPropagation()"
                     title="Editar Configuración de Analítica" aria-label="Editar analítica">
                   </button>
@@ -242,7 +241,8 @@
                 </div>
 
                 <!-- Control de estado por switch -->
-                <div class="form-check form-switch m-0 p-0 d-flex align-items-center" (click)="$event.stopPropagation()">
+                <div class="form-check form-switch m-0 p-0 d-flex align-items-center"
+                  (click)="$event.stopPropagation()">
                   <input class="form-check-input ms-0" type="checkbox" role="switch" [id]="'switch-' + analytic.id"
                     [checked]="analytic.status === 'active'"
                     [disabled]="!permissionsService.hasPermission('Analíticas', 'activar_desactivar')"
@@ -324,19 +324,19 @@
                 }
               </div>
               }
+
+              <!-- Terminal de Comandos y Logs de Reconciliación de la Analítica -->
+              <div class="pt-3">
+                <app-analytic-command-terminal [analyticId]="analytic.id" [hostFingerprint]="resolvedHostFingerprint"
+                  [refreshTrigger]="getCommandRefreshTrigger(analytic.id)">
+                </app-analytic-command-terminal>
+              </div>
             </div>
             }
           </div>
           }
         </div>
       </div>
-    </div>
-
-    <!-- Botón de Cerrar -->
-    <div class="mt-4 pt-3">
-      <button class="btn btn-clear-filters w-100 py-2" (click)="closeDrawer()">
-        Cerrar Panel
-      </button>
     </div>
     }
   </div>

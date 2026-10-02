@@ -1,0 +1,200 @@
+<div class="cmd-terminal-container rounded-3 border overflow-hidden" [class.terminal-collapsed]="!isTerminalExpanded()">
+
+  <!-- Cabecera de la Terminal (Click para colapsar/desplegar) -->
+  <div class="cmd-terminal-header d-flex flex-wrap align-items-center justify-content-between px-3 py-2 cursor-pointer select-none"
+    [class.border-bottom]="isTerminalExpanded()"
+    (click)="toggleTerminalExpanded()"
+    title="Click para alternar visualización de logs de comandos">
+    <div class="d-flex align-items-center gap-2">
+      <span class="terminal-title font-monospace fw-bold d-flex align-items-center gap-1" style="font-size: 0.76rem;">
+        <!-- Indicador dropdown interactivo tipo prompt '>_' -->
+        <span class="terminal-prompt-toggle text-primary font-monospace fw-bold d-inline-flex align-items-center"
+          [class.open]="isTerminalExpanded()">
+          <span class="prompt-arrow">&gt;</span><span class="prompt-cursor">_</span>
+        </span>
+        <span>Logs de Comandos</span>
+      </span>
+
+      <!-- Contador de Fallos Destacado -->
+      @if (counts().failed > 0) {
+      <span class="badge bg-danger-subtle text-danger border border-danger-subtle font-monospace"
+        style="font-size: 0.65rem; padding: 1px 6px;">
+        {{ counts().failed }} error(es)
+      </span>
+      }
+    </div>
+
+    <!-- Acciones y Filtros de la Terminal (stopPropagation para evitar colapsar al filtrar/recargar) -->
+    <div class="d-flex align-items-center gap-2" (click)="$event.stopPropagation()">
+      <!-- Filtros Rápidos por Estado -->
+      @if (commands().length > 0) {
+      <div class="btn-group btn-group-sm terminal-filters-group" role="group">
+        <button type="button" class="btn btn-term-filter" [class.active]="statusFilter() === 'all'"
+          (click)="statusFilter.set('all')" title="Ver todos">
+          Todos ({{ counts().total }})
+        </button>
+        @if (counts().failed > 0) {
+        <button type="button" class="btn btn-term-filter filter-failed" [class.active]="statusFilter() === 'FAILED'"
+          (click)="statusFilter.set('FAILED')" title="Filtrar fallidos">
+          Fallidos ({{ counts().failed }})
+        </button>
+        }
+        @if (counts().success > 0) {
+        <button type="button" class="btn btn-term-filter filter-success" [class.active]="statusFilter() === 'SUCCESS'"
+          (click)="statusFilter.set('SUCCESS')" title="Filtrar exitosos">
+          OK ({{ counts().success }})
+        </button>
+        }
+        @if (counts().inProgress > 0) {
+        <button type="button" class="btn btn-term-filter filter-pending" [class.active]="statusFilter() === 'IN_PROGRESS'"
+          (click)="statusFilter.set('IN_PROGRESS')" title="Filtrar en progreso / pendientes">
+          Pendientes ({{ counts().inProgress }})
+        </button>
+        }
+      </div>
+      }
+
+      <!-- Botón de Refrescar Manual (Bajo demanda) -->
+      <button type="button" class="btn btn-term-refresh d-flex align-items-center justify-content-center p-1 rounded"
+        [class.loading]="isLoading()" (click)="loadCommands()" title="Recargar logs de comandos">
+        <span class="icon-svg icon-refresh" [class.spin-animation]="isLoading()"
+          style="width: 14px; height: 14px;"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Cuerpo de la Terminal (Visible únicamente cuando está desplegado) -->
+  @if (isTerminalExpanded()) {
+  <div class="cmd-terminal-body p-2 font-monospace" style="animation: slideDown 0.2s ease-out;">
+
+    <!-- Estado de Carga -->
+    @if (isLoading() && commands().length === 0) {
+    <div class="d-flex flex-column gap-2 py-3 px-2">
+      <div class="terminal-skeleton-line" style="width: 80%;"></div>
+      <div class="terminal-skeleton-line" style="width: 65%;"></div>
+      <div class="terminal-skeleton-line" style="width: 90%;"></div>
+    </div>
+    }
+
+    <!-- Estado de Error -->
+    @else if (error()) {
+    <div class="terminal-error-message d-flex align-items-center justify-content-between p-2 rounded">
+      <span class="text-danger small">{{ error() }}</span>
+      <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size: 0.72rem;"
+        (click)="loadCommands()">
+        Reintentar
+      </button>
+    </div>
+    }
+
+    <!-- Estado Vacío: Sin comandos registrados -->
+    @else if (commands().length === 0) {
+    <div class="text-center py-3 text-muted" style="font-size: 0.8rem;">
+      <span class="opacity-60">Sin comandos de sincronización registrados para esta analítica.</span>
+    </div>
+    }
+
+    <!-- Lista de Comandos / Líneas de Log continuas (Formato Filas de Terminal) -->
+    @else {
+    <div class="terminal-logs-list border rounded overflow-hidden">
+      @for (cmd of filteredCommands(); track cmd.id) {
+      <div class="terminal-log-row" [class.row-failed]="cmd.status === 'FAILED'"
+        [class.row-success]="cmd.status === 'ACKED' || cmd.status === 'APPLIED' || cmd.status === 'VERIFIED'"
+        [class.expanded]="expandedJsonId() === cmd.id">
+
+        <!-- Línea Principal del Log en 2 Filas -->
+        <div class="terminal-log-line d-flex flex-column gap-1 py-2 px-3 cursor-pointer"
+          (click)="toggleJsonDetails(cmd.id, $event)">
+
+          <!-- Fila 1: Timestamp + Status Badge + Attempts + Error (si falló) + Chevron -->
+          <div class="d-flex align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap min-w-0">
+              <!-- Timestamp -->
+              <span class="log-timestamp text-muted">
+                {{ cmd.createdAt | date:'HH:mm:ss' }}
+              </span>
+
+              <!-- Badge de Estado -->
+              <span class="badge badge-cmd-status" [ngClass]="getStatusClass(cmd.status)">
+                {{ cmd.status }}
+              </span>
+
+              <!-- Reintentos: (1/5) attempts -->
+              @if (cmd.attempt || cmd.maxAttempts) {
+              <span class="log-attempt text-muted">
+                ({{ cmd.attempt || 1 }}/{{ cmd.maxAttempts || 5 }}) attempts
+              </span>
+              }
+
+              <!-- Error Resaltado (si falló) -->
+              @if (cmd.lastError) {
+              <span class="log-error text-danger fw-semibold text-truncate" [title]="cmd.lastError">
+                &rarr; {{ cmd.lastError }}
+              </span>
+              }
+            </div>
+
+            <!-- Signo de Dropdown Arriba a la Derecha de cada Fila -->
+            <div class="d-flex align-items-center flex-shrink-0 ms-auto">
+              <span class="terminal-chevron transition-all" [class.rotated]="expandedJsonId() === cmd.id">▾</span>
+            </div>
+          </div>
+
+          <!-- Fila 2: action: <name> desired: <state> -->
+          <div class="d-flex align-items-center gap-3 flex-wrap min-w-0 log-subline">
+            <span class="log-action-text text-secondary">
+              action: <span class="fw-semibold text-body">{{ cmd.action || cmd.commandType }}</span>
+            </span>
+
+            @if (cmd.desiredState) {
+            <span class="log-desired text-muted">
+              desired: <span class="fw-bold" [class.text-success]="cmd.desiredState === 'active'"
+                [class.text-secondary]="cmd.desiredState === 'inactive'">{{ cmd.desiredState }}</span>
+            </span>
+            }
+          </div>
+
+        </div>
+
+        <!-- Inspector JSON Desplegable -->
+        @if (expandedJsonId() === cmd.id) {
+        <div class="terminal-json-viewer p-2 border-top">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="text-muted" style="font-size: 0.68rem;">Detalle del Payload RAW:</span>
+
+            <!-- Botón Copiar ID a la izquierda de Copiar JSON -->
+            <div class="d-flex align-items-center gap-2">
+              @if (cmd.correlationId) {
+              <button type="button" class="btn btn-term-mini-copy"
+                (click)="copyContent(cmd.correlationId, cmd.id + '-corr', $event)"
+                [title]="'Copiar Correlation ID: ' + cmd.correlationId">
+                @if (copiedId() === cmd.id + '-corr') {
+                <span class="text-success fw-bold">¡ID Copiado!</span>
+                } @else {
+                <span>Copiar ID</span>
+                }
+              </button>
+              }
+
+              <button type="button" class="btn btn-term-mini-copy"
+                (click)="copyContent(formatJson(cmd.rawJson), cmd.id + '-json', $event)">
+                @if (copiedId() === cmd.id + '-json') {
+                <span class="text-success fw-bold">¡JSON Copiado!</span>
+                } @else {
+                <span>Copiar JSON</span>
+                }
+              </button>
+            </div>
+          </div>
+          <pre class="terminal-json-code m-0 p-2 rounded"><code>{{ formatJson(cmd.rawJson) }}</code></pre>
+        </div>
+        }
+
+      </div>
+      }
+    </div>
+    }
+
+  </div>
+  }
+</div>

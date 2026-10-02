@@ -37,13 +37,28 @@ export class HostHttpRepository implements IHostRepository {
         const res = response.body;
         const serverDateHeader = response.headers.get('Date');
         const serverTime = serverDateHeader ? new Date(serverDateHeader) : new Date();
+        const rawGpus = res?.metrics?.gpus_observability;
+        const gpusObservability = Array.isArray(rawGpus)
+          ? rawGpus.map((g: any) => ({
+              gpu_id: Number(g.gpu_id ?? 0),
+              alive: Boolean(g.alive),
+              fps: Number(g.fps ?? 0),
+              latency_ms: Number(g.latency_ms ?? 0),
+              queue: Number(g.queue ?? 0),
+              queue_max: Number(g.queue_max ?? 0),
+              dropped_s: Number(g.dropped_s ?? 0),
+              result_dropped_s: Number(g.result_dropped_s ?? 0)
+            }))
+          : [];
+
         return {
           lastSeen: parseUtcDate(res.last_seen),
           cpu: res.metrics?.cpu ?? 0,
           gpu: res.metrics?.gpu ?? 0,
           vram: res.metrics?.vram ?? 0,
           memory: res.metrics?.memory ?? 0,
-          serverTime: serverTime
+          serverTime: serverTime,
+          gpusObservability
         };
       }),
       catchError(err => {
@@ -67,6 +82,10 @@ export class HostHttpRepository implements IHostRepository {
         return of({});
       })
     );
+  }
+
+  allowReenroll(fingerprint: string): Observable<any> {
+    return this.http.post<any>(`${AppEnvironment.apiUrl}/frontend/hosts/${fingerprint}/allow_reenroll`, {});
   }
 
   delete(fingerprint: string): Observable<void> {

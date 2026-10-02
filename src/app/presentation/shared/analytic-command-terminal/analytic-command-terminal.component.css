@@ -1,0 +1,421 @@
+/* ==========================================================================
+   Terminal de Logs y Comandos de Analíticas
+   ========================================================================== */
+.cmd-terminal-container {
+  background-color: var(--bg-card, #ffffff);
+  border-color: var(--border-color, rgba(0, 0, 0, 0.08)) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+  font-size: 0.75rem;
+}
+
+.cmd-terminal-header {
+  background-color: var(--bg-surface-subtle, #f8fafc);
+  border-color: var(--border-color, rgba(0, 0, 0, 0.06)) !important;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.cmd-terminal-header:hover {
+  background-color: #f1f5f9;
+}
+
+/* Indicador Dropdown tipo Prompt Terminal '>_' */
+.terminal-prompt-toggle {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.82rem;
+  letter-spacing: -0.5px;
+}
+
+.terminal-prompt-toggle .prompt-arrow {
+  display: inline-block;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+}
+
+.terminal-prompt-toggle.open .prompt-arrow {
+  transform: rotate(90deg);
+}
+
+.terminal-prompt-toggle .prompt-cursor {
+  display: inline-block;
+  margin-left: 1px;
+}
+
+.terminal-filters-group .btn-term-filter {
+  font-size: 0.72rem;
+  padding: 3px 9px;
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+  color: var(--text-secondary, #64748b);
+  transition: all 0.15s ease;
+}
+
+.terminal-filters-group .btn-term-filter:hover {
+  background-color: var(--bg-hover, rgba(0, 0, 0, 0.04));
+  color: var(--text-primary, #0f172a);
+}
+
+.terminal-filters-group .btn-term-filter.active {
+  background-color: var(--primary, #0d6efd);
+  border-color: var(--primary, #0d6efd);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.terminal-filters-group .btn-term-filter.filter-failed.active {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+.terminal-filters-group .btn-term-filter.filter-success.active {
+  background-color: #059669;
+  border-color: #059669;
+}
+
+.terminal-filters-group .btn-term-filter.filter-pending.active {
+  background-color: #d97706;
+  border-color: #d97706;
+}
+
+.btn-term-refresh {
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-term-refresh:hover {
+  color: var(--primary, #0d6efd);
+  border-color: var(--primary, #0d6efd);
+}
+
+.btn-term-refresh.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ── Cuerpo de la Terminal en Tema Claro ── */
+.cmd-terminal-body {
+  background-color: var(--bg-surface-subtle, #f8fafc);
+  color: var(--text-primary, #1e293b);
+  max-height: 420px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.cmd-terminal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cmd-terminal-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+
+.terminal-logs-list {
+  background-color: #ffffff;
+  border-color: var(--border-color, #e2e8f0) !important;
+}
+
+.terminal-log-row {
+  background-color: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  border-left: 3px solid transparent;
+  transition: background-color 0.15s ease;
+  font-size: 0.78rem;
+}
+
+.terminal-log-row:last-child {
+  border-bottom: none;
+}
+
+.terminal-log-row:hover,
+.terminal-log-row.expanded {
+  background-color: #f1f5f9;
+}
+
+.terminal-log-row.row-failed {
+  border-left-color: #dc2626;
+  background-color: rgba(239, 68, 68, 0.03);
+}
+
+.terminal-log-row.row-failed:hover,
+.terminal-log-row.row-failed.expanded {
+  background-color: rgba(239, 68, 68, 0.07);
+}
+
+.terminal-log-row.row-success {
+  border-left-color: #10b981;
+}
+
+.terminal-log-row.row-success:hover,
+.terminal-log-row.row-success.expanded {
+  background-color: rgba(16, 185, 129, 0.04);
+}
+
+.log-timestamp {
+  color: #64748b;
+  font-size: 0.74rem;
+}
+
+.badge-cmd-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Badges en Tema Claro */
+.badge-cmd-failed {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.badge-cmd-success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.badge-cmd-info {
+  background-color: rgba(14, 165, 233, 0.1);
+  color: #0284c7;
+  border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+.badge-cmd-warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.log-action {
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.log-subline {
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.log-action-text {
+  font-size: 0.74rem;
+}
+
+.log-desired {
+  font-size: 0.74rem;
+}
+
+.log-attempt {
+  font-size: 0.72rem;
+}
+
+.log-error {
+  color: #dc2626 !important;
+  font-size: 0.76rem;
+}
+
+.btn-term-mini-copy {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #475569;
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-term-mini-copy:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #0f172a;
+}
+
+.terminal-chevron {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.terminal-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+.terminal-json-viewer {
+  border-color: var(--border-color, #e2e8f0) !important;
+}
+
+.terminal-json-code {
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+  font-size: 0.7rem;
+  max-height: 180px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.terminal-skeleton-line {
+  height: 14px;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.04) 25%, rgba(0, 0, 0, 0.08) 50%, rgba(0, 0, 0, 0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmerSkeleton 1.5s infinite;
+  border-radius: 3px;
+}
+
+@keyframes shimmerSkeleton {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   Modo Oscuro [data-bs-theme="dark"]
+   ========================================================================== */
+[data-bs-theme="dark"] .cmd-terminal-container {
+  background-color: #0f172a;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-bs-theme="dark"] .cmd-terminal-header {
+  background-color: rgba(15, 23, 42, 0.8);
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-bs-theme="dark"] .cmd-terminal-header:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+[data-bs-theme="dark"] .cmd-terminal-body {
+  background-color: #0a0e17;
+  color: #e2e8f0;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+[data-bs-theme="dark"] .cmd-terminal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+[data-bs-theme="dark"] .terminal-logs-list {
+  background-color: rgba(15, 23, 42, 0.6);
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-bs-theme="dark"] .terminal-log-row {
+  background-color: transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] .terminal-log-row:hover,
+[data-bs-theme="dark"] .terminal-log-row.expanded {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] .terminal-log-row.row-failed {
+  border-left: 3px solid #ef4444;
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+[data-bs-theme="dark"] .terminal-log-row.row-failed:hover,
+[data-bs-theme="dark"] .terminal-log-row.row-failed.expanded {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+[data-bs-theme="dark"] .terminal-log-row.row-success {
+  border-left: 3px solid #10b981;
+}
+
+[data-bs-theme="dark"] .terminal-log-row.row-success:hover,
+[data-bs-theme="dark"] .terminal-log-row.row-success.expanded {
+  background-color: rgba(16, 185, 129, 0.08);
+}
+
+[data-bs-theme="dark"] .badge-cmd-failed {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+[data-bs-theme="dark"] .badge-cmd-success {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+[data-bs-theme="dark"] .badge-cmd-info {
+  background-color: rgba(14, 165, 233, 0.2);
+  color: #38bdf8;
+  border-color: rgba(14, 165, 233, 0.4);
+}
+
+[data-bs-theme="dark"] .badge-cmd-warning {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+[data-bs-theme="dark"] .log-action {
+  color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .log-action-text {
+  color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .log-action-text .text-body {
+  color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] .log-error {
+  color: #f87171 !important;
+}
+
+[data-bs-theme="dark"] .btn-term-mini-copy {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .btn-term-mini-copy:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+[data-bs-theme="dark"] .terminal-json-viewer {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-bs-theme="dark"] .terminal-json-code {
+  background-color: #05080f;
+  border-color: rgba(255, 255, 255, 0.06);
+  color: #38bdf8;
+}
+
+[data-bs-theme="dark"] .terminal-skeleton-line {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.04) 75%);
+}
