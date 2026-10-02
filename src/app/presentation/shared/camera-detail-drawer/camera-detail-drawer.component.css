@@ -344,6 +344,15 @@
   overflow: hidden;
 }
 
+:host-context([data-bs-theme="dark"]) .ai-control-card-wrapper,
+:host-context([data-theme="dark"]) .ai-control-card-wrapper,
+:host-context(.dark) .ai-control-card-wrapper,
+[data-bs-theme="dark"] .ai-control-card-wrapper {
+  background-color: #151d2c !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
 .ai-control-card-wrapper.expanded {
   overflow: visible !important;
 }
@@ -362,14 +371,43 @@
   transform: translateY(-1px);
 }
 
+:host-context([data-bs-theme="dark"]) .ai-control-card-wrapper:hover,
+:host-context([data-theme="dark"]) .ai-control-card-wrapper:hover,
+:host-context(.dark) .ai-control-card-wrapper:hover,
+[data-bs-theme="dark"] .ai-control-card-wrapper:hover {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
 .ai-control-card-wrapper.ai-active {
   border-color: var(--color-online-border, rgba(16, 185, 129, 0.35)) !important;
   background-color: var(--color-online-bg, rgba(16, 185, 129, 0.04)) !important;
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
 }
 
+:host-context([data-bs-theme="dark"]) .ai-control-card-wrapper.ai-active,
+:host-context([data-theme="dark"]) .ai-control-card-wrapper.ai-active,
+:host-context(.dark) .ai-control-card-wrapper.ai-active,
+[data-bs-theme="dark"] .ai-control-card-wrapper.ai-active {
+  background-color: rgba(16, 185, 129, 0.06) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12);
+}
+
 .ai-control-card-wrapper.ai-active .fw-bold {
   color: var(--color-online, #10b981);
+}
+
+.bg-light-translucent {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+:host-context([data-bs-theme="dark"]) .bg-light-translucent,
+:host-context([data-theme="dark"]) .bg-light-translucent,
+:host-context(.dark) .bg-light-translucent,
+[data-bs-theme="dark"] .bg-light-translucent {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #94a3b8 !important;
 }
 
 .ai-control-header {
