@@ -2,12 +2,12 @@
 export const AppEnvironment = {
   production: true,
 
-  // Versión dinámica: resuelve en tiempo de ejecución (Docker/window.__env) con fallback a compilación
+  // Resuelve exclusivamente desde la variable de entorno inyectada en window.__env
   get version(): string | null {
-    if (typeof window !== 'undefined' && (window as any).__env && (window as any).__env['APP_VERSION'] !== undefined) {
+    if (typeof window !== 'undefined' && (window as any).__env && (window as any).__env['APP_VERSION']) {
       return (window as any).__env['APP_VERSION'];
     }
-    return '2.0.0';
+    return null;
   },
 
   debug: true,

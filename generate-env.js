@@ -42,12 +42,12 @@ const appEnvContent = `// Archivo generado automáticamente por generate-env.js
 export const AppEnvironment = {
   production: true,
 
-  // Versión dinámica: resuelve en tiempo de ejecución (Docker/window.__env) con fallback a compilación
+  // Resuelve exclusivamente desde la variable de entorno inyectada en window.__env
   get version(): string | null {
-    if (typeof window !== 'undefined' && (window as any).__env && (window as any).__env['APP_VERSION'] !== undefined) {
+    if (typeof window !== 'undefined' && (window as any).__env && (window as any).__env['APP_VERSION']) {
       return (window as any).__env['APP_VERSION'];
     }
-    return ${appVersion ? `'${appVersion}'` : 'null'};
+    return null;
   },
 
   debug: ${isDebug},
@@ -75,8 +75,22 @@ if (!fs.existsSync(configDir)) {
 
 fs.writeFileSync(appEnvPath, appEnvContent, 'utf8');
 
+// Sincronizar también public/assets/env.js con la variable local detectada
+const publicAssetsDir = path.join(__dirname, 'public', 'assets');
+const envJsPath = path.join(publicAssetsDir, 'env.js');
+if (!fs.existsSync(publicAssetsDir)) {
+  fs.mkdirSync(publicAssetsDir, { recursive: true });
+}
+const envJsContent = `// Archivo generado automáticamente por generate-env.js desde la variable APP_VERSION de .env
+(function (window) {
+  window.__env = window.__env || {};
+  window.__env.APP_VERSION = ${appVersion ? JSON.stringify(appVersion) : 'null'};
+})(this);
+`;
+fs.writeFileSync(envJsPath, envJsContent, 'utf8');
+
 console.log(
-  '✅ app-environment.ts generado correctamente.'
+  '✅ app-environment.ts y assets/env.js generados correctamente con la versión de la variable.'
 );
 
 console.log(
