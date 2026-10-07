@@ -1,7 +1,7 @@
 <div class="monitoreo-view-container container-fluid pt-4 pb-2 position-relative h-100 min-h-0 d-flex flex-column"
   [class.zen-mode-active]="isZenMode()">
   <!-- HEADER REFACTORIZADO DRY -->
-  <app-page-header title="Monitoreo de camaras" subtitle="Monitoreo de camaras y eventos en tiempo real">
+  <app-page-header title="Monitoreo de cámaras" subtitle="Monitoreo de cámaras y eventos en tiempo real">
     <ng-container header-actions>
       <!-- Barra de Búsqueda + Botón de Filtros -->
       <div class="search-filter-group d-flex align-items-center shadow-sm rounded-pill border ps-3 pe-1 py-1"
@@ -90,41 +90,22 @@
         }
 
         <!-- Contenedor del Lienzo Transformable Compartido (CameraGridCanvasComponent) -->
-        <app-camera-grid-canvas
-          [mode]="'monitoreo'"
-          [videoIdPrefix]="'video-feed'"
-          [isInteractive]="true"
-          [showCellActions]="true"
-          [showExpanders]="!isCanvasPinned()"
-          [activeHoveredExpander]="activeHoveredExpander()"
-          [resizingSlotId]="resizingSlotId()"
-          [draggingSlotId]="draggingSlotId()"
-          [selectedSlotIds]="selectedCanvasSlotIds()"
-          [isSyncMode]="isSyncMode()"
-          [highlightedCameraName]="highlightedCellCameraName()"
-          [flashEffects]="flashEffects()"
-          [activeAiOverlays]="activeAiOverlays()"
-          [aiBoundingBoxes]="aiBoundingBoxes()"
-          [draggingDropTargets]="draggingDropTargets()"
-          [swapPulseSlotId]="swapPulseSlotId()"
-          [isCanvasAnimating]="isCanvasAnimating()"
-          [canvasLodMode]="canvasLodMode()"
-          [uiCompensatedScale]="uiCompensatedScale()"
-          [dockCompensatedScale]="dockCompensatedScale()"
-          [badgeCompensatedScale]="badgeCompensatedScale()"
-          [timeCompensatedScale]="timeCompensatedScale()"
-          [emptySlotCompensatedScale]="emptySlotCompensatedScale()"
-          [getCameraAnalyticsFn]="getCameraAnalyticsBound"
-          [isSlotInPlaybackModeFn]="isSlotInPlaybackModeBound"
-          [isFeedPausedFn]="isFeedPausedBound"
-          [isSlotDimmedFn]="isSlotDimmedBound"
-          (slotClick)="onSharedSlotClick($event)"
-          (slotDblClick)="onSharedSlotDblClick($event)"
-          (slotMouseDown)="onSharedSlotMouseDown($event)"
-          (slotMouseEnter)="onSlotMouseEnter($event)"
-          (slotMouseLeave)="onSlotMouseLeave($event)"
-          (slotRefreshStream)="refreshCameraStream($event)"
-          (slotTakeSnapshot)="takeSnapshot($event)"
+        <app-camera-grid-canvas [mode]="'monitoreo'" [videoIdPrefix]="'video-feed'" [isInteractive]="true"
+          [showCellActions]="true" [showExpanders]="!isCanvasPinned()" [activeHoveredExpander]="activeHoveredExpander()"
+          [resizingSlotId]="resizingSlotId()" [draggingSlotId]="draggingSlotId()"
+          [selectedSlotIds]="selectedCanvasSlotIds()" [isSyncMode]="isSyncMode()"
+          [highlightedCameraName]="highlightedCellCameraName()" [flashEffects]="flashEffects()"
+          [activeAiOverlays]="activeAiOverlays()" [aiBoundingBoxes]="aiBoundingBoxes()"
+          [draggingDropTargets]="draggingDropTargets()" [swapPulseSlotId]="swapPulseSlotId()"
+          [isCanvasAnimating]="isCanvasAnimating()" [canvasLodMode]="canvasLodMode()"
+          [uiCompensatedScale]="uiCompensatedScale()" [dockCompensatedScale]="dockCompensatedScale()"
+          [badgeCompensatedScale]="badgeCompensatedScale()" [timeCompensatedScale]="timeCompensatedScale()"
+          [emptySlotCompensatedScale]="emptySlotCompensatedScale()" [getCameraAnalyticsFn]="getCameraAnalyticsBound"
+          [isSlotInPlaybackModeFn]="isSlotInPlaybackModeBound" [isFeedPausedFn]="isFeedPausedBound"
+          [isSlotDimmedFn]="isSlotDimmedBound" (slotClick)="onSharedSlotClick($event)"
+          (slotDblClick)="onSharedSlotDblClick($event)" (slotMouseDown)="onSharedSlotMouseDown($event)"
+          (slotMouseEnter)="onSlotMouseEnter($event)" (slotMouseLeave)="onSlotMouseLeave($event)"
+          (slotRefreshStream)="refreshCameraStream($event)" (slotTakeSnapshot)="takeSnapshot($event)"
           (slotToggleLock)="toggleLockSlot($event)"
           (slotRemoveCamera)="removeCameraFromSlot($event.col, $event.row, $event.event)"
           (slotResizeInit)="initResize($event.slot, $event.event, $event.element)"
@@ -273,42 +254,25 @@
       <!-- =========================================================================
            LÍNEA DE TIEMPO / TIMELINE CONTROLS (SHARED COMPONENT - DRY)
            ========================================================================= -->
-      <app-monitoring-timeline
-        [events]="eventsList()"
-        [currentTime]="currentTimePointer()"
-        [playbackMode]="playbackMode()"
-        [paused]="paused()"
-        [playbackWindowEnd]="playbackWindowEnd()"
-        [zoomRangeSeconds]="zoomRangeSeconds()"
-        [selectedCameraNames]="selectedCameraNames()"
-        [eventSearchQuery]="eventSearchQuery()"
-        [selectedFlagId]="selectedFlagId()"
-        [getAnalyticColor]="getAnalyticColorBound"
-        (timeChange)="onTimelineTimeChange($event)"
-        (playbackModeChange)="onTimelinePlaybackModeChange($event)"
-        (pausedChange)="onTimelinePausedChange($event)"
-        (playbackWindowEndChange)="onTimelinePlaybackWindowEndChange($event)"
-        (flagClick)="onTimelineFlagClick($event)"
-        (zoomChange)="onTimelineZoomChange($event)"
-        (toast)="showToast($event.message, $event.type)">
+      <app-monitoring-timeline [events]="eventsList()" [currentTime]="currentTimePointer()"
+        [playbackMode]="playbackMode()" [paused]="paused()" [playbackWindowEnd]="playbackWindowEnd()"
+        [zoomRangeSeconds]="zoomRangeSeconds()" [selectedCameraNames]="selectedCameraNames()"
+        [eventSearchQuery]="eventSearchQuery()" [selectedFlagId]="selectedFlagId()"
+        [getAnalyticColor]="getAnalyticColorBound" (timeChange)="onTimelineTimeChange($event)"
+        (playbackModeChange)="onTimelinePlaybackModeChange($event)" (pausedChange)="onTimelinePausedChange($event)"
+        (playbackWindowEndChange)="onTimelinePlaybackWindowEndChange($event)" (flagClick)="onTimelineFlagClick($event)"
+        (zoomChange)="onTimelineZoomChange($event)" (toast)="showToast($event.message, $event.type)">
       </app-monitoring-timeline>
 
     </div>
 
     <!-- Columna Derecha: Panel de Logs y Analíticas Activadas (SHARED COMPONENT - DRY) -->
-    <app-monitoring-events-sidebar
-      class="monitoring-right-panel"
-      [class.right-panel-collapsed]="isRightPanelCollapsed()"
-      [collapsed]="isRightPanelCollapsed()"
-      [events]="filteredEvents()"
-      [isLoading]="isLoadingEvents()"
-      [currentTimePointer]="currentTimePointer()"
-      [camerasInCanvas]="camerasInCanvas()"
-      [eventSearchQuery]="eventSearchQuery()"
-      [selectedCameraNames]="selectedCameraNames()"
-      [getAnalyticColor]="getAnalyticColorBound"
-      (toggleCollapse)="toggleRightPanel()"
-      (eventClick)="openEventDetails($event)"
+    <app-monitoring-events-sidebar class="monitoring-right-panel"
+      [class.right-panel-collapsed]="isRightPanelCollapsed()" [collapsed]="isRightPanelCollapsed()"
+      [events]="filteredEvents()" [isLoading]="isLoadingEvents()" [currentTimePointer]="currentTimePointer()"
+      [camerasInCanvas]="camerasInCanvas()" [eventSearchQuery]="eventSearchQuery()"
+      [selectedCameraNames]="selectedCameraNames()" [getAnalyticColor]="getAnalyticColorBound"
+      (toggleCollapse)="toggleRightPanel()" (eventClick)="openEventDetails($event)"
       (cameraConfigClick)="openCameraConfig($event.camera, $event.event)">
     </app-monitoring-events-sidebar>
   </div>
@@ -317,13 +281,8 @@
 <!-- =========================================================================
      MODAL DE SELECCIÓN DE CÁMARAS (SHARED COMPONENT - DRY)
      ========================================================================= -->
-<app-camera-selection-modal
-  [show]="showModal()"
-  [cameras]="allCameras()"
-  [hosts]="allHosts()"
-  [analytics]="analyticService.analytics()"
-  [initialSelectedIds]="selectedCameraIds()"
-  (close)="showModal.set(false)"
+<app-camera-selection-modal [show]="showModal()" [cameras]="allCameras()" [hosts]="allHosts()"
+  [analytics]="analyticService.analytics()" [initialSelectedIds]="selectedCameraIds()" (close)="showModal.set(false)"
   (confirm)="onCameraSelectionConfirmed($event)">
 </app-camera-selection-modal>
 
@@ -357,25 +316,17 @@
         <span class="fullscreen-camera-name text-truncate" [title]="fslot.camera?.name">{{ fslot.camera?.name }}</span>
       </div>
       @if (fslot.camera) {
-      <video [id]="'video-feed-fullscreen-' + fslot.id"
-        [attr.data-slot-id]="fslot.id"
-        [attr.data-camera-id]="fslot.camera.id"
-        [attr.data-camera-name]="fslot.camera.name"
+      <video [id]="'video-feed-fullscreen-' + fslot.id" [attr.data-slot-id]="fslot.id"
+        [attr.data-camera-id]="fslot.camera.id" [attr.data-camera-name]="fslot.camera.name"
         [attr.data-webrtc-server]="webRtcDebugInfo()[fslot.id]?.server || null"
         [attr.data-webrtc-clean-server]="webRtcDebugInfo()[fslot.id]?.cleanServer || null"
         [attr.data-webrtc-url]="webRtcDebugInfo()[fslot.id]?.whepUrl || null"
         class="fullscreen-video-element w-100 h-100 object-fit-contain position-absolute top-0 start-0"
-        style="z-index: 6;"
-        [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)"
-        (playing)="onVideoPlaying(fslot.id, $event)"
-        (canplay)="onVideoPlaying(fslot.id, $event)"
-        (loadedmetadata)="onVideoLoadedData(fslot.id, $event)"
-        (loadeddata)="onVideoLoadedData(fslot.id, $event)"
-        (timeupdate)="onVideoLoadedData(fslot.id, $event)"
-        (pause)="onVideoPaused(fslot.id)"
-        (waiting)="onVideoPaused(fslot.id)"
-        (error)="onVideoError(fslot.id, $event)"
-        autoplay playsinline muted>
+        style="z-index: 6;" [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)"
+        (playing)="onVideoPlaying(fslot.id, $event)" (canplay)="onVideoPlaying(fslot.id, $event)"
+        (loadedmetadata)="onVideoLoadedData(fslot.id, $event)" (loadeddata)="onVideoLoadedData(fslot.id, $event)"
+        (timeupdate)="onVideoLoadedData(fslot.id, $event)" (pause)="onVideoPaused(fslot.id)"
+        (waiting)="onVideoPaused(fslot.id)" (error)="onVideoError(fslot.id, $event)" autoplay playsinline muted>
       </video>
       }
 
@@ -386,16 +337,14 @@
       @let resolvedFslotImgUrl = rawFslotTarget ? (rawFslotTarget | mediaUrl | async) : null;
       @if (resolvedFslotImgUrl) {
       <img [src]="resolvedFslotImgUrl" (load)="onImageLoad($event)" (error)="onImageError($event)"
-        [attr.data-src]="resolvedFslotImgUrl"
-        [attr.data-minio-object]="displayImgEvent?.imgMinioObjectName"
-        [attr.data-raw-src]="rawFslotTarget"
-        class="w-100 h-100 object-fit-contain position-absolute top-0 start-0"
-        style="z-index: 4;"
-        [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)" alt=""
-        draggable="false" />
+        [attr.data-src]="resolvedFslotImgUrl" [attr.data-minio-object]="displayImgEvent?.imgMinioObjectName"
+        [attr.data-raw-src]="rawFslotTarget" class="w-100 h-100 object-fit-contain position-absolute top-0 start-0"
+        style="z-index: 4;" [class.feed-paused-grayscale]="isFeedPaused(fslot.camera.name)" alt="" draggable="false" />
       } @else if (!isSlotPlayingLiveVideo(fslot)) {
       @if (webRtcStates()[fslot.id] === 'connecting' || isLoadingEvents()) {
-      <div class="waiting-event-placeholder d-flex flex-column align-items-center justify-content-center text-white-50 position-absolute top-0 start-0 w-100 h-100" style="z-index: 3;">
+      <div
+        class="waiting-event-placeholder d-flex flex-column align-items-center justify-content-center text-white-50 position-absolute top-0 start-0 w-100 h-100"
+        style="z-index: 3;">
         <div class="placeholder-wave-container mb-2">
           <div class="placeholder-wave-bar"></div>
           <div class="placeholder-wave-bar"></div>

@@ -17,7 +17,7 @@ import { IEventRepository } from '../../../core/domain/repositories/event.reposi
 import { Camera } from '../../../core/domain/entities/camera.models';
 import { Host } from '../../../core/domain/entities/host.models';
 import { Analytic } from '../../../core/domain/entities/analytic.models';
-import { EventRecord, isTrafficAnalytic } from '../../../core/domain/entities/event.models';
+import { EventRecord, isExcludedEventAnalytic } from '../../../core/domain/entities/event.models';
 import { parseUtcDate } from '../../../core/utils/date-utils';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
 import { getCameraEffectiveStatus, getCameraStatusCssClass, getCameraStatusFilterLabel } from '../../../core/utils/camera-status.utils';
@@ -800,7 +800,7 @@ export class Monitoreo implements OnInit, OnDestroy, AfterViewInit {
 
         this.eventRepository.getById(docId).subscribe({
           next: (event) => {
-            if (!event || isTrafficAnalytic(event.analitica)) {
+            if (!event || isExcludedEventAnalytic(event.analitica)) {
               return;
             }
 

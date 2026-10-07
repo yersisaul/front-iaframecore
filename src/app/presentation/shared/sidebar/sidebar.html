@@ -7,7 +7,7 @@
         <span class="brand-title brand-title-main fw-extrabold">AZOR</span>
         <div class="d-flex align-items-baseline gap-1">
           <span class="brand-title brand-title-sub fw-bold">ANALYTICS</span>
-          <span class="brand-title brand-title-version fw-bold">v.{{ environment.version }}</span>
+          <span class="brand-title brand-title-version fw-bold">v{{ environment.version }}</span>
         </div>
       </div>
     </div>
@@ -17,8 +17,7 @@
     <!-- 1. Nodos -->
     @if (permissionsService.hasPermission('Hosts', 'ver')) {
     <li class="nav-item mb-2">
-      <a routerLink="/dashboard/nodos" routerLinkActive="active"
-        class="nav-link text-body fw-500 rounded"
+      <a routerLink="/dashboard/nodos" routerLinkActive="active" class="nav-link text-body fw-500 rounded"
         [title]="isCollapsed() ? 'Nodos' : ''">
         <div class="active-indicator"></div>
         <span class="icon-svg icon-nodos nav-icon"></span>
@@ -30,8 +29,7 @@
     <!-- 2. Cámaras -->
     @if (permissionsService.hasPermission('Cámaras', 'ver')) {
     <li class="nav-item mb-2">
-      <a routerLink="/dashboard/camaras" routerLinkActive="active"
-        class="nav-link text-body fw-500 rounded"
+      <a routerLink="/dashboard/camaras" routerLinkActive="active" class="nav-link text-body fw-500 rounded"
         [title]="isCollapsed() ? 'Cámaras' : ''">
         <div class="active-indicator"></div>
         <span class="icon-svg icon-camara nav-icon"></span>
@@ -42,14 +40,15 @@
 
     <!-- 3. Monitoreo -->
     <li class="nav-item mb-2">
-      <a routerLink="/dashboard/monitoreo" routerLinkActive="active"
-        class="nav-link text-body fw-500 rounded"
+      <a routerLink="/dashboard/monitoreo" routerLinkActive="active" class="nav-link text-body fw-500 rounded"
         [title]="isCollapsed() ? (unseenMonitoringEventsCount() > 0 ? 'Monitoreo (' + unseenMonitoringEventsCount() + ')' : 'Monitoreo') : ''">
         <div class="active-indicator"></div>
-        <div class="nav-icon-wrap position-relative d-inline-flex align-items-center justify-content-center flex-shrink-0">
+        <div
+          class="nav-icon-wrap position-relative d-inline-flex align-items-center justify-content-center flex-shrink-0">
           <span class="icon-svg icon-grid nav-icon"></span>
           @if (unseenMonitoringEventsCount() > 0) {
-          <span class="monitoring-dot position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+          <span
+            class="monitoring-dot position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
             <span class="visually-hidden">Nuevos eventos</span>
           </span>
           }
@@ -68,8 +67,7 @@
     <!-- 4. Horarios -->
     @if (permissionsService.hasPermission('Horarios', 'ver')) {
     <li class="nav-item mb-2">
-      <a routerLink="/dashboard/horarios" routerLinkActive="active"
-        class="nav-link text-body fw-500 rounded"
+      <a routerLink="/dashboard/horarios" routerLinkActive="active" class="nav-link text-body fw-500 rounded"
         [title]="isCollapsed() ? 'Horarios' : ''">
         <div class="active-indicator"></div>
         <span class="icon-svg icon-horarios nav-icon"></span>
@@ -82,8 +80,7 @@
     @if (permissionsService.hasPermission('Listas', 'ver')) {
     <li class="nav-item mb-2">
       <a style="cursor: pointer;" (click)="toggleListasSubmenu($event)"
-        class="nav-link text-body fw-500 rounded position-relative"
-        [class.active]="isListasActive()"
+        class="nav-link text-body fw-500 rounded position-relative" [class.active]="isListasActive()"
         [title]="isCollapsed() ? 'Listas de Control' : ''">
         <div class="active-indicator"></div>
         <span class="icon-svg icon-listas nav-icon"></span>
@@ -116,8 +113,7 @@
     <!-- 6. Metadatos -->
     <li class="nav-item mb-2">
       <a style="cursor: pointer;" (click)="toggleMetadataSubmenu($event)"
-        class="nav-link text-body fw-500 rounded position-relative"
-        [class.active]="isMetadataActive()"
+        class="nav-link text-body fw-500 rounded position-relative" [class.active]="isMetadataActive()"
         [title]="isCollapsed() ? 'Metadatos' : ''">
         <div class="active-indicator"></div>
         <span class="icon-svg icon-metadatos nav-icon"></span>
@@ -148,8 +144,7 @@
     <!-- 7. Dashboard -->
     @if (permissionsService.hasPermission('Dashboard', 'ver')) {
     <li class="nav-item mb-2">
-      <a routerLink="/dashboard/dashboards" routerLinkActive="active"
-        class="nav-link text-body fw-500 rounded"
+      <a routerLink="/dashboard/dashboards" routerLinkActive="active" class="nav-link text-body fw-500 rounded"
         [title]="isCollapsed() ? 'Dashboard' : ''">
         <div class="active-indicator"></div>
         <span class="icon-svg icon-dashboard nav-icon"></span>
@@ -160,8 +155,7 @@
 
     <!-- 8. Eventos -->
     <li class="nav-item mb-2">
-      <a routerLink="/dashboard/eventos" routerLinkActive="active"
-        class="nav-link text-body fw-500 rounded"
+      <a routerLink="/dashboard/eventos" routerLinkActive="active" class="nav-link text-body fw-500 rounded"
         [title]="isCollapsed() ? 'Eventos' : ''">
         <div class="active-indicator"></div>
         <span class="icon-svg icon-eventos nav-icon"></span>
@@ -172,8 +166,7 @@
     <!-- 9. Usuarios -->
     @if (permissionsService.hasPermission('Usuarios', 'ver') || permissionsService.hasPermission('Roles', 'ver')) {
     <li class="nav-item mb-2">
-      <a routerLink="/dashboard/usuarios" routerLinkActive="active"
-        class="nav-link text-body fw-500 rounded"
+      <a routerLink="/dashboard/usuarios" routerLinkActive="active" class="nav-link text-body fw-500 rounded"
         [title]="isCollapsed() ? 'Usuarios' : ''">
         <div class="active-indicator"></div>
         <span class="icon-svg icon-usuarios nav-icon"></span>

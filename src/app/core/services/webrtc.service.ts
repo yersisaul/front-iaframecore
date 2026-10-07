@@ -191,25 +191,56 @@ export class WebRtcService {
       });
     }
 
-    // 8. Enviar la Offer al endpoint WHEP de MediaMTX
-    console.log(`%c[WebRTC WHEP MediaMTX] Enviando POST a: ${whepUrl}`, 'color: #ff6348; font-weight: bold;', {
-      camera_id: streamInfo.camera_id,
-      sdp_length: pc.localDescription?.sdp?.length
-    });
+    // 8. Enviar la Offer al endpoint WHEP de MediaMTX con reintentos progresivos (tolerancia al arranque de la cámara)
+    const retryDelays = [0, 800, 1500, 2500, 5000];
+    let response: Response | null = null;
+    let lastError: any = null;
 
-    const response = await window.fetch(whepUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/sdp'
-      },
-      signal: AbortSignal.timeout(10000),
-      body: pc.localDescription?.sdp || ''
-    });
+    for (let attempt = 0; attempt < retryDelays.length; attempt++) {
+      const delay = retryDelays[attempt];
+      if (delay > 0) {
+        console.log(`%c[WebRTC WHEP MediaMTX] Cámara en proceso de inicialización (cámara: ${cameraId}). Reintentando en ${delay}ms (Intento ${attempt + 1}/${retryDelays.length})...`, 'color: #ffa502; font-weight: bold;');
+        await new Promise(r => setTimeout(r, delay));
+      }
 
-    if (response.status !== 201 && !response.ok) {
-      const errorMsg = await response.text().catch(() => response.statusText);
-      console.error(`[WebRTC Frontend] Error en WHEP POST (${whepUrl}): HTTP ${response.status} ${response.statusText} - ${errorMsg}`);
-      throw new Error(`Error en el servidor de medios MediaMTX WHEP: ${response.statusText} (${errorMsg})`);
+      try {
+        console.log(`%c[WebRTC WHEP MediaMTX] Enviando POST WHEP (Intento ${attempt + 1}/${retryDelays.length}) a: ${whepUrl}`, 'color: #ff6348; font-weight: bold;', {
+          camera_id: streamInfo.camera_id,
+          sdp_length: pc.localDescription?.sdp?.length
+        });
+
+        const res = await window.fetch(whepUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/sdp'
+          },
+          signal: AbortSignal.timeout(10000),
+          body: pc.localDescription?.sdp || ''
+        });
+
+        if (res.status === 201 || res.ok) {
+          response = res;
+          break;
+        } else {
+          const statusText = res.statusText || '';
+          lastError = new Error(`HTTP ${res.status} ${statusText}`);
+          if (attempt === retryDelays.length - 1) {
+            const errorMsg = await res.text().catch(() => statusText);
+            console.error(`[WebRTC Frontend] Error definitivo en WHEP POST (${whepUrl}): HTTP ${res.status} ${statusText} - ${errorMsg}`);
+            throw new Error(`Error en el servidor de medios MediaMTX WHEP: ${statusText} (${errorMsg})`);
+          }
+        }
+      } catch (err: any) {
+        lastError = err;
+        if (attempt === retryDelays.length - 1) {
+          console.error(`[WebRTC Frontend] Error definitivo al contactar WHEP (${whepUrl}):`, err);
+          throw err;
+        }
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error('No se pudo establecer conexión WHEP con el servidor de medios.');
     }
 
     // Guardar URL de sesión WHEP si viene en la cabecera Location (para DELETE al cerrar)

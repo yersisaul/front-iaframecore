@@ -38,9 +38,18 @@ const normalizedPath = dashboardPath.startsWith('/')
   ? dashboardPath
   : '/' + dashboardPath;
 
-const appEnvContent = `export const AppEnvironment = {
+const appEnvContent = `// Archivo generado automáticamente por generate-env.js
+export const AppEnvironment = {
   production: true,
-  version: '${appVersion}',
+
+  // Versión dinámica: resuelve en tiempo de ejecución (Docker/window.__env) con fallback a compilación
+  get version(): string | null {
+    if (typeof window !== 'undefined' && (window as any).__env && (window as any).__env['APP_VERSION'] !== undefined) {
+      return (window as any).__env['APP_VERSION'];
+    }
+    return ${appVersion ? `'${appVersion}'` : 'null'};
+  },
+
   debug: ${isDebug},
 
   enableBackendWorkarounds: true,

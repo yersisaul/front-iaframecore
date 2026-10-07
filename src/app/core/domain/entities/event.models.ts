@@ -101,3 +101,17 @@ export function isTrafficAnalytic(analytic: string | null | undefined): boolean 
   return normalized.includes('trafico') || normalized.includes('traffic');
 }
 
+export function isObjectPermanenceAnalytic(analytic: string | null | undefined): boolean {
+  if (!analytic) return false;
+  const normalized = analytic
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return normalized.includes('permanencia') || normalized.includes('permanence');
+}
+
+export function isExcludedEventAnalytic(analytic: string | null | undefined): boolean {
+  return isTrafficAnalytic(analytic) || isObjectPermanenceAnalytic(analytic);
+}
+

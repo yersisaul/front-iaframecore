@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of, EMPTY } from 'rxjs';
 import { map, catchError, expand, reduce, switchMap } from 'rxjs/operators';
 import { AppEnvironment } from '../../core/config/app-environment';
-import { EventFilters, EventFilterOptions, defaultEventFilterOptions, EventRecord, EventSubjectItem, isTrafficAnalytic } from '../../core/domain/entities/event.models';
+import { EventFilters, EventFilterOptions, defaultEventFilterOptions, EventRecord, EventSubjectItem, isExcludedEventAnalytic } from '../../core/domain/entities/event.models';
 import { IEventRepository, EventSearchResult } from '../../core/domain/repositories/event.repository';
 import { EventMapper } from '../mappers/event.mapper';
 import { OsResponse } from './dtos/opensearch-response.dto';
@@ -18,14 +18,23 @@ interface InternalEventSearchResult extends EventSearchResult {
 export class EventHttpRepository implements IEventRepository {
   constructor(private http: HttpClient) { }
 
-  private getTrafficExclusionClauses(): any[] {
+  private getExcludedAnalyticClauses(): any[] {
     return [
+      // Análisis de Tráfico
       { wildcard: { 'analitica': { value: '*trafico*', case_insensitive: true } } },
       { wildcard: { 'analitica.keyword': { value: '*trafico*', case_insensitive: true } } },
       { wildcard: { 'analitica': { value: '*traffic*', case_insensitive: true } } },
       { wildcard: { 'analitica.keyword': { value: '*traffic*', case_insensitive: true } } },
       { match_phrase: { 'analitica': 'Analisis de Trafico' } },
-      { match_phrase: { 'analitica': 'Análisis de Tráfico' } }
+      { match_phrase: { 'analitica': 'Análisis de Tráfico' } },
+      // Permanencia de Objeto
+      { wildcard: { 'analitica': { value: '*permanencia*', case_insensitive: true } } },
+      { wildcard: { 'analitica.keyword': { value: '*permanencia*', case_insensitive: true } } },
+      { wildcard: { 'analitica': { value: '*permanence*', case_insensitive: true } } },
+      { wildcard: { 'analitica.keyword': { value: '*permanence*', case_insensitive: true } } },
+      { match_phrase: { 'analitica': 'Permanencia de objeto' } },
+      { match_phrase: { 'analitica': 'Permanencia de Objeto' } },
+      { match_phrase: { 'analitica': 'permanencia_de_objeto' } }
     ];
   }
 
@@ -33,7 +42,7 @@ export class EventHttpRepository implements IEventRepository {
     return {
       bool: {
         filter: mustFilters.length > 0 ? mustFilters : [{ match_all: {} }],
-        must_not: this.getTrafficExclusionClauses()
+        must_not: this.getExcludedAnalyticClauses()
       }
     };
   }
@@ -426,7 +435,7 @@ export class EventHttpRepository implements IEventRepository {
     if (sourceAggs.analitica_vals && sourceAggs.analitica_vals.buckets) {
       options.analiticas = sourceAggs.analitica_vals.buckets
         .map((b: any) => b.key)
-        .filter((a: string) => !!a && !isTrafficAnalytic(a));
+        .filter((a: string) => !!a && !isExcludedEventAnalytic(a));
     }
     if (sourceAggs.objeto_vals && sourceAggs.objeto_vals.buckets) {
       const rawObjs: string[] = sourceAggs.objeto_vals.buckets.map((b: any) => b.key);

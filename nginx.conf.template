@@ -37,6 +37,15 @@ server {
         text/x-component
         text/x-cross-domain-policy;
 
+    # Runtime Environment Config (siempre fresco, sin caché)
+    location = /assets/env.js {
+        root /usr/share/nginx/html;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires 0 always;
+        try_files $uri =404;
+    }
+
     # Static assets caching (Angular fingerprinted bundles)
     location ~* \.(?:ico|css|js|gif|jpe?g|png|svg|woff2?|eot|ttf)$ {
         root /usr/share/nginx/html;

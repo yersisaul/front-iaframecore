@@ -17,11 +17,29 @@ else
   export API_KEY_HEADER=""
 fi
 
-# 3. Reemplazar variables dinámicas en el template de Nginx
+# 3. Generar archivo de configuración de runtime para el frontend de Angular
+echo "📦 Generando runtime env.js para la versión del cliente..."
+ENV_JS_PATH="/usr/share/nginx/html/assets/env.js"
+mkdir -p /usr/share/nginx/html/assets
+
+if [ -n "$APP_VERSION" ]; then
+  VERSION_JS="\"$APP_VERSION\""
+else
+  VERSION_JS="null"
+fi
+
+cat <<EOF > "$ENV_JS_PATH"
+(function(window) {
+  window.__env = window.__env || {};
+  window.__env.APP_VERSION = ${VERSION_JS};
+})(this);
+EOF
+
+# 4. Reemplazar variables dinámicas en el template de Nginx
 echo "🔧 Generando configuración de Nginx de forma dinámica..."
 
 envsubst '$API_HOST $OPENSEARCH_HOST $OPENSEARCH_AUTH_HEADER $API_KEY_HEADER' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
 
-# 4. Continuar con la ejecución de Nginx
+# 5. Continuar con la ejecución de Nginx
 echo "🚀 Iniciando Nginx..."
 exec nginx -g "daemon off;"

@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { Observable, of, Subscription } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
-import { EventRecord, EventFilters, EventFilterOptions, defaultEventFilters, defaultEventFilterOptions, isTrafficAnalytic } from '../domain/entities/event.models';
+import { EventRecord, EventFilters, EventFilterOptions, defaultEventFilters, defaultEventFilterOptions, isExcludedEventAnalytic } from '../domain/entities/event.models';
 import { SearchEventsUseCase } from '../domain/use-cases/search-events.use-case';
 import { parseUtcDate } from '../utils/date-utils';
 
@@ -43,8 +43,8 @@ export class EventService {
   matchesEventFilters(record: EventRecord, filters: EventFilters): boolean {
     if (!record || !filters) return true;
 
-    // Exclusión global: los eventos de análisis de tráfico nunca coinciden con los eventos del sistema
-    if (isTrafficAnalytic(record.analitica)) {
+    // Exclusión global: analíticas no mostradas en eventos (tráfico, permanencia de objeto, etc.)
+    if (isExcludedEventAnalytic(record.analitica)) {
       return false;
     }
 
@@ -138,7 +138,7 @@ export class EventService {
   }
 
   incorporateEventIntoFilterOptions(event: EventRecord): void {
-    if (!event || isTrafficAnalytic(event.analitica)) return;
+    if (!event || isExcludedEventAnalytic(event.analitica)) return;
     this.filterOptions.update(opts => {
       const current = { ...opts };
       let changed = false;
@@ -177,7 +177,7 @@ export class EventService {
   }
 
   addNewEvent(newEvent: EventRecord): void {
-    if (!newEvent || isTrafficAnalytic(newEvent.analitica)) {
+    if (!newEvent || isExcludedEventAnalytic(newEvent.analitica)) {
       return;
     }
 

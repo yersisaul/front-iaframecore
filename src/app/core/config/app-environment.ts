@@ -1,6 +1,15 @@
+// Archivo generado automáticamente por generate-env.js
 export const AppEnvironment = {
   production: true,
-  version: '2.0.0',
+
+  // Versión dinámica: resuelve en tiempo de ejecución (Docker/window.__env) con fallback a compilación
+  get version(): string | null {
+    if (typeof window !== 'undefined' && (window as any).__env && (window as any).__env['APP_VERSION'] !== undefined) {
+      return (window as any).__env['APP_VERSION'];
+    }
+    return '2.0.0';
+  },
+
   debug: true,
 
   enableBackendWorkarounds: true,
