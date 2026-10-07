@@ -28,6 +28,7 @@ const MOCK_HOSTS = [
 import { IHostRepository } from '../../../core/domain/repositories/host.repository';
 import { HostHttpRepository } from '../../../data/repositories/host-http.repository';
 import { HostService } from '../../../core/services/host.service';
+import { HostMapper } from '../../../core/domain/entities/host.models';
 import { ICameraRepository } from '../../../core/domain/repositories/camera.repository';
 import { CameraHttpRepository } from '../../../data/repositories/camera-http.repository';
 import { CameraService } from '../../../core/services/camera.service';
@@ -63,8 +64,9 @@ describe('Nodos', () => {
     const cameraService = TestBed.inject(CameraService);
     vi.spyOn(cameraService, 'getAllCameras').mockReturnValue(of([]));
 
-    // Mock getHeartbeat to prevent HTTP requests for tests
+    // Mock getHeartbeat and loadReliabilityHosts to prevent unexpected HTTP requests for tests
     const hostService = TestBed.inject(HostService);
+    vi.spyOn(hostService, 'loadReliabilityHosts').mockReturnValue(of([]));
     vi.spyOn(hostService, 'getHeartbeat').mockImplementation((fp: string) => {
       if (fp === 'FP-WIN-1') {
         return throwError(() => new Error('Host offline'));
@@ -333,6 +335,28 @@ describe('Nodos', () => {
     component.closeGpuPopover(10);
     await wait(30);
     expect(component.activeGpuPopover()).toBeNull();
+  });
+
+  it('should render transfer icon with appropriate connected classes', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    flushHosts();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const hostService = TestBed.inject(HostService);
+    hostService.allHosts.set([
+      { ...HostMapper.toDomain(MOCK_HOSTS[0]), connected: true },
+      { ...HostMapper.toDomain(MOCK_HOSTS[1]), connected: false }
+    ]);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const transferIcons = fixture.nativeElement.querySelectorAll('.host-transfer-icon');
+    expect(transferIcons.length).toBe(2);
+    expect(transferIcons[0].classList.contains('transfer-connected-true')).toBe(true);
+    expect(transferIcons[1].classList.contains('transfer-connected-false')).toBe(true);
   });
 });
 

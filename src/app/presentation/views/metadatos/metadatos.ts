@@ -518,7 +518,28 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
 
   onImageError(event: Event): void {
     const target = event.target as HTMLImageElement;
-    if (target && target.src && target.src !== window.location.href) {
+    if (!target || !target.src || target.src === window.location.href) {
+      return;
+    }
+
+    const currentRetries = parseInt(target.getAttribute('data-retry-count') || '0', 10);
+    const maxRetries = 2;
+
+    if (currentRetries < maxRetries) {
+      target.setAttribute('data-retry-count', String(currentRetries + 1));
+      const rawSrc = target.getAttribute('data-src') || target.src;
+      const delayMs = (currentRetries + 1) * 600;
+
+      setTimeout(() => {
+        try {
+          const url = new URL(rawSrc, window.location.href);
+          url.searchParams.set('_r', `${Date.now()}`);
+          target.src = url.toString();
+        } catch {
+          target.src = `${rawSrc}${rawSrc.includes('?') ? '&' : '?'}_r=${Date.now()}`;
+        }
+      }, delayMs);
+    } else {
       target.style.display = 'none';
     }
   }
@@ -527,6 +548,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     const target = event.target as HTMLElement;
     if (target) {
       target.style.display = '';
+      target.removeAttribute('data-retry-count');
     }
   }
 

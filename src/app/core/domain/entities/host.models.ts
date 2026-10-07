@@ -58,6 +58,17 @@ export interface Host {
   gpuInfo: HostGpuInfo | null;
   metrics?: HostMetrics | null;
   license?: HostLicense | null;
+  connected?: boolean | null;
+}
+
+export interface ReliabilityHostStatusDTO {
+  fingerprint_host: string;
+  hostname: string;
+  status: string;
+  last_seen: string;
+  connected: boolean;
+  worker_id?: string | null;
+  seconds_since_last_message?: number | null;
 }
 
 export interface HostDTO {

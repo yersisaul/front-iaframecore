@@ -876,8 +876,13 @@
 }
 
 .modal-camera-status-dot.pending {
-  background-color: #00e5ff;
-  box-shadow: 0 0 0.35rem rgba(0, 229, 255, 0.6);
+  background-color: #0284c7;
+  box-shadow: 0 0 0.35rem rgba(2, 132, 199, 0.6);
+}
+
+[data-bs-theme="dark"] .modal-camera-status-dot.pending {
+  background-color: #22d3ee;
+  box-shadow: 0 0 0.35rem rgba(34, 211, 238, 0.6);
 }
 
 .modal-camera-status-dot.offline {

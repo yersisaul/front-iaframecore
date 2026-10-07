@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
-import { Host, HostDTO, HostMapper, HostMetrics } from '../../core/domain/entities/host.models';
+import { Host, HostDTO, HostMapper, HostMetrics, ReliabilityHostStatusDTO } from '../../core/domain/entities/host.models';
 import { IHostRepository } from '../../core/domain/repositories/host.repository';
 import { AppEnvironment } from '../../core/config/app-environment';
 import { parseUtcDate } from '../../core/utils/date-utils';
@@ -86,6 +86,15 @@ export class HostHttpRepository implements IHostRepository {
 
   allowReenroll(fingerprint: string): Observable<any> {
     return this.http.post<any>(`${AppEnvironment.apiUrl}/frontend/hosts/${fingerprint}/allow_reenroll`, {});
+  }
+
+  getReliabilityHosts(): Observable<ReliabilityHostStatusDTO[]> {
+    return this.http.get<ReliabilityHostStatusDTO[]>(`${AppEnvironment.apiUrl}/frontend/reliability/hosts`).pipe(
+      catchError(err => {
+        console.error('Error in HostHttpRepository.getReliabilityHosts:', err);
+        return of([]);
+      })
+    );
   }
 
   delete(fingerprint: string): Observable<void> {

@@ -1,0 +1,23 @@
+<div class="reliability-widget-container">
+  <!-- Botón Disparador Flotante (Campana) -->
+  <button type="button"
+    class="btn-reliability-trigger d-flex align-items-center justify-content-center position-relative"
+    [class.bell-ringing]="isRinging()"
+    [class.has-unresolved]="unresolvedCount() > 0"
+    (click)="onTriggerClick()"
+    title="Centro de Alertas de Fiabilidad">
+
+    <!-- SVG Campana Estilizado -->
+    <svg class="bell-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </svg>
+
+    <!-- Badge Numérico Contador de Alertas No Resueltas -->
+    @if (unresolvedCount() > 0) {
+    <span class="trigger-badge position-absolute d-inline-flex align-items-center justify-content-center">
+      {{ unresolvedCount() > 99 ? '99+' : unresolvedCount() }}
+    </span>
+    }
+  </button>
+</div>

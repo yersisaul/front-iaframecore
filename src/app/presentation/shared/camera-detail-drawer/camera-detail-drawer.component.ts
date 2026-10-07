@@ -566,6 +566,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
     } else {
       const rawGeo = this.drawnGeometryData();
       cleanGeometricObjects = {
+        ...(rawGeo?.canvas_resolution ? { canvas_resolution: rawGeo.canvas_resolution } : {}),
         polygons: Array.isArray(rawGeo?.polygons) ? rawGeo.polygons.map((p: any) => {
           const cleaned = { ...p };
           delete cleaned.camera_id;

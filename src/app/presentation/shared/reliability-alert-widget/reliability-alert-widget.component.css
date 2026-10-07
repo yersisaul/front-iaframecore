@@ -1,0 +1,120 @@
+/* ==========================================================================
+   Widget Flotante de Alertas de Fiabilidad (Bottom-Right)
+   ========================================================================== */
+
+:host {
+  display: block;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1040;
+  pointer-events: none;
+}
+
+.reliability-widget-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  pointer-events: auto;
+  position: relative;
+}
+
+/* ── Botón Disparador Flotante (Campana) ── */
+.btn-reliability-trigger {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
+  color: var(--text-secondary, #64748b);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.12), 0 2px 6px -1px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.btn-reliability-trigger:hover {
+  transform: translateY(-2px) scale(1.05);
+  color: var(--primary, #0d6efd);
+  border-color: rgba(var(--primary-rgb, 13, 110, 253), 0.35);
+  box-shadow: 0 12px 28px -4px rgba(var(--primary-rgb, 13, 110, 253), 0.2), 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.btn-reliability-trigger.has-unresolved {
+  color: var(--primary, #0d6efd);
+}
+
+.bell-icon {
+  width: 22px;
+  height: 22px;
+  transition: transform 0.2s ease;
+}
+
+.btn-reliability-trigger:hover .bell-icon {
+  transform: scale(1.08);
+}
+
+/* Animación de Tintineo (Shake) al recibir alerta por WebSocket */
+.btn-reliability-trigger.bell-ringing .bell-icon {
+  animation: bellRing 0.8s ease-in-out infinite;
+  transform-origin: top center;
+  color: #ef4444;
+}
+
+@keyframes bellRing {
+  0% { transform: rotate(0); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(10deg); }
+  60% { transform: rotate(-8deg); }
+  75% { transform: rotate(4deg); }
+  100% { transform: rotate(0); }
+}
+
+/* Badge Contador de Alertas Pendientes */
+.trigger-badge {
+  top: -3px;
+  right: -3px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background-color: #ef4444;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  border: 2px solid var(--bg-surface, #ffffff);
+  box-shadow: 0 2px 5px rgba(239, 68, 68, 0.4);
+  animation: badgePulse 2s infinite;
+}
+
+@keyframes badgePulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+/* ==========================================================================
+   Tema Oscuro (Dark Theme)
+   ========================================================================== */
+:host-context([data-bs-theme="dark"]) .btn-reliability-trigger,
+:host-context(.dark) .btn-reliability-trigger {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+}
+
+:host-context([data-bs-theme="dark"]) .btn-reliability-trigger:hover,
+:host-context(.dark) .btn-reliability-trigger:hover {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 0 12px 28px -4px rgba(56, 189, 248, 0.25);
+}
+
+:host-context([data-bs-theme="dark"]) .trigger-badge,
+:host-context(.dark) .trigger-badge {
+  border-color: #1e293b;
+}

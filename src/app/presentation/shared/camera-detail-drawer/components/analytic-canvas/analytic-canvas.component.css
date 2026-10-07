@@ -108,9 +108,9 @@
 /* --- Imagen de Fondo del Evento --- */
 .camera-snapshot-img {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
-  object-fit: contain;
+  object-fit: fill;
   border-radius: 0.75rem !important;
   pointer-events: none;
   user-select: none;

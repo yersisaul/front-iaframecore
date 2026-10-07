@@ -14,6 +14,10 @@ import { IEventRepository } from '../../../core/domain/repositories/event.reposi
 import { EventHttpRepository } from '../../../data/repositories/event-http.repository';
 import { ICameraRepository } from '../../../core/domain/repositories/camera.repository';
 import { CameraHttpRepository } from '../../../data/repositories/camera-http.repository';
+import { IHostRepository } from '../../../core/domain/repositories/host.repository';
+import { HostHttpRepository } from '../../../data/repositories/host-http.repository';
+import { IReliabilityAlertRepository } from '../../../core/domain/repositories/reliability-alert.repository';
+import { ReliabilityAlertHttpRepository } from '../../../data/repositories/reliability-alert-http.repository';
 import { WebsocketService } from '../../../core/services/websocket.service';
 
 describe('DashboardLayout', () => {
@@ -39,6 +43,8 @@ describe('DashboardLayout', () => {
         { provide: IMetadataRepository, useClass: OpenSearchRepository },
         { provide: IEventRepository, useClass: EventHttpRepository },
         { provide: ICameraRepository, useClass: CameraHttpRepository },
+        { provide: IHostRepository, useClass: HostHttpRepository },
+        { provide: IReliabilityAlertRepository, useClass: ReliabilityAlertHttpRepository },
         { provide: WebsocketService, useValue: mockWebsocketService }
       ]
     }).compileComponents();

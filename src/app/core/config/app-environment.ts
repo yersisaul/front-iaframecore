@@ -1,7 +1,7 @@
 export const AppEnvironment = {
   production: true,
   version: '2.0.0',
-  debug: false,
+  debug: true,
 
   enableBackendWorkarounds: true,
 

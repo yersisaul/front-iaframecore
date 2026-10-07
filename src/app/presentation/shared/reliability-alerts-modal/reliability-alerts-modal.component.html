@@ -1,0 +1,363 @@
+<!-- ==========================================================================
+     Modal de Alertas de Fiabilidad (Diseño Original Exacto)
+     ========================================================================== -->
+@if (alertService.isModalOpen()) {
+<div class="alert-modal-overlay d-flex align-items-center justify-content-center" (click)="closeModal()"
+  aria-modal="true" role="dialog">
+  <div class="alert-modal-card d-flex flex-column rounded-4" (click)="onCardClick($event)">
+
+    <!-- Cabecera del Modal -->
+    <div class="alert-modal-header p-4 pb-3 d-flex flex-column gap-3">
+      <div class="d-flex align-items-start justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <span class="icon-svg icon-warning flex-shrink-0"
+            style="width: 22px; height: 22px; color: var(--primary);"></span>
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <h4 class="fw-bold mb-0 fs-5 text-body">
+                Alertas de Fiabilidad
+                @if (currentSelectedHost()) {
+                <span>del Nodo "{{ currentSelectedHost()?.hostname || getHostName(currentSelectedHost()?.fingerprint)
+                  }}"</span>
+                } @else {
+                <span>del Sistema</span>
+                }
+              </h4>
+            </div>
+            <p class="text-muted small mb-0 mt-1" style="font-size: 0.8rem;">
+              Registro de eventos de conexión, sincronización y estabilidad del host
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fila de Identidad del Nodo (Selector de Nodo a la Izquierda del Fingerprint Copiable) -->
+      <div class="alert-modal-subbar d-flex flex-wrap align-items-center gap-2 pt-1">
+        <!-- Selector / Dropdown de Nodos (Diseño Píldora Original) -->
+        <div class="filter-dropdown-wrapper position-relative alert-type-dropdown-wrapper">
+          <button type="button" class="btn btn-filter-dropdown alert-type-dropdown-btn d-flex align-items-center gap-2"
+            [class.active]="alertService.activeHostFilter() !== null" (click)="toggleDropdown('node', $event)"
+            aria-label="Filtrar por nodo">
+            <span class="icon-svg icon-nodos" style="width: 12px; height: 12px;"></span>
+            <span>{{ getSelectedHostLabel() }}</span>
+            <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+              [class.rotated]="activeDropdown() === 'node'" style="width: 10px; height: 10px;"></span>
+          </button>
+
+          @if (activeDropdown() === 'node') {
+          <div class="filter-dropdown-menu alert-type-dropdown-menu shadow-lg" (click)="$event.stopPropagation()">
+            <!-- Barra de Búsqueda Interna de Nodos -->
+            <div class="dropdown-search-header p-2">
+              <div class="node-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1">
+                <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
+                <input #nodeSearchInput type="text" class="camera-search-input node-search-input border-0 bg-transparent w-100"
+                  placeholder="Buscar nodo..." [value]="nodeSearch()" (input)="nodeSearch.set(nodeSearchInput.value)"
+                  (click)="$event.stopPropagation()" autocomplete="off" />
+                @if (nodeSearch()) {
+                <button type="button" class="btn-ghost p-0 d-flex" style="opacity: 0.5; line-height: 1;"
+                  (click)="nodeSearchInput.value = ''; nodeSearch.set(''); $event.stopPropagation()"
+                  title="Limpiar búsqueda">
+                  <span style="font-size: 0.75rem;">✕</span>
+                </button>
+                }
+              </div>
+            </div>
+
+            <!-- Lista Scrolleable de Opciones de Nodos -->
+            <div class="dropdown-items-scroll scrollable-menu p-1">
+              <!-- Opción: Todos los nodos -->
+              <button type="button"
+                class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded-2"
+                [class.active]="alertService.activeHostFilter() === null" (click)="selectHost(null)">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="icon-svg icon-nodos" style="width: 13px; height: 13px;"></span>
+                  <span>Todos los nodos</span>
+                </div>
+                <span class="badge rounded-pill bg-body-secondary text-body-secondary small">
+                  {{ alertService.allAlerts().length }}
+                </span>
+              </button>
+
+              <!-- Lista de Nodos Filtrados -->
+              @if (filteredNodeOptions().length === 0) {
+              <div class="text-muted small text-center py-2 opacity-60">Sin nodos encontrados</div>
+              }
+              @for (h of filteredNodeOptions(); track h.fingerprint) {
+              <button type="button"
+                class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded-2"
+                [class.active]="alertService.activeHostFilter() === h.fingerprint" (click)="selectHost(h.fingerprint)">
+                <div class="d-flex align-items-center gap-2 overflow-hidden text-truncate">
+                  <span class="stat-dot" [class.dot-resolved]="h.status === 'online'"
+                    [class.dot-unresolved]="h.status !== 'online'"></span>
+                  <span class="text-truncate" style="max-width: 170px;">{{ h.hostname || h.fingerprint }}</span>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                  @if (getNodeAlertsCount(h.fingerprint) > 0) {
+                  <span class="badge rounded-pill bg-danger-subtle text-danger font-monospace"
+                    style="font-size: 0.65rem; padding: 2px 6px;">
+                    {{ getNodeAlertsCount(h.fingerprint) }}
+                  </span>
+                  }
+                  @if (alertService.activeHostFilter() === h.fingerprint) {
+                  <span class="icon-svg icon-check text-primary flex-shrink-0"
+                    style="width: 12px; height: 12px;"></span>
+                  }
+                </div>
+              </button>
+              }
+            </div>
+          </div>
+          }
+        </div>
+
+        @if (currentSelectedHost()?.fingerprint; as hostFp) {
+        <span class="badge-fp-copy font-monospace d-inline-flex align-items-center gap-2 cursor-pointer"
+          (click)="copyAlertId(hostFp, $event)" [title]="'Clic para copiar fingerprint: ' + hostFp">
+          <span class="icon-svg icon-fingerprint" style="width: 13px; height: 13px;"></span>
+          <span>{{ hostFp }}</span>
+          @if (copiedAlertId() === hostFp) {
+          <span class="text-success fw-bold ms-1">¡Copiado!</span>
+          }
+        </span>
+        }
+      </div>
+    </div>
+
+    <!-- Barra de Filtros Internos del Modal (Con Contadores Integrados y Bordes Definidos) -->
+    <div class="alert-modal-filters-bar px-4 py-2.5 d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <!-- 1. Filtro Estado de Resolución (Segmented Control / Toggle) -->
+        <div class="btn-group btn-group-sm alert-filter-segmented" role="group" aria-label="Filtro de resolución">
+          <button type="button" class="btn btn-segmented" [class.active]="alertStatusFilter() === 'all'"
+            (click)="alertStatusFilter.set('all')">
+            Todos <span class="filter-count-badge ms-1">({{ scopedCounts().total }})</span>
+          </button>
+          <button type="button" class="btn btn-segmented btn-seg-unresolved"
+            [class.active]="alertStatusFilter() === 'unresolved'" (click)="alertStatusFilter.set('unresolved')">
+            <span class="stat-dot dot-unresolved me-1"></span> Pendientes <span class="filter-count-badge ms-1">({{
+              scopedCounts().unresolved }})</span>
+          </button>
+          <button type="button" class="btn btn-segmented btn-seg-resolved"
+            [class.active]="alertStatusFilter() === 'resolved'" (click)="alertStatusFilter.set('resolved')">
+            <span class="stat-dot dot-resolved me-1"></span> Resueltas <span class="filter-count-badge ms-1">({{
+              scopedCounts().resolved }})</span>
+          </button>
+        </div>
+
+        <!-- 2. Filtro Severidad / Clasificación (Segmented Control / Toggle) -->
+        <div class="btn-group btn-group-sm alert-filter-segmented" role="group" aria-label="Filtro de severidad">
+          <button type="button" class="btn btn-segmented" [class.active]="alertSeverityFilter() === 'all'"
+            (click)="alertSeverityFilter.set('all')">
+            Todas <span class="filter-count-badge ms-1">({{ scopedCounts().total }})</span>
+          </button>
+          <button type="button" class="btn btn-segmented btn-seg-critical"
+            [class.active]="alertSeverityFilter() === 'critical'" (click)="alertSeverityFilter.set('critical')">
+            <span class="stat-dot dot-critical me-1"></span> Críticas <span class="filter-count-badge ms-1">({{
+              scopedCounts().critical }})</span>
+          </button>
+          <button type="button" class="btn btn-segmented btn-seg-warning"
+            [class.active]="alertSeverityFilter() === 'warning'" (click)="alertSeverityFilter.set('warning')">
+            <span class="stat-dot dot-warning me-1"></span> Advertencias <span class="filter-count-badge ms-1">({{
+              scopedCounts().warning }})</span>
+          </button>
+          <button type="button" class="btn btn-segmented btn-seg-info" [class.active]="alertSeverityFilter() === 'info'"
+            (click)="alertSeverityFilter.set('info')">
+            <span class="stat-dot dot-info me-1"></span> Info <span class="filter-count-badge ms-1">({{
+              scopedCounts().info }})</span>
+          </button>
+        </div>
+
+        <!-- 3. Selector por Tipo de Alerta (Custom Dropdown Premium) -->
+        @if (availableAlertTypes().length > 1) {
+        <div class="filter-dropdown-wrapper position-relative alert-type-dropdown-wrapper">
+          <button type="button" class="btn btn-filter-dropdown alert-type-dropdown-btn d-flex align-items-center gap-2"
+            [class.active]="alertTypeFilter() !== 'all'" (click)="toggleDropdown('alertType', $event)"
+            aria-label="Filtrar por tipo de alerta">
+            <span class="icon-svg icon-filter filter-icon" style="width: 12px; height: 12px;"></span>
+            <span>{{ getSelectedAlertTypeLabel() }}</span>
+            <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
+              [class.rotated]="activeDropdown() === 'alertType'" style="width: 10px; height: 10px;"></span>
+          </button>
+
+          @if (activeDropdown() === 'alertType') {
+          <div class="filter-dropdown-menu alert-type-dropdown-menu shadow-lg" (click)="$event.stopPropagation()">
+            <div class="dropdown-items-scroll scrollable-menu p-1">
+              <button type="button"
+                class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded-2"
+                [class.active]="alertTypeFilter() === 'all'"
+                (click)="alertTypeFilter.set('all'); activeDropdown.set(null)">
+                <span>Todos los tipos</span>
+                @if (alertTypeFilter() === 'all') {
+                <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+                }
+              </button>
+              @for (t of availableAlertTypes(); track t.value) {
+              <button type="button"
+                class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 rounded-2"
+                [class.active]="alertTypeFilter() === t.value"
+                (click)="alertTypeFilter.set(t.value); activeDropdown.set(null)">
+                <span>{{ t.label }}</span>
+                @if (alertTypeFilter() === t.value) {
+                <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
+                }
+              </button>
+              }
+            </div>
+          </div>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- Acciones Rápidas de Filtro -->
+      @if (alertStatusFilter() !== 'all' || alertSeverityFilter() !== 'all' || alertTypeFilter() !== 'all') {
+      <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 text-primary fw-medium"
+        (click)="resetFilters()">
+        Restablecer filtros
+      </button>
+      }
+    </div>
+
+    <!-- Cuerpo Scrolleable del Modal -->
+    <div class="alert-modal-body p-4 flex-grow-1 overflow-y-auto">
+
+      <!-- Estado de Carga (Skeletons) -->
+      @if (alertService.isLoading()) {
+      <div class="d-flex flex-column gap-3">
+        @for (i of [1, 2, 3, 4]; track i) {
+        <div class="alert-skeleton-card p-4 rounded-4 d-flex flex-column gap-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <div class="skeleton-pill" style="width: 120px; height: 20px;"></div>
+              <div class="skeleton-pill" style="width: 70px; height: 20px;"></div>
+            </div>
+            <div class="skeleton-pill" style="width: 140px; height: 16px;"></div>
+          </div>
+          <div class="skeleton-line" style="width: 85%; height: 14px;"></div>
+        </div>
+        }
+      </div>
+      }
+
+      <!-- Estado de Error -->
+      @else if (alertService.error()) {
+      <div class="alert-error-panel p-4 rounded-4 d-flex align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <span class="icon-svg icon-warning text-danger" style="width: 20px; height: 20px;"></span>
+          <span class="text-body small">{{ alertService.error() }}</span>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3"
+          (click)="alertService.loadGlobalAlerts(true)">
+          Reintentar
+        </button>
+      </div>
+      }
+
+      <!-- Lista de Alertas -->
+      @else if (filteredAlerts().length > 0) {
+      <div class="alerts-cards-list d-flex flex-column gap-3">
+        @for (alert of filteredAlerts(); track alert.id) {
+        <div class="alert-item-card p-4 rounded-4 d-flex flex-column gap-2"
+          [class.card-critical]="alert.severity === 'critical'" [class.card-warning]="alert.severity === 'warning'"
+          [class.card-info]="alert.severity === 'info'" [class.card-resolved]="alert.isResolved">
+
+          <!-- Fila 1: Tipo + Badge de Severidad + Nodo(s) (Izquierda) | Rango de Fechas & Estado (Derecha) -->
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <!-- Tipo de Alerta: Título Tipográfico Diseñado -->
+              <span class="alert-type-title">{{ alert.typeLabel }}</span>
+
+              <!-- Badge: Clasificación / Severidad a la derecha del Tipo -->
+              <span class="badge-alert-severity" [class.sev-critical]="alert.severity === 'critical'"
+                [class.sev-warning]="alert.severity === 'warning'" [class.sev-info]="alert.severity === 'info'">
+                {{ getAlertSeverityLabel(alert.severity) }}
+              </span>
+
+              <!-- Badge de Nodos Afectados (Si es incidencia global/múltiple o nodo individual) -->
+              @if (!alertService.activeHostFilter()) {
+              @if (alert.fingerprintHost) {
+              <span class="badge rounded-pill bg-body-secondary text-body-secondary font-monospace"
+                style="font-size: 0.68rem; padding: 2px 7px;">
+                <span class="icon-svg icon-nodos me-1" style="width: 10px; height: 10px;"></span>
+                {{ getHostName(alert.fingerprintHost) }}
+              </span>
+              } @else if (getAlertAffectedFingerprints(alert).length > 1) {
+              <span class="badge rounded-pill bg-danger-subtle text-danger font-monospace"
+                style="font-size: 0.68rem; padding: 2px 7px;" [title]="getAlertAffectedFingerprints(alert).join(', ')">
+                <span class="icon-svg icon-nodos me-1" style="width: 10px; height: 10px;"></span>
+                {{ getAlertAffectedFingerprints(alert).length }} nodos afectados
+              </span>
+              }
+              } @else if (!alert.fingerprintHost && getAlertAffectedFingerprints(alert).length > 1) {
+              <span class="badge rounded-pill bg-danger-subtle text-danger font-monospace"
+                style="font-size: 0.68rem; padding: 2px 7px;">
+                Incidencia global ({{ getAlertAffectedFingerprints(alert).length }} nodos)
+              </span>
+              }
+            </div>
+
+            <!-- Rango de Fechas con Estado Integrado -->
+            <div class="alert-time-wrapper d-inline-flex align-items-center gap-2 font-monospace">
+              <span class="icon-svg icon-clock text-muted" style="width: 12px; height: 12px;"></span>
+              <span class="text-muted">{{ alert.createdAt | date:'dd/MM/yyyy HH:mm:ss' }} — </span>
+              @if (alert.isResolved && alert.resolvedAt) {
+              <span class="alert-date-resolved fw-semibold">
+                {{ alert.resolvedAt | date:'dd/MM/yyyy HH:mm:ss' }}
+              </span>
+              } @else {
+              <span class="alert-date-unresolved fw-semibold">
+                Pendiente
+              </span>
+              }
+            </div>
+          </div>
+
+          <!-- Fila 2: Mensaje de la Alerta -->
+          <div class="alert-message-text text-body fw-medium lh-base pt-1" style="font-size: 0.88rem;">
+            {{ alert.message }}
+          </div>
+
+        </div>
+        }
+      </div>
+      }
+
+      <!-- Empty State: Sin alertas -->
+      @else if (scopedAlerts().length === 0) {
+      <div class="text-center py-5 d-flex flex-column align-items-center justify-content-center gap-2">
+        <span class="icon-svg icon-shield text-success opacity-75 mb-2" style="width: 36px; height: 36px;"></span>
+        <h6 class="fw-bold mb-1 fs-6 text-body">
+          {{ currentSelectedHost() ? 'Nodo sin incidencias' : 'Sistema sin incidencias' }}
+        </h6>
+        <p class="text-muted small mb-0" style="max-width: 380px;">
+          {{ currentSelectedHost() ? 'Este nodo está operando de forma estable y no tiene alertas de fiabilidad
+          registradas en el sistema.' : 'Todos los nodos del sistema están operando de forma estable sin alertas
+          pendientes.' }}
+        </p>
+      </div>
+      }
+
+      <!-- Empty State: Sin resultados de filtro -->
+      @else {
+      <div class="text-center py-5 d-flex flex-column align-items-center justify-content-center gap-2">
+        <span class="icon-svg icon-filter text-muted opacity-40 mb-2" style="width: 36px; height: 36px;"></span>
+        <h6 class="fw-bold mb-1 fs-6 text-body">No se encontraron alertas</h6>
+        <p class="text-muted small mb-0" style="max-width: 360px;">
+          Ninguna alerta coincide con los filtros seleccionados.
+        </p>
+      </div>
+      }
+
+    </div>
+
+    <!-- Pie del Modal (Sin Líneas Divisoras) -->
+    <div class="alert-modal-footer px-4 py-3 d-flex align-items-center justify-content-between">
+      <span class="text-muted small" style="font-size: 0.78rem;">
+        Mostrando <strong>{{ filteredAlerts().length }}</strong> de <strong>{{ scopedAlerts().length }}</strong>
+        alertas
+      </span>
+    </div>
+
+  </div>
+</div>
+}

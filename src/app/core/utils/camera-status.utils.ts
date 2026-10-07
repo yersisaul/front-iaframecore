@@ -87,7 +87,7 @@ export function getCameraStatusColor(status: CameraStatusType): string {
     case 'Recovering':
       return '#eab308'; // Amarillo
     case 'Pending':
-      return '#00e5ff'; // Cyan
+      return '#0284c7'; // Azul Celeste / Sky
     case 'Offline':
     default:
       return '#ef4444'; // Rojo

@@ -366,6 +366,9 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   }
 
   fetchInitialHeartbeats(): void {
+    // Sincronizar estado inicial de confiabilidad (connected: true/false/null)
+    this.hostService.loadReliabilityHosts().subscribe();
+
     const hosts = this.hostService.allHosts();
     if (hosts.length === 0) return;
 
@@ -749,8 +752,8 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.isNewDropdownOpen.set(false);
   }
 
-  openMigrateModal(): void {
-    this.selectedOldFingerprint.set('');
+  openMigrateModal(host?: Host): void {
+    this.selectedOldFingerprint.set(host?.fingerprint || '');
     this.selectedNewFingerprint.set('');
     this.originSearchText.set('');
     this.targetSearchText.set('');
@@ -905,6 +908,16 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
       placement,
       activeGpuIndex
     });
+  }
+
+  getHostByFingerprint(fingerprint?: string): Host | undefined {
+    if (!fingerprint) return undefined;
+    const targetFp = fingerprint.trim().toLowerCase();
+    return this.hostService.allHosts().find(h =>
+      (h.fingerprint && h.fingerprint.trim().toLowerCase() === targetFp) ||
+      (h.id && h.id.trim().toLowerCase() === targetFp) ||
+      (h.hostname && h.hostname.trim().toLowerCase() === targetFp)
+    );
   }
 
   closeGpuPopover(delay = 150): void {

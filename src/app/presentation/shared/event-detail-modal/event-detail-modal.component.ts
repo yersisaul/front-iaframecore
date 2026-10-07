@@ -311,8 +311,11 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
   onImageLoad(event: Event): void {
     this.hasImageError.set(false);
     const img = event.target as HTMLImageElement;
-    if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
-      this.mediaAspectRatio.set(img.naturalWidth / img.naturalHeight);
+    if (img) {
+      img.removeAttribute('data-retry-count');
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        this.mediaAspectRatio.set(img.naturalWidth / img.naturalHeight);
+      }
     }
   }
 
@@ -332,7 +335,22 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
     if (!img?.src || img.src === window.location.href) {
       return;
     }
-    this.hasImageError.set(true);
+    const currentRetries = parseInt(img.getAttribute('data-retry-count') || '0', 10);
+    if (currentRetries < 2) {
+      img.setAttribute('data-retry-count', String(currentRetries + 1));
+      setTimeout(() => {
+        const rawSrc = img.getAttribute('data-src') || img.src;
+        try {
+          const url = new URL(rawSrc, window.location.href);
+          url.searchParams.set('_r', `${Date.now()}`);
+          img.src = url.toString();
+        } catch {
+          img.src = `${rawSrc}${rawSrc.includes('?') ? '&' : '?'}_r=${Date.now()}`;
+        }
+      }, (currentRetries + 1) * 600);
+    } else {
+      this.hasImageError.set(true);
+    }
   }
 
   copyToClipboard(text: string, field: string): void {

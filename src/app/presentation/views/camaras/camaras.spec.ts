@@ -32,6 +32,8 @@ import { IEventRepository } from '../../../core/domain/repositories/event.reposi
 import { EventHttpRepository } from '../../../data/repositories/event-http.repository';
 import { IAuthRepository } from '../../../core/domain/repositories/auth.repository';
 import { AuthHttpRepository } from '../../../data/repositories/auth-http.repository';
+import { IReliabilityAlertRepository } from '../../../core/domain/repositories/reliability-alert.repository';
+import { ReliabilityAlertHttpRepository } from '../../../data/repositories/reliability-alert-http.repository';
 import { WebsocketService } from '../../../core/services/websocket.service';
 
 describe('Camaras', () => {
@@ -74,6 +76,7 @@ describe('Camaras', () => {
         { provide: IHostRepository, useClass: HostHttpRepository },
         { provide: IEventRepository, useClass: EventHttpRepository },
         { provide: IAuthRepository, useClass: AuthHttpRepository },
+        { provide: IReliabilityAlertRepository, useClass: ReliabilityAlertHttpRepository },
         { provide: WebsocketService, useValue: mockWebsocketService },
         { provide: PermissionsService, useValue: mockPermissionsService },
         {

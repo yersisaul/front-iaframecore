@@ -297,7 +297,11 @@ app-camera-grid-canvas {
 }
 
 .status-dot-pulse.pending {
-  background-color: #00e5ff;
+  background-color: #0284c7;
+}
+
+[data-bs-theme="dark"] .status-dot-pulse.pending {
+  background-color: #22d3ee;
 }
 
 .status-dot-pulse.pending::after {
@@ -308,10 +312,14 @@ app-camera-grid-canvas {
   top: 0;
   left: 0;
   border-radius: 50%;
-  background-color: #00e5ff;
+  background-color: #0284c7;
   animation: pulse-glow 1.5s infinite ease-in-out;
   opacity: 0.6;
   z-index: 1;
+}
+
+[data-bs-theme="dark"] .status-dot-pulse.pending::after {
+  background-color: #22d3ee;
 }
 
 .status-dot-pulse.offline {

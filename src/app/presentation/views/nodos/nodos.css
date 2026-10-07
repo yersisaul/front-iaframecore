@@ -232,8 +232,7 @@
   color: #ffa4a4 !important;
 }
 
-/* En hover de la tarjeta o cabecera: se colapsan los badges y aparece el botón eliminar */
-.host-card:hover .host-header-badges,
+/* En hover con necesidad de espacio para título: se colapsan los badges */
 .host-header-block.host-title-expand-space .host-header-badges {
   width: 0 !important;
   min-width: 0 !important;
@@ -249,8 +248,8 @@
 
 .host-card:hover .btn-card-delete,
 .host-header-block.host-title-expand-space .btn-card-delete {
-  width: 28px !important;
-  max-width: 28px !important;
+  width: 26px !important;
+  max-width: 26px !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
@@ -283,19 +282,124 @@
   }
 }
 
-.version-tag,
+/* ── Badges Rediseñados: Estado y Versión ── */
 .status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.68rem;
-  padding: 2px 6px;
-  border-radius: 4px;
   font-weight: 600;
+  padding: 2.5px 8px;
+  border-radius: 9999px;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.status-badge-online {
+  background: rgba(16, 185, 129, 0.10);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+}
+
+.status-badge-offline {
+  background: rgba(100, 116, 139, 0.09);
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.20);
+}
+
+[data-bs-theme="dark"] .status-badge-online {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.32);
+}
+
+[data-bs-theme="dark"] .status-badge-offline {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.22);
 }
 
 .version-tag {
-  font-family: monospace;
-  background: var(--bg-version-tag);
-  color: var(--color-version-tag);
-  border: 1px solid var(--border-version-tag);
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono, 'SF Mono', Consolas, monospace);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2.5px 7px;
+  border-radius: 6px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  background: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  border: 1px solid rgba(99, 102, 241, 0.20);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.version-tag:hover {
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.35);
+  transform: translateY(-0.5px);
+}
+
+[data-bs-theme="dark"] .version-tag {
+  background: rgba(99, 102, 241, 0.16);
+  color: #a5b4fc;
+  border: 1px solid rgba(165, 180, 252, 0.28);
+}
+
+[data-bs-theme="dark"] .version-tag:hover {
+  background: rgba(99, 102, 241, 0.24);
+  border-color: rgba(165, 180, 252, 0.45);
+}
+
+/* ── Icono de Transferencia en Cabecera de Tarjeta (12x12) ── */
+.host-transfer-icon {
+  width: 16px;
+  height: 16px;
+  background-color: var(--text-muted, #94a3b8);
+  opacity: 0.85;
+  transition: background-color 0.25s ease, opacity 0.2s ease, filter 0.25s ease, transform 0.2s ease;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Estado: connected === true (Verde Esmeralda) */
+.host-transfer-icon.transfer-connected-true {
+  background-color: #10b981 !important;
+  opacity: 1;
+  filter: drop-shadow(0 0 3px rgba(16, 185, 129, 0.45));
+}
+
+/* Estado: connected === false (Rojo) */
+.host-transfer-icon.transfer-connected-false {
+  background-color: #ef4444 !important;
+  opacity: 1;
+  filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.4));
+}
+
+/* Estado: connected === null/undefined (Gris Neutro) */
+.host-transfer-icon.transfer-connected-null {
+  background-color: var(--text-muted, #94a3b8) !important;
+  opacity: 0.55;
+  filter: none;
+}
+
+[data-bs-theme="dark"] .host-transfer-icon.transfer-connected-true {
+  background-color: #34d399 !important;
+  filter: drop-shadow(0 0 5px rgba(52, 211, 153, 0.5));
+}
+
+[data-bs-theme="dark"] .host-transfer-icon.transfer-connected-false {
+  background-color: #f87171 !important;
+  filter: drop-shadow(0 0 5px rgba(248, 113, 113, 0.5));
+}
+
+[data-bs-theme="dark"] .host-transfer-icon.transfer-connected-null {
+  background-color: rgba(255, 255, 255, 0.45) !important;
+  opacity: 0.5;
 }
 
 /* ── Camera Count Badge ── */
@@ -1164,9 +1268,15 @@
 }
 
 .filter-item-badge.badge-status-pending {
-  background: rgba(6, 182, 212, 0.12) !important;
-  color: #06b6d4 !important;
-  border-color: rgba(6, 182, 212, 0.28) !important;
+  background: rgba(2, 132, 199, 0.12) !important;
+  color: #0284c7 !important;
+  border-color: rgba(2, 132, 199, 0.28) !important;
+}
+
+[data-bs-theme="dark"] .filter-item-badge.badge-status-pending {
+  background: rgba(6, 182, 212, 0.16) !important;
+  color: #22d3ee !important;
+  border-color: rgba(34, 211, 238, 0.32) !important;
 }
 
 .dropdown-item.active .filter-item-badge {
@@ -2867,6 +2977,7 @@ body[data-bs-theme="dark"] .gpu-observability-popover {
     opacity: 0;
     transform: translateY(3px) scale(0.98);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -3112,8 +3223,13 @@ body[data-bs-theme="dark"] .gpu-observability-popover {
 }
 
 @keyframes queuePulse {
-  0% { opacity: 0.75; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0.75;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
 /* Fila de Alerta (Rechazos o Descartes > 0) */

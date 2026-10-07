@@ -213,8 +213,13 @@
 }
 
 .status-dot.pending {
-  background-color: #00e5ff !important;
-  box-shadow: 0 0 8px rgba(0, 229, 255, 0.6) !important;
+  background-color: #0284c7 !important;
+  box-shadow: 0 0 8px rgba(2, 132, 199, 0.6) !important;
+}
+
+[data-bs-theme="dark"] .status-dot.pending {
+  background-color: #22d3ee !important;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.6) !important;
 }
 
 .status-dot.offline {
@@ -266,9 +271,15 @@
 }
 
 .filter-item-badge.badge-status-pending {
-  background: rgba(6, 182, 212, 0.12) !important;
-  color: #06b6d4 !important;
-  border-color: rgba(6, 182, 212, 0.28) !important;
+  background: rgba(2, 132, 199, 0.12) !important;
+  color: #0284c7 !important;
+  border-color: rgba(2, 132, 199, 0.28) !important;
+}
+
+[data-bs-theme="dark"] .filter-item-badge.badge-status-pending {
+  background: rgba(6, 182, 212, 0.16) !important;
+  color: #22d3ee !important;
+  border-color: rgba(34, 211, 238, 0.32) !important;
 }
 
 /* ==========================================================================

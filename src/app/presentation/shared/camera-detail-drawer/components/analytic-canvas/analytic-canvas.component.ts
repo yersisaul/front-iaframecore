@@ -93,21 +93,17 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
 
   toNormX(svgX: number): number {
     const w = this.containerWidth() || 800;
-    const maxW = this.naturalImageWidth();
+    const maxW = this.naturalImageWidth() || 1920;
+    if (!w || !maxW) return 0;
     const rawX = Math.round((svgX / w) * maxW);
-    const snapMargin = Math.round(maxW * 0.02); // Snap magnético a 2% del borde real de imagen
-    if (rawX <= snapMargin) return 0;
-    if (rawX >= maxW - snapMargin) return maxW;
     return Math.max(0, Math.min(maxW, rawX));
   }
 
   toNormY(svgY: number): number {
     const h = this.containerHeight() || 450;
-    const maxH = this.naturalImageHeight();
+    const maxH = this.naturalImageHeight() || 1080;
+    if (!h || !maxH) return 0;
     const rawY = Math.round((svgY / h) * maxH);
-    const snapMargin = Math.round(maxH * 0.02); // Snap magnético a 2% del borde real de imagen
-    if (rawY <= snapMargin) return 0;
-    if (rawY >= maxH - snapMargin) return maxH;
     return Math.max(0, Math.min(maxH, rawY));
   }
 
@@ -205,8 +201,18 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
         });
       }
     }
-    if (changes['initialData'] && this.initialData) {
-      this.loadInitialData(this.initialData);
+    if (changes['initialData']) {
+      this.cachedInitialData = this.initialData;
+      if (this.initialData) {
+        // Si la resolución nativa de la imagen ya está determinada (o no hay imagen externa), cargar datos de inmediato
+        if (this.hasDeterminedResolution() || !this.effectiveImageUrl()) {
+          this.loadInitialData(this.initialData);
+        }
+      } else {
+        this.shapes.set([]);
+        this.hasAppliedInitialData = false;
+        this.hasUserModifiedGeometry.set(false);
+      }
     }
     if (changes['maxShapes']) {
       const limit = this.maxShapes || 10;
@@ -281,6 +287,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
       const newW = img.naturalWidth;
       const newH = img.naturalHeight;
+      const wasResolutionDetermined = this.hasDeterminedResolution();
       const oldW = this.naturalImageWidth();
       const oldH = this.naturalImageHeight();
 
@@ -289,13 +296,11 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       this.imageAspectRatio.set(newW / newH);
       this.hasDeterminedResolution.set(true);
 
-      const currentShapes = this.shapes();
-
-      // Si aún no se habían cargado las formas y tenemos datos iniciales en espera
-      if (this.cachedInitialData && !this.hasAppliedInitialData && currentShapes.length === 0) {
+      // Si tenemos datos iniciales guardados y el usuario no ha modificado activamente los trazos
+      if (this.cachedInitialData && (!this.hasAppliedInitialData || !this.hasUserModifiedGeometry())) {
         this.loadInitialData(this.cachedInitialData);
-      } else if (currentShapes.length > 0 && oldW > 0 && oldH > 0 && (oldW !== newW || oldH !== newH)) {
-        // Si ya hay formas en el lienzo (editadas o cargadas), re-escalar proporcionalmente sin borrar nada
+      } else if (this.hasUserModifiedGeometry() && wasResolutionDetermined && oldW > 0 && oldH > 0 && (oldW !== newW || oldH !== newH)) {
+        // Si el usuario modificó manualmente las formas y en tiempo real la foto cambió de resolución
         this.shapes.update(shapesList =>
           shapesList.map(s => ({
             ...s,
@@ -305,7 +310,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
             }))
           }))
         );
-        this.emitGeometry(this.hasUserModifiedGeometry());
+        this.emitGeometry(true);
       }
     }
     this.updateCanvasAspectRatio();
@@ -335,11 +340,16 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     const currentW = this.naturalImageWidth() || 1920;
     const currentH = this.naturalImageHeight() || 1080;
 
+    // Obtener resolución original con la que se guardó el trazado (si viene en metadatos)
+    const savedResolution = data.canvas_resolution || data.resolution || data.image_resolution || data.imageResolution || null;
+    const savedW = savedResolution?.width ? Number(savedResolution.width) : null;
+    const savedH = savedResolution?.height ? Number(savedResolution.height) : null;
+
     const parseAndScalePoints = (rawPts: any[]): Point2D[] => {
       const raw = this.normalizePoints(rawPts);
       if (raw.length === 0) return [];
 
-      // 1. Detectar si los puntos vienen normalizados 0..1
+      // 1. Detectar si los puntos vienen normalizados 0..1 (ratios flotantes)
       const isNormalized01 = raw.every(p => p.x <= 1.05 && p.y <= 1.05 && p.x >= 0 && p.y >= 0);
       if (isNormalized01) {
         return raw.map(p => ({
@@ -348,10 +358,30 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
         }));
       }
 
-      // 2. Preservar coordenadas nativas exactas de la cámara (sin reducir ni dividir)
+      // 2. Si la geometría tiene registrada la resolución original y difiere de la resolución real actual:
+      if (savedW && savedH && savedW > 0 && savedH > 0 && this.hasDeterminedResolution() && (savedW !== currentW || savedH !== currentH)) {
+        return raw.map(p => ({
+          x: Math.max(0, Math.min(currentW, Math.round((p.x / savedW) * currentW))),
+          y: Math.max(0, Math.min(currentH, Math.round((p.y / savedH) * currentH)))
+        }));
+      }
+
+      // 3. Si no hay resolución guardada pero los puntos exceden las dimensiones actuales de la imagen (p. ej. guardados en 1920x1080 cargados en snapshot menor)
+      const maxX = Math.max(...raw.map(p => p.x));
+      const maxY = Math.max(...raw.map(p => p.y));
+      if (maxX > currentW || maxY > currentH) {
+        const refW = maxX > 1280 || maxY > 720 ? 1920 : (maxX > 1000 || maxY > 1000 ? 1280 : 1000);
+        const refH = refW === 1920 ? 1080 : (refW === 1280 ? 720 : 1000);
+        return raw.map(p => ({
+          x: Math.max(0, Math.min(currentW, Math.round((p.x / refW) * currentW))),
+          y: Math.max(0, Math.min(currentH, Math.round((p.y / refH) * currentH)))
+        }));
+      }
+
+      // 4. Preservar coordenadas nativas exactas de la cámara (sin reducir ni deformar)
       return raw.map(p => ({
-        x: Math.round(p.x),
-        y: Math.round(p.y)
+        x: Math.max(0, Math.min(currentW, Math.round(p.x))),
+        y: Math.max(0, Math.min(currentH, Math.round(p.y)))
       }));
     };
 
@@ -1555,82 +1585,20 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   calculateOuterArea(originalPoints: Point2D[], scale: number): Point2D[] {
     if (!originalPoints || originalPoints.length < 3) return originalPoints || [];
 
-    const n = originalPoints.length;
-    const factor = scale !== undefined && scale !== null && scale > 0 ? scale : 1.2;
+    const factor = scale !== undefined && scale !== null && scale > 0 ? Number(scale) : 1.2;
 
     if (Math.abs(factor - 1.0) < 0.001) {
       return originalPoints.map(p => ({ x: p.x, y: p.y }));
     }
 
-    // 1. Calcular el área firmada para determinar la orientación de los vértices (CW o CCW)
-    let signedArea = 0;
-    for (let i = 0; i < n; i++) {
-      const p1 = originalPoints[i];
-      const p2 = originalPoints[(i + 1) % n];
-      signedArea += (p1.x * p2.y - p2.x * p1.y);
-    }
-    const isCCW = signedArea > 0;
-
-    // 2. Calcular la distancia de desplazamiento uniforme 'd' basada en el radio promedio del polígono
     const centroid = this.calculateCentroid(originalPoints);
-    let totalDist = 0;
-    for (const p of originalPoints) {
-      totalDist += Math.hypot(p.x - centroid.x, p.y - centroid.y);
-    }
-    const avgRadius = totalDist / n;
-    const d = avgRadius * (factor - 1.0);
+    const maxW = this.naturalImageWidth() || 1920;
+    const maxH = this.naturalImageHeight() || 1080;
 
-    // 3. Normales externas perpendiculares para cada segmento de arista
-    const edgeNormals: { x: number; y: number }[] = [];
-    for (let i = 0; i < n; i++) {
-      const p1 = originalPoints[i];
-      const p2 = originalPoints[(i + 1) % n];
-      const dx = p2.x - p1.x;
-      const dy = p2.y - p1.y;
-      const len = Math.hypot(dx, dy);
-
-      if (len === 0) {
-        edgeNormals.push({ x: 0, y: 0 });
-      } else {
-        const nx = isCCW ? dy / len : -dy / len;
-        const ny = isCCW ? -dx / len : dx / len;
-        edgeNormals.push({ x: nx, y: ny });
-      }
-    }
-
-    // 4. Desplazamiento paralelo en la bisectriz de cada vértice manteniendo bordes 100% paralelos
-    const outerPoints: Point2D[] = [];
-    for (let i = 0; i < n; i++) {
-      const prevNormal = edgeNormals[(i + n - 1) % n];
-      const currNormal = edgeNormals[i];
-
-      let bx = prevNormal.x + currNormal.x;
-      let by = prevNormal.y + currNormal.y;
-      let blen = Math.hypot(bx, by);
-
-      if (blen < 0.001) {
-        bx = currNormal.x;
-        by = currNormal.y;
-        blen = 1;
-      } else {
-        bx /= blen;
-        by /= blen;
-      }
-
-      // Factor de corrección de inglete (miter length factor)
-      const dot = bx * currNormal.x + by * currNormal.y;
-      const miter = dot > 0.1 ? Math.min(2.5, 1.0 / dot) : 1.0;
-
-      const p = originalPoints[i];
-      const maxW = this.naturalImageWidth() || 1920;
-      const maxH = this.naturalImageHeight() || 1080;
-      outerPoints.push({
-        x: Math.max(0, Math.min(maxW, Math.round(p.x + bx * d * miter))),
-        y: Math.max(0, Math.min(maxH, Math.round(p.y + by * d * miter)))
-      });
-    }
-
-    return outerPoints;
+    return originalPoints.map(p => ({
+      x: Math.max(0, Math.min(maxW, Math.round(centroid.x + factor * (p.x - centroid.x)))),
+      y: Math.max(0, Math.min(maxH, Math.round(centroid.y + factor * (p.y - centroid.y))))
+    }));
   }
 
   calculateWorldPointsToSpeed(distAB: number, distBC: number): Point2D[] {
@@ -1774,6 +1742,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       });
 
       const payload = {
+        canvas_resolution: { width: maxW, height: maxH },
         polygons,
         lines: [],
         hasUserModified: this.hasUserModifiedGeometry()
@@ -1795,6 +1764,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
       });
 
       const payload = {
+        canvas_resolution: { width: maxW, height: maxH },
         polygons: [],
         lines,
         hasUserModified: this.hasUserModifiedGeometry()

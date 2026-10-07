@@ -21,6 +21,7 @@ import { IScheduleRepository } from '../domain/repositories/schedule.repository'
 import { IListRepository } from '../domain/repositories/list.repository';
 import { DashboardService } from './dashboard.service';
 import { IDashboardRepository } from '../domain/repositories/dashboard.repository';
+import { IReliabilityAlertRepository } from '../domain/repositories/reliability-alert.repository';
 
 describe('WebsocketService Handlers', () => {
   let service: WebsocketService;
@@ -242,7 +243,16 @@ describe('WebsocketService Handlers', () => {
         { provide: IUserRepository, useValue: userRepoSpy },
         { provide: IScheduleRepository, useValue: scheduleRepoSpy },
         { provide: IListRepository, useValue: listRepoSpy },
-        { provide: IDashboardRepository, useValue: dashboardRepoSpy }
+        { provide: IDashboardRepository, useValue: dashboardRepoSpy },
+        {
+          provide: IReliabilityAlertRepository,
+          useValue: {
+            getAlerts: vi.fn().mockReturnValue(of([])),
+            dismissAlert: vi.fn().mockReturnValue(of(undefined)),
+            dismissAllAlerts: vi.fn().mockReturnValue(of(undefined)),
+            retryCommand: vi.fn().mockReturnValue(of({}))
+          }
+        }
       ]
     });
 

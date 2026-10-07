@@ -12,6 +12,9 @@ import { UserService } from './user.service';
 import { HostService } from './host.service';
 import { DashboardService } from './dashboard.service';
 import { PermissionsService } from './permissions.service';
+import { ReliabilityAlertService } from './reliability-alert.service';
+import { ReliabilityAlertMapper } from '../domain/entities/reliability-alert.models';
+import { MediaFileService } from './media-file.service';
 import { IMetadataRepository } from '../domain/repositories/metadata.repository';
 import { IEventRepository } from '../domain/repositories/event.repository';
 import { IUserRepository } from '../domain/repositories/user.repository';
@@ -37,6 +40,8 @@ export class WebsocketService {
   private hostService = inject(HostService);
   private dashboardService = inject(DashboardService);
   private permissionsService = inject(PermissionsService);
+  private reliabilityAlertService = inject(ReliabilityAlertService);
+  private mediaFileService = inject(MediaFileService);
 
   private metadataRepository = inject(IMetadataRepository);
   private eventRepository = inject(IEventRepository);
@@ -83,6 +88,11 @@ export class WebsocketService {
         console.log(`[WebSocket] Consultando OpenSearch para metadato en vivo del índice activo "${indexName}"`);
         this.metadataRepository.getById(indexName, docId).subscribe({
           next: (newRecord) => {
+            // Precargar URL de la imagen en segundo plano para evitar fallos de tiempo real
+            if (newRecord?.imgMinioObjectName) {
+              this.mediaFileService.prefetchFileUrl(newRecord.imgMinioObjectName);
+            }
+
             // Validar que el nuevo registro cumpla con TODOS los filtros activos en pantalla (incluyendo coincidencia vectorial)
             if (!this.matchesMetadataFilters(newRecord, activeFilters)) {
               console.log(`[WebSocket] Nuevo metadato ${docId} descartado porque no coincide con los filtros activos.`);
@@ -107,6 +117,12 @@ export class WebsocketService {
         // Consultar OpenSearch para obtener la alarma/evento completa
         this.eventRepository.getById(docId).subscribe({
           next: (newEvent) => {
+            // Precargar URL de la imagen en segundo plano para evitar fallos de tiempo real
+            const imgTarget = newEvent?.imgMinioObjectName || newEvent?.urlImg;
+            if (imgTarget) {
+              this.mediaFileService.prefetchFileUrl(imgTarget);
+            }
+
             this.eventService.addNewEvent(newEvent);
           },
           error: (err) => {
@@ -595,10 +611,10 @@ export class WebsocketService {
         this.hostService.deleteHostLocal(fingerprint);
       }
     } else if (action === 'metrics') {
-      const fingerprint = body.fingerprint_host;
+      const fingerprint = body.fingerprint_host || msg.fingerprint_host || body.fingerprint || msg.fingerprint || body.host_fingerprint || msg.host_fingerprint;
       if (!fingerprint) return;
 
-      const rawGpus = body.gpus_observability ?? body.metrics?.gpus_observability;
+      const rawGpus = body.gpus_observability ?? body.metrics?.gpus_observability ?? msg.gpus_observability ?? msg.metrics?.gpus_observability;
       const gpusObservability = Array.isArray(rawGpus)
         ? rawGpus.map((g: any) => ({
             gpu_id: Number(g.gpu_id ?? 0),
@@ -614,16 +630,19 @@ export class WebsocketService {
 
       const newMetrics: HostMetrics = {
         lastSeen: new Date(),
-        cpu: body.cpu ?? 0,
-        memory: body.memory ?? 0,
-        gpu: body.gpu ?? 0,
-        vram: body.vram ?? 0,
+        cpu: Number(body.cpu ?? msg.cpu ?? 0),
+        memory: Number(body.memory ?? msg.memory ?? 0),
+        gpu: Number(body.gpu ?? msg.gpu ?? 0),
+        vram: Number(body.vram ?? msg.vram ?? 0),
         ...(gpusObservability ? { gpusObservability } : {})
       };
 
       console.log(`[WebSocket] Métricas en tiempo real recibidas para nodo: ${fingerprint}`);
       // Actualizar métricas y marcar estado como 'online'
       this.hostService.updateHostMetrics(fingerprint, newMetrics, 'online');
+
+      // Sincronizar estado de confiabilidad / connected desde endpoint de fiabilidad
+      this.hostService.loadReliabilityHosts().subscribe();
 
     } else if (action === 'dashboard_created' || action === 'dashboard_updated') {
       const dashboardId = body.dashboard_id || msg.dashboard_id || body.id || msg.id;
@@ -659,6 +678,14 @@ export class WebsocketService {
         }, 450);
       } else {
         this.dashboardService.deleteDashboardLocal(dashboardId);
+      }
+    } else if (action === 'system_alert') {
+      console.log('[WebSocket] Nueva alerta del sistema recibida:', body);
+      try {
+        const alert = ReliabilityAlertMapper.toDomain(body);
+        this.reliabilityAlertService.notifyAlert(alert);
+      } catch (err) {
+        console.error('[WebSocket] Error al procesar system_alert:', err);
       }
     }
   }

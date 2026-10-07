@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { Observable, of, Subject } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
-import { Host, HostMetrics } from '../domain/entities/host.models';
+import { Host, HostMetrics, ReliabilityHostStatusDTO } from '../domain/entities/host.models';
 import { IHostRepository } from '../domain/repositories/host.repository';
 
 export interface HostFilterOptions {
@@ -95,6 +95,42 @@ export class HostService {
   }
 
   /**
+   * Loads reliability hosts status from backend (/frontend/reliability/hosts)
+   * and reactively updates connected boolean on each host in allHosts.
+   */
+  loadReliabilityHosts(): Observable<ReliabilityHostStatusDTO[]> {
+    return this.hostRepository.getReliabilityHosts().pipe(
+      tap(items => {
+        if (!Array.isArray(items) || items.length === 0) return;
+        const statusMap = new Map<string, boolean>();
+        items.forEach(item => {
+          if (item.fingerprint_host && typeof item.connected === 'boolean') {
+            statusMap.set(item.fingerprint_host.trim().toLowerCase(), item.connected);
+          }
+        });
+
+        this.allHosts.update(hosts =>
+          hosts.map(h => {
+            const fp = (h.fingerprint || '').trim().toLowerCase();
+            const id = (h.id || '').trim().toLowerCase();
+            const hostName = (h.hostname || '').trim().toLowerCase();
+
+            const isConn = statusMap.get(fp) ?? statusMap.get(id) ?? statusMap.get(hostName);
+            if (isConn !== undefined) {
+              return { ...h, connected: isConn };
+            }
+            return h;
+          })
+        );
+      }),
+      catchError(err => {
+        console.warn('Error al cargar estados de confiabilidad de hosts:', err);
+        return of([]);
+      })
+    );
+  }
+
+  /**
    * @deprecated Use loadAllHosts() directly.
    */
   getHosts(): Observable<Host[]> {
@@ -175,9 +211,14 @@ export class HostService {
   }
 
   updateHostMetrics(fingerprint: string, metrics: HostMetrics | null, status?: string): void {
+    const targetFp = (fingerprint || '').trim().toLowerCase();
     this.allHosts.update(hosts => 
       hosts.map(h => {
-        if (h.fingerprint === fingerprint) {
+        const match =
+          (h.fingerprint && h.fingerprint.trim().toLowerCase() === targetFp) ||
+          (h.id && h.id.trim().toLowerCase() === targetFp) ||
+          (h.hostname && h.hostname.trim().toLowerCase() === targetFp);
+        if (match) {
           const updated: Host = { ...h };
           if (status !== undefined) {
             updated.status = status;

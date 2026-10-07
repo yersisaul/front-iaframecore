@@ -320,9 +320,16 @@
               </div>
             </div>
 
-            <div class="host-header-right d-inline-flex align-items-center flex-shrink-0 ms-auto">
-              <!-- Badges informativos (Online/Offline y Versión) -->
+            <div class="host-header-right d-inline-flex align-items-center gap-1 flex-shrink-0 ms-auto">
+              <!-- Badges informativos (Online/Offline y Versión) e Icono Transferencia -->
               <div class="host-header-badges d-inline-flex align-items-center gap-2 flex-shrink-0">
+                <!-- Icono SVG de transferencia (14x14) coloreado según connected -->
+                <span class="icon-svg icon-transfer host-transfer-icon flex-shrink-0"
+                  [class.transfer-connected-true]="host.connected === true"
+                  [class.transfer-connected-false]="host.connected === false"
+                  [class.transfer-connected-null]="host.connected === undefined || host.connected === null"
+                  [title]="host.connected === true ? 'Host conectado (WebSocket activo)' : (host.connected === false ? 'Host desconectado (Sin conexión activa)' : 'Estado desconocido')"
+                  style="width: 13px; height: 13px;"></span>
                 <span class="status-badge flex-shrink-0"
                   [class.status-badge-online]="host.status === 'active' || host.status === 'online'"
                   [class.status-badge-offline]="host.status !== 'active' && host.status !== 'online'">
@@ -576,7 +583,12 @@
             <!-- Estado -->
             <td class="col-status text-center">
               <span class="d-inline-flex align-items-center justify-content-center gap-2">
-                <span class="status-dot" [class.online]="host.status === 'active' || host.status === 'online'"></span>
+                <span class="icon-svg icon-transfer host-transfer-icon flex-shrink-0"
+                  [class.transfer-connected-true]="host.connected === true"
+                  [class.transfer-connected-false]="host.connected === false"
+                  [class.transfer-connected-null]="host.connected === undefined || host.connected === null"
+                  [title]="host.connected === true ? 'Host conectado (WebSocket activo)' : (host.connected === false ? 'Host desconectado (Sin conexión activa)' : 'Estado desconocido')"
+                  style="width: 13px; height: 13px;"></span>
                 <span class="fw-semibold" [class.text-success]="host.status === 'active' || host.status === 'online'"
                   [class.text-danger]="host.status !== 'active' && host.status !== 'online'"
                   style="font-size: 0.88rem;">
@@ -940,7 +952,8 @@
     [class.placement-top]="popover.placement === 'top'" [class.placement-bottom]="popover.placement === 'bottom'"
     (mouseenter)="cancelCloseGpuPopover()" (mouseleave)="closeGpuPopover()">
 
-    @let gpus = popover.host.metrics?.gpusObservability || [];
+    @let currentHost = getHostByFingerprint(popover.host.fingerprint) || popover.host;
+    @let gpus = currentHost.metrics?.gpusObservability || [];
     @let activeGpu = gpus.length > 0 ? (gpus[popover.activeGpuIndex] || gpus[0]) : null;
 
     <!-- Pestañas Multi-GPU si hay más de 1 GPU (Sin nombre redundante) -->
