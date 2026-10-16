@@ -681,12 +681,23 @@ export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy 
         attributionControl: false
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      let consecutiveTileErrors = 0;
+      const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap',
         bounds: maxWorldBounds,
-        noWrap: true
-      }).addTo(this.map);
+        noWrap: true,
+        errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+      });
+
+      tileLayer.on('tileerror', () => {
+        consecutiveTileErrors++;
+        if (consecutiveTileErrors >= 3 && this.map && this.map.hasLayer(tileLayer)) {
+          this.map.removeLayer(tileLayer);
+        }
+      });
+
+      tileLayer.addTo(this.map);
 
       if (hasCoords) {
         this.setMapMarker(initialLat, initialLon, false);

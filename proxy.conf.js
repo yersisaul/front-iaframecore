@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { createAzorDevProxy } = require('./azor-dev-proxy');
 const path = require('path');
 
 const envPath = path.join(__dirname, '.env');
@@ -29,6 +30,8 @@ const jwtSecret = getEnvValue('JWT_SECRET_KEY');
 const openSearchUser = getEnvValue('OPENSEARCH_USER');
 const openSearchPassword = getEnvValue('OPENSEARCH_PASSWORD');
 
+const azorAnalyticsToken = getEnvValue('TOKEN_AZOR_ANALYTICS');
+
 const openSearchAuthHeader = (openSearchUser && openSearchPassword)
   ? 'Basic ' + Buffer.from(`${openSearchUser}:${openSearchPassword}`).toString('base64')
   : null;
@@ -45,6 +48,7 @@ console.log(`🔌 Cargando proxy desde variables de entorno:`);
 console.log(`   - /api        -> ${apiTarget} (Auth x-api-key: ${jwtSecret ? 'habilitada' : 'ninguna'})`);
 console.log(`   - /opensearch -> ${openSearchTarget} (Basic Auth: ${openSearchAuthHeader ? 'habilitada (' + openSearchUser + ')' : 'ninguna'})`);
 console.log(`   - /ws         -> ${wsTarget} (WebSocket)`);
+console.log(`   - /azor-proxy -> dominio dinámico de cada acción (sesión requerida, Auth X-API-Key: ${azorAnalyticsToken ? 'habilitada' : 'ninguna'})`);
 console.log(`=========================================`);
 
 module.exports = {
@@ -110,6 +114,18 @@ module.exports = {
         }
       });
     }
+  },
+  // Proxy dinámico hacia Azor Panel: la petición se atiende completa en `bypass` (ver azor-dev-proxy.js)
+  "/azor-proxy": {
+    "target": "http://127.0.0.1",
+    bypass: (() => {
+      const handleAzorProxy = createAzorDevProxy({ apiTarget, jwtSecret, azorToken: azorAnalyticsToken });
+      return async (req, res) => {
+        await handleAzorProxy(req, res);
+        // Devolver una ruta indica a Vite que no continúe con su propio proxy (la respuesta ya fue enviada)
+        return req.url;
+      };
+    })()
   },
   "/ws": {
     "target": wsTarget,

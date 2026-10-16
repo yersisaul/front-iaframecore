@@ -1,0 +1,181 @@
+@let state = domainState();
+@let lookupValue = lookup();
+@let status = reportStatus();
+@let reportType = selectedReportType();
+
+<div class="row g-2.5 mt-1">
+  <!-- Dominio de Azor Panel: solo IP o dominio; la ruta /azor-analytics/reports se agrega en segundo plano -->
+  <div class="col-12">
+    <div class="domain-label-row d-flex align-items-baseline justify-content-between gap-2">
+      <label [attr.for]="'azor-domain-' + actionKey"
+        class="form-label text-muted small font-semibold mb-0 ps-2 flex-shrink-0">
+        URL Azor Panel
+      </label>
+      <!-- Estado del dominio (a la altura de la etiqueta) -->
+      <div [id]="'azor-domain-feedback-' + actionKey" class="domain-feedback text-end" aria-live="polite">
+        @switch (state) {
+        @case ('idle') {
+        <span [class.is-warning]="highlightErrors" [class.is-hint]="!highlightErrors">
+          @if (highlightErrors) { Dominio requerido. } @else { Solo dominio o IP. }
+        </span>
+        }
+        @case ('invalid') { <span class="is-danger">{{ domainError() }}</span> }
+        @case ('checking') { <span class="is-hint">Consultando...</span> }
+        @case ('ready') {
+        <span class="is-success">
+          {{ lookupValue?.reportTypes?.length }} {{ lookupValue?.reportTypes?.length === 1 ? 'tipo' : 'tipos' }} de
+          reporte
+        </span>
+        }
+        @case ('empty') {
+        <span class="is-warning">
+          Sin tipos de reporte
+        </span>
+        }
+        @case ('error') {
+        <span class="is-danger">
+          {{ lookupValue?.error }}
+        </span>
+        }
+        }
+
+        @if ((state === 'ready' || state === 'empty') && lookupValue?.schemeFallback) {
+        <span class="is-hint feedback-note">Solo responde por {{ lookupValue?.scheme === 'https' ? 'HTTPS' : 'HTTP' }}.</span>
+        }
+        @if (clearedNotice()) {
+        <span class="is-warning feedback-note">{{ clearedNotice() }}</span>
+        }
+      </div>
+    </div>
+    <div class="domain-input-wrapper position-relative">
+      <input [id]="'azor-domain-' + actionKey" type="text"
+        class="form-control text-paragraph-sm font-monospace rounded-3"
+        [class.is-invalid]="state === 'invalid' || state === 'error' || (highlightErrors && state === 'idle')"
+        [class.is-valid-domain]="state === 'ready' || state === 'empty'" [value]="domainInput()"
+        (input)="onDomainInput($any($event.target).value)" (blur)="onDomainBlur()"
+        (keydown.enter)="onDomainEnter($event)" placeholder="Ej. 38.187.6.36:3010 o https://panel.com"
+        autocomplete="off" spellcheck="false" [attr.aria-describedby]="'azor-domain-feedback-' + actionKey" />
+      <span class="domain-input-status" aria-hidden="true">
+        @switch (state) {
+        @case ('checking') { <span class="domain-spinner"></span> }
+        @case ('ready') { <span class="icon-svg icon-check text-success" style="width: 13px; height: 13px;"></span> }
+        @case ('empty') { <span class="icon-svg icon-check text-success" style="width: 13px; height: 13px;"></span> }
+        @case ('error') { <span class="icon-svg icon-warning text-danger" style="width: 13px; height: 13px;"></span> }
+        @case ('invalid') { <span class="icon-svg icon-warning text-danger" style="width: 13px; height: 13px;"></span> }
+        }
+      </span>
+    </div>
+  </div>
+
+  <!-- Tipo de reporte: se habilita cuando el dominio responde -->
+  <div class="col-12 min-w-0">
+    <label class="form-label text-muted small font-semibold mb-1 ps-2">Tipo de Reporte</label>
+
+    @if (!canOpenSelector()) {
+    <!-- Bloqueado hasta que el dominio responda -->
+    <button type="button"
+      class="btn-target-selector-trigger is-locked w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border select-none"
+      disabled [attr.aria-label]="'Tipo de reporte' + (reportTypeId ? ': ' + reportTypeId : '')">
+      <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden me-2">
+        <div class="target-trigger-icon-box d-flex align-items-center justify-content-center rounded-2 flex-shrink-0">
+          @if (state === 'checking' || state === 'typing') {
+          <span class="domain-spinner" aria-hidden="true"></span>
+          } @else {
+          <span class="icon-svg icon-lock" style="width: 13px; height: 13px;"></span>
+          }
+        </div>
+        <div class="min-w-0 flex-grow-1 overflow-hidden">
+          @if (reportType) {
+          <span class="fw-bold text-body text-truncate d-block" style="font-size: 0.825rem; line-height: 1.25;">
+            {{ reportType.name }}
+          </span>
+          }
+          @if (reportTypeId) {
+          <span class="text-muted small font-monospace text-truncate d-block"
+            style="font-size: 0.7rem; line-height: 1.2;">
+            ID: {{ reportTypeId }}
+          </span>
+          }
+        </div>
+      </div>
+    </button>
+    }
+
+    @else if (state === 'empty') {
+    <!-- Dominio sin tipos de reporte: se permite crear el primero -->
+    <button type="button"
+      class="btn-target-selector-trigger is-create w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border transition-all cursor-pointer select-none"
+      [class.is-warning]="highlightErrors" (click)="openSelector()" title="Crear el primer tipo de reporte">
+      <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden me-2">
+        <div
+          class="target-trigger-icon-box is-active d-flex align-items-center justify-content-center rounded-2 flex-shrink-0">
+          <span class="icon-svg icon-plus text-primary" style="width: 12px; height: 12px;"></span>
+        </div>
+        <span class="target-trigger-placeholder font-semibold text-truncate">Crear el primer tipo de reporte</span>
+      </div>
+      <span class="icon-svg icon-chevron-down chevron-rotate-right text-muted flex-shrink-0"
+        style="width: 12px; height: 12px;"></span>
+    </button>
+    }
+
+    @else if (status === 'empty') {
+    <!-- Dominio verificado, sin tipo de reporte asignado -->
+    <button type="button"
+      class="btn-target-selector-trigger w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border transition-all cursor-pointer select-none"
+      [class.is-warning]="highlightErrors" (click)="openSelector()"
+      [title]="highlightErrors ? 'Selección requerida: Elige el tipo de reporte' : 'Seleccionar tipo de reporte'">
+      <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden me-2">
+        <div class="target-trigger-icon-box d-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
+          [class.is-warning]="highlightErrors">
+          <span class="icon-svg" [class.icon-warning]="highlightErrors" [class.icon-list]="!highlightErrors"
+            style="width: 14px; height: 14px;"></span>
+        </div>
+        <span class="target-trigger-placeholder font-medium text-truncate" [class.text-warning]="highlightErrors"
+          [class.font-semibold]="highlightErrors">
+          Seleccionar tipo de reporte...
+        </span>
+      </div>
+      <span class="icon-svg icon-chevron-down chevron-rotate-right flex-shrink-0" [class.text-warning]="highlightErrors"
+        [class.text-muted]="!highlightErrors" style="width: 12px; height: 12px;"></span>
+    </button>
+    }
+
+    @else {
+    <!-- Tipo de reporte asignado: encontrado o inexistente en este dominio -->
+    <button type="button"
+      class="btn-target-selector-trigger is-selected w-100 d-flex align-items-center justify-content-between px-2 py-2 rounded-3 border transition-all cursor-pointer select-none text-start"
+      [class.is-warning]="status === 'missing'" (click)="openSelector()" [title]="status === 'missing'
+        ? 'No existe en este dominio. Clic para elegir otro.'
+        : 'Cambiar tipo de reporte'">
+      <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden me-2">
+        <div class="target-trigger-icon-box d-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
+          [class.is-active]="status === 'found'" [class.is-warning]="status === 'missing'">
+          <span class="icon-svg" [class.icon-list]="status === 'found'" [class.text-primary]="status === 'found'"
+            [class.icon-warning]="status !== 'found'" style="width: 15px; height: 15px;"></span>
+        </div>
+        <div class="min-w-0 flex-grow-1 overflow-hidden">
+          <span class="fw-bold text-truncate d-block" style="font-size: 0.825rem; line-height: 1.25;"
+            [class.text-body]="status === 'found'" [class.text-warning]="status !== 'found'">
+            @if (status === 'found') { {{ reportType?.name }} } @else { No encontrado en este dominio }
+          </span>
+          <span class="text-muted small font-monospace text-truncate d-block"
+            style="font-size: 0.7rem; line-height: 1.2;" [title]="reportTypeId">
+            ID: {{ reportTypeId }}
+          </span>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-shrink-0">
+        <span class="target-change-badge d-flex align-items-center justify-content-center rounded-circle"
+          title="Cambiar tipo de reporte">
+          <span class="icon-svg icon-refresh" style="width: 12px; height: 12px; background-color: currentColor;"></span>
+        </span>
+      </div>
+    </button>
+    }
+  </div>
+</div>
+
+<!-- Modal de tipos de reporte del dominio verificado -->
+<app-report-type-select-modal [show]="isModalOpen()" [domain]="domain()" [selectedId]="reportTypeId || null"
+  [startInCreate]="modalStartInCreate()" (confirmed)="onReportTypeConfirmed($event)" (closed)="closeModal()">
+</app-report-type-select-modal>

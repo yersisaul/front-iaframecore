@@ -65,9 +65,8 @@
         <div class="action-card-header d-flex align-items-center justify-content-between ps-2">
           <span class="font-bold text-paragraph-sm text-body text-truncate select-none">{{ actionItem.tipo }}</span>
 
-          <button type="button"
-            class="icon-svg icon-trash remove-action-btn flex-shrink-0"
-            (click)="removeAction(idx)" title="Eliminar Acción" aria-label="Eliminar acción">
+          <button type="button" class="icon-svg icon-trash remove-action-btn flex-shrink-0" (click)="removeAction(idx)"
+            title="Eliminar Acción" aria-label="Eliminar acción">
           </button>
         </div>
 
@@ -79,7 +78,7 @@
             class="btn-target-selector-trigger w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border transition-all cursor-pointer select-none"
             [class.is-warning]="highlightErrors" (click)="openAnalyticSelectModal(actionItem)"
             [title]="highlightErrors ? 'Selección requerida: Elige la analítica objetivo' : 'Seleccionar analítica objetivo'">
-            <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1 overflow-hidden me-2">
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden me-2">
               <div
                 class="target-trigger-icon-box d-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
                 [class.is-warning]="highlightErrors">
@@ -97,10 +96,10 @@
           </button>
           } @else {
           <div
-            class="btn-target-selector-trigger is-selected w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border transition-all cursor-pointer select-none"
+            class="btn-target-selector-trigger is-selected w-100 d-flex align-items-center justify-content-between px-2 py-2 rounded-3 border transition-all cursor-pointer select-none"
             (click)="openAnalyticSelectModal(actionItem)"
             [title]="getSelectedAnalyticMeta(actionItem) || 'Clic para cambiar analítica objetivo'">
-            <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1 overflow-hidden me-2">
+            <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden me-2">
               <div
                 class="target-trigger-icon-box is-active d-flex align-items-center justify-content-center rounded-2 flex-shrink-0">
                 <span class="icon-svg icon-activity text-primary" style="width: 15px; height: 15px;"></span>
@@ -170,19 +169,10 @@
         }
 
         @if (actionItem.tipo.startsWith('Enviar a API')) {
-        <div class="row g-2.5 mt-1">
-          <div class="col-12">
-            <label class="form-label text-muted small font-semibold mb-1 ps-2">Endpoint Webhook URL</label>
-            <input type="url" class="form-control text-paragraph-sm font-monospace rounded-3"
-              [(ngModel)]="actionItem.accion.endpoint" (ngModelChange)="emitActions()" placeholder="https://..." />
-          </div>
-          <div class="col-12">
-            <label class="form-label text-muted small font-semibold mb-1 ps-2">ID Tipo Reporte</label>
-            <input type="text" class="form-control text-paragraph-sm font-monospace rounded-3"
-              [(ngModel)]="actionItem.accion.id_report_type" (ngModelChange)="emitActions()"
-              placeholder="Ej. rep-001" />
-          </div>
-        </div>
+        <app-send-to-api-action [actionKey]="actionItem.idIndex" [endpoint]="actionItem.accion.endpoint || ''"
+          [reportTypeId]="actionItem.accion.id_report_type || ''" [highlightErrors]="highlightErrors"
+          (changed)="onSendToApiChanged(actionItem.idIndex, $event)">
+        </app-send-to-api-action>
         }
 
         @if (actionItem.tipo.startsWith('Evento a VMS NX')) {

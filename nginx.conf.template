@@ -72,6 +72,76 @@ server {
         ${API_KEY_HEADER}
     }
 
+    # PROXY DINÁMICO HACIA AZOR PANEL (Report Types)
+    # /azor-proxy/{http|https}/{host}/{puerto}/others/report-types[/{id}]
+    # El destino es el dominio ingresado en la acción "Enviar a API": se acepta cualquier IP o dominio.
+    # Protecciones: sesión del panel obligatoria (auth_request), ruta fija, solo GET/POST/PATCH
+    # y sin reenviar credenciales del usuario. La X-API-Key de integración la inyecta Nginx.
+    # Cada destino consultado queda registrado en el access log (va en la URI).
+    location ~ ^/azor-proxy/(https?)/([A-Za-z0-9.\-]+|\[[0-9A-Fa-f:.]+\])/([0-9]{1,5})/(others/report-types(?:/[A-Za-z0-9_\-]+)?)$ {
+        limit_except GET POST PATCH {
+            deny all;
+        }
+
+        # Las capturas se guardan antes de que otra expresión regular las sobrescriba
+        set $azor_scheme $1;
+        set $azor_host $2;
+        set $azor_port $3;
+        set $azor_path $4;
+
+        auth_request /_azor_proxy_auth;
+        error_page 401 403 = @azor_proxy_auth_denied;
+
+        # Necesario para resolver dominios con nombre cuando proxy_pass usa variables
+        resolver ${NGINX_RESOLVER} valid=30s ipv6=off;
+        resolver_timeout 5s;
+
+        proxy_pass $azor_scheme://$azor_host:$azor_port/$azor_path$is_args$args;
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # No reenviar credenciales del usuario del panel hacia el backend externo
+        proxy_set_header Authorization "";
+        proxy_set_header Cookie "";
+        ${AZOR_PROXY_AUTH_HEADER}
+
+        # HTTPS hacia IPs o dominios con certificados propios
+        proxy_ssl_server_name on;
+        proxy_ssl_name $azor_host;
+        proxy_ssl_verify off;
+
+        # Un dominio equivocado debe fallar rápido (consulta automática del input)
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 15s;
+        proxy_read_timeout 15s;
+    }
+
+    # Validación de sesión del panel: los GET /frontend/* del backend core exigen el JWT del usuario
+    location = /_azor_proxy_auth {
+        internal;
+        proxy_method GET;
+        proxy_pass ${API_HOST}/frontend/permisos/;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Host $proxy_host;
+        proxy_set_header Authorization $http_authorization;
+        ${API_KEY_HEADER}
+    }
+
+    # Sesión inválida: el header permite al frontend distinguirla de un 401 de Azor Panel
+    location @azor_proxy_auth_denied {
+        default_type application/json;
+        add_header X-Azor-Proxy-Auth denied always;
+        add_header Access-Control-Expose-Headers X-Azor-Proxy-Auth always;
+        return 401 '{"detail":"Sesión inválida o expirada"}';
+    }
+
+    # Cualquier otra ruta del proxy queda denegada
+    location /azor-proxy/ {
+        deny all;
+    }
+
     # SECURE REVERSE PROXY FOR OPENSEARCH
     # 1. Search endpoints (POST only)
     location ~ ^/opensearch/([a-zA-Z0-9_\-]+)/_search$ {

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, HostListener, OnChanges, SimpleChanges, inject, computed, ElementRef } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, HostListener, OnChanges, SimpleChanges, inject, computed, ElementRef, ViewChildren, QueryList } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CameraService } from '../../../../../core/services/camera.service';
@@ -8,6 +8,10 @@ import { Camera } from '../../../../../core/domain/entities/camera.models';
 import { Host } from '../../../../../core/domain/entities/host.models';
 import { Analytic } from '../../../../../core/domain/entities/analytic.models';
 import { getCameraEffectiveStatus, getCameraStatusCssClass } from '../../../../../core/utils/camera-status.utils';
+import { Observable, forkJoin, of } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { SendToApiStatus } from '../../../../../core/utils/scheduled-actions-validation.util';
+import { SendToApiActionComponent, SendToApiActionValue } from '../send-to-api-action/send-to-api-action.component';
 
 export interface ActionItem {
   idIndex: string; // "0", "1", "2"...
@@ -18,7 +22,7 @@ export interface ActionItem {
 @Component({
   selector: 'app-analytic-actions-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SendToApiActionComponent],
   templateUrl: './analytic-actions-builder.component.html',
   styleUrls: ['./analytic-actions-builder.component.css']
 })
@@ -33,6 +37,8 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
   private hostService = inject(HostService);
   private analyticService = inject(AnalyticService);
   private elementRef = inject(ElementRef);
+
+  @ViewChildren(SendToApiActionComponent) private sendToApiActions?: QueryList<SendToApiActionComponent>;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['initialActions']) {
@@ -115,7 +121,7 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
     if (this.actionsList().length <= 1) return;
 
     const target = event.target as HTMLElement;
-    if (target && target.closest('.remove-action-btn, .btn-media-toggle, .btn-target-selector-trigger, button, input, select, textarea')) {
+    if (target && target.closest('.remove-action-btn, .btn-media-toggle, .btn-target-selector-trigger, .modal-backdrop-blur, .premium-detail-modal, app-report-type-select-modal, button, input, select, textarea')) {
       return;
     }
 
@@ -372,7 +378,7 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
     } else if (base.startsWith('Tiempo de espera')) {
       defaultAccion = { tiempo: '30' };
     } else if (base.startsWith('Enviar a API')) {
-      defaultAccion = { endpoint: 'https://api.mi-sistema.com/alertas', id_report_type: 'rep-001' };
+      defaultAccion = { endpoint: '', id_report_type: '' };
     } else if (base.startsWith('Evento a VMS NX')) {
       defaultAccion = {
         id_cam: this.cameraId || '',
@@ -451,6 +457,35 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
     console.groupEnd();
 
     this.actionsChanged.emit(resultObj);
+  }
+
+  // =========================================================================
+  // ACCIONES "ENVIAR A API" (DOMINIO DE AZOR PANEL + TIPO DE REPORTE)
+  // =========================================================================
+
+  /** El componente de la acción emite el endpoint ya armado con el dominio verificado y el tipo de reporte. */
+  onSendToApiChanged(idIndex: string, value: SendToApiActionValue): void {
+    this.actionsList.update(list => list.map(item =>
+      item.idIndex === idIndex
+        ? { ...item, accion: { ...item.accion, endpoint: value.endpoint, id_report_type: value.id_report_type } }
+        : item
+    ));
+    this.emitActions();
+  }
+
+  /** Estado de cada acción "Enviar a API" para validar al guardar, por clave de acción. */
+  getSendToApiStatuses(): Record<string, SendToApiStatus> {
+    const statuses: Record<string, SendToApiStatus> = {};
+    this.sendToApiActions?.forEach(action => {
+      statuses[action.actionKey] = action.getValidationStatus();
+    });
+    return statuses;
+  }
+
+  /** Espera a que terminen de escribirse y verificarse los dominios de las acciones "Enviar a API". */
+  waitForSendToApiChecks(): Observable<void> {
+    const pending = this.sendToApiActions?.map(action => action.whenSettled()) ?? [];
+    return pending.length > 0 ? forkJoin(pending).pipe(map(() => undefined)) : of(undefined);
   }
 
   // =========================================================================

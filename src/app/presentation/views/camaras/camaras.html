@@ -786,7 +786,7 @@
                   <span class="analytic-status-pill text-capitalize text-nowrap flex-shrink-0"
                     [class.analytic-status-pill--active]="analytic.status === 'active' || analytic.status === 'online'"
                     [class.analytic-status-pill--inactive]="analytic.status !== 'active' && analytic.status !== 'online'"
-                    [title]="getAnalyticLabel(analytic.type) + (getAnalyticClassesLabel(analytic) ? ' (' + getAnalyticClassesLabel(analytic) + ')' : '')">
+                    [title]="getAnalyticLabel(analytic.type) + (getAnalyticClassesLabel(analytic) ? ' ( ' + getAnalyticClassesLabel(analytic) + ' )' : '')">
                     <span>{{ getAnalyticLabel(analytic.type) }}@if (getAnalyticClassesLabel(analytic); as classesLabel)
                       {( {{ classesLabel }}) }</span>
                   </span>

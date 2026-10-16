@@ -65,4 +65,27 @@ describe('authInterceptor', () => {
     expect(req.request.headers.get('Authorization')).toBe('Bearer local-token');
     req.flush({});
   });
+
+  it('should send only the session Bearer (no core x-api-key) to the Azor Panel proxy', () => {
+    sessionStorage.setItem('auth_token', 'session-jwt');
+    AppEnvironment.apiKey = 'core-static-key';
+    const url = '/azor-proxy/https/panel.com/443/others/report-types';
+    httpClient.get(url).subscribe();
+
+    const req = httpTestingController.expectOne(url);
+    expect(req.request.headers.get('Authorization')).toBe('Bearer session-jwt');
+    expect(req.request.headers.has('x-api-key')).toBe(false);
+    expect(req.request.headers.has('X-API-Key')).toBe(false);
+    expect(req.request.withCredentials).toBe(false);
+    req.flush({});
+  });
+
+  it('should not attach Authorization to the Azor Panel proxy without a session', () => {
+    const url = '/azor-proxy/http/10.0.0.5/3010/others/report-types';
+    httpClient.get(url).subscribe();
+
+    const req = httpTestingController.expectOne(url);
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    req.flush({});
+  });
 });

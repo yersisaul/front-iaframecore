@@ -34,6 +34,8 @@ import { IReliabilityAlertRepository } from './core/domain/repositories/reliabil
 import { ReliabilityAlertHttpRepository } from './data/repositories/reliability-alert-http.repository';
 import { IReliabilityCommandRepository } from './core/domain/repositories/reliability-command.repository';
 import { ReliabilityCommandHttpRepository } from './data/repositories/reliability-command-http.repository';
+import { IReportTypeRepository } from './core/domain/repositories/report-type.repository';
+import { ReportTypeHttpRepository } from './data/repositories/report-type-http.repository';
 
 export function initializeApp(authService: AuthService) {
   return () => authService.checkSession();
@@ -68,7 +70,8 @@ export const appConfig: ApplicationConfig = {
     { provide: IEventRepository, useClass: EventHttpRepository },
     { provide: IDashboardRepository, useClass: DashboardHttpRepository },
     { provide: IReliabilityAlertRepository, useClass: ReliabilityAlertHttpRepository },
-    { provide: IReliabilityCommandRepository, useClass: ReliabilityCommandHttpRepository }
+    { provide: IReliabilityCommandRepository, useClass: ReliabilityCommandHttpRepository },
+    { provide: IReportTypeRepository, useClass: ReportTypeHttpRepository }
   ]
 };
 

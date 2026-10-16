@@ -59,6 +59,8 @@ export const AppEnvironment = {
   apiUrl: '/api',
   minioBaseUrl: '/minio',
   openSearchBaseUrl: '/opensearch',
+  // Proxy dinámico hacia Azor Panel: /azor-proxy/{http|https}/{host}/{puerto}/...
+  azorProxyUrl: '/azor-proxy',
   wsPath: '/ws/client',
 
   dashboardDefaultUrl: '${normalizedPath}',

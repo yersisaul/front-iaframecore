@@ -5,6 +5,18 @@ import { MetaIndexName, MetaRecord, MetaIndexInfo, MetaRostro } from '../domain/
 import { MetaFilterState, MetaFilterOptions, defaultFilterState, defaultFilterOptions } from '../domain/entities/metadata.filters.models';
 import { IMetadataRepository } from '../domain/repositories/metadata.repository';
 import { SearchMetadataUseCase } from '../domain/use-cases/search-metadata.use-case';
+import { parseUtcDate } from '../utils/date-utils';
+
+function getRecordTimestampMs(item: { timestamp?: any }): number {
+  if (!item || !item.timestamp) return 0;
+  if (item.timestamp instanceof Date) return item.timestamp.getTime();
+  if (typeof item.timestamp === 'number') return item.timestamp;
+  return parseUtcDate(item.timestamp).getTime();
+}
+
+function sortByTimestampDesc<T extends { timestamp?: any }>(items: T[]): T[] {
+  return [...items].sort((a, b) => getRecordTimestampMs(b) - getRecordTimestampMs(a));
+}
 
 const DEFAULT_INDICES: MetaIndexInfo[] = [
   { name: 'personas', count: 0 },
@@ -133,19 +145,23 @@ export class MetadataService {
     const f = this.filters();
     const activeFiltersExist = this.hasActiveFilters(f);
     const isPaginating = this.currentPage() > 1;
-    const shouldBuffer = activeFiltersExist || isPaginating;
+    const isQueryLoading = this.isLoading();
+    const shouldBuffer = activeFiltersExist || isPaginating || isQueryLoading;
 
     if (shouldBuffer) {
       this.bufferedEvents.update(prev => {
-        if (prev.some(r => r.id === newRecord.id)) return prev;
-        return [newRecord, ...prev];
+        if (prev.some(r => r.id === newRecord.id) || this.records().some(r => r.id === newRecord.id)) {
+          return prev;
+        }
+        return sortByTimestampDesc([newRecord, ...prev]);
       });
     } else {
-      // Si está en la página 1 y sin filtros activos, insertar directamente arriba
+      // Si está en la página 1, sin filtros activos y NO está cargando, insertar directamente arriba
       this.records.update(list => {
         if (list.some(r => r.id === newRecord.id)) return list;
-        const nextList = [newRecord, ...list];
-        return nextList.slice(0, this.pageSize());
+        const limit = this.pageSize();
+        const updated = sortByTimestampDesc([newRecord, ...list]);
+        return updated.slice(0, limit);
       });
       this.totalRecords.update(n => n + 1);
       this.markAsNew(newRecord.id);
@@ -165,7 +181,7 @@ export class MetadataService {
         const unique = updated.filter((item, index, self) =>
           index === self.findIndex(t => t.id === item.id)
         );
-        return unique.slice(0, limit);
+        return sortByTimestampDesc(unique).slice(0, limit);
       });
       this.totalRecords.update(t => t + buffer.length);
       buffer.forEach(e => this.markAsNew(e.id));
@@ -334,11 +350,16 @@ export class MetadataService {
 
     if (bufferPrefix && bufferPrefix.length > 0) {
       const combined = [...bufferPrefix, ...pageRecords];
-      pageRecords = (combined as MetaRostro[]).filter((item, index, self) =>
+      const unique = (combined as MetaRostro[]).filter((item, index, self) =>
         index === self.findIndex(t => t.id === item.id)
-      ).slice(0, pageSize);
+      );
+      pageRecords = sortByTimestampDesc(unique).slice(0, pageSize);
       bufferPrefix.forEach(r => this.markAsNew(r.id));
     }
+
+    // Deduplicación contra el buffer
+    const pageIds = new Set(pageRecords.map(r => r.id));
+    this.bufferedEvents.update(buf => buf.filter(b => !pageIds.has(b.id)));
 
     this.records.set(pageRecords);
     if (this.activeIndex()) {
@@ -397,10 +418,34 @@ export class MetadataService {
         let finalRecords = res.records;
         if (bufferPrefix && bufferPrefix.length > 0) {
           const combined = [...bufferPrefix, ...res.records];
-          finalRecords = combined.filter((item, index, self) =>
+          const uniquePrefix = combined.filter((item, index, self) =>
             index === self.findIndex(t => t.id === item.id)
-          ).slice(0, this.pageSize());
+          );
+          finalRecords = sortByTimestampDesc(uniquePrefix).slice(0, this.pageSize());
           bufferPrefix.forEach(r => this.markAsNew(r.id));
+        }
+
+        // Deduplicación contra el buffer:
+        // Si llegaron metadatos al buffer durante la carga de OpenSearch que YA vinieron en res.records,
+        // eliminarlos del buffer para no tener duplicados.
+        const resIds = new Set(finalRecords.map(r => r.id));
+        const remainingBuffer = this.bufferedEvents().filter(b => !resIds.has(b.id));
+
+        // En la página 1 y SIN filtros activos, incorporar el buffer AUTOMÁTICAMENTE al inicio del grid ordenado por timestamp
+        const activeFiltersExist = this.hasActiveFilters(this.filters());
+        const isPage1 = this.currentPage() === 1;
+
+        if (isPage1 && !activeFiltersExist && remainingBuffer.length > 0) {
+          const combined = [...remainingBuffer, ...finalRecords];
+          const deduplicated = combined.filter((item, index, self) =>
+            index === self.findIndex(t => t.id === item.id)
+          );
+          finalRecords = sortByTimestampDesc(deduplicated).slice(0, this.pageSize());
+
+          remainingBuffer.forEach(e => this.markAsNew(e.id));
+          this.bufferedEvents.set([]); // Limpiar buffer para que no quede botón pendiente
+        } else {
+          this.bufferedEvents.set(remainingBuffer);
         }
 
         const finalCount = Math.max(res.total, finalRecords.length);

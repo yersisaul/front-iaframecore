@@ -1,0 +1,274 @@
+/* Tipografía de las acciones: replica los estilos de .action-rule-card del builder (no aplican dentro de este componente) */
+:host {
+  display: block;
+}
+
+label,
+.form-label,
+span {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.form-label {
+  font-size: 0.72rem;
+  margin-bottom: 0.5rem !important;
+}
+
+.form-control {
+  font-size: 0.78rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 20px;
+}
+
+.text-paragraph-sm {
+  font-size: 0.8rem;
+}
+
+/* Selector de tipo de reporte: mismo estilo que el selector de analítica objetivo (analytic-actions-builder) */
+.btn-target-selector-trigger {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  background-color: var(--bg-card, var(--bg-surface, #ffffff));
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary);
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-target-selector-trigger .text-truncate {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-target-selector-trigger:hover,
+.btn-target-selector-trigger.is-selected:hover {
+  border-color: var(--primary) !important;
+  background-color: var(--color-primary-light-bg, rgba(var(--primary-rgb, 59, 130, 246), 0.07)) !important;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb, 59, 130, 246), 0.18) !important;
+  transform: translateY(-1px);
+}
+
+.btn-target-selector-trigger:hover .target-trigger-placeholder {
+  color: var(--primary);
+}
+
+.btn-target-selector-trigger:hover .target-trigger-icon-box {
+  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.16);
+  color: var(--primary);
+}
+
+.btn-target-selector-trigger:hover .chevron-rotate-right {
+  color: var(--primary) !important;
+}
+
+[data-bs-theme="dark"] .btn-target-selector-trigger,
+:host-context([data-bs-theme="dark"]) .btn-target-selector-trigger {
+  background-color: var(--bg-card, var(--bg-surface, #1e293b));
+  border-color: var(--border-color) !important;
+}
+
+.btn-target-selector-trigger.is-warning {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  color: #d97706 !important;
+}
+
+.btn-target-selector-trigger.is-warning:hover {
+  background-color: rgba(245, 158, 11, 0.16) !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+.btn-target-selector-trigger.is-warning .target-trigger-icon-box.is-warning {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+  color: #d97706 !important;
+}
+
+.btn-target-selector-trigger.is-warning .target-trigger-placeholder {
+  color: #d97706 !important;
+}
+
+[data-bs-theme="dark"] .btn-target-selector-trigger.is-warning,
+:host-context([data-bs-theme="dark"]) .btn-target-selector-trigger.is-warning {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  color: #fbbf24 !important;
+}
+
+[data-bs-theme="dark"] .btn-target-selector-trigger.is-warning .target-trigger-icon-box.is-warning,
+:host-context([data-bs-theme="dark"]) .btn-target-selector-trigger.is-warning .target-trigger-icon-box.is-warning {
+  background-color: rgba(245, 158, 11, 0.25) !important;
+  color: #fbbf24 !important;
+}
+
+[data-bs-theme="dark"] .btn-target-selector-trigger.is-warning .target-trigger-placeholder,
+:host-context([data-bs-theme="dark"]) .btn-target-selector-trigger.is-warning .target-trigger-placeholder {
+  color: #fbbf24 !important;
+}
+
+.target-trigger-icon-box {
+  width: 20px;
+  height: 20px;
+  background-color: rgba(0, 0, 0, 0.04);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+[data-bs-theme="dark"] .target-trigger-icon-box,
+:host-context([data-bs-theme="dark"]) .target-trigger-icon-box {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.target-trigger-icon-box.is-active {
+  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.12);
+  color: var(--primary);
+}
+
+.target-trigger-placeholder {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.target-change-badge {
+  width: 26px;
+  height: 26px;
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.btn-target-selector-trigger:hover .target-change-badge {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+
+.chevron-rotate-right {
+  transform: rotate(-90deg);
+}
+/* =========================================================================
+   INPUT DE DOMINIO DE AZOR PANEL
+   ========================================================================= */
+
+.domain-input-wrapper .form-control {
+  padding-right: 2.25rem;
+}
+
+.domain-input-wrapper .form-control.is-invalid {
+  border-color: var(--color-offline, #e7000b) !important;
+  background-image: none;
+}
+
+.domain-input-wrapper .form-control.is-valid-domain {
+  border-color: rgba(0, 166, 62, 0.55) !important;
+}
+
+.domain-input-status {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.domain-input-status .icon-svg.text-success {
+  background-color: var(--azor-green-600, #00a63e);
+}
+
+.domain-input-status .icon-svg.text-danger {
+  background-color: var(--color-offline, #e7000b);
+}
+
+.domain-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(var(--primary-rgb, 59, 130, 246), 0.25);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: domainSpin 0.8s linear infinite;
+}
+
+@keyframes domainSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Etiqueta y estado del dominio en la misma línea */
+.domain-label-row {
+  margin-bottom: 0.5rem;
+  min-width: 0;
+}
+
+.domain-label-row .form-label {
+  margin-bottom: 0 !important;
+}
+
+.domain-feedback {
+  font-size: 0.7rem;
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.domain-feedback .feedback-note::before {
+  content: ' · ';
+  color: var(--text-muted);
+}
+
+.domain-feedback .is-hint {
+  color: var(--text-muted);
+}
+
+.domain-feedback .is-success {
+  color: var(--azor-green-600, #00a63e);
+  font-weight: 600;
+}
+
+.domain-feedback .is-warning {
+  color: #d97706;
+  font-weight: 500;
+}
+
+.domain-feedback .is-danger {
+  color: var(--color-offline, #e7000b);
+  font-weight: 500;
+}
+
+:host-context([data-bs-theme="dark"]) .domain-feedback .is-success {
+  color: var(--azor-green-400, #05df72);
+}
+
+:host-context([data-bs-theme="dark"]) .domain-feedback .is-warning {
+  color: #fbbf24;
+}
+
+:host-context([data-bs-theme="dark"]) .domain-feedback .is-danger {
+  color: #ffa2a2;
+}
+
+/* Selector bloqueado hasta que el dominio responda */
+.btn-target-selector-trigger.is-locked,
+.btn-target-selector-trigger.is-locked:hover {
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+  box-shadow: none !important;
+  border-style: dashed !important;
+  background-color: var(--bg-header-light, rgba(0, 0, 0, 0.02)) !important;
+}
+
+.btn-target-selector-trigger.is-locked:hover .target-trigger-placeholder,
+.btn-target-selector-trigger.is-locked:hover .target-trigger-icon-box {
+  color: var(--text-muted);
+  background-color: rgba(0, 0, 0, 0.04);
+}

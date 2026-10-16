@@ -101,4 +101,35 @@ describe('errorInterceptor', () => {
     const req = httpTestingController.expectOne('/api/users');
     req.flush('Server Error', { status: 500, statusText: 'Internal Server Error' });
   });
+
+  it('should not log out on a 401 from Azor Panel (integration key rejected)', () => {
+    const url = '/azor-proxy/http/10.0.0.5/3010/others/report-types';
+    httpClient.get(url).subscribe({
+      next: () => expect.fail('should have failed'),
+      error: (err) => {
+        expect(err.status).toBe(401);
+        expect(authServiceMock.currentUser()).not.toBeNull();
+        expect(routerMock.navigate).not.toHaveBeenCalled();
+      }
+    });
+
+    httpTestingController.expectOne(url).flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+  });
+
+  it('should log out when the Azor Panel proxy reports an invalid panel session', () => {
+    const url = '/azor-proxy/http/10.0.0.5/3010/others/report-types';
+    httpClient.get(url).subscribe({
+      next: () => expect.fail('should have failed'),
+      error: (err) => {
+        expect(err.status).toBe(401);
+        expect(authServiceMock.currentUser()).toBeNull();
+        expect(routerMock.navigate).toHaveBeenCalledWith(['/login']);
+      }
+    });
+
+    httpTestingController.expectOne(url).flush(
+      { detail: 'Sesión inválida o expirada' },
+      { status: 401, statusText: 'Unauthorized', headers: { 'X-Azor-Proxy-Auth': 'denied' } }
+    );
+  });
 });

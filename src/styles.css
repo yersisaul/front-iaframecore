@@ -1,12 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-@import "leaflet/dist/leaflet.css";
-
 /* ═══════════════════════════════════════════════════════════════
    DESIGN TOKENS — Light Theme (default) (adapted from globals.css)
    ═══════════════════════════════════════════════════════════════ */
 :root {
-  /* Fonts */
-  --font-sans: 'Inter', sans-serif;
+  /* Fonts: Pila nativa */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   /* Global typography scale to ensure readable minimum font sizes */
@@ -2875,4 +2872,4 @@ body.is-timeline-dragging * {
 /* Typography utilities */
 .fw-extrabold {
   font-weight: 800 !important;
-}
+}

@@ -5,6 +5,17 @@ import { EventRecord, EventFilters, EventFilterOptions, defaultEventFilters, def
 import { SearchEventsUseCase } from '../domain/use-cases/search-events.use-case';
 import { parseUtcDate } from '../utils/date-utils';
 
+function getRecordTimestampMs(item: { timestamp?: any }): number {
+  if (!item || !item.timestamp) return 0;
+  if (item.timestamp instanceof Date) return item.timestamp.getTime();
+  if (typeof item.timestamp === 'number') return item.timestamp;
+  return parseUtcDate(item.timestamp).getTime();
+}
+
+function sortByTimestampDesc<T extends { timestamp?: any }>(items: T[]): T[] {
+  return [...items].sort((a, b) => getRecordTimestampMs(b) - getRecordTimestampMs(a));
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -191,22 +202,25 @@ export class EventService {
       return;
     }
 
-    // 2. Si el usuario tiene filtros activos O está en página > 1, acumulamos en el buffer y mostramos el indicador
+    // 2. Si el usuario tiene filtros activos, está en página > 1, O la consulta de OpenSearch está en curso:
     const activeFiltersExist = this.hasActiveFilters(f);
     const isPaginating = this.currentPage() > 1;
-    const shouldBuffer = activeFiltersExist || isPaginating;
+    const isQueryLoading = this.isLoading();
+    const shouldBuffer = activeFiltersExist || isPaginating || isQueryLoading;
 
     if (shouldBuffer) {
       this.bufferedEvents.update(prev => {
-        if (prev.some(e => e.id === newEvent.id)) return prev;
-        return [newEvent, ...prev];
+        if (prev.some(e => e.id === newEvent.id) || this.records().some(e => e.id === newEvent.id)) {
+          return prev;
+        }
+        return sortByTimestampDesc([newEvent, ...prev]);
       });
     } else {
-      // Si está en la página 1 y SIN filtros activos, insertar directamente arriba
+      // Si está en la página 1, SIN filtros activos y NO está cargando, insertar directamente arriba
       this.records.update(r => {
         if (r.some(e => e.id === newEvent.id)) return r;
         const limit = this.pageSize();
-        const updated = [newEvent, ...r];
+        const updated = sortByTimestampDesc([newEvent, ...r]);
         return updated.slice(0, limit);
       });
       this.totalRecords.update(t => t + 1);
@@ -227,7 +241,7 @@ export class EventService {
         const unique = updated.filter((item, index, self) =>
           index === self.findIndex(t => t.id === item.id)
         );
-        return unique.slice(0, limit);
+        return sortByTimestampDesc(unique).slice(0, limit);
       });
       this.totalRecords.update(t => t + buffer.length);
       buffer.forEach(e => this.markAsNew(e.id));
@@ -285,10 +299,34 @@ export class EventService {
         let finalRecords = res.records;
         if (bufferPrefix && bufferPrefix.length > 0) {
           const combined = [...bufferPrefix, ...res.records];
-          finalRecords = combined.filter((item, index, self) =>
+          const uniquePrefix = combined.filter((item, index, self) =>
             index === self.findIndex(t => t.id === item.id)
-          ).slice(0, this.pageSize());
+          );
+          finalRecords = sortByTimestampDesc(uniquePrefix).slice(0, this.pageSize());
           bufferPrefix.forEach(e => this.markAsNew(e.id));
+        }
+
+        // Deduplicación contra el buffer:
+        // Si llegaron eventos al buffer durante la carga de OpenSearch que YA vinieron en res.records,
+        // eliminarlos del buffer para no tener duplicados.
+        const resIds = new Set(finalRecords.map(r => r.id));
+        const remainingBuffer = this.bufferedEvents().filter(b => !resIds.has(b.id));
+
+        // En la página 1 y SIN filtros activos, incorporar el buffer AUTOMÁTICAMENTE al inicio del grid ordenado por timestamp
+        const activeFiltersExist = this.hasActiveFilters(this.filters());
+        const isPage1 = this.currentPage() === 1;
+
+        if (isPage1 && !activeFiltersExist && remainingBuffer.length > 0) {
+          const combined = [...remainingBuffer, ...finalRecords];
+          const deduplicated = combined.filter((item, index, self) =>
+            index === self.findIndex(t => t.id === item.id)
+          );
+          finalRecords = sortByTimestampDesc(deduplicated).slice(0, this.pageSize());
+
+          remainingBuffer.forEach(e => this.markAsNew(e.id));
+          this.bufferedEvents.set([]); // Limpiar buffer para que no quede botón pendiente
+        } else {
+          this.bufferedEvents.set(remainingBuffer);
         }
 
         this.records.set(finalRecords);

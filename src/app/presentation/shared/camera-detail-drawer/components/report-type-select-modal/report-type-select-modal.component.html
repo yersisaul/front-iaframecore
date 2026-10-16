@@ -1,0 +1,328 @@
+<!-- =========================================================================
+     MODAL DE SELECCIÓN Y GESTIÓN DE TIPOS DE REPORTE (AZOR ANALYTICS)
+     ========================================================================= -->
+@if (show) {
+<div class="modal-backdrop-blur d-flex align-items-center justify-content-center"
+  (pointerdown)="$event.stopPropagation()" (mousedown)="onBackdropMouseDown($event)" (click)="onBackdropClick($event)">
+  <div class="premium-detail-modal report-type-modal d-flex flex-column shadow-2xl" role="dialog" aria-modal="true"
+    aria-labelledby="report-type-modal-title" (pointerdown)="$event.stopPropagation()" (click)="$event.stopPropagation()">
+
+    <!-- Modal Header (cambia según la vista; el formulario es una vista completa del mismo modal) -->
+    <div class="modal-header-section p-4 d-flex justify-content-between align-items-center gap-3">
+      @if (view() === 'list') {
+      <div class="min-w-0">
+        <h5 id="report-type-modal-title" class="fw-bold mb-1 text-body">Seleccionar Tipo de Reporte</h5>
+        <p class="text-muted small mb-0">
+          Seleccione el tipo de reporte que se enviará a la API al dispararse esta acción.
+        </p>
+        @if (lookup()?.origin || domain) {
+        <p class="modal-domain-chip font-monospace mb-0 mt-2 d-inline-flex align-items-center gap-1"
+          [title]="'Dominio de Azor Panel: ' + (lookup()?.origin || domain?.display)">
+          <span class="icon-svg icon-server flex-shrink-0" style="width: 11px; height: 11px; background-color: currentColor;"></span>
+          {{ lookup()?.origin || domain?.display }}
+        </p>
+        }
+      </div>
+      <button type="button" class="btn-new-report-type d-inline-flex align-items-center gap-2 flex-shrink-0"
+        (click)="openCreateForm()">
+        <span class="icon-svg icon-plus" style="width: 0.8125rem; height: 0.8125rem; background-color: currentColor;"></span>
+        <span>Nuevo</span>
+      </button>
+      } @else {
+      <div class="d-flex align-items-center gap-3 min-w-0">
+        <button type="button"
+          class="btn-hierarchy-back-icon p-0 border-0 bg-transparent text-muted transition-all d-flex align-items-center justify-content-center flex-shrink-0"
+          (click)="backToList()" [disabled]="reportTypeService.isSaving()" title="Volver al listado" aria-label="Volver">
+          <span class="icon-svg icon-arrow-left" style="width: 18px; height: 18px; background-color: currentColor;"></span>
+        </button>
+        <div class="min-w-0">
+          <h5 id="report-type-modal-title" class="fw-bold mb-1 text-body text-truncate">
+            {{ isEditing() ? 'Editar Tipo de Reporte' : 'Nuevo Tipo de Reporte' }}
+          </h5>
+          @if (isEditing()) {
+          <p class="text-muted small font-monospace mb-0 text-truncate">ID: {{ editingId() }}</p>
+          } @else {
+          <p class="text-muted small mb-0">Se registrará en Azor Analytics y quedará seleccionado.</p>
+          }
+        </div>
+      </div>
+      }
+    </div>
+
+    @if (view() === 'list') {
+    <!-- ========================================== -->
+    <!-- VISTA 1: LISTADO                           -->
+    <!-- ========================================== -->
+
+    <!-- Controles: Búsqueda + toggle de clasificación a su derecha -->
+    <div class="modal-controls-container px-5 pb-3">
+      <div class="modal-search-row">
+        <div class="modal-search-wrapper d-flex align-items-center">
+          <span class="icon-svg icon-search me-2 text-muted" style="width: 14px; height: 14px; opacity: 0.5;"></span>
+          <input #searchInput type="text" placeholder="Buscar por nombre, descripción o ID..." class="modal-search-input"
+            [value]="searchQuery()" (input)="searchQuery.set(searchInput.value)" aria-label="Buscar tipos de reporte" />
+          @if (searchQuery()) {
+          <button type="button" class="btn-clear-search d-flex align-items-center justify-content-center flex-shrink-0"
+            (click)="searchQuery.set('')" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+            <span class="icon-svg icon-close-simple" style="width: 10px; height: 10px; background-color: currentColor;"></span>
+          </button>
+          }
+        </div>
+
+        <!-- Filtro de clasificación (Segmented Control, homologado con el modal de alertas) -->
+        <div class="btn-group btn-group-sm classification-segmented flex-shrink-0" role="group"
+          aria-label="Filtrar por clasificación">
+          @for (option of classificationFilterOptions; track option.value) {
+          <button type="button" class="btn btn-segmented" [ngClass]="getFilterOptionClass(option.value)"
+            [class.active]="classificationFilter() === option.value"
+            [attr.aria-pressed]="classificationFilter() === option.value" (click)="setClassificationFilter(option.value)">
+            {{ option.label }}
+          </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Body: Listado -->
+    <div class="modal-body-content py-2 px-5 flex-grow-1 overflow-y-auto">
+
+      <!-- Aviso: falló la actualización pero se conserva la lista ya cargada -->
+      @if (refreshError()) {
+      <div class="report-type-alert is-danger d-flex align-items-start gap-2 mb-3" role="alert">
+        <span class="icon-svg icon-warning flex-shrink-0 mt-0.5" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+        <span class="flex-grow-1">No se pudo actualizar la lista: {{ refreshError() }}</span>
+        <button type="button" class="btn-alert-action flex-shrink-0" (click)="loadReportTypes()">Reintentar</button>
+      </div>
+      }
+
+      <!-- Estado: Cargando (solo si aún no hay datos en caché) -->
+      @if (isLoading()) {
+      <div class="d-flex flex-column gap-3" aria-busy="true" aria-label="Cargando tipos de reporte">
+        @for (i of [1, 2, 3, 4]; track i) {
+        <div class="report-type-skeleton rounded-3 border p-3 d-flex align-items-center gap-3">
+          <span class="skeleton-block rounded-circle" style="width: 22px; height: 22px;"></span>
+          <div class="flex-grow-1 d-flex flex-column gap-2">
+            <span class="skeleton-block rounded-2" style="width: 40%; height: 12px;"></span>
+            <span class="skeleton-block rounded-2" style="width: 65%; height: 10px;"></span>
+          </div>
+          <span class="skeleton-block rounded-pill" style="width: 90px; height: 18px;"></span>
+        </div>
+        }
+      </div>
+      }
+
+      <!-- Estado: Error de carga -->
+      @else if (loadError()) {
+      <div class="report-type-empty-state text-center py-5">
+        <span class="icon-svg icon-warning d-block mx-auto mb-3 text-warning"
+          style="width: 32px; height: 32px; background-color: currentColor;"></span>
+        <span class="fw-semibold d-block text-body mb-1">No se pudieron cargar los tipos de reporte</span>
+        <span class="small text-muted d-block mb-3">{{ loadError() }}</span>
+        <button type="button" class="btn-empty-action" (click)="loadReportTypes()">Reintentar</button>
+      </div>
+      }
+
+      <!-- Estado: Sin tipos de reporte -->
+      @else if (reportTypes().length === 0) {
+      <div class="report-type-empty-state text-center py-5">
+        <span class="icon-svg icon-list d-block mx-auto mb-3 text-muted opacity-50"
+          style="width: 32px; height: 32px; background-color: currentColor;"></span>
+        <span class="fw-semibold d-block text-body mb-1">Este dominio aún no tiene tipos de reporte</span>
+        <span class="small text-muted d-block mb-3">Cree el primer tipo de reporte para poder seleccionarlo.</span>
+        <button type="button" class="btn-empty-action" (click)="openCreateForm()">Crear tipo de reporte</button>
+      </div>
+      }
+
+      <!-- Estado: Sin coincidencias -->
+      @else if (filteredReportTypes().length === 0) {
+      <div class="report-type-empty-state text-center py-5">
+        <span class="icon-svg icon-search d-block mx-auto mb-3 text-muted opacity-50"
+          style="width: 32px; height: 32px; background-color: currentColor;"></span>
+        <span class="fw-semibold d-block text-body mb-1">Sin coincidencias</span>
+        <span class="small text-muted d-block mb-3">Ningún tipo de reporte coincide con la búsqueda o el filtro aplicado.</span>
+        <button type="button" class="btn-empty-action" (click)="clearFilters()">Limpiar filtros</button>
+      </div>
+      }
+
+      <!-- Listado de Tipos de Reporte -->
+      @else {
+      <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+        <span class="text-muted small fw-semibold text-uppercase font-monospace"
+          style="font-size: 0.72rem; letter-spacing: 0.04em;">
+          {{ filteredReportTypes().length }} de {{ reportTypes().length }} tipos de reporte
+        </span>
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+          @if (isRefreshing()) {
+          <span class="refreshing-hint d-inline-flex align-items-center gap-1" role="status">
+            <span class="btn-spinner is-small" aria-hidden="true"></span>
+            Actualizando...
+          </span>
+          }
+          @if (hasActiveFilters()) {
+          <span class="badge bg-primary-light text-primary rounded-pill small px-2 py-0.5" style="font-size: 0.72rem;">
+            Filtros aplicados
+          </span>
+          }
+        </div>
+      </div>
+
+      <div class="d-flex flex-column gap-3 pb-2">
+        @for (rt of filteredReportTypes(); track rt.id) {
+        <div class="report-type-card analytic-toggle-card w-100 text-start p-3 rounded-3 border transition-all d-flex align-items-center justify-content-between gap-3 shadow-xs"
+          role="button" tabindex="0" [attr.data-report-type-id]="rt.id"
+          [attr.aria-pressed]="tempSelectedId() === rt.id"
+          [class.active-selected]="tempSelectedId() === rt.id"
+          [class.is-new]="reportTypeService.newRecordIds().has(rt.id)"
+          [class.is-updated]="reportTypeService.updatedRecordIds().has(rt.id)"
+          (click)="toggleSelection(rt.id)" (keydown.enter)="toggleSelection(rt.id)"
+          (keydown.space)="$event.preventDefault(); toggleSelection(rt.id)">
+
+          <!-- Lado Izquierdo: Indicador de selección + Nombre y Descripción -->
+          <div class="d-flex align-items-center gap-3 min-w-0 flex-grow-1 overflow-hidden">
+            <span class="analytic-check-indicator rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+              [class.checked]="tempSelectedId() === rt.id">
+              @if (tempSelectedId() === rt.id) {
+              <span class="icon-svg icon-check" style="width: 12px; height: 12px; background-color: #ffffff;"></span>
+              }
+            </span>
+
+            <div class="min-w-0 flex-grow-1 overflow-hidden">
+              <span class="fw-bold text-body d-block text-truncate" style="font-size: 0.9rem;" [title]="rt.name">
+                {{ rt.name }}
+              </span>
+              <span class="text-muted small font-monospace d-block text-truncate" style="font-size: 0.7rem; opacity: 0.75;">
+                ID: {{ rt.id }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Lado Derecho: Clasificación + Editar -->
+          <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-2">
+            <span class="classification-badge" [class]="'classification-badge ' + getClassificationBadgeClass(rt.classification)">
+              {{ getClassificationLabel(rt.classification) }}
+            </span>
+            <button type="button" class="icon-svg icon-edit btn-edit-icon" (click)="openEditForm(rt, $event)"
+              (keydown.enter)="$event.stopPropagation()" (keydown.space)="$event.stopPropagation()"
+              title="Editar tipo de reporte" [attr.aria-label]="'Editar ' + rt.name"></button>
+          </div>
+        </div>
+        }
+      </div>
+      }
+    </div>
+
+    <!-- Footer: Listado -->
+    <div class="modal-footer-section p-3 d-flex w-100 gap-3">
+      <button type="button" class="btn-premium-footer btn-premium-cancel flex-grow-1" (click)="close()">
+        Cancelar
+      </button>
+      <button type="button" class="btn-premium-footer btn-premium-confirm flex-grow-1"
+        [disabled]="!selectedReportType()" (click)="confirmSelection()">
+        Confirmar
+      </button>
+    </div>
+    }
+
+    @else {
+    <!-- ========================================== -->
+    <!-- VISTA 2: FORMULARIO (CREAR / EDITAR)       -->
+    <!-- ========================================== -->
+    <div class="modal-body-content py-2 px-5 flex-grow-1 overflow-y-auto">
+      <form class="report-type-form d-flex flex-column gap-4 pb-2" novalidate (ngSubmit)="saveForm()">
+
+        <!-- Nombre -->
+        <div>
+          <label for="report-type-name" class="form-label text-muted small font-semibold mb-1 ps-2">
+            Nombre <span class="text-danger">*</span>
+          </label>
+          <input id="report-type-name" name="name" type="text" class="form-control text-paragraph-sm rounded-3"
+            [class.is-invalid]="nameError()" [ngModel]="formName()" (ngModelChange)="formName.set($event)"
+            placeholder="Ej. Permanencia de objeto" maxlength="150" autocomplete="off"
+            [disabled]="reportTypeService.isSaving()" />
+          @if (nameError()) {
+          <span class="field-error d-block ps-2 mt-1">{{ nameError() }}</span>
+          }
+        </div>
+
+        <!-- Descripción -->
+        <div>
+          <label for="report-type-description" class="form-label text-muted small font-semibold mb-1 ps-2">
+            Descripción
+          </label>
+          <textarea id="report-type-description" name="description" class="form-control text-paragraph-sm rounded-3"
+            rows="3" [ngModel]="formDescription()" (ngModelChange)="formDescription.set($event)"
+            placeholder="Describa brevemente qué registra este tipo de reporte..." maxlength="500"
+            [disabled]="reportTypeService.isSaving()"></textarea>
+        </div>
+
+        <!-- Clasificación: toggle de 2 opciones a todo el ancho; editable solo al crear -->
+        <div>
+          <label class="form-label text-muted small font-semibold mb-1 ps-2">
+            Clasificación @if (!isEditing()) {<span class="text-danger">*</span>}
+          </label>
+          <div class="btn-group classification-segmented classification-segmented--block" role="group"
+            aria-label="Clasificación del tipo de reporte" [class.is-locked]="isEditing()">
+            @for (option of classificationOptions; track option.value) {
+            <button type="button" class="btn btn-segmented" [ngClass]="getFilterOptionClass(option.value)"
+              [class.active]="formClassification() === option.value"
+              [attr.aria-pressed]="formClassification() === option.value"
+              [disabled]="isEditing() || reportTypeService.isSaving()" (click)="setFormClassification(option.value)">
+              <span class="segment-title">{{ option.label }}</span>
+              <span class="segment-caption">{{ classificationCaptions[option.value] }}</span>
+            </button>
+            }
+          </div>
+          @if (isEditing()) {
+          <span class="field-hint d-flex align-items-center gap-1 ps-2 mt-2">
+            <span class="icon-svg icon-lock flex-shrink-0" style="width: 11px; height: 11px; background-color: currentColor;"></span>
+            No se puede cambiar después de crear el tipo de reporte.
+          </span>
+          }
+        </div>
+
+        <!-- Campos de Metadata (fijos, solo lectura) -->
+        <div>
+          <div class="d-flex align-items-center gap-2 mb-2 ps-2">
+            <span class="icon-svg icon-lock text-muted" style="width: 12px; height: 12px; background-color: currentColor;"></span>
+            <span class="form-label text-muted small font-semibold mb-0">Campos de metadata</span>
+          </div>
+          <div class="metadata-chips d-flex flex-wrap gap-2">
+            @for (field of metadataFields; track field) {
+            <span class="metadata-chip font-monospace">{{ field }}</span>
+            }
+          </div>
+          <span class="field-hint d-block ps-2 mt-2">Se envían automáticamente y no son editables.</span>
+        </div>
+
+        @if (formError()) {
+        <div class="report-type-alert is-danger d-flex align-items-start gap-2" role="alert">
+          <span class="icon-svg icon-warning flex-shrink-0 mt-0.5" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+          <span>{{ formError() }}</span>
+        </div>
+        }
+
+        <!-- Botón oculto para permitir guardar con Enter desde el campo Nombre -->
+        <button type="submit" class="d-none" tabindex="-1" aria-hidden="true"></button>
+      </form>
+    </div>
+
+    <!-- Footer: Formulario -->
+    <div class="modal-footer-section p-3 d-flex w-100 gap-3">
+      <button type="button" class="btn-premium-footer btn-premium-cancel flex-grow-1" (click)="backToList()"
+        [disabled]="reportTypeService.isSaving()">
+        Volver
+      </button>
+      <button type="button" class="btn-premium-footer btn-premium-confirm flex-grow-1 gap-2" (click)="saveForm()"
+        [disabled]="reportTypeService.isSaving()">
+        @if (reportTypeService.isSaving()) {
+        <span class="btn-spinner" aria-hidden="true"></span>
+        <span>Guardando...</span>
+        } @else {
+        <span>{{ isEditing() ? 'Guardar cambios' : 'Crear tipo de reporte' }}</span>
+        }
+      </button>
+    </div>
+    }
+  </div>
+</div>
+}

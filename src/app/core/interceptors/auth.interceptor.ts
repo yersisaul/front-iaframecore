@@ -14,11 +14,19 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     req.url.startsWith(AppEnvironment.openSearchBaseUrl) ||
     req.url.includes(AppEnvironment.openSearchBaseUrl + '/')
   );
+  const isAzorProxyRequest = isInternal && req.url.startsWith(AppEnvironment.azorProxyUrl + '/');
   const isLoginRequest = req.url.includes('/auth/login');
 
   // Las peticiones a OpenSearch no deben llevar el Bearer token JWT ni x-api-key del backend
   if (isOpenSearchRequest) {
     return next(req);
+  }
+
+  // Proxy de Azor Panel: solo el Bearer, para que el proxy valide la sesión del panel.
+  // Nunca la x-api-key del backend core; la X-API-Key de integración la inyecta el proxy.
+  if (isAzorProxyRequest) {
+    const sessionToken = sessionStorage.getItem('auth_token');
+    return next(sessionToken ? req.clone({ setHeaders: { Authorization: `Bearer ${sessionToken}` } }) : req);
   }
 
 

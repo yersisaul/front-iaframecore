@@ -8,6 +8,17 @@ import { ScheduleService } from '../../../core/services/schedule.service';
 import { AnalyticService } from '../../../core/services/analytic.service';
 import { HostService } from '../../../core/services/host.service';
 import { ListService } from '../../../core/services/list.service';
+import { ReportTypeService } from '../../../core/services/report-type.service';
+import { InvalidScheduledActionReason, validateScheduledActions } from '../../../core/utils/scheduled-actions-validation.util';
+
+const SCHEDULED_ACTION_ERROR_MESSAGES: Record<InvalidScheduledActionReason, string> = {
+  'missing-target-analytic': 'No se puede guardar: debes seleccionar la analítica objetivo a activar o desactivar en las acciones programadas.',
+  'missing-domain': 'Ingresa el dominio en «Enviar a API».',
+  'invalid-domain': 'Dominio inválido en «Enviar a API».',
+  'unreachable-domain': 'No se pudo consultar el dominio de «Enviar a API».',
+  'missing-report-type': 'Selecciona el tipo de reporte en «Enviar a API».',
+  'unknown-report-type': 'El tipo de reporte de «Enviar a API» no existe en su dominio.'
+};
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { WebsocketService } from '../../../core/services/websocket.service';
 import { WebRtcService } from '../../../core/services/webrtc.service';
@@ -46,6 +57,7 @@ import { AnalyticCommandTerminalComponent } from '../analytic-command-terminal/a
 })
 export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterViewInit {
   @ViewChild(AnalyticParamsFormComponent) paramsFormComponent?: AnalyticParamsFormComponent;
+  @ViewChild(AnalyticActionsBuilderComponent) actionsBuilderComponent?: AnalyticActionsBuilderComponent;
   @ViewChild('cameraTitleContainer') cameraTitleContainer?: ElementRef<HTMLElement>;
   @ViewChild('cameraTitleEl') cameraTitleEl?: ElementRef<HTMLElement>;
 
@@ -150,6 +162,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
   private webRtcService = inject(WebRtcService);
   private mediaFileService = inject(MediaFileService);
   private listService = inject(ListService);
+  private reportTypeService = inject(ReportTypeService);
   public permissionsService = inject(PermissionsService);
 
   private drawerOffscreenVideo: HTMLVideoElement | null = null;
@@ -467,7 +480,43 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
     this.selectedScheduleId.set(null);
   }
 
-  submitAnalyticForm(): void {
+  /** Nombre legible del tipo de reporte para los logs de depuración ("Nombre (id)" o solo el id si no está en caché). */
+  private describeReportType(id: string | null | undefined): string {
+    if (!id) return '-';
+    const reportType = this.reportTypeService.findAnyCachedReportType(id);
+    return reportType ? `${reportType.name} (${id})` : id;
+  }
+
+  /**
+   * Desplaza la vista hasta el selector de la acción programada indicada (o al primero con advertencia).
+   * Con `focusDomain`, enfoca el input de dominio de Azor Panel de esa acción.
+   */
+  private scrollToActionTrigger(actionKey?: string, focusDomain: boolean = false): void {
+    setTimeout(() => {
+      const actionSelector = `app-analytic-actions-builder [data-action-index="${actionKey}"]`;
+      if (actionKey !== undefined && focusDomain) {
+        const domainInput = document.querySelector(`${actionSelector} app-send-to-api-action input`) as HTMLInputElement | null;
+        if (domainInput) {
+          domainInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          domainInput.focus({ preventScroll: true });
+          return;
+        }
+      }
+      const specificTrigger = actionKey !== undefined
+        ? document.querySelector(`${actionSelector} .btn-target-selector-trigger`) as HTMLElement | null
+        : null;
+      const target = specificTrigger
+        || document.querySelector('app-analytic-actions-builder .btn-target-selector-trigger.is-warning') as HTMLElement | null;
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        const actionsBuilderEl = document.querySelector('app-analytic-actions-builder') as HTMLElement | null;
+        actionsBuilderEl?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    }, 60);
+  }
+
+  submitAnalyticForm(sendToApiVerified: boolean = false): void {
     if (this.isSubmittingAnalytic()) return;
     this.clearNotification();
     this.hasAttemptedSubmitAnalytic.set(true);
@@ -511,34 +560,42 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
       return;
     }
 
-    // 5. Validar Acciones Programadas (Activar o Desactivar análisis requieren analítica objetivo seleccionada)
-    const actionsObj = this.analyticActionsState() || {};
-    const actionValues = Object.values(actionsObj) as any[];
-    const hasUnselectedAction = actionValues.some(act => {
-      const tipo = (act?.tipo || '').toLowerCase();
-      if (tipo.startsWith('activar analisis') || tipo.startsWith('desactivar analisis')) {
-        return !act?.accion?.analitica || String(act.accion.analitica).trim() === '';
-      }
-      return false;
-    });
+    // 5. Validar Acciones Programadas
+    //    - Activar / Desactivar análisis requieren analítica objetivo seleccionada
+    //    - Enviar a API requiere un dominio de Azor Panel verificado y un tipo de reporte existente en él
+    const actionsValidation = validateScheduledActions(
+      this.analyticActionsState(),
+      this.actionsBuilderComponent?.getSendToApiStatuses() ?? {}
+    );
+    const invalidAction = actionsValidation.invalid;
 
-    if (hasUnselectedAction) {
-      this.showNotification(
-        'No se puede guardar: debes seleccionar la analítica objetivo a activar o desactivar en las acciones programadas.',
-        'warning'
-      );
-      // Auto-desplazamiento hacia la acción incompleta para enfocar el selector con advertencia
-      setTimeout(() => {
-        const warningTrigger = document.querySelector('.btn-target-selector-trigger.is-warning') as HTMLElement | null;
-        if (warningTrigger) {
-          warningTrigger.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-          const actionsBuilderEl = document.querySelector('app-analytic-actions-builder') as HTMLElement | null;
-          if (actionsBuilderEl) {
-            actionsBuilderEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
-          }
-        }
-      }, 60);
+    // Algún dominio aún se está escribiendo o verificando: se espera y se reintenta una sola vez
+    if (!sendToApiVerified && actionsValidation.pendingSendToApi && !invalidAction) {
+      this.isSubmittingAnalytic.set(true);
+      // setTimeout: se reintenta después de que la acción haya emitido el endpoint del dominio resuelto
+      const retry = () => setTimeout(() => {
+        this.isSubmittingAnalytic.set(false);
+        this.submitAnalyticForm(true);
+      });
+      const wait$ = this.actionsBuilderComponent?.waitForSendToApiChecks();
+      if (wait$) {
+        wait$.subscribe({ complete: retry, error: retry });
+      } else {
+        retry();
+      }
+      return;
+    }
+
+    if (invalidAction) {
+      this.showNotification(SCHEDULED_ACTION_ERROR_MESSAGES[invalidAction.reason], 'warning');
+      const isDomainProblem = ['missing-domain', 'invalid-domain', 'unreachable-domain'].includes(invalidAction.reason);
+      this.scrollToActionTrigger(invalidAction.key, isDomainProblem);
+      return;
+    }
+
+    // Tras esperar, un dominio que sigue sin verificarse no permite guardar un endpoint sin confirmar
+    if (actionsValidation.pendingSendToApi) {
+      this.showNotification('Verificando el dominio de «Enviar a API». Intenta de nuevo.', 'warning');
       return;
     }
 
@@ -659,6 +716,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
           'Tipo Backend': val?.tipo,
           'Estado': val?.accion?.estado || '-',
           'Analítica Objetivo': val?.accion?.analitica || '-',
+          'Tipo de Reporte': this.describeReportType(val?.accion?.id_report_type),
           'Detalle Acción': JSON.stringify(val?.accion)
         }))
       );
@@ -688,6 +746,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
               'Tipo Backend': val?.tipo,
               'Estado': val?.accion?.estado || '-',
               'Analítica Objetivo': val?.accion?.analitica || '-',
+              'Tipo de Reporte': this.describeReportType(val?.accion?.id_report_type),
               'Detalle Acción': JSON.stringify(val?.accion)
             }))
           );
