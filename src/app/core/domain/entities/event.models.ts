@@ -23,6 +23,8 @@ export interface EventRecord {
   mes: string;
   nombreCamara: string;
   idCamara: string;
+  camaraIdNx?: string;
+  timestampReal?: number;
   analitica: string;
   location: { lat: number; lon: number } | null;
   objeto: string;

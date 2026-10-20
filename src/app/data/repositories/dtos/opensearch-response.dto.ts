@@ -51,7 +51,9 @@ export interface OsPosturaDto {
 export interface OsBaseDocDto {
   camara: string;
   camara_id?: string;
+  camara_id_nx?: string;
   timestamp: string;
+  timestamp_real?: number | string;
   confiabilidad: number;
   img_minio_object_name?: string;
   video_minio_object_name?: string;

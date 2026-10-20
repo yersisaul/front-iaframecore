@@ -6,6 +6,7 @@ import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
 import { AuthService } from './core/services/auth.service';
+import { NxWitnessApiService } from './core/services/nx-witness-api.service';
 
 // Repositories
 import { IUserRepository } from './core/domain/repositories/user.repository';
@@ -56,6 +57,12 @@ export const appConfig: ApplicationConfig = {
       provide: APP_INITIALIZER,
       useFactory: initializeApp,
       deps: [AuthService],
+      multi: true
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (_nx: NxWitnessApiService) => () => {},
+      deps: [NxWitnessApiService],
       multi: true
     },
     { provide: IUserRepository, useClass: UserHttpRepository },

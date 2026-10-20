@@ -5,11 +5,13 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
+import { MediaUrlPipe } from '../../shared/pipes/media-url.pipe';
 import { IDashboardRepository } from '../../../core/domain/repositories/dashboard.repository';
 import { IStorageRepository } from '../../../core/domain/repositories/storage.repository';
 import { DashboardItem, DashboardMapper } from '../../../core/domain/entities/dashboard.models';
 import { DashboardService } from '../../../core/services/dashboard.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
+import { MediaFileService } from '../../../core/services/media-file.service';
 import { MetadataMapper } from '../../../data/mappers/metadata.mapper';
 
 @Component({
@@ -20,7 +22,8 @@ import { MetadataMapper } from '../../../data/mappers/metadata.mapper';
     FormsModule,
     PageHeaderComponent,
     EmptyStateComponent,
-    ConfirmDeleteModalComponent
+    ConfirmDeleteModalComponent,
+    MediaUrlPipe
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
@@ -29,6 +32,7 @@ export class Dashboard implements OnInit, OnDestroy {
   private sanitizer = inject(DomSanitizer);
   private dashboardRepo = inject(IDashboardRepository);
   private storageRepo = inject(IStorageRepository);
+  private mediaFileService = inject(MediaFileService);
   readonly dashboardService = inject(DashboardService);
   readonly permissionsService = inject(PermissionsService);
 
@@ -52,6 +56,7 @@ export class Dashboard implements OnInit, OnDestroy {
   readonly formUrl = signal<string>('');
   readonly formDescripcion = signal<string>('');
   readonly formUrlImg = signal<string | null>(null);
+  readonly formImgMinioObjectName = signal<string | null>(null);
   readonly selectedImageFile = signal<File | null>(null);
   readonly imagePreviewUrl = signal<string | null>(null);
   readonly formError = signal<string | null>(null);
@@ -127,6 +132,15 @@ export class Dashboard implements OnInit, OnDestroy {
       return;
     }
     this.dashboardService.loadDashboards().subscribe({
+      next: (items) => {
+        // Precarga en memoria de URLs temporales desde GET /frontend/extra/{object_name}
+        for (const item of items) {
+          const objName = item.img_minio_object_name || item.url_img;
+          if (objName) {
+            this.mediaFileService.prefetchFileUrl(objName);
+          }
+        }
+      },
       error: (err) => console.error('Error al cargar dashboards:', err)
     });
   }
@@ -413,6 +427,7 @@ export class Dashboard implements OnInit, OnDestroy {
     this.formUrl.set('');
     this.formDescripcion.set('');
     this.formUrlImg.set(null);
+    this.formImgMinioObjectName.set(null);
     this.selectedImageFile.set(null);
     this.imagePreviewUrl.set(null);
     this.formError.set(null);
@@ -429,13 +444,31 @@ export class Dashboard implements OnInit, OnDestroy {
     if (!this.permissionsService.hasPermission('Dashboard', 'editar')) return;
     this.isEditMode.set(true);
     this.editingId.set(item.id);
-    this.formNombre.set(item.nombre);
+    this.formNombre.set(item.nombre || item.name || '');
     this.formUrl.set(item.url);
-    this.formDescripcion.set(item.descripcion || '');
-    this.formUrlImg.set(item.url_img || null);
+    this.formDescripcion.set(item.descripcion || item.description || '');
+
+    const objName = item.img_minio_object_name || item.url_img || null;
+    this.formUrlImg.set(objName);
+    this.formImgMinioObjectName.set(objName);
     this.selectedImageFile.set(null);
-    this.imagePreviewUrl.set(item.url_img ? this.getSanitizedImg(item.url_img) : null);
+    this.imagePreviewUrl.set(null);
     this.formError.set(null);
+
+    // Si tiene imagen previa (object name en MinIO), consultar la URL temporal mediante MediaFileService (GET /frontend/extra/{object_name})
+    if (objName) {
+      this.mediaFileService.getFileUrl(objName).subscribe({
+        next: (resolvedUrl) => {
+          if (resolvedUrl) {
+            this.imagePreviewUrl.set(resolvedUrl);
+          }
+        },
+        error: () => {
+          this.imagePreviewUrl.set(null);
+        }
+      });
+    }
+
     this.showModal.set(true);
   }
 
@@ -447,6 +480,7 @@ export class Dashboard implements OnInit, OnDestroy {
     this.showModal.set(false);
     this.formError.set(null);
     this.formUrlImg.set(null);
+    this.formImgMinioObjectName.set(null);
     this.selectedImageFile.set(null);
     this.imagePreviewUrl.set(null);
   }
@@ -486,10 +520,11 @@ export class Dashboard implements OnInit, OnDestroy {
     this.selectedImageFile.set(null);
     this.imagePreviewUrl.set(null);
     this.formUrlImg.set(null);
+    this.formImgMinioObjectName.set(null);
   }
 
   /**
-   * Sanitiza la URL para enrutamiento proxy con /minio/
+   * Sanitiza la URL para enrutamiento proxy con /minio/ (fallback)
    */
   getSanitizedImg(url: string | null | undefined): string {
     return MetadataMapper.sanitizeImageUrl(url || '');
@@ -577,8 +612,9 @@ export class Dashboard implements OnInit, OnDestroy {
     if (pendingFile) {
       this.storageRepo.uploadImage('dashboard', pendingFile).subscribe({
         next: (uploadRes) => {
-          const finalUrlImg = uploadRes.url || null;
-          this.executeSaveDashboard(nombre, url, descripcion, finalUrlImg);
+          // uploadRes.url contiene el img_minio_object_name retornado por MinIO
+          const finalImgObjectName = uploadRes.url || null;
+          this.executeSaveDashboard(nombre, url, descripcion, finalImgObjectName);
         },
         error: (err) => {
           console.error('Error al subir imagen del dashboard:', err);
@@ -587,27 +623,36 @@ export class Dashboard implements OnInit, OnDestroy {
         }
       });
     } else {
-      // Sin archivo nuevo: conservar la imagen previa (o null si fue removida)
-      this.executeSaveDashboard(nombre, url, descripcion, this.formUrlImg());
+      // Sin archivo nuevo: conservar el objeto previo (o null si fue removido)
+      const currentObjName = this.formImgMinioObjectName() ?? this.formUrlImg();
+      this.executeSaveDashboard(nombre, url, descripcion, currentObjName);
     }
   }
 
   /**
-   * Tarea en serie 2: Persistir datos del dashboard con url_img
+   * Tarea en serie 2: Persistir datos del dashboard con img_minio_object_name
    */
-  private executeSaveDashboard(nombre: string, url: string, descripcion: string, urlImg: string | null): void {
+  private executeSaveDashboard(nombre: string, url: string, descripcion: string, imgMinioObjectName: string | null): void {
     if (this.isEditMode()) {
       const id = this.editingId()!;
       const patchDto = DashboardMapper.toPatchDto({
+        dashboard_id: id,
+        name: nombre,
         nombre,
         url,
+        description: descripcion || null,
         descripcion: descripcion || null,
-        url_img: urlImg
+        img_minio_object_name: imgMinioObjectName,
+        url_img: imgMinioObjectName
       });
 
       this.dashboardRepo.patch(id, patchDto).subscribe({
         next: (updated) => {
           this.dashboardService.addOrUpdateDashboardLocal(updated);
+          // Precargar en caché la URL temporal del objeto actualizado
+          if (updated.img_minio_object_name) {
+            this.mediaFileService.prefetchFileUrl(updated.img_minio_object_name);
+          }
           this.isSaving.set(false);
           this.closeModal();
         },
@@ -619,15 +664,22 @@ export class Dashboard implements OnInit, OnDestroy {
       });
     } else {
       const createDto = DashboardMapper.toCreateDto({
+        name: nombre,
         nombre,
         url,
+        description: descripcion || null,
         descripcion: descripcion || null,
-        url_img: urlImg
+        img_minio_object_name: imgMinioObjectName,
+        url_img: imgMinioObjectName
       });
 
       this.dashboardRepo.create(createDto).subscribe({
         next: (created) => {
           this.dashboardService.addOrUpdateDashboardLocal(created);
+          // Precargar en caché la URL temporal del nuevo objeto
+          if (created.img_minio_object_name) {
+            this.mediaFileService.prefetchFileUrl(created.img_minio_object_name);
+          }
           this.isSaving.set(false);
           this.closeModal();
         },

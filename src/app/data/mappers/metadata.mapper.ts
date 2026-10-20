@@ -9,6 +9,7 @@ import {
   MetaPostura
 } from '../../core/domain/entities/metadata.models';
 import { parseUtcDate } from '../../core/utils/date-utils';
+import { toEpochMs } from '../../core/utils/nx-timestamp.utils';
 import {
   OsHit,
   OsPersonaDto,
@@ -52,7 +53,9 @@ export class MetadataMapper {
       id: hit._id,
       camara: src.camara || '',
       camara_id: src.camara_id,
+      camaraIdNx: src.camara_id_nx?.trim() || undefined,
       timestamp: parseUtcDate(src.timestamp),
+      timestampReal: toEpochMs(src.timestamp_real),
       confiabilidad: score,
       imgMinioObjectName,
       urlImg: imgMinioObjectName,
@@ -75,7 +78,9 @@ export class MetadataMapper {
       id: hit._id,
       camara: src.camara || '',
       camara_id: src.camara_id,
+      camaraIdNx: src.camara_id_nx?.trim() || undefined,
       timestamp: parseUtcDate(src.timestamp),
+      timestampReal: toEpochMs(src.timestamp_real),
       confiabilidad: score,
       imgMinioObjectName,
       urlImg: imgMinioObjectName,
@@ -96,7 +101,9 @@ export class MetadataMapper {
       id: hit._id,
       camara: src.camara || '',
       camara_id: src.camara_id,
+      camaraIdNx: src.camara_id_nx?.trim() || undefined,
       timestamp: parseUtcDate(src.timestamp),
+      timestampReal: toEpochMs(src.timestamp_real),
       confiabilidad: score,
       imgMinioObjectName,
       urlImg: imgMinioObjectName,
@@ -118,7 +125,9 @@ export class MetadataMapper {
       id: hit._id,
       camara: src.camara || '',
       camara_id: src.camara_id,
+      camaraIdNx: src.camara_id_nx?.trim() || undefined,
       timestamp: parseUtcDate(src.timestamp),
+      timestampReal: toEpochMs(src.timestamp_real),
       confiabilidad: score,
       imgMinioObjectName,
       urlImg: imgMinioObjectName,

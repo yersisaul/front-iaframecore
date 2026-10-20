@@ -19,6 +19,8 @@
 
         <!-- 1. Tarjeta Principal (Detección en Cámara / Video / Imagen) -->
         <div class="stage-media-card primary-media-card position-relative"
+          [style.aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : (naturalImageWidth() && naturalImageHeight() ? (naturalImageWidth() / naturalImageHeight()) : '1.7778')"
+          [style.--media-aspect-ratio]="mediaAspectRatio() ? mediaAspectRatio() : (naturalImageWidth() && naturalImageHeight() ? (naturalImageWidth() / naturalImageHeight()) : '1.7778')"
           [class.card-is-focused]="focusedComparisonCard() === 'detection'"
           [title]="focusedComparisonCard() === 'detection' ? 'Click para restaurar vista dividida' : (activeMediaType() === 'comparison' ? 'Click para maximizar captura' : '')"
           (click)="activeMediaType() === 'comparison' ? toggleComparisonFocus('detection', $event) : null">

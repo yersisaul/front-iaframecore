@@ -102,6 +102,43 @@ describe('Metadatos', () => {
     expect(component.canAddToList({ reconocimiento: '' })).toBe(false);
     expect(component.canAddToList({})).toBe(false);
   });
+
+  it('should evaluate canOpenInNx as false when not running inside Nx Witness', () => {
+    (component as any).nxWitnessService.isInNxBrowser.set(false);
+    expect(component.canOpenInNx({ camaraIdNx: 'cam-1', timestampReal: 1729353012000 })).toBe(false);
+  });
+
+  it('should evaluate canOpenInNx as true only when in Nx browser and has camaraIdNx and timestampReal', () => {
+    // Simular que estamos en Nx Witness
+    (component as any).nxWitnessService.isInNxBrowser.set(true);
+
+    // Con datos completos
+    expect(component.canOpenInNx({ camaraIdNx: 'cam-1', timestampReal: 1729353012000 })).toBe(true);
+
+    // Sin timestampReal ni timestamp -> false
+    expect(component.canOpenInNx({ camaraIdNx: 'cam-1', timestampReal: undefined, timestamp: undefined })).toBe(false);
+
+    // Sin timestampReal pero con fallback a Date timestamp -> true
+    expect(component.canOpenInNx({ camaraIdNx: 'cam-1', timestampReal: undefined, timestamp: new Date(1729353012000) })).toBe(true);
+
+    // Sin camaraIdNx ni cámara en sistema
+    expect(component.canOpenInNx({ camaraIdNx: '', timestampReal: 1729353012000 })).toBe(false);
+    expect(component.canOpenInNx({ camara_id: 'no-nx-cam', timestampReal: 1729353012000 })).toBe(false);
+  });
+
+  it('should call openCamera on nxWitnessService when openInNx is invoked', async () => {
+    const openCameraSpy = vi.spyOn((component as any).nxWitnessService, 'openCamera').mockResolvedValue({ ok: true });
+    const record = {
+      id: 'rec-1',
+      camara: 'Entrada',
+      camaraIdNx: 'nx-cam-uuid',
+      timestampReal: 1729353012000
+    };
+
+    await component.openInNx(record);
+
+    expect(openCameraSpy).toHaveBeenCalledWith('nx-cam-uuid', 'Entrada', 1729353012000);
+  });
 });
 
 

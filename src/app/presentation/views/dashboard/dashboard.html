@@ -114,19 +114,29 @@
 
           <!-- Cuerpo de la tarjeta: Espacio para foto del dashboard -->
           <div class="card-body p-3 d-flex flex-column justify-content-center flex-grow-1">
+            @let objectKey = item.img_minio_object_name || item.url_img;
+            @let resolvedImg = objectKey ? (objectKey | mediaUrl | async) : null;
             <div
               class="dashboard-preview-container position-relative overflow-hidden rounded-3 d-flex align-items-center justify-content-center w-100 flex-grow-1"
-              [class.has-image]="!!item.url_img" [attr.data-img-url]="item.url_img || 'SIN_URL'"
-              [attr.data-raw-src]="item.url_img || 'NULL'">
-              @if (item.url_img) {
-              <img [src]="getSanitizedImg(item.url_img)" class="dashboard-preview-img w-100 h-100 object-fit-contain"
-                [attr.data-src]="item.url_img" [alt]="item.nombre" (error)="onCardImageError($event)">
+              [class.has-image]="!!objectKey" [attr.data-img-url]="objectKey || 'SIN_URL'"
+              [attr.data-raw-src]="objectKey || 'NULL'">
+              @if (resolvedImg) {
+              <img [src]="resolvedImg" class="dashboard-preview-img w-100 h-100 object-fit-contain"
+                [attr.data-src]="objectKey" [alt]="item.nombre" (error)="onCardImageError($event)">
               <div
                 class="dashboard-preview-placeholder d-none flex-column align-items-center justify-content-center text-muted"
-                [attr.data-img-url]="item.url_img || 'SIN_URL'"
-                [title]="'Origen: ' + (item.url_img || 'Sin imagen en payload')">
+                [attr.data-img-url]="objectKey || 'SIN_URL'"
+                [title]="'Origen: ' + (objectKey || 'Sin imagen en payload')">
                 <span class="icon-svg icon-dashboard opacity-40 mb-2" style="width: 2rem; height: 2rem;"></span>
                 <span class="small opacity-60 fw-medium">Vista previa del tablero</span>
+              </div>
+              } @else if (objectKey) {
+              <!-- Indicador de carga temporal de la imagen desde MinIO -->
+              <div class="dashboard-preview-placeholder d-flex flex-column align-items-center justify-content-center text-muted">
+                <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+                  <span class="visually-hidden">Cargando imagen...</span>
+                </div>
+                <span class="small opacity-60 fw-medium">Cargando vista previa...</span>
               </div>
               } @else {
               <!-- Espacio libre para foto del dashboard -->
@@ -230,8 +240,10 @@
     <!-- Contenedor interno en expansión que morphéa de foto a iframe -->
     <div
       class="browser-iframe-viewport position-relative flex-grow-1 overflow-hidden d-flex align-items-center justify-content-center">
-      @if (morphItem()?.url_img) {
-      <img [src]="getSanitizedImg(morphItem()?.url_img)" class="w-100 h-100 object-fit-cover morph-preview-img"
+      @let morphObjKey = morphItem()?.img_minio_object_name || morphItem()?.url_img;
+      @let morphResolved = morphObjKey ? (morphObjKey | mediaUrl | async) : null;
+      @if (morphResolved) {
+      <img [src]="morphResolved" class="w-100 h-100 object-fit-cover morph-preview-img"
         style="object-position: top center;" alt="" />
       } @else {
       <div class="d-flex flex-column align-items-center justify-content-center text-muted">

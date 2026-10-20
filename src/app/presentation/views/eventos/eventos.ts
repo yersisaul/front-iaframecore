@@ -24,6 +24,7 @@ import { ListService } from '../../../core/services/list.service';
 import { IEventRepository } from '../../../core/domain/repositories/event.repository';
 import { EventSubjectItem } from '../../../core/domain/entities/event.models';
 import { MediaUrlPipe } from '../../shared/pipes/media-url.pipe';
+import { NxWitnessApiService } from '../../../core/services/nx-witness-api.service';
 
 @Component({
   selector: 'app-eventos',
@@ -41,6 +42,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   private listService = inject(ListService);
   private sidebarService = inject(SidebarService);
   private permissionsService = inject(PermissionsService);
+  private nxWitnessService = inject(NxWitnessApiService);
   private destroyRef = inject(DestroyRef);
 
   @ViewChild('eventosContainer', { static: false }) eventosContainer!: ElementRef<HTMLDivElement>;
@@ -55,6 +57,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
   readonly pageSize = this.eventService.pageSize;
   readonly newRecordIds = this.eventService.newRecordIds;
   readonly bufferedEvents = this.eventService.bufferedEvents;
+  readonly hoveredCardId = signal<string | null>(null);
 
   applyBufferedEvents(): void {
     this.eventService.applyBufferedEvents();
@@ -955,7 +958,8 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  onCardMouseEnter(event: MouseEvent): void {
+  onCardMouseEnter(recordId: string, event: MouseEvent): void {
+    this.hoveredCardId.set(recordId);
     const card = event.currentTarget as HTMLElement | null;
     if (!card) return;
 
@@ -997,7 +1001,10 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  onCardMouseLeave(event?: MouseEvent): void {
+  onCardMouseLeave(recordId: string, event?: MouseEvent): void {
+    if (this.hoveredCardId() === recordId) {
+      this.hoveredCardId.set(null);
+    }
     if (event?.currentTarget) {
       const card = event.currentTarget as HTMLElement;
       const headerBlock = card.querySelector('.card-header-camera') as HTMLElement | null;
@@ -1133,5 +1140,69 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     this.zoomBgY.set(Math.round(lensSize / 2 - y * zoomFactor));
     this.zoomBgWidth.set(Math.round(rect.width * zoomFactor));
     this.zoomBgHeight.set(Math.round(rect.height * zoomFactor));
+  }
+
+  // ── Nx Witness Integration ──
+  isInNxBrowser(): boolean {
+    return this.nxWitnessService.isInNxBrowser();
+  }
+
+  canOpenInNx(record: EventRecord): boolean {
+    if (!this.isInNxBrowser() || !record) {
+      return false;
+    }
+    const nxId = record.camaraIdNx || this.resolveCameraNxId(record.idCamara || '', record.nombreCamara);
+    const tsMs = this.getRecordTimestampMs(record);
+    return !!nxId && tsMs !== undefined;
+  }
+
+  private getRecordTimestampMs(record: { timestampReal?: number; timestamp?: Date | string }): number | undefined {
+    if (typeof record.timestampReal === 'number' && Number.isFinite(record.timestampReal) && record.timestampReal > 0) {
+      return record.timestampReal;
+    }
+    if (record.timestamp instanceof Date) {
+      const ms = record.timestamp.getTime();
+      return isNaN(ms) ? undefined : ms;
+    }
+    if (typeof record.timestamp === 'string' && record.timestamp.trim()) {
+      const ms = new Date(record.timestamp).getTime();
+      return isNaN(ms) ? undefined : ms;
+    }
+    return undefined;
+  }
+
+  private resolveCameraNxId(idCamara: string, cameraName?: string): string | undefined {
+    if (!idCamara && !cameraName) return undefined;
+    const cleanId = (idCamara || '').replace(/[{}]/g, '').trim();
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId)) {
+      return cleanId;
+    }
+    const cams = this.cameraService.cameras();
+    const byId = cams.find(c => c.id === idCamara);
+    if (byId?.nxId) return byId.nxId;
+    const byNxId = cams.find(c => (c.nxId || '').replace(/[{}]/g, '').toLowerCase() === cleanId.toLowerCase());
+    if (byNxId?.nxId) return byNxId.nxId;
+    const targetName = (cameraName || idCamara || '').trim().toLowerCase();
+    if (targetName) {
+      const byName = cams.find(c => (c.name || '').trim().toLowerCase() === targetName);
+      if (byName?.nxId) return byName.nxId;
+    }
+    return undefined;
+  }
+
+  async openInNx(record: EventRecord, event?: Event): Promise<void> {
+    if (event) {
+      event.stopPropagation();
+    }
+    const nxId = record.camaraIdNx || this.resolveCameraNxId(record.idCamara || '', record.nombreCamara);
+    if (!nxId) {
+      console.warn('[Eventos] No se encontró identificador de cámara en Nx para el registro:', record);
+      return;
+    }
+    const tsMs = this.getRecordTimestampMs(record);
+    const result = await this.nxWitnessService.openCamera(nxId, record.nombreCamara, tsMs);
+    if (!result.ok && result.message) {
+      console.warn('[Eventos] Error al abrir cámara en Nx Witness:', result.message);
+    }
   }
 }

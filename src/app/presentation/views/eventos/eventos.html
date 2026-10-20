@@ -480,7 +480,9 @@
         @for (record of records(); track (record.id + '-' + $index)) {
         <div class="card event-card border-0 shadow-sm rounded-3 position-relative"
           [class.event-card--live-new]="newRecordIds().has(record.id)"
-          (mouseenter)="onCardMouseEnter($event)" (mouseleave)="onCardMouseLeave($event)">
+          [class.is-hovered]="hoveredCardId() === record.id"
+          (mouseenter)="onCardMouseEnter(record.id, $event)"
+          (mouseleave)="onCardMouseLeave(record.id, $event)">
 
           <!-- Thumbnail Image -->
           @let rawImgTarget = record.imgMinioObjectName || record.urlImg;
@@ -488,27 +490,19 @@
           <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center"
             [attr.data-img-url]="resolvedImgUrl || 'SIN_URL_RESUELTA'"
             [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
-            [attr.data-raw-src]="rawImgTarget || 'NULL'"
-            (click)="openImageDetailsModal(record); $event.stopPropagation()">
+            [attr.data-raw-src]="rawImgTarget || 'NULL'">
             <!-- Fallback placeholder (visible if no image or if image fails 404) -->
-            <div class="placeholder-img-icon"
-              [attr.data-img-url]="resolvedImgUrl || 'SIN_URL_RESUELTA'"
-              [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
-              [title]="'Origen: ' + (resolvedImgUrl || rawImgTarget || 'Sin imagen en payload')">
+            <div class="placeholder-img-icon" [attr.data-img-url]="resolvedImgUrl || 'SIN_URL_RESUELTA'"
+              [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'">
               <span class="icon-svg icon-warning fallback-icon"></span>
               <span class="fallback-text">SIN IMAGEN</span>
             </div>
 
-            <!-- Image Hover Overlay with Magnifying Glass Icon -->
-            <div class="image-hover-overlay d-flex align-items-center justify-content-center" style="z-index: 2;">
-              <span class="icon-svg icon-magnify magnify-icon" style="width: 32px; height: 32px;"></span>
-            </div>
-
             @if (resolvedImgUrl) {
             <img [src]="resolvedImgUrl" (load)="onImageLoad($event)" (error)="onImageError($event)"
-              [attr.data-src]="resolvedImgUrl"
-              [attr.data-minio-object]="record.imgMinioObjectName"
+              [attr.data-src]="resolvedImgUrl" [attr.data-minio-object]="record.imgMinioObjectName"
               class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
+              draggable="false"
               alt="Event Thumbnail" />
             }
 
@@ -533,6 +527,26 @@
             <!-- Floating Analytic Type Badge (Top-Right) -->
             <div class="index-badge-overlay text-capitalize">
               {{ record.analitica }}
+            </div>
+
+            <!-- Glassmorphism Quick Action Strip (Bottom of Image) -->
+            @let canNx = canOpenInNx(record);
+            <div class="ed-img-overlay">
+              <button type="button" class="btn-overlay-action btn-fullscreen" [id]="'btn-fullscreen-' + record.id"
+                (click)="openImageDetailsModal(record); $event.stopPropagation()"
+                title="Ver imagen en detalle / Pantalla completa">
+                <span class="icon-svg icon-magnify" style="width: 12px; height: 12px;"></span>
+                <span>Detalle</span>
+              </button>
+
+              @if (canNx) {
+              <button type="button" class="btn-overlay-action btn-nx-open" [id]="'btn-nx-open-' + record.id"
+                (click)="openInNx(record, $event)"
+                [title]="'Abrir cámara en Nx Witness (' + formatDate(record.timestampReal || record.timestamp) + ')'">
+                <span class="icon-svg icon-nx-witness" style="width: 12px; height: 12px;"></span>
+                <span>Ver en NX</span>
+              </button>
+              }
             </div>
           </div>
 

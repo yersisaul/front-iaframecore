@@ -89,7 +89,8 @@
   border-radius: 12px !important;
 }
 
-.event-card:hover {
+.event-card:hover,
+.event-card.is-hovered {
   z-index: 100 !important;
 }
 
@@ -123,11 +124,15 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s ease;
+  pointer-events: auto !important;
+  user-select: none !important;
+  -webkit-user-drag: none !important;
+  transform: none !important;
+  transition: filter 0.25s ease;
 }
 
 .event-card:hover .card-img-wrapper img {
-  transform: scale(1.06);
+  filter: brightness(1.04);
 }
 
 /* --- Cabecera de Cámara y Desplazamiento Reactivo con Marquee --- */
@@ -1035,35 +1040,101 @@
   height: 44px;
 }
 
-/* Card image hover blur & lupa overlay */
+/* Card image hover & Quick Action Strip */
 .card-img-wrapper {
-  cursor: pointer;
+  cursor: default;
+  overflow: hidden;
 }
 
-.image-hover-overlay {
+.placeholder-img-icon {
+  pointer-events: none !important;
+}
+
+.ed-img-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(15, 23, 42, 0.4);
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 25;
   opacity: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 10;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.card-img-wrapper:hover .image-hover-overlay {
-  opacity: 1;
+.event-card:hover .ed-img-overlay,
+.event-card.is-hovered .ed-img-overlay,
+.card-img-wrapper:hover .ed-img-overlay {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
 }
 
-.magnify-icon {
-  color: #ffffff;
-  transform: scale(0.8);
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+.btn-overlay-action {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.38rem 0.75rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  background-color: var(--bg-backdrop, rgba(15, 23, 42, 0.7));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--text-on-primary-btn, #ffffff) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  line-height: 1.2;
+  white-space: nowrap;
+  outline: none;
+  text-decoration: none;
 }
 
-.card-img-wrapper:hover .magnify-icon {
-  transform: scale(1);
+.btn-overlay-action .icon-svg {
+  background-color: var(--text-on-primary-btn, #ffffff) !important;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+/* Botón Pantalla Completa */
+.btn-fullscreen:hover {
+  background-color: var(--primary, #3b82f6) !important;
+  border-color: var(--primary, #3b82f6) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45);
+}
+
+.btn-fullscreen:hover .icon-svg {
+  transform: scale(1.15);
+}
+
+.btn-fullscreen:active {
+  transform: translateY(0) scale(0.95);
+}
+
+/* Botón Nx Witness */
+.btn-nx-open:hover {
+  background-color: #0284c7 !important;
+  border-color: #38bdf8 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.45);
+}
+
+.btn-nx-open:hover .icon-svg {
+  transform: scale(1.15);
+}
+
+.btn-nx-open:active {
+  transform: translateY(0) scale(0.95);
 }
 
 /* Premium Image Details Modal with Glassmorphism */

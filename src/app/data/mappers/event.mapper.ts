@@ -1,5 +1,6 @@
 import { EventRecord, EventMatchDetail } from '../../core/domain/entities/event.models';
 import { parseUtcDate } from '../../core/utils/date-utils';
+import { toEpochMs } from '../../core/utils/nx-timestamp.utils';
 import { MetadataMapper } from './metadata.mapper';
 
 export class EventMapper {
@@ -114,6 +115,8 @@ export class EventMapper {
 
     const imgMinioObjectName = src.img_minio_object_name || null;
     const videoMinioObjectName = src.video_minio_object_name || null;
+    const camaraIdNx = src.camara_id_nx || undefined;
+    const timestampReal = toEpochMs(src.timestamp_real);
 
     return {
       id: hit._id,
@@ -124,7 +127,9 @@ export class EventMapper {
       diaMes: typeof src.dia_mes === 'number' ? src.dia_mes : 0,
       mes: src.mes || '',
       nombreCamara: src.nombre_camara || '',
-      idCamara: src.id_camara || '',
+      idCamara: src.id_camara || src.camara_id || '',
+      camaraIdNx,
+      timestampReal,
       analitica,
       location: lat !== null && lon !== null ? { lat, lon } : null,
       objeto,

@@ -14,6 +14,7 @@ import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 
 import { ListService } from '../../../core/services/list.service';
 import { CameraService } from '../../../core/services/camera.service';
+import { NxWitnessApiService } from '../../../core/services/nx-witness-api.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
@@ -39,7 +40,12 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   private destroyRef = inject(DestroyRef);
   private listService = inject(ListService);
   private cameraService = inject(CameraService);
+  private nxWitnessService = inject(NxWitnessApiService);
   public permissionsService = inject(PermissionsService);
+
+  readonly isInNxBrowser = this.nxWitnessService.isInNxBrowser;
+  readonly isNxOpening = this.nxWitnessService.isOpening;
+  readonly hoveredCardId = signal<string | null>(null);
 
   // Watchlist Modal Integration
   readonly showAddToWatchlistModal = signal<boolean>(false);
@@ -993,7 +999,8 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     return Math.round(val);
   }
 
-  onCardMouseEnter(event: MouseEvent): void {
+  onCardMouseEnter(recordId: string, event: MouseEvent): void {
+    this.hoveredCardId.set(recordId);
     const card = event.currentTarget as HTMLElement | null;
     if (!card) return;
 
@@ -1035,7 +1042,10 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  onCardMouseLeave(event?: MouseEvent): void {
+  onCardMouseLeave(recordId: string, event?: MouseEvent): void {
+    if (this.hoveredCardId() === recordId) {
+      this.hoveredCardId.set(null);
+    }
     if (event?.currentTarget) {
       const card = event.currentTarget as HTMLElement;
       const headerBlock = card.querySelector('.card-header-camera') as HTMLElement | null;
@@ -1176,5 +1186,65 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       imageFile: null
     });
     this.metadataService.setPage(1);
+  }
+
+  // ── Nx Witness Integration ──
+  canOpenInNx(record: any): boolean {
+    if (!this.isInNxBrowser() || !record) {
+      return false;
+    }
+    const nxId = record.camaraIdNx || this.resolveCameraNxId(record.camara_id || '', record.camara);
+    const tsMs = this.getRecordTimestampMs(record);
+    return !!nxId && tsMs !== undefined;
+  }
+
+  private getRecordTimestampMs(record: { timestampReal?: number; timestamp?: Date | string }): number | undefined {
+    if (typeof record.timestampReal === 'number' && Number.isFinite(record.timestampReal) && record.timestampReal > 0) {
+      return record.timestampReal;
+    }
+    if (record.timestamp instanceof Date) {
+      const ms = record.timestamp.getTime();
+      return isNaN(ms) ? undefined : ms;
+    }
+    if (typeof record.timestamp === 'string' && record.timestamp.trim()) {
+      const ms = new Date(record.timestamp).getTime();
+      return isNaN(ms) ? undefined : ms;
+    }
+    return undefined;
+  }
+
+  private resolveCameraNxId(camaraId: string, cameraName?: string): string | undefined {
+    if (!camaraId && !cameraName) return undefined;
+    const cleanId = (camaraId || '').replace(/[{}]/g, '').trim();
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId)) {
+      return cleanId;
+    }
+    const cams = this.cameraService.cameras();
+    const byId = cams.find(c => c.id === camaraId);
+    if (byId?.nxId) return byId.nxId;
+    const byNxId = cams.find(c => (c.nxId || '').replace(/[{}]/g, '').toLowerCase() === cleanId.toLowerCase());
+    if (byNxId?.nxId) return byNxId.nxId;
+    const targetName = (cameraName || camaraId || '').trim().toLowerCase();
+    if (targetName) {
+      const byName = cams.find(c => (c.name || '').trim().toLowerCase() === targetName);
+      if (byName?.nxId) return byName.nxId;
+    }
+    return undefined;
+  }
+
+  async openInNx(record: any, event?: Event): Promise<void> {
+    if (event) {
+      event.stopPropagation();
+    }
+    const nxId = record.camaraIdNx || this.resolveCameraNxId(record.camara_id || '', record.camara);
+    if (!nxId) {
+      console.warn('[Metadatos] No se encontró identificador de cámara en Nx para el registro:', record);
+      return;
+    }
+    const tsMs = this.getRecordTimestampMs(record);
+    const result = await this.nxWitnessService.openCamera(nxId, record.camara, tsMs);
+    if (!result.ok && result.message) {
+      console.warn('[Metadatos] Error al abrir cámara en Nx Witness:', result.message);
+    }
   }
 }

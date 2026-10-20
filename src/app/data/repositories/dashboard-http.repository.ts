@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { DashboardItem, DashboardCreateRequest, DashboardResponse, DashboardMapper } from '../../core/domain/entities/dashboard.models';
+import { DashboardItem, DashboardCreateRequest, DashboardUpdateRequest, DashboardResponse, DashboardMapper } from '../../core/domain/entities/dashboard.models';
 import { IDashboardRepository } from '../../core/domain/repositories/dashboard.repository';
 import { AppEnvironment } from '../../core/config/app-environment';
 
@@ -27,6 +27,12 @@ export class DashboardHttpRepository implements IDashboardRepository {
 
   create(data: DashboardCreateRequest): Observable<DashboardItem> {
     return this.http.post<DashboardResponse>(`${this.baseUrl}/`, data).pipe(
+      map(DashboardMapper.toDomain)
+    );
+  }
+
+  update(id: string, data: DashboardUpdateRequest): Observable<DashboardItem> {
+    return this.http.put<DashboardResponse>(`${this.baseUrl}/${id}`, data).pipe(
       map(DashboardMapper.toDomain)
     );
   }

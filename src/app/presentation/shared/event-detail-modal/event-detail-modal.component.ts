@@ -33,6 +33,8 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
   readonly hasMatchImageError = signal<boolean>(false);
   readonly hasVideoError = signal<boolean>(false);
   readonly activeMediaType = signal<'image' | 'comparison' | 'video'>('image');
+  readonly naturalImageWidth = signal<number>(0);
+  readonly naturalImageHeight = signal<number>(0);
   readonly mediaAspectRatio = signal<number | null>(null);
   readonly matchData = signal<FacialMatchInfo | null>(null);
   readonly isMatchLoading = signal<boolean>(false);
@@ -74,6 +76,8 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
       this.hasVideoError.set(false);
       this.activeMediaType.set('image');
       this.mediaAspectRatio.set(null);
+      this.naturalImageWidth.set(0);
+      this.naturalImageHeight.set(0);
       this.focusedComparisonCard.set(null);
 
       setTimeout(() => this.checkTitleOverflow(), 60);
@@ -302,6 +306,8 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
     this.hasVideoError.set(false);
     this.activeMediaType.set('image');
     this.mediaAspectRatio.set(null);
+    this.naturalImageWidth.set(0);
+    this.naturalImageHeight.set(0);
     this.focusedComparisonCard.set(null);
     this.resolvedImageUrl.set('');
     this.resolvedVideoUrl.set('');
@@ -314,6 +320,8 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
     if (img) {
       img.removeAttribute('data-retry-count');
       if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        this.naturalImageWidth.set(img.naturalWidth);
+        this.naturalImageHeight.set(img.naturalHeight);
         this.mediaAspectRatio.set(img.naturalWidth / img.naturalHeight);
       }
     }
@@ -322,6 +330,8 @@ export class EventDetailModalComponent implements OnDestroy, OnChanges, AfterVie
   onVideoLoadedMetadata(event: Event): void {
     const video = event.target as HTMLVideoElement;
     if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+      this.naturalImageWidth.set(video.videoWidth);
+      this.naturalImageHeight.set(video.videoHeight);
       this.mediaAspectRatio.set(video.videoWidth / video.videoHeight);
     }
   }

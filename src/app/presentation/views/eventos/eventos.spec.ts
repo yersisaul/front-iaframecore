@@ -124,4 +124,65 @@ describe('Eventos', () => {
     expect(options).not.toContain('Análisis de Tráfico');
     expect(options).not.toContain('traffic_analysis');
   });
+
+  describe('Nx Witness integration', () => {
+    it('should determine canOpenInNx accurately based on environment and record fields', () => {
+      // Por defecto no estamos en cliente Nx Witness
+      const isInNxSpy = vi.spyOn((component as any).nxWitnessService, 'isInNxBrowser').mockReturnValue(false);
+
+      const record: any = {
+        id: 'ev-1',
+        nombreCamara: 'Acceso Norte',
+        idCamara: 'cam-01',
+        camaraIdNx: 'nx-uuid-1234',
+        timestampReal: 1729353012000
+      };
+
+      // Si no está en Nx browser, debe ser falso
+      expect(component.canOpenInNx(record)).toBe(false);
+
+      // Ahora simulamos estar dentro del cliente Nx Witness
+      isInNxSpy.mockReturnValue(true);
+
+      // Con camaraIdNx y timestampReal válidos -> true
+      expect(component.canOpenInNx(record)).toBe(true);
+
+      // Sin timestampReal pero con timestamp Date válido -> true (fallback)
+      expect(component.canOpenInNx({ ...record, timestampReal: undefined, timestamp: new Date(1729353012000) })).toBe(true);
+
+      // Sin timestampReal ni timestamp válido -> false
+      expect(component.canOpenInNx({ ...record, timestampReal: undefined, timestamp: undefined })).toBe(false);
+
+      // Sin camaraIdNx directo pero con cámara resoluble en CameraService -> true
+      (mockCameraService.cameras as any).set([{ id: 'cam-01', nxId: 'nx-from-service' }]);
+      const recordWithoutDirectNx: any = {
+        id: 'ev-2',
+        nombreCamara: 'Acceso Norte',
+        idCamara: 'cam-01',
+        timestampReal: 1729353012000
+      };
+      expect(component.canOpenInNx(recordWithoutDirectNx)).toBe(true);
+
+      // Con idCamara no registrada en sistema y sin camaraIdNx -> false
+      expect(component.canOpenInNx({ ...recordWithoutDirectNx, idCamara: 'cam-desconocida' })).toBe(false);
+    });
+
+    it('should call openCamera on nxWitnessService when openInNx is executed', async () => {
+      const openCameraSpy = vi.spyOn((component as any).nxWitnessService, 'openCamera').mockResolvedValue({ ok: true });
+      const stopPropSpy = vi.fn();
+      const mockEvent = { stopPropagation: stopPropSpy } as unknown as Event;
+
+      const record: any = {
+        id: 'ev-1',
+        nombreCamara: 'Camara Principal',
+        camaraIdNx: 'nx-uuid-999',
+        timestampReal: 1729353012000
+      };
+
+      await component.openInNx(record, mockEvent);
+
+      expect(stopPropSpy).toHaveBeenCalled();
+      expect(openCameraSpy).toHaveBeenCalledWith('nx-uuid-999', 'Camara Principal', 1729353012000);
+    });
+  });
 });

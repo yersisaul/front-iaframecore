@@ -1448,6 +1448,7 @@ body[data-bs-theme="dark"] .node-search-input-row:focus-within {
   background-color: var(--bg-dark-surface, #0f172a) !important;
   color: var(--text-muted, #94a3b8) !important;
   user-select: none;
+  pointer-events: none !important;
   z-index: 0;
   text-align: center;
   padding: 0.5rem;

@@ -678,7 +678,8 @@
         @for (record of records(); track (record.id + '-' + $index)) {
         <div class="card metadata-card border-0 shadow-sm rounded-3 position-relative"
           [class.metadata-card--live-new]="newRecordIds().has(record.id)"
-          (mouseenter)="onCardMouseEnter($event)" (mouseleave)="onCardMouseLeave($event)">
+          [class.is-hovered]="hoveredCardId() === record.id"
+          (mouseenter)="onCardMouseEnter(record.id, $event)" (mouseleave)="onCardMouseLeave(record.id, $event)">
 
           <!-- Image section with overlay -->
           @let resolvedImg = record.imgMinioObjectName | mediaUrl | async;
@@ -689,8 +690,7 @@
             <!-- Fallback placeholder (visible if no image or if image fails 404) -->
             <div class="placeholder-img-icon"
               [attr.data-img-url]="resolvedImg || 'SIN_URL_RESUELTA'"
-              [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
-              [title]="'Origen: ' + (resolvedImg || record.imgMinioObjectName || 'Sin imagen en payload')">
+              [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'">
               <span class="icon-svg icon-warning fallback-icon"></span>
               <span class="fallback-text">SIN IMAGEN</span>
             </div>
@@ -700,6 +700,7 @@
               [attr.data-src]="resolvedImg"
               [attr.data-minio-object]="record.imgMinioObjectName"
               class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
+              draggable="false"
               alt="Thumbnail" />
             }
 
@@ -720,7 +721,8 @@
             <!-- Glassmorphism Quick Action Strip (Bottom of Image) -->
             @let hasEmbedding = record.embedding && record.embedding.length > 0;
             @let canAdd = canAddToList(record);
-            @if (hasEmbedding || canAdd) {
+            @let canNx = canOpenInNx(record);
+            @if (hasEmbedding || canAdd || canNx) {
             <div class="ed-img-overlay">
               @if (hasEmbedding) {
               <button type="button" class="btn-overlay-action btn-coincidence"
@@ -737,6 +739,16 @@
                 title="Agregar a lista de control">
                 <span class="icon-svg icon-plus" style="width: 12px; height: 12px;"></span>
                 <span>Añadir a lista</span>
+              </button>
+              }
+
+              @if (canNx) {
+              <button type="button" class="btn-overlay-action btn-nx-open"
+                [id]="'btn-nx-open-' + record.id"
+                (click)="openInNx(record, $event)"
+                [title]="'Abrir cámara en Nx Witness (' + formatDate(record.timestampReal || record.timestamp) + ')'">
+                <span class="icon-svg icon-nx-witness" style="width: 12px; height: 12px;"></span>
+                <span>Ver en NX</span>
               </button>
               }
             </div>
@@ -855,7 +867,6 @@
           <div class="rounded d-flex align-items-center justify-content-center border bg-dark text-muted"
             [attr.data-img-url]="modalImg || 'SIN_URL_RESUELTA'"
             [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
-            [title]="'Origen: ' + (modalImg || record.imgMinioObjectName || 'Sin imagen en payload')"
             style="width: 60px; height: 60px; font-size: 0.6rem;">
             @if (record.imgMinioObjectName) {
             <span class="spinner-border spinner-border-sm text-primary" role="status"></span>

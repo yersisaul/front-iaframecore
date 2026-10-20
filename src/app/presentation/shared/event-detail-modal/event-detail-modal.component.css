@@ -769,6 +769,7 @@
   min-height: 0;
   max-width: 100%;
   max-height: 100%;
+  container-type: size;
   gap: 0;
   transition: gap 0.5s cubic-bezier(0.16, 1, 0.3, 1),
     max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1);
@@ -801,15 +802,15 @@
 }
 
 /* 1. PRIMARY MEDIA CARD (Detección / Imagen / Video) */
-/* Estado Base (Modo Imagen, Modo Video, o Comparativa con foco en Detección): 100% */
+/* Estado Base (Modo Imagen, Modo Video, o Comparativa con foco en Detección) */
 .stage-media-card.primary-media-card {
-  flex: 0 0 100%;
+  flex: 0 1 auto;
   width: 100%;
   height: auto;
   max-width: calc(100cqh * var(--media-aspect-ratio, 1.7778));
   max-height: 100%;
-  aspect-ratio: var(--media-aspect-ratio, 16 / 9);
-  margin: 0;
+  aspect-ratio: var(--media-aspect-ratio, 1.7778);
+  margin: auto;
   z-index: 10;
   background: transparent;
 }
@@ -817,6 +818,7 @@
 .unified-media-stage.mode-image .stage-media-card.primary-media-card,
 .unified-media-stage.mode-video .stage-media-card.primary-media-card {
   margin: auto;
+  flex: 0 1 auto;
 }
 
 /* Modo Comparativa normal (Dividida): Pasa fluidamente al 80% */
@@ -833,7 +835,7 @@
 
 /* Modo Comparativa con foco en Detección: 100% con borde resaltado */
 .unified-media-stage.mode-comparison.focus-detection .stage-media-card.primary-media-card {
-  margin: 0;
+  margin: auto;
   z-index: 20;
   background: transparent !important;
   border: none !important;
@@ -1014,6 +1016,9 @@
 
 .unified-media-stage.mode-image .stage-media-element.img-element {
   object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .stage-media-element.video-element {
