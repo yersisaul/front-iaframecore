@@ -78,7 +78,7 @@ server {
     # Protecciones: sesión del panel obligatoria (auth_request), ruta fija, solo GET/POST/PATCH
     # y sin reenviar credenciales del usuario. La X-API-Key de integración la inyecta Nginx.
     # Cada destino consultado queda registrado en el access log (va en la URI).
-    location ~ ^/azor-proxy/(https?)/([A-Za-z0-9.\-]+|\[[0-9A-Fa-f:.]+\])/([0-9]{1,5})/(others/report-types(?:/[A-Za-z0-9_\-]+)?)$ {
+    location ~ "^/azor-proxy/(https?)/([A-Za-z0-9.\-]+|\[[0-9A-Fa-f:.]+\])/([0-9]{1,5})/(others/report-types(?:/[A-Za-z0-9_\-]+)?)$" {
         limit_except GET POST PATCH {
             deny all;
         }
