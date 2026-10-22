@@ -164,4 +164,11 @@ export class CameraService {
       list.map(c => c.hostFingerprint === oldFingerprint ? { ...c, hostFingerprint: newFingerprint } : c)
     );
   }
+
+  migrateCamerasLocal(cameraIds: string[], newFingerprint: string): void {
+    const idSet = new Set(cameraIds);
+    this.cameras.update(list =>
+      list.map(c => idSet.has(c.id) ? { ...c, hostFingerprint: newFingerprint } : c)
+    );
+  }
 }

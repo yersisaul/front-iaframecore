@@ -49,6 +49,7 @@
             @for (sched of filteredSchedules(); track sched.id) {
             <div
               class="schedule-modal-item rounded-3 border transition-all d-flex align-items-center justify-content-between"
+              [class.is-hovered]="hoveredScheduleId() === sched.id"
               [class.schedule-active]="isScheduleActive(sched)" [class.schedule-inactive]="!isScheduleActive(sched)"
               [class.selected-for-details]="selectedScheduleId() === sched.id"
               [class.card-crud-new]="scheduleNewIds().has(sched.id)"
@@ -56,6 +57,8 @@
               [class.card-crud-deleting]="scheduleDeletingIds().has(sched.id)"
               [class.card-crud-status-active]="scheduleActiveStatusIds().has(sched.id)"
               [class.card-crud-status-inactive]="scheduleInactiveStatusIds().has(sched.id)"
+              (mouseenter)="hoveredScheduleId.set(sched.id)"
+              (mouseleave)="hoveredScheduleId.set(null)"
               (click)="selectScheduleForDetails(sched)" style="cursor: pointer;">
 
               <!-- Columna Izquierda: Información Textual (Título, Frecuencia y Rango) -->

@@ -198,13 +198,16 @@
         <div class="d-flex flex-column gap-2">
           @for (analytic of getAnalyticsForCamera(cam.id); track analytic.id) {
           <div class="ai-control-card-wrapper mb-2" [class.ai-active]="analytic.status === 'active'"
+            [class.is-hovered]="hoveredAnalyticId() === analytic.id"
             [class.expanded]="isAnalyticDetailsExpanded(analytic.id)"
             [class.dropdown-open]="activeAddScheduleDropdown() === analytic.id"
             [class.card-crud-new]="analyticNewIds().has(analytic.id)"
             [class.card-crud-updated]="analyticUpdatedIds().has(analytic.id)"
             [class.card-crud-deleting]="analyticDeletingIds().has(analytic.id)"
             [class.card-crud-status-active]="analyticActiveStatusIds().has(analytic.id)"
-            [class.card-crud-status-inactive]="analyticInactiveStatusIds().has(analytic.id)">
+            [class.card-crud-status-inactive]="analyticInactiveStatusIds().has(analytic.id)"
+            (mouseenter)="hoveredAnalyticId.set(analytic.id)"
+            (mouseleave)="hoveredAnalyticId.set(null)">
             <div class="ai-control-header" (click)="toggleAnalyticDetails(analytic.id)">
               <div class="d-flex align-items-center gap-3">
                 <span class="analytic-color-dot shadow-sm"

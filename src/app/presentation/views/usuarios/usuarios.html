@@ -267,11 +267,14 @@
           @for (rol of availableRoles(); track rol.rol_id) {
           <div
             class="w-100 p-3 rounded-3 mb-2 border transition-all role-card-item d-flex align-items-center justify-content-between"
+            [class.is-hovered]="hoveredRoleId() === rol.rol_id"
             [ngStyle]="getRoleStyle(rol.nombre)" [class.active-role-card]="selectedRoleForEdit()?.rol_id === rol.rol_id"
             [class.border-primary]="selectedRoleForEdit()?.rol_id === rol.rol_id"
             [class.role-card--new]="permissionsService.newRoleIds().has(rol.rol_id)"
             [class.role-card--updated]="permissionsService.updatedRoleIds().has(rol.rol_id)"
             [class.role-card--deleting]="permissionsService.deletingRoleIds().has(rol.rol_id)"
+            (mouseenter)="hoveredRoleId.set(rol.rol_id)"
+            (mouseleave)="hoveredRoleId.set(null)"
             (click)="selectRoleForEdit(rol)" style="background: var(--bg-surface, transparent); cursor: pointer;">
             <div class="flex-grow-1 pe-2">
               <span class="role-badge mb-1 d-inline-block">{{ rol.nombre }}</span>

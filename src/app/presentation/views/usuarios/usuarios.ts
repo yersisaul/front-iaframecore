@@ -66,6 +66,7 @@ export class Usuarios implements OnInit, OnDestroy {
 
   // Estado de edición de permisos (tab Roles)
   readonly selectedRoleForEdit = signal<BackendRol | null>(null);
+  readonly hoveredRoleId = signal<string | null>(null);
   readonly rolePermissionsEditing = signal<Set<string>>(new Set());
   readonly isSavingRole = signal<boolean>(false);
 

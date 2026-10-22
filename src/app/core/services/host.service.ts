@@ -1,8 +1,20 @@
 import { Injectable, signal } from '@angular/core';
-import { Observable, of, Subject } from 'rxjs';
-import { tap, catchError } from 'rxjs/operators';
+import { Observable, of, Subject, from } from 'rxjs';
+import { tap, catchError, concatMap, reduce } from 'rxjs/operators';
 import { Host, HostMetrics, ReliabilityHostStatusDTO } from '../domain/entities/host.models';
 import { IHostRepository } from '../domain/repositories/host.repository';
+
+export interface BatchMigrationProgress {
+  current: number;
+  total: number;
+  currentCameraId: string;
+}
+
+export interface BatchMigrationResult {
+  total: number;
+  succeeded: string[];
+  failed: { cameraId: string; error: any }[];
+}
 
 export interface HostFilterOptions {
   status: string[];
@@ -290,6 +302,43 @@ export class HostService {
       tap(() => {
         this.loadAllHosts().subscribe();
       })
+    );
+  }
+
+  migrateCamera(cameraId: string, newFingerprint: string): Observable<void> {
+    return this.hostRepository.migrateCamera(cameraId, newFingerprint);
+  }
+
+  migrateMultipleCameras(
+    cameraIds: string[],
+    newFingerprint: string,
+    onProgress?: (progress: BatchMigrationProgress) => void
+  ): Observable<BatchMigrationResult> {
+    if (cameraIds.length === 0) {
+      return of({ total: 0, succeeded: [], failed: [] });
+    }
+
+    const results: BatchMigrationResult = {
+      total: cameraIds.length,
+      succeeded: [],
+      failed: []
+    };
+
+    return from(cameraIds).pipe(
+      concatMap((id, index) => {
+        if (onProgress) {
+          onProgress({ current: index + 1, total: cameraIds.length, currentCameraId: id });
+        }
+        return this.migrateCamera(id, newFingerprint).pipe(
+          tap(() => results.succeeded.push(id)),
+          catchError(err => {
+            console.error(`Error al migrar cámara ${id}:`, err);
+            results.failed.push({ cameraId: id, error: err });
+            return of(null);
+          })
+        );
+      }),
+      reduce(() => results, results)
     );
   }
 

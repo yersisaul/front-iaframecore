@@ -1903,7 +1903,9 @@ button.role-btn-action {
 }
 
 /* En hover de la tarjeta de rol se despliega a la izquierda del badge */
-.role-card-item:hover .role-btn-action {
+.role-card-item:hover .role-btn-action,
+.role-card-item.is-hovered .role-btn-action,
+.role-card-item:focus-within .role-btn-action {
   width: 15px !important;
   min-width: 15px !important;
   max-width: 15px !important;

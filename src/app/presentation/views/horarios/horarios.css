@@ -926,7 +926,9 @@ button.sched-btn-action {
 }
 
 /* En hover de la tarjeta se revelan suavemente los botones SVG */
-.schedule-modal-item:hover .sched-btn-action {
+.schedule-modal-item:hover .sched-btn-action,
+.schedule-modal-item.is-hovered .sched-btn-action,
+.schedule-modal-item:focus-within .sched-btn-action {
   width: 15px !important;
   min-width: 15px !important;
   max-width: 15px !important;

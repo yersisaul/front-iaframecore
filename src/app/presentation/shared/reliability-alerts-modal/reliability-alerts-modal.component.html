@@ -7,7 +7,7 @@
   <div class="alert-modal-card d-flex flex-column rounded-4" (click)="onCardClick($event)">
 
     <!-- Cabecera del Modal -->
-    <div class="alert-modal-header p-4 pb-3 d-flex flex-column gap-3">
+    <div class="alert-modal-header p-4 pb-0 d-flex flex-column gap-3">
       <div class="d-flex align-items-start justify-content-between gap-3">
         <div class="d-flex align-items-center gap-3">
           <span class="icon-svg icon-warning flex-shrink-0"
@@ -50,7 +50,8 @@
             <div class="dropdown-search-header p-2">
               <div class="node-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1">
                 <span class="icon-svg icon-search opacity-50" style="width: 13px; height: 13px; flex-shrink: 0;"></span>
-                <input #nodeSearchInput type="text" class="camera-search-input node-search-input border-0 bg-transparent w-100"
+                <input #nodeSearchInput type="text"
+                  class="camera-search-input node-search-input border-0 bg-transparent w-100"
                   placeholder="Buscar nodo..." [value]="nodeSearch()" (input)="nodeSearch.set(nodeSearchInput.value)"
                   (click)="$event.stopPropagation()" autocomplete="off" />
                 @if (nodeSearch()) {
@@ -124,7 +125,7 @@
     </div>
 
     <!-- Barra de Filtros Internos del Modal (Con Contadores Integrados y Bordes Definidos) -->
-    <div class="alert-modal-filters-bar px-4 py-2.5 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="alert-modal-filters-bar px-4 py-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
       <div class="d-flex flex-wrap align-items-center gap-2">
         <!-- 1. Filtro Estado de Resolución (Segmented Control / Toggle) -->
         <div class="btn-group btn-group-sm alert-filter-segmented" role="group" aria-label="Filtro de resolución">
@@ -219,7 +220,7 @@
     </div>
 
     <!-- Cuerpo Scrolleable del Modal -->
-    <div class="alert-modal-body p-4 flex-grow-1 overflow-y-auto">
+    <div class="alert-modal-body px-4 py-1 flex-grow-1 overflow-y-auto">
 
       <!-- Estado de Carga (Skeletons) -->
       @if (alertService.isLoading()) {

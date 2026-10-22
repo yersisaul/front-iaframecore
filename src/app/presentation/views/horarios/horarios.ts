@@ -50,6 +50,7 @@ export class Horarios implements OnInit, OnDestroy {
   private analyticRepo = inject(IAnalyticRepository);
 
   readonly selectedScheduleId = signal<string | null>(null);
+  readonly hoveredScheduleId = signal<string | null>(null);
   
   readonly scheduleNewIds = this.scheduleService.newRecordIds;
   readonly scheduleUpdatedIds = this.scheduleService.updatedRecordIds;

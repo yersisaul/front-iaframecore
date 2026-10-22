@@ -62,6 +62,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
   @ViewChild('cameraTitleEl') cameraTitleEl?: ElementRef<HTMLElement>;
 
   readonly isTitleOverflowing = signal<boolean>(false);
+  readonly hoveredAnalyticId = signal<string | null>(null);
   private titleResizeObserver?: ResizeObserver;
 
   get resolvedHostFingerprint(): string {

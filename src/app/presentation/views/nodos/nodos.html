@@ -770,7 +770,7 @@
     [visiblePages]="visiblePages()" (pageChange)="setPage($event)">
   </app-pagination-controls>
 
-  <!-- Modal de Migración de Configuración -->
+  <!-- Modal de Migración de Configuración y Cámaras -->
   @if (showMigrateModal()) {
   <div class="modal-backdrop-custom d-flex align-items-center justify-content-center"
     (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)">
@@ -782,19 +782,38 @@
           <div class="d-flex align-items-center gap-2">
             <span class="icon-svg icon-migrate-arrows"
               style="width: 20px; height: 20px; background-color: var(--primary, #0d6efd);"></span>
-            <h5 class="fw-bold mb-0 text-body fs-6 ms-1">Migrar Configuración de Nodo</h5>
+            <h5 class="fw-bold mb-0 text-body fs-6 ms-1">
+              {{ migrateTab() === 'nodo' ? 'Migrar Configuración de Nodo' : 'Migrar Cámaras a Nodo Receptor' }}
+            </h5>
           </div>
           <p class="text-muted small mb-0 mt-2" style="font-size: 0.78rem; line-height: 1.45; max-width: 820px;">
-            Transfiere configuraciones y cámaras desde un nodo emisor (Origen) a un receptor compatible (Destino).
+            {{ migrateTab() === 'nodo'
+            ? 'Transfiere configuraciones y cámaras desde un nodo emisor (Origen) a un receptor compatible (Destino).'
+            : 'Selecciona una o más cámaras de cualquier nodo y transfiérelas a un nodo de cómputo receptor.' }}
           </p>
         </div>
+      </div>
+
+      <!-- Segmented Tabs Pill (Inspirado en camera-selection-modal) -->
+      <div class="modal-tabs-pill my-3">
+        <button type="button" class="btn-premium-tab" [class.active]="migrateTab() === 'nodo'"
+          [disabled]="isMigrating()" (click)="setMigrateTab('nodo')">
+          <span class="icon-svg icon-nodos me-2" style="width: 14px; height: 14px;"></span>
+          Por Nodo
+        </button>
+        <button type="button" class="btn-premium-tab" [class.active]="migrateTab() === 'camara'"
+          [disabled]="isMigrating()" (click)="setMigrateTab('camara')">
+          <span class="icon-svg icon-camara me-2" style="width: 14px; height: 14px;"></span>
+          Por Cámara
+        </button>
       </div>
 
       <!-- Modal Body -->
       <div class="modal-body-custom">
         <!-- Layout bicolumna con conector de flecha central para selección -->
-        <div class="nm-columns-wrapper mt-4">
-          <!-- Columna Origen (Izquierda) -->
+        <div class="nm-columns-wrapper mt-2">
+          @if (migrateTab() === 'nodo') {
+          <!-- Columna Origen (Izquierda - Por Nodo) -->
           <div class="nm-column nm-column-origin">
             <div class="nm-column-header d-flex align-items-center justify-content-between mb-3">
               <div class="d-flex align-items-center gap-2">
@@ -850,13 +869,119 @@
               }
             </div>
           </div>
-
-          <!-- Separador Central de Flujo (Flecha) -->
-          <div class="nm-flow-separator d-flex align-items-center justify-content-center">
-            <div class="flow-arrow-wrap rounded-circle shadow-sm"
-              [class.is-active]="!!selectedOldFingerprint() && !!selectedNewFingerprint()">
-              <span class="icon-svg icon-arrow-right flow-arrow-icon-right" style="width: 24px; height: 24px;"></span>
+          } @else {
+          <!-- Columna Origen (Izquierda - Por Cámara) -->
+          <div class="nm-column nm-column-cameras">
+            <div class="nm-column-header d-flex align-items-center justify-content-between mb-3">
+              <div class="d-flex align-items-center gap-2">
+                <span class="node-flow-badge badge-origen uppercase">Origen</span>
+                <span class="node-column-title fw-bold text-muted small">CÁMARAS DEL SISTEMA</span>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-secondary-light text-secondary fw-semibold"
+                  style="font-size: 0.72rem; padding: 4px 8px;">
+                  {{ selectedCameraIds().size }} / {{ filteredCamerasForMigration().length }} selec.
+                </span>
+                @if (filteredCamerasForMigration().length > 0) {
+                <button type="button" class="btn-select-all-pill d-inline-flex align-items-center gap-1"
+                  [class.is-active]="areAllVisibleCamerasSelected()" (click)="toggleAllCamerasSelection()"
+                  [disabled]="isMigrating()"
+                  [title]="areAllVisibleCamerasSelected() ? 'Deseleccionar todas las cámaras visibles' : 'Seleccionar todas las cámaras visibles'">
+                  <span class="icon-svg select-all-icon" [class.icon-check]="!areAllVisibleCamerasSelected()"
+                    [class.icon-close-simple]="areAllVisibleCamerasSelected()"
+                    style="width: 10px; height: 10px;"></span>
+                  <span>{{ areAllVisibleCamerasSelected() ? 'Deseleccionar todas' : 'Seleccionar todas' }}</span>
+                </button>
+                }
+              </div>
             </div>
+
+            <!-- Buscador de Cámaras -->
+            <div class="nm-search-wrapper mb-3 position-relative">
+              <span class="icon-svg icon-search nm-search-icon"></span>
+              <input #camSearchInput type="text" class="nm-search-input"
+                placeholder="Buscar por cámara, nodo origen o IP..." [disabled]="isMigrating()"
+                (input)="cameraSearchText.set(camSearchInput.value)" />
+              @if (cameraSearchText()) {
+              <button class="btn-clear-search position-absolute end-0 top-50 translate-middle-y btn-ghost p-1"
+                (click)="camSearchInput.value = ''; cameraSearchText.set('')" style="right: 8px !important;">
+                <span class="icon-svg icon-close" style="width: 12px; height: 12px;"></span>
+              </button>
+              }
+            </div>
+
+            <!-- Lista Scrollable de Cámaras -->
+            <div class="nm-list-scroll">
+              @for (cam of filteredCamerasForMigration(); track cam.id) {
+              <div class="nm-list-item nm-camera-item d-flex align-items-center gap-3"
+                [class.is-selected]="selectedCameraIds().has(cam.id)"
+                (click)="!isMigrating() && toggleCameraSelection(cam.id, $event)">
+                <!-- Checkbox Personalizado -->
+                <span class="custom-chk-indicator flex-shrink-0"
+                  [class.checked]="selectedCameraIds().has(cam.id)"></span>
+
+                <!-- Info de Cámara y Nodo Origen -->
+                <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <span class="nm-item-hostname fw-bold text-truncate" style="max-width: 155px;" [title]="cam.name">
+                      {{ cam.name }}
+                    </span>
+                    <span class="camera-codec-badge font-monospace" style="font-size: 0.62rem;">
+                      {{ (cam.decoder || '').toUpperCase() }} / {{ (cam.streamType || '').toUpperCase() }}
+                    </span>
+                  </div>
+                  <div class="d-flex align-items-center gap-1.5 mt-1">
+                    <span class="badge badge-node-source text-truncate" style="max-width: 150px;"
+                      [title]="getHostName(cam.hostFingerprint)">
+                      {{ getHostName(cam.hostFingerprint) }}
+                    </span>
+                    @if (cam.ipAddress) {
+                    <span class="font-monospace text-muted small" style="font-size: 0.65rem;">
+                      {{ cam.ipAddress }}
+                    </span>
+                    }
+                  </div>
+                </div>
+              </div>
+              } @empty {
+              <div class="nm-empty-state text-center p-4">
+                <span class="text-muted small">No se encontraron cámaras con los criterios de búsqueda.</span>
+              </div>
+              }
+            </div>
+          </div>
+          }
+
+          <!-- Separador Central de Flujo (Círculo Sólido Premium) -->
+          <div class="nm-flow-separator d-flex flex-column align-items-center justify-content-center"
+            [class.is-active]="isFlowActive()">
+            <!-- Línea Guía Superior (fade in/out al extremo opuesto) -->
+            <div class="flow-rail-line flow-rail-top"></div>
+
+            <!-- Contenedor del Círculo con Badge Flotante -->
+            <div class="flow-capsule-wrapper position-relative">
+              <!-- Badge de Conteo Dinámico (Solo en modo Cámara con selección) -->
+              @if (isFlowActive() && migrateTab() === 'camara' && selectedCameraIds().size > 0) {
+              <span class="flow-counter-badge"
+                [title]="selectedCameraIds().size + ' cámaras seleccionadas para migrar'">
+                {{ selectedCameraIds().size }}
+              </span>
+              }
+
+              <!-- Círculo Central Sólido -->
+              <div class="flow-arrow-wrap rounded-circle shadow-sm" [class.is-active]="isFlowActive()"
+                [title]="isFlowActive() ? 'Flujo de migración activo y listo' : 'Selecciona origen y destino para conectar el flujo'">
+
+                <!-- Doble Chevron SVG de Migración -->
+                <svg class="flow-arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M7 17l5-5-5-5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M13 17l5-5-5-5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Línea Guía Inferior (fade in/out al extremo opuesto) -->
+            <div class="flow-rail-line flow-rail-bottom"></div>
           </div>
 
           <!-- Columna Destino (Derecha) -->
@@ -884,12 +1009,16 @@
 
             <!-- Lista de Destino -->
             <div class="nm-list-scroll">
-              @for (host of compatibleTargetHosts(); track host.id) {
+              @for (host of (migrateTab() === 'nodo' ? compatibleTargetHosts() : compatibleTargetHostsForCamera());
+              track host.id) {
               <div class="nm-list-item d-flex align-items-center gap-3"
                 [class.is-selected]="selectedNewFingerprint() === host.fingerprint"
-                [class.ubuntu-item]="!!host.hwInfo?.system?.toLowerCase()?.includes('linux')"
-                [class.windows-item]="!!host.hwInfo?.system?.toLowerCase()?.includes('windows')"
-                [class.default-item]="!host.hwInfo?.system?.toLowerCase()?.includes('linux') && !host.hwInfo?.system?.toLowerCase()?.includes('windows')"
+                [class.is-disabled]="isTargetHostDisabled(host.fingerprint)"
+                [class.ubuntu-item]="!isTargetHostDisabled(host.fingerprint) && !!host.hwInfo?.system?.toLowerCase()?.includes('linux')"
+                [class.windows-item]="!isTargetHostDisabled(host.fingerprint) && !!host.hwInfo?.system?.toLowerCase()?.includes('windows')"
+                [class.default-item]="!isTargetHostDisabled(host.fingerprint) && !host.hwInfo?.system?.toLowerCase()?.includes('linux') && !host.hwInfo?.system?.toLowerCase()?.includes('windows')"
+                [attr.aria-disabled]="isTargetHostDisabled(host.fingerprint)"
+                [title]="isTargetHostDisabled(host.fingerprint) ? 'Este nodo contiene cámaras seleccionadas como origen' : 'Seleccionar como nodo de destino'"
                 (click)="!isMigrating() && selectNewHost(host.fingerprint, $event)">
                 <!-- Avatar OS -->
                 <span class="icon-svg os-avatar-icon flex-shrink-0" style="width: 20px; height: 20px;"
@@ -901,8 +1030,12 @@
                   <div class="d-flex align-items-center justify-content-between">
                     <span class="nm-item-hostname fw-bold text-truncate" style="max-width: 140px;"
                       [title]="host.hostname">{{ host.hostname }}</span>
+                    @if (isTargetHostDisabled(host.fingerprint)) {
+                    <span class="badge-node-origin-pill" title="Nodo de origen de cámaras seleccionadas">Origen</span>
+                    } @else {
                     <span class="status-dot"
                       [class.online]="host.status === 'active' || host.status === 'online'"></span>
+                    }
                   </div>
                   <span class="font-monospace text-muted small nm-item-subtext" style="font-size: 0.65rem;">IP: {{
                     host.ipAddress }}</span>
@@ -924,13 +1057,17 @@
             Cancelar
           </button>
           <button class="btn btn-primary btn-flat-confirm d-flex align-items-center justify-content-center gap-2"
-            (click)="executeMigration()"
-            [disabled]="!selectedOldFingerprint() || !selectedNewFingerprint() || isMigrating()">
+            (click)="migrateTab() === 'nodo' ? executeMigration() : executeCameraMigration()"
+            [disabled]="isConfirmDisabled()">
             @if (isMigrating()) {
             <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-            <span>Migrando...</span>
+            <span>
+              {{ migrationProgress()
+              ? ('Migrando ' + migrationProgress()!.current + ' de ' + migrationProgress()!.total + '...')
+              : 'Migrando...' }}
+            </span>
             } @else {
-            <span>Iniciar Migración</span>
+            <span>{{ confirmButtonLabel() }}</span>
             }
           </button>
         </div>

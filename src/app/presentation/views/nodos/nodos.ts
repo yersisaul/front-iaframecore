@@ -131,11 +131,17 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
 
   // ── Host Migration State ─────────────────────────────────────────────────────
   readonly showMigrateModal = signal<boolean>(false);
+  readonly migrateTab = signal<'nodo' | 'camara'>('nodo');
   readonly selectedOldFingerprint = signal<string>('');
   readonly selectedNewFingerprint = signal<string>('');
   readonly isMigrating = signal<boolean>(false);
   readonly isOldDropdownOpen = signal<boolean>(false);
   readonly isNewDropdownOpen = signal<boolean>(false);
+
+  // Multi-selección de cámaras en pestaña 'Por Cámara'
+  readonly selectedCameraIds = signal<Set<string>>(new Set());
+  readonly cameraSearchText = signal<string>('');
+  readonly migrationProgress = signal<{ current: number; total: number } | null>(null);
 
   // Búsquedas en el modal
   readonly originSearchText = signal<string>('');
@@ -163,22 +169,100 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     );
   });
 
-  // Lista de destino filtrada reactivamente excluyendo el origen seleccionado por nombre, fingerprint o IP
-  readonly compatibleTargetHosts = computed(() => {
-    const oldFp = this.selectedOldFingerprint();
+  // Cámaras filtradas reactivamente para el modal de migración
+  readonly filteredCamerasForMigration = computed(() => {
+    const term = this.cameraSearchText().trim().toLowerCase();
+    const allCams = this.cameraService.cameras();
+    const hostsMap = new Map(this.hostService.allHosts().map(h => [h.fingerprint, h]));
+
+    if (!term) return allCams;
+    return allCams.filter(cam => {
+      const host = hostsMap.get(cam.hostFingerprint);
+      const hostName = host?.hostname?.toLowerCase() || '';
+      const camName = cam.name?.toLowerCase() || '';
+      const camIp = cam.ipAddress?.toLowerCase() || '';
+      const streamType = cam.streamType?.toLowerCase() || '';
+      const decoder = cam.decoder?.toLowerCase() || '';
+      return camName.includes(term) || hostName.includes(term) || camIp.includes(term) || streamType.includes(term) || decoder.includes(term);
+    });
+  });
+
+  // Indica si todas las cámaras visibles están seleccionadas
+  readonly areAllVisibleCamerasSelected = computed(() => {
+    const visible = this.filteredCamerasForMigration();
+    if (visible.length === 0) return false;
+    const selected = this.selectedCameraIds();
+    return visible.every(c => selected.has(c.id));
+  });
+
+  // Conjunto de fingerprints de los nodos origen de todas las cámaras seleccionadas
+  readonly selectedCameraOriginFingerprints = computed<Set<string>>(() => {
+    const selectedIds = this.selectedCameraIds();
+    if (selectedIds.size === 0) return new Set<string>();
+    const allCams = this.cameraService.cameras();
+    const fps = new Set<string>();
+    for (const cam of allCams) {
+      if (selectedIds.has(cam.id) && cam.hostFingerprint) {
+        fps.add(cam.hostFingerprint);
+      }
+    }
+    return fps;
+  });
+
+  // Determina si un nodo destino debe aparecer deshabilitado (no seleccionable)
+  isTargetHostDisabled(fingerprint: string): boolean {
+    if (!fingerprint) return false;
+    if (this.migrateTab() === 'nodo') {
+      return this.selectedOldFingerprint() === fingerprint;
+    }
+    return this.selectedCameraOriginFingerprints().has(fingerprint);
+  }
+
+  // Lista de todos los nodos receptores filtrada únicamente por búsqueda de texto (sin excluir nodos origen)
+  readonly targetHostsList = computed(() => {
     const term = this.targetSearchText().trim().toLowerCase();
-
-    // Si no hay origen seleccionado, mostramos todos los hosts; de lo contrario, excluimos el origen
-    const candidates = oldFp
-      ? this.hostService.allHosts().filter(h => h.fingerprint !== oldFp)
-      : this.hostService.allHosts();
-
-    if (!term) return candidates;
-    return candidates.filter(h =>
+    const all = this.hostService.allHosts();
+    if (!term) return all;
+    return all.filter(h =>
       (h.hostname && h.hostname.toLowerCase().includes(term)) ||
       (h.fingerprint && h.fingerprint.toLowerCase().includes(term)) ||
       (h.ipAddress && h.ipAddress.toLowerCase().includes(term))
     );
+  });
+
+  readonly compatibleTargetHosts = this.targetHostsList;
+  readonly compatibleTargetHostsForCamera = this.targetHostsList;
+
+  // Estado activo de la flecha central de flujo
+  readonly isFlowActive = computed(() => {
+    const targetFp = this.selectedNewFingerprint();
+    if (!targetFp || this.isTargetHostDisabled(targetFp)) return false;
+
+    if (this.migrateTab() === 'nodo') {
+      return !!this.selectedOldFingerprint();
+    }
+    return this.selectedCameraIds().size > 0;
+  });
+
+  // Estado deshabilitado del botón de confirmación
+  readonly isConfirmDisabled = computed(() => {
+    if (this.isMigrating()) return true;
+    const targetFp = this.selectedNewFingerprint();
+    if (!targetFp || this.isTargetHostDisabled(targetFp)) return true;
+
+    if (this.migrateTab() === 'nodo') {
+      return !this.selectedOldFingerprint();
+    }
+    return this.selectedCameraIds().size === 0;
+  });
+
+  // Texto dinámico del botón de confirmación
+  readonly confirmButtonLabel = computed(() => {
+    if (this.migrateTab() === 'nodo') {
+      return 'Iniciar Migración de Nodo';
+    }
+    const count = this.selectedCameraIds().size;
+    return count > 1 ? `Migrar ${count} Cámaras` : 'Migrar Cámara';
   });
   readonly allHosts = this.hostService.allHosts;
 
@@ -706,10 +790,10 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.isOldDropdownOpen.set(false);
   }
 
-  selectNewHost(fingerprint: string, event: any): void {
-    event.stopPropagation();
-    // No permitir seleccionar el mismo host que el de origen
-    if (this.selectedOldFingerprint() === fingerprint) {
+  selectNewHost(fingerprint: string, event?: any): void {
+    if (event) event.stopPropagation();
+    // Bloquear selección si el nodo está deshabilitado como destino
+    if (this.isTargetHostDisabled(fingerprint)) {
       return;
     }
     this.selectedNewFingerprint.set(fingerprint);
@@ -730,7 +814,9 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
       this.backdropMouseDownTarget === event.currentTarget &&
       event.target === event.currentTarget
     ) {
-      this.closeMigrateModal();
+      if (!this.isMigrating()) {
+        this.closeMigrateModal();
+      }
     }
     this.backdropMouseDownTarget = null;
   }
@@ -752,19 +838,79 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     this.isNewDropdownOpen.set(false);
   }
 
+  getHostName(fingerprint: string): string {
+    if (!fingerprint) return 'Sin asignar';
+    const host = this.hostService.allHosts().find(h => h.fingerprint === fingerprint);
+    return host?.hostname || fingerprint;
+  }
+
+  setMigrateTab(tab: 'nodo' | 'camara'): void {
+    this.migrateTab.set(tab);
+    this.selectedCameraIds.set(new Set());
+    this.selectedOldFingerprint.set('');
+    this.selectedNewFingerprint.set('');
+    this.originSearchText.set('');
+    this.cameraSearchText.set('');
+    this.targetSearchText.set('');
+  }
+
+  toggleCameraSelection(cameraId: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.selectedCameraIds.update(current => {
+      const next = new Set(current);
+      if (next.has(cameraId)) {
+        next.delete(cameraId);
+      } else {
+        next.add(cameraId);
+      }
+      return next;
+    });
+    this.checkAndResetInvalidTargetSelection();
+  }
+
+  toggleAllCamerasSelection(): void {
+    const visible = this.filteredCamerasForMigration();
+    const current = this.selectedCameraIds();
+    const allSelected = visible.length > 0 && visible.every(c => current.has(c.id));
+
+    this.selectedCameraIds.update(set => {
+      const next = new Set(set);
+      if (allSelected) {
+        visible.forEach(c => next.delete(c.id));
+      } else {
+        visible.forEach(c => next.add(c.id));
+      }
+      return next;
+    });
+    this.checkAndResetInvalidTargetSelection();
+  }
+
+  private checkAndResetInvalidTargetSelection(): void {
+    const currentTarget = this.selectedNewFingerprint();
+    if (currentTarget && this.isTargetHostDisabled(currentTarget)) {
+      this.selectedNewFingerprint.set('');
+    }
+  }
+
   openMigrateModal(host?: Host): void {
+    this.migrateTab.set('nodo');
+    this.selectedCameraIds.set(new Set());
     this.selectedOldFingerprint.set(host?.fingerprint || '');
     this.selectedNewFingerprint.set('');
     this.originSearchText.set('');
+    this.cameraSearchText.set('');
     this.targetSearchText.set('');
     this.isOldDropdownOpen.set(false);
     this.isNewDropdownOpen.set(false);
     this.isMigrating.set(false);
+    this.migrationProgress.set(null);
     this.showMigrateModal.set(true);
   }
 
   closeMigrateModal(): void {
     this.showMigrateModal.set(false);
+    this.selectedCameraIds.set(new Set());
+    this.migrationProgress.set(null);
     this.isOldDropdownOpen.set(false);
     this.isNewDropdownOpen.set(false);
   }
@@ -787,6 +933,45 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
         console.error('Error migrating host setup:', err);
         this.isMigrating.set(false);
         alert('Error al migrar la configuración del nodo.');
+      }
+    });
+  }
+
+  executeCameraMigration(): void {
+    const cameraIds = Array.from(this.selectedCameraIds());
+    const targetFp = this.selectedNewFingerprint();
+    if (cameraIds.length === 0 || !targetFp) return;
+
+    this.isMigrating.set(true);
+    this.migrationProgress.set({ current: 1, total: cameraIds.length });
+
+    this.hostService.migrateMultipleCameras(cameraIds, targetFp, (prog) => {
+      this.migrationProgress.set({ current: prog.current, total: prog.total });
+    }).subscribe({
+      next: (result) => {
+        this.isMigrating.set(false);
+        this.migrationProgress.set(null);
+
+        if (result.succeeded.length > 0) {
+          this.cameraService.migrateCamerasLocal(result.succeeded, targetFp);
+        }
+
+        this.closeMigrateModal();
+        this.cameraService.getAllCameras().subscribe();
+
+        if (result.failed.length === 0) {
+          alert(result.total > 1
+            ? `Se migraron con éxito las ${result.total} cámaras seleccionadas.`
+            : 'Cámara migrada con éxito.');
+        } else {
+          alert(`Migración completada parcialmente: ${result.succeeded.length} exitosas, ${result.failed.length} con error.`);
+        }
+      },
+      error: (err) => {
+        console.error('Error migrating cameras:', err);
+        this.isMigrating.set(false);
+        this.migrationProgress.set(null);
+        alert('Error inesperado al ejecutar la migración de cámaras.');
       }
     });
   }

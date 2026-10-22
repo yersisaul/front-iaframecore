@@ -474,7 +474,9 @@
   transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.ai-control-card-wrapper:hover .analytic-card-hover-actions {
+.ai-control-card-wrapper:hover .analytic-card-hover-actions,
+.ai-control-card-wrapper.is-hovered .analytic-card-hover-actions,
+.ai-control-card-wrapper:focus-within .analytic-card-hover-actions {
   opacity: 1;
   transform: translateX(0);
   pointer-events: auto;

@@ -75,6 +75,15 @@ export class HostHttpRepository implements IHostRepository {
     });
   }
 
+  migrateCamera(cameraId: string, newFingerprint: string): Observable<void> {
+    return this.http.post<void>(
+      `${AppEnvironment.apiUrl}/frontend/hosts/migrate_camera/${encodeURIComponent(cameraId)}`,
+      {
+        new_fingerprint: newFingerprint
+      }
+    );
+  }
+
   getInfoModels(fingerprint: string): Observable<any> {
     return this.http.get<any>(`${AppEnvironment.apiUrl}/frontend/hosts/info_models/${fingerprint}`).pipe(
       catchError(err => {

@@ -7,6 +7,7 @@ export abstract class IHostRepository {
   abstract getInfoModels(fingerprint: string): Observable<any>;
   abstract getReliabilityHosts(): Observable<ReliabilityHostStatusDTO[]>;
   abstract migrateSetup(oldFingerprint: string, newFingerprint: string): Observable<void>;
+  abstract migrateCamera(cameraId: string, newFingerprint: string): Observable<void>;
   abstract allowReenroll(fingerprint: string): Observable<any>;
   abstract delete(fingerprint: string): Observable<void>;
 }
