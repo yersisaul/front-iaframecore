@@ -59,7 +59,15 @@ describe('AnalyticActionsBuilderComponent – Enviar a API', () => {
       imports: [AnalyticActionsBuilderComponent],
       providers: [
         { provide: IReportTypeRepository, useValue: repo },
-        { provide: CameraService, useValue: { cameras: signal([]), getAllCameras: () => of([]) } },
+        {
+          provide: CameraService,
+          useValue: {
+            cameras: signal([]),
+            getAllCameras: () => of([]),
+            getPtzPresets: () => of({ presets: [] }),
+            getDigitalOutputs: () => of({ outputs: [] })
+          }
+        },
         { provide: HostService, useValue: { allHosts: signal([]), loadAllHosts: () => of([]) } },
         { provide: AnalyticService, useValue: { analytics: signal([]), getAllAnalytics: () => of([]) } }
       ]
@@ -133,5 +141,119 @@ describe('AnalyticActionsBuilderComponent – Enviar a API', () => {
     });
 
     expect(component.getSendToApiStatuses()).toEqual({ '0': 'ok', '2': 'missing-domain' });
+  });
+
+  it('should synchronize preset and preset_token when selecting a preset', () => {
+    component.cameraId = 'cam-123';
+    component.addAction('Ir a Preset');
+    fixture.detectChanges();
+
+    const action = component.actionsList()[0];
+    component.selectPreset(action, { name: 'Arbol', token: '2' });
+
+    expect(action.accion.preset).toBe('Arbol');
+    expect(action.accion.preset_token).toBe('2');
+    expect(lastEmitted()['0'].accion.preset).toBe('Arbol');
+    expect(lastEmitted()['0'].accion.preset_token).toBe('2');
+  });
+
+  it('should synchronize preset when selecting a preset_token', () => {
+    component.cameraId = 'cam-123';
+    component.addAction('Ir a Preset');
+    fixture.detectChanges();
+
+    const action = component.actionsList()[0];
+    component.selectPresetToken(action, { name: 'Calle', token: '3' });
+
+    expect(action.accion.preset).toBe('Calle');
+    expect(action.accion.preset_token).toBe('3');
+  });
+
+  it('should update salida_token when selecting a digital output', () => {
+    component.cameraId = 'cam-123';
+    component.addAction('Activar salida digital');
+    fixture.detectChanges();
+
+    const action = component.actionsList()[0];
+    component.selectDigitalOutput(action, { token: 'relay_output0', modo: 'Monostable' });
+
+    expect(action.accion.salida_token).toBe('relay_output0');
+    expect(lastEmitted()['0'].accion.salida_token).toBe('relay_output0');
+  });
+
+  it('should update estado when selecting an output state in Activar salida digital', () => {
+    component.cameraId = 'cam-123';
+    component.addAction('Activar salida digital');
+    fixture.detectChanges();
+
+    const action = component.actionsList()[0];
+    component.selectEstadoSalida(action, 'desactivar');
+
+    expect(action.accion.estado).toBe('desactivar');
+    expect(lastEmitted()['0'].accion.estado).toBe('desactivar');
+  });
+
+  it('should update retorno when selecting a retorno state in Autotracking PTZ', () => {
+    component.addAction('Autotracking PTZ');
+    fixture.detectChanges();
+
+    const action = component.actionsList()[0];
+    component.selectRetornoAutotracking(action, false);
+
+    expect(action.accion.retorno).toBe(false);
+    expect(lastEmitted()['0'].accion.retorno).toBe(false);
+  });
+
+  it('should format getDigitalOutputLabel with modo and token when available', () => {
+    component.digitalOutputs.set([{ token: 'relay_output0', modo: 'Monostable' }]);
+    expect(component.getDigitalOutputLabel('relay_output0')).toBe('Monostable (relay_output0)');
+    expect(component.getDigitalOutputLabel('unknown_token')).toBe('unknown_token');
+    expect(component.getDigitalOutputLabel('')).toBe('');
+  });
+
+  it('should calculate field dropdown placement as "up" when space below is insufficient', () => {
+    const mockEl = {
+      getBoundingClientRect: () => ({
+        top: 600,
+        bottom: 630,
+        left: 0,
+        right: 200,
+        width: 200,
+        height: 30
+      })
+    } as unknown as HTMLElement;
+
+    vi.stubGlobal('innerHeight', 700);
+    const placement = component.calculateFieldDropdownPlacement(mockEl, 'estado');
+    expect(placement).toBe('up');
+    vi.unstubAllGlobals();
+  });
+
+  it('should calculate field dropdown placement as "down" when space below is sufficient', () => {
+    const mockEl = {
+      getBoundingClientRect: () => ({
+        top: 100,
+        bottom: 130,
+        left: 0,
+        right: 200,
+        width: 200,
+        height: 30
+      })
+    } as unknown as HTMLElement;
+
+    vi.stubGlobal('innerHeight', 800);
+    const placement = component.calculateFieldDropdownPlacement(mockEl, 'preset');
+    expect(placement).toBe('down');
+    vi.unstubAllGlobals();
+  });
+
+  it('should reflect isFieldDropdownUp based on activeOpenDropdown placement', () => {
+    component.activeOpenDropdown.set({ actionIndex: 0, field: 'preset', placement: 'up' });
+    expect(component.isFieldDropdownUp(0, 'preset')).toBe(true);
+    expect(component.isFieldDropdownUp(0, 'estado')).toBe(false);
+    expect(component.isFieldDropdownUp(1, 'preset')).toBe(false);
+
+    component.activeOpenDropdown.set({ actionIndex: 0, field: 'preset', placement: 'down' });
+    expect(component.isFieldDropdownUp(0, 'preset')).toBe(false);
   });
 });

@@ -1,10 +1,10 @@
-import { Component, Input, Output, EventEmitter, signal, HostListener, OnChanges, SimpleChanges, inject, computed, ElementRef, ViewChildren, QueryList } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, HostListener, OnChanges, SimpleChanges, inject, computed, ElementRef, ViewChildren, QueryList, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CameraService } from '../../../../../core/services/camera.service';
 import { HostService } from '../../../../../core/services/host.service';
 import { AnalyticService } from '../../../../../core/services/analytic.service';
-import { Camera } from '../../../../../core/domain/entities/camera.models';
+import { Camera, PtzPreset, DigitalOutput } from '../../../../../core/domain/entities/camera.models';
 import { Host } from '../../../../../core/domain/entities/host.models';
 import { Analytic } from '../../../../../core/domain/entities/analytic.models';
 import { getCameraEffectiveStatus, getCameraStatusCssClass } from '../../../../../core/utils/camera-status.utils';
@@ -19,6 +19,12 @@ export interface ActionItem {
   accion: any;
 }
 
+export interface ActiveFieldDropdown {
+  actionIndex: number;
+  field: string;
+  placement: 'up' | 'down';
+}
+
 @Component({
   selector: 'app-analytic-actions-builder',
   standalone: true,
@@ -26,7 +32,7 @@ export interface ActionItem {
   templateUrl: './analytic-actions-builder.component.html',
   styleUrls: ['./analytic-actions-builder.component.css']
 })
-export class AnalyticActionsBuilderComponent implements OnChanges {
+export class AnalyticActionsBuilderComponent implements OnChanges, AfterViewInit, OnDestroy {
   @Input() cameraId: string = '';
   @Input() initialActions: any = null;
   @Input() highlightErrors: boolean = false;
@@ -43,6 +49,14 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['initialActions']) {
       this.loadInitialActions(this.initialActions);
+    }
+    if (changes['cameraId'] && this.cameraId) {
+      if (this.actionsList().some(a => a.tipo.startsWith('Ir a Preset'))) {
+        this.loadPresetsIfNeeded();
+      }
+      if (this.actionsList().some(a => a.tipo.startsWith('Activar salida digital'))) {
+        this.loadDigitalOutputsIfNeeded();
+      }
     }
   }
 
@@ -66,6 +80,18 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
           accion.estado = 'active';
         } else if (tipo.startsWith('Desactivar analisis')) {
           accion.estado = 'inactive';
+        } else if (tipo.startsWith('Ir a Preset')) {
+          accion.id_cam = accion.id_cam || this.cameraId || '';
+          accion.preset = accion.preset || '';
+          accion.preset_token = accion.preset_token || '';
+        } else if (tipo.startsWith('Activar salida digital')) {
+          accion.id_cam = accion.id_cam || this.cameraId || '';
+          accion.estado = accion.estado || 'activar';
+          accion.duracion_s = accion.duracion_s !== undefined ? Number(accion.duracion_s) : 5;
+          accion.salida_token = accion.salida_token || '';
+        } else if (tipo.startsWith('Autotracking PTZ')) {
+          accion.retorno = accion.retorno !== undefined ? Boolean(accion.retorno) : true;
+          accion.duracion_s = accion.duracion_s !== undefined ? Number(accion.duracion_s) : 15;
         }
         items.push({
           idIndex: String(idx),
@@ -84,6 +110,13 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
 
     this.actionsList.set(this.recalculateActionSequence(items));
     this.emitActions();
+
+    if (items.some(it => it.tipo.startsWith('Ir a Preset'))) {
+      this.loadPresetsIfNeeded();
+    }
+    if (items.some(it => it.tipo.startsWith('Activar salida digital'))) {
+      this.loadDigitalOutputsIfNeeded();
+    }
   }
 
   readonly actionsList = signal<ActionItem[]>([]);
@@ -93,6 +126,15 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
   readonly previewTargetIndex = signal<number | null>(null);
   readonly draggedCardHeight = signal<number>(0);
   readonly isTransitionDisabled = signal<boolean>(false);
+
+  readonly ptzPresets = signal<PtzPreset[]>([]);
+  readonly isLoadingPresets = signal<boolean>(false);
+  readonly digitalOutputs = signal<DigitalOutput[]>([]);
+  readonly isLoadingOutputs = signal<boolean>(false);
+  readonly activeOpenDropdown = signal<ActiveFieldDropdown | null>(null);
+
+  private loadedPresetsCameraId: string | null = null;
+  private loadedOutputsCameraId: string | null = null;
 
   private isPointerDragging = false;
   private dragProxyEl: HTMLElement | null = null;
@@ -121,7 +163,7 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
     if (this.actionsList().length <= 1) return;
 
     const target = event.target as HTMLElement;
-    if (target && target.closest('.remove-action-btn, .btn-media-toggle, .btn-target-selector-trigger, .modal-backdrop-blur, .premium-detail-modal, app-report-type-select-modal, button, input, select, textarea')) {
+    if (target && target.closest('.remove-action-btn, .btn-media-toggle, .btn-target-selector-trigger, .modal-backdrop-blur, .premium-detail-modal, app-report-type-select-modal, .custom-action-dropdown-menu, .custom-action-dropdown-trigger, .dropdown-option-item, button, input, select, textarea')) {
       return;
     }
 
@@ -281,16 +323,205 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
     }
   }
 
+  private scrollContainerCleanup: (() => void) | null = null;
+
+  ngAfterViewInit(): void {
+    const scrollContainer = this.elementRef.nativeElement.closest('.drawer-scroll-area') as HTMLElement | null;
+    if (scrollContainer) {
+      const scrollHandler = () => {
+        if (this.activeOpenDropdown()) {
+          this.recalculateActiveFieldPlacement();
+        }
+        if (this.isDropdownOpen()) {
+          this.calculateDropdownPlacement();
+        }
+      };
+      scrollContainer.addEventListener('scroll', scrollHandler, { passive: true });
+      this.scrollContainerCleanup = () => scrollContainer.removeEventListener('scroll', scrollHandler);
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.scrollContainerCleanup) {
+      this.scrollContainerCleanup();
+      this.scrollContainerCleanup = null;
+    }
+  }
+
   @HostListener('window:resize')
   onWindowResize(): void {
     if (this.isDropdownOpen()) {
       this.calculateDropdownPlacement();
+    }
+    if (this.activeOpenDropdown()) {
+      this.recalculateActiveFieldPlacement();
     }
   }
 
   @HostListener('document:click')
   closeDropdown(): void {
     this.isDropdownOpen.set(false);
+    this.closeFieldDropdown();
+  }
+
+  loadPresetsIfNeeded(force = false): void {
+    if (!this.cameraId) return;
+    if (!force && this.loadedPresetsCameraId === this.cameraId && this.ptzPresets().length > 0) return;
+    if (this.isLoadingPresets()) return;
+
+    this.isLoadingPresets.set(true);
+    this.cameraService.getPtzPresets(this.cameraId).subscribe({
+      next: (res) => {
+        this.loadedPresetsCameraId = this.cameraId;
+        this.ptzPresets.set(res?.presets || []);
+        this.isLoadingPresets.set(false);
+      },
+      error: (err) => {
+        console.warn('Error loading PTZ presets:', err);
+        this.loadedPresetsCameraId = this.cameraId;
+        this.ptzPresets.set([]);
+        this.isLoadingPresets.set(false);
+      }
+    });
+  }
+
+  loadDigitalOutputsIfNeeded(force = false): void {
+    if (!this.cameraId) return;
+    if (!force && this.loadedOutputsCameraId === this.cameraId && this.digitalOutputs().length > 0) return;
+    if (this.isLoadingOutputs()) return;
+
+    this.isLoadingOutputs.set(true);
+    this.cameraService.getDigitalOutputs(this.cameraId).subscribe({
+      next: (res) => {
+        this.loadedOutputsCameraId = this.cameraId;
+        this.digitalOutputs.set(res?.outputs || []);
+        this.isLoadingOutputs.set(false);
+      },
+      error: (err) => {
+        console.warn('Error loading digital outputs:', err);
+        this.loadedOutputsCameraId = this.cameraId;
+        this.digitalOutputs.set([]);
+        this.isLoadingOutputs.set(false);
+      }
+    });
+  }
+
+  calculateFieldDropdownPlacement(triggerEl: HTMLElement | null, field?: string): 'up' | 'down' {
+    if (!triggerEl) return 'down';
+
+    const triggerRect = triggerEl.getBoundingClientRect();
+    const scrollContainer = this.elementRef.nativeElement.closest('.drawer-scroll-area') as HTMLElement | null;
+
+    const boundaryTop = scrollContainer ? scrollContainer.getBoundingClientRect().top : 0;
+    const boundaryBottom = scrollContainer ? scrollContainer.getBoundingClientRect().bottom : window.innerHeight;
+
+    const spaceBelow = boundaryBottom - triggerRect.bottom;
+    const spaceAbove = triggerRect.top - boundaryTop;
+
+    const isSmall = field === 'estado' || field === 'retorno';
+    const requiredSpace = isSmall ? 95 : 205;
+
+    if (spaceBelow < requiredSpace && (spaceAbove > spaceBelow || spaceAbove >= requiredSpace)) {
+      return 'up';
+    }
+    return 'down';
+  }
+
+  recalculateActiveFieldPlacement(): void {
+    const cur = this.activeOpenDropdown();
+    if (!cur) return;
+    const cardEl = this.elementRef.nativeElement.querySelector(`[data-action-index="${cur.actionIndex}"]`);
+    if (!cardEl) return;
+    const triggerEl = (cardEl.querySelector(`[data-field="${cur.field}"]`) as HTMLElement | null)
+      || (cardEl.querySelector('.custom-action-dropdown-trigger') as HTMLElement | null);
+    if (triggerEl) {
+      const placement = this.calculateFieldDropdownPlacement(triggerEl, cur.field);
+      if (placement !== cur.placement) {
+        this.activeOpenDropdown.set({ ...cur, placement });
+      }
+    }
+  }
+
+  toggleFieldDropdown(actionIndex: number, field: string, event: MouseEvent): void {
+    event.stopPropagation();
+    const current = this.activeOpenDropdown();
+    if (current && current.actionIndex === actionIndex && current.field === field) {
+      this.activeOpenDropdown.set(null);
+    } else {
+      const triggerEl = (event.currentTarget as HTMLElement) || (event.target as HTMLElement)?.closest('.custom-action-dropdown-trigger');
+      const placement = this.calculateFieldDropdownPlacement(triggerEl, field);
+      this.activeOpenDropdown.set({ actionIndex, field, placement });
+      if (field === 'preset') {
+        this.loadPresetsIfNeeded();
+      } else if (field === 'salida_token') {
+        this.loadDigitalOutputsIfNeeded();
+      }
+    }
+  }
+
+  isFieldDropdownOpen(actionIndex: number, field: string): boolean {
+    const cur = this.activeOpenDropdown();
+    return cur !== null && cur.actionIndex === actionIndex && cur.field === field;
+  }
+
+  isFieldDropdownUp(actionIndex: number, field: string): boolean {
+    const cur = this.activeOpenDropdown();
+    return cur !== null && cur.actionIndex === actionIndex && cur.field === field && cur.placement === 'up';
+  }
+
+  closeFieldDropdown(): void {
+    this.activeOpenDropdown.set(null);
+  }
+
+  selectPreset(actionItem: ActionItem, preset: PtzPreset, event?: Event): void {
+    if (event) event.stopPropagation();
+    actionItem.accion.preset = preset.name;
+    actionItem.accion.preset_token = preset.token;
+    this.actionsList.update(list => [...list]);
+    this.emitActions();
+    this.closeFieldDropdown();
+  }
+
+  selectPresetToken(actionItem: ActionItem, preset: PtzPreset, event?: Event): void {
+    if (event) event.stopPropagation();
+    actionItem.accion.preset_token = preset.token;
+    actionItem.accion.preset = preset.name;
+    this.actionsList.update(list => [...list]);
+    this.emitActions();
+    this.closeFieldDropdown();
+  }
+
+  getDigitalOutputLabel(token?: string): string {
+    if (!token) return '';
+    const found = this.digitalOutputs().find(o => o.token === token);
+    if (found && found.modo) {
+      return `${found.modo} (${found.token})`;
+    }
+    return token;
+  }
+
+  selectDigitalOutput(actionItem: ActionItem, output: DigitalOutput, event?: Event): void {
+    if (event) event.stopPropagation();
+    actionItem.accion.salida_token = output.token;
+    this.actionsList.update(list => [...list]);
+    this.emitActions();
+    this.closeFieldDropdown();
+  }
+
+  selectEstadoSalida(actionItem: ActionItem, estado: 'activar' | 'desactivar', event?: Event): void {
+    if (event) event.stopPropagation();
+    actionItem.accion.estado = estado;
+    this.actionsList.update(list => [...list]);
+    this.emitActions();
+    this.closeFieldDropdown();
+  }
+
+  selectRetornoAutotracking(actionItem: ActionItem, retorno: boolean, event?: Event): void {
+    if (event) event.stopPropagation();
+    actionItem.accion.retorno = retorno;
+    this.actionsList.update(list => [...list]);
+    this.emitActions();
+    this.closeFieldDropdown();
   }
 
   selectActionType(actionType: string): void {
@@ -343,7 +574,10 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
       const base = this.getBaseType(item.tipo, item.accion?.estado);
       const currentCount = typeCounters[base] || 0;
       typeCounters[base] = currentCount + 1;
-      const suffix = String(currentCount).padStart(2, '0');
+      const isSingleDigitType = base.startsWith('Ir a Preset') ||
+        base.startsWith('Activar salida digital') ||
+        base.startsWith('Autotracking PTZ');
+      const suffix = isSingleDigitType ? String(currentCount) : String(currentCount).padStart(2, '0');
       return {
         ...item,
         idIndex: String(idx),
@@ -360,7 +594,10 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
     { type: 'Tiempo de espera', label: 'Tiempo de espera (Delay)' },
     { type: 'Enviar a API', label: 'Enviar a API (Webhook POST)' },
     { type: 'Evento a VMS NX', label: 'Evento a VMS NX Witness' },
-    { type: 'Grabar video', label: 'Grabar video (Clip Evidencia)' }
+    { type: 'Grabar video', label: 'Grabar video (Clip Evidencia)' },
+    { type: 'Ir a Preset', label: 'Ir a Preset' },
+    { type: 'Activar salida digital', label: 'Activar salida digital' },
+    { type: 'Autotracking PTZ', label: 'Autotracking PTZ' }
   ];
 
   addAction(actionType: string): void {
@@ -386,6 +623,26 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
         usuario: 'conexion',
         password: 'password123',
         ip_server_nx: '192.168.1.100'
+      };
+    } else if (base.startsWith('Ir a Preset')) {
+      defaultAccion = {
+        id_cam: this.cameraId || '',
+        preset: '',
+        preset_token: ''
+      };
+      this.loadPresetsIfNeeded();
+    } else if (base.startsWith('Activar salida digital')) {
+      defaultAccion = {
+        estado: 'activar',
+        id_cam: this.cameraId || '',
+        duracion_s: 5,
+        salida_token: ''
+      };
+      this.loadDigitalOutputsIfNeeded();
+    } else if (base.startsWith('Autotracking PTZ')) {
+      defaultAccion = {
+        retorno: true,
+        duracion_s: 15
       };
     }
 
@@ -430,6 +687,18 @@ export class AnalyticActionsBuilderComponent implements OnChanges {
         const seqSuffix = String(enableDisableIndex).padStart(2, '0');
         backendTipo = `Habilitar/Deshabilitar Analisis-${seqSuffix}`;
         enableDisableIndex++;
+      } else if (item.tipo.startsWith('Ir a Preset')) {
+        cleanAccion.id_cam = cleanAccion.id_cam || this.cameraId || '';
+        cleanAccion.preset = cleanAccion.preset || '';
+        cleanAccion.preset_token = cleanAccion.preset_token || '';
+      } else if (item.tipo.startsWith('Activar salida digital')) {
+        cleanAccion.id_cam = cleanAccion.id_cam || this.cameraId || '';
+        cleanAccion.estado = cleanAccion.estado || 'activar';
+        cleanAccion.duracion_s = cleanAccion.duracion_s !== undefined ? Number(cleanAccion.duracion_s) : 5;
+        cleanAccion.salida_token = cleanAccion.salida_token || '';
+      } else if (item.tipo.startsWith('Autotracking PTZ')) {
+        cleanAccion.retorno = cleanAccion.retorno !== undefined ? Boolean(cleanAccion.retorno) : true;
+        cleanAccion.duracion_s = cleanAccion.duracion_s !== undefined ? Number(cleanAccion.duracion_s) : 15;
       }
 
       resultObj[item.idIndex] = {

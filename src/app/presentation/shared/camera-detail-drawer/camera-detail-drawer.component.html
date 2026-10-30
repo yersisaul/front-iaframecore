@@ -74,12 +74,11 @@
             }
           </div>
 
-          @if (cam.nxId && ((cam.decoder || '').toLowerCase().includes('nx') || (cam.streamType ||
-          '').toLowerCase().includes('nx'))) {
+          @if (cam.nxId) {
           <!-- NX ID -->
           <div class="spec-row d-flex justify-content-between align-items-center"
             [class.copied-flash]="copiedRowId() === cam.id + '-drawer-nxid'"
-            (click)="copyRowContent(cam.nxId!, cam.id + '-drawer-nxid'); $event.stopPropagation()">
+            (click)="copyRowContent(cam.nxId, cam.id + '-drawer-nxid'); $event.stopPropagation()">
             <span class="spec-lbl d-inline-flex align-items-center">
               <span class="icon-svg icon-nx me-2"
                 style="width: 1rem; height: 1rem; background-color: currentColor;"></span>
@@ -91,6 +90,48 @@
             } @else {
             <span class="spec-val font-monospace text-truncate text-end">
               {{ cam.nxId }}
+            </span>
+            }
+          </div>
+          }
+
+          @if (cam.selectedProfileToken) {
+          <!-- PERFIL ONVIF -->
+          <div class="spec-row d-flex justify-content-between align-items-center"
+            [class.copied-flash]="copiedRowId() === cam.id + '-drawer-profile'"
+            (click)="copyRowContent(cam.selectedProfileToken, cam.id + '-drawer-profile'); $event.stopPropagation()">
+            <span class="spec-lbl d-inline-flex align-items-center">
+              <span class="icon-svg icon-refresh me-2"
+                style="width: 1rem; height: 1rem; background-color: currentColor;"></span>
+              PERFIL
+            </span>
+            @if (copiedRowId() === cam.id + '-drawer-profile') {
+            <span class="copied-badge text-success fw-bold ms-auto"
+              style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+            } @else {
+            <span class="spec-val font-monospace text-truncate text-end">
+              {{ cam.selectedProfileToken }}
+            </span>
+            }
+          </div>
+          }
+
+          @if (cam.ptzMode) {
+          <!-- MODO PTZ -->
+          <div class="spec-row d-flex justify-content-between align-items-center"
+            [class.copied-flash]="copiedRowId() === cam.id + '-drawer-ptz'"
+            (click)="copyRowContent(cam.ptzMode, cam.id + '-drawer-ptz'); $event.stopPropagation()">
+            <span class="spec-lbl d-inline-flex align-items-center">
+              <span class="icon-svg icon-activity me-2"
+                style="width: 1rem; height: 1rem; background-color: currentColor;"></span>
+              PTZ
+            </span>
+            @if (copiedRowId() === cam.id + '-drawer-ptz') {
+            <span class="copied-badge text-success fw-bold ms-auto"
+              style="font-size: 0.72rem; letter-spacing: 0.05em;">¡Copiado!</span>
+            } @else {
+            <span class="spec-val font-monospace text-uppercase text-truncate text-end">
+              {{ cam.ptzMode }}
             </span>
             }
           </div>

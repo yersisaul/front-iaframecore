@@ -1801,6 +1801,11 @@ body[data-bs-theme="dark"] .node-search-input-row:focus-within {
   mask-image: url('/assets/icons/global/upload.svg');
 }
 
+.icon-folder {
+  -webkit-mask-image: url('/assets/icons/global/folder.svg');
+  mask-image: url('/assets/icons/global/folder.svg');
+}
+
 .icon-download {
   -webkit-mask-image: url('/assets/icons/global/download.svg');
   mask-image: url('/assets/icons/global/download.svg');
@@ -2715,45 +2720,274 @@ main,
 
 /* ── Al hacer hover sobre CUALQUIER PARTE de la fila (.nm-table-tr) en Nodos y Cámaras ── */
 .nm-table-tr.has-delete-permission:hover .table-last-seen-content,
+.nm-table-tr.has-delete-permission.is-hovered .table-last-seen-content,
+.nm-table-tr.has-delete-permission:focus-within .table-last-seen-content,
 .nm-table-tr.has-delete-permission:hover .table-decoder-content,
+.nm-table-tr.has-delete-permission.is-hovered .table-decoder-content,
+.nm-table-tr.has-delete-permission:focus-within .table-decoder-content,
 .nm-table-tr.has-delete-permission:hover .table-stream-content,
+.nm-table-tr.has-delete-permission.is-hovered .table-stream-content,
+.nm-table-tr.has-delete-permission:focus-within .table-stream-content,
 .nm-table-tr:has(.btn-cell-delete):hover .table-last-seen-content,
+.nm-table-tr:has(.btn-cell-delete).is-hovered .table-last-seen-content,
+.nm-table-tr:has(.btn-cell-delete):focus-within .table-last-seen-content,
 .nm-table-tr:has(.btn-cell-delete):hover .table-decoder-content,
+.nm-table-tr:has(.btn-cell-delete).is-hovered .table-decoder-content,
+.nm-table-tr:has(.btn-cell-delete):focus-within .table-decoder-content,
 .nm-table-tr:has(.btn-cell-delete):hover .table-stream-content,
+.nm-table-tr:has(.btn-cell-delete).is-hovered .table-stream-content,
+.nm-table-tr:has(.btn-cell-delete):focus-within .table-stream-content,
 .nm-table-tr:has(.btn-table-delete):hover .table-last-seen-content,
+.nm-table-tr:has(.btn-table-delete).is-hovered .table-last-seen-content,
+.nm-table-tr:has(.btn-table-delete):focus-within .table-last-seen-content,
 .nm-table-tr:has(.btn-table-delete):hover .table-decoder-content,
-.nm-table-tr:has(.btn-table-delete):hover .table-stream-content {
+.nm-table-tr:has(.btn-table-delete).is-hovered .table-decoder-content,
+.nm-table-tr:has(.btn-table-delete):focus-within .table-decoder-content,
+.nm-table-tr:has(.btn-table-delete):hover .table-stream-content,
+.nm-table-tr:has(.btn-table-delete).is-hovered .table-stream-content,
+.nm-table-tr:has(.btn-table-delete):focus-within .table-stream-content,
+.nm-table-tr:has(.table-cell-actions):hover .table-decoder-content,
+.nm-table-tr:has(.table-cell-actions).is-hovered .table-decoder-content,
+.nm-table-tr:has(.table-cell-actions):focus-within .table-decoder-content,
+.nm-table-tr:has(.table-cell-actions):hover .table-stream-content,
+.nm-table-tr:has(.table-cell-actions).is-hovered .table-stream-content,
+.nm-table-tr:has(.table-cell-actions):focus-within .table-stream-content {
   opacity: 0;
   pointer-events: none;
   transform: scale(0.85);
 }
 
 .nm-table-tr.has-delete-permission:hover .col-last-seen .btn-cell-delete,
+.nm-table-tr.has-delete-permission.is-hovered .col-last-seen .btn-cell-delete,
+.nm-table-tr.has-delete-permission:focus-within .col-last-seen .btn-cell-delete,
 .nm-table-tr.has-delete-permission:hover .col-last-seen .btn-table-delete,
+.nm-table-tr.has-delete-permission.is-hovered .col-last-seen .btn-table-delete,
+.nm-table-tr.has-delete-permission:focus-within .col-last-seen .btn-table-delete,
 .nm-table-tr.has-delete-permission:hover .col-decoder .btn-cell-delete,
+.nm-table-tr.has-delete-permission.is-hovered .col-decoder .btn-cell-delete,
+.nm-table-tr.has-delete-permission:focus-within .col-decoder .btn-cell-delete,
 .nm-table-tr.has-delete-permission:hover .col-decoder .btn-table-delete,
+.nm-table-tr.has-delete-permission.is-hovered .col-decoder .btn-table-delete,
+.nm-table-tr.has-delete-permission:focus-within .col-decoder .btn-table-delete,
 .nm-table-tr.has-delete-permission:hover .col-stream .btn-cell-delete,
+.nm-table-tr.has-delete-permission.is-hovered .col-stream .btn-cell-delete,
+.nm-table-tr.has-delete-permission:focus-within .col-stream .btn-cell-delete,
 .nm-table-tr.has-delete-permission:hover .col-stream .btn-table-delete,
+.nm-table-tr.has-delete-permission.is-hovered .col-stream .btn-table-delete,
+.nm-table-tr.has-delete-permission:focus-within .col-stream .btn-table-delete,
 .nm-table-tr.has-delete-permission:hover .col-add-column .btn-cell-delete,
+.nm-table-tr.has-delete-permission.is-hovered .col-add-column .btn-cell-delete,
+.nm-table-tr.has-delete-permission:focus-within .col-add-column .btn-cell-delete,
 .nm-table-tr.has-delete-permission:hover .col-add-column .btn-table-delete,
+.nm-table-tr.has-delete-permission.is-hovered .col-add-column .btn-table-delete,
+.nm-table-tr.has-delete-permission:focus-within .col-add-column .btn-table-delete,
 .nm-table-tr:has(.btn-cell-delete):hover .col-last-seen .btn-cell-delete,
+.nm-table-tr:has(.btn-cell-delete).is-hovered .col-last-seen .btn-cell-delete,
+.nm-table-tr:has(.btn-cell-delete):focus-within .col-last-seen .btn-cell-delete,
 .nm-table-tr:has(.btn-cell-delete):hover .col-last-seen .btn-table-delete,
+.nm-table-tr:has(.btn-cell-delete).is-hovered .col-last-seen .btn-table-delete,
+.nm-table-tr:has(.btn-cell-delete):focus-within .col-last-seen .btn-table-delete,
 .nm-table-tr:has(.btn-cell-delete):hover .col-decoder .btn-cell-delete,
+.nm-table-tr:has(.btn-cell-delete).is-hovered .col-decoder .btn-cell-delete,
+.nm-table-tr:has(.btn-cell-delete):focus-within .col-decoder .btn-cell-delete,
 .nm-table-tr:has(.btn-cell-delete):hover .col-decoder .btn-table-delete,
+.nm-table-tr:has(.btn-cell-delete).is-hovered .col-decoder .btn-table-delete,
+.nm-table-tr:has(.btn-cell-delete):focus-within .col-decoder .btn-table-delete,
 .nm-table-tr:has(.btn-cell-delete):hover .col-stream .btn-cell-delete,
+.nm-table-tr:has(.btn-cell-delete).is-hovered .col-stream .btn-cell-delete,
+.nm-table-tr:has(.btn-cell-delete):focus-within .col-stream .btn-cell-delete,
 .nm-table-tr:has(.btn-cell-delete):hover .col-stream .btn-table-delete,
+.nm-table-tr:has(.btn-cell-delete).is-hovered .col-stream .btn-table-delete,
+.nm-table-tr:has(.btn-cell-delete):focus-within .col-stream .btn-table-delete,
 .nm-table-tr:has(.btn-cell-delete):hover .col-add-column .btn-cell-delete,
+.nm-table-tr:has(.btn-cell-delete).is-hovered .col-add-column .btn-cell-delete,
+.nm-table-tr:has(.btn-cell-delete):focus-within .col-add-column .btn-cell-delete,
 .nm-table-tr:has(.btn-cell-delete):hover .col-add-column .btn-table-delete,
+.nm-table-tr:has(.btn-cell-delete).is-hovered .col-add-column .btn-table-delete,
+.nm-table-tr:has(.btn-cell-delete):focus-within .col-add-column .btn-table-delete,
 .nm-table-tr:has(.btn-table-delete):hover .col-last-seen .btn-cell-delete,
+.nm-table-tr:has(.btn-table-delete).is-hovered .col-last-seen .btn-cell-delete,
+.nm-table-tr:has(.btn-table-delete):focus-within .col-last-seen .btn-cell-delete,
 .nm-table-tr:has(.btn-table-delete):hover .col-last-seen .btn-table-delete,
+.nm-table-tr:has(.btn-table-delete).is-hovered .col-last-seen .btn-table-delete,
+.nm-table-tr:has(.btn-table-delete):focus-within .col-last-seen .btn-table-delete,
 .nm-table-tr:has(.btn-table-delete):hover .col-decoder .btn-cell-delete,
+.nm-table-tr:has(.btn-table-delete).is-hovered .col-decoder .btn-cell-delete,
+.nm-table-tr:has(.btn-table-delete):focus-within .col-decoder .btn-cell-delete,
 .nm-table-tr:has(.btn-table-delete):hover .col-decoder .btn-table-delete,
+.nm-table-tr:has(.btn-table-delete).is-hovered .col-decoder .btn-table-delete,
+.nm-table-tr:has(.btn-table-delete):focus-within .col-decoder .btn-table-delete,
 .nm-table-tr:has(.btn-table-delete):hover .col-stream .btn-cell-delete,
+.nm-table-tr:has(.btn-table-delete).is-hovered .col-stream .btn-cell-delete,
+.nm-table-tr:has(.btn-table-delete):focus-within .col-stream .btn-cell-delete,
 .nm-table-tr:has(.btn-table-delete):hover .col-stream .btn-table-delete,
+.nm-table-tr:has(.btn-table-delete).is-hovered .col-stream .btn-table-delete,
+.nm-table-tr:has(.btn-table-delete):focus-within .col-stream .btn-table-delete,
 .nm-table-tr:has(.btn-table-delete):hover .col-add-column .btn-cell-delete,
-.nm-table-tr:has(.btn-table-delete):hover .col-add-column .btn-table-delete {
+.nm-table-tr:has(.btn-table-delete).is-hovered .col-add-column .btn-cell-delete,
+.nm-table-tr:has(.btn-table-delete):focus-within .col-add-column .btn-cell-delete,
+.nm-table-tr:has(.btn-table-delete):hover .col-add-column .btn-table-delete,
+.nm-table-tr:has(.btn-table-delete).is-hovered .col-add-column .btn-table-delete,
+.nm-table-tr:has(.btn-table-delete):focus-within .col-add-column .btn-table-delete {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* ── Contenedor de acciones flotantes en hover (NX + Eliminar) en Cámaras ── */
+.table-cell-actions {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: visible !important;
+}
+
+.nm-table-tr:hover .table-cell-actions,
+.nm-table-tr.is-hovered .table-cell-actions,
+.nm-table-tr:focus-within .table-cell-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Cuando los botones están dentro del grupo .table-cell-actions */
+.table-cell-actions .btn-cell-action {
+  position: relative !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  outline: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: transparent !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  transition: color 0.2s ease, transform 0.2s ease;
+  z-index: 1;
+}
+
+.table-cell-actions .btn-cell-action::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) scale(0.6) !important;
+  width: 50px !important;
+  height: 50px !important;
+  border-radius: 50% !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  z-index: 0 !important;
+  transition: opacity 0.22s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+/* ── Botón exclusivo Ver en NX (.btn-cell-nx) ── */
+.btn-cell-nx {
+  color: var(--text-muted, #94a3b8) !important;
+}
+
+.btn-cell-nx .icon-nx-witness {
+  position: relative !important;
+  z-index: 1 !important;
+  width: 1.15rem;
+  height: 1.15rem;
+  background-color: currentColor;
+  opacity: 0.75;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.2s ease,
+    filter 0.2s ease,
+    color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-cell-nx:hover {
+  background-color: transparent !important;
+  color: #0ea5e9 !important;
+  box-shadow: none !important;
+}
+
+.btn-cell-nx:hover::before {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(1) !important;
+  background: radial-gradient(circle at center, rgba(14, 165, 233, 0.2) 0%, rgba(14, 165, 233, 0.06) 45%, transparent 75%) !important;
+}
+
+.btn-cell-nx:hover .icon-nx-witness {
+  opacity: 1;
+  transform: scale(1.1) translateY(-1px);
+  filter: drop-shadow(0 2px 8px rgba(14, 165, 233, 0.5));
+}
+
+.btn-cell-nx:active {
+  background-color: transparent !important;
+  color: #0284c7 !important;
+}
+
+.btn-cell-nx:active::before {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(0.92) !important;
+  background: radial-gradient(circle at center, rgba(14, 165, 233, 0.3) 0%, rgba(14, 165, 233, 0.1) 50%, transparent 80%) !important;
+}
+
+.btn-cell-nx:active .icon-nx-witness {
+  transform: scale(0.94);
+  filter: drop-shadow(0 1px 2px rgba(14, 165, 233, 0.35));
+}
+
+[data-bs-theme="dark"] .btn-cell-nx {
+  background-color: transparent !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+[data-bs-theme="dark"] .btn-cell-nx:hover {
+  background-color: transparent !important;
+  color: #38bdf8 !important;
+  box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] .btn-cell-nx:hover::before {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(1) !important;
+  background: radial-gradient(circle at center, rgba(56, 189, 248, 0.24) 0%, rgba(56, 189, 248, 0.07) 45%, transparent 75%) !important;
+}
+
+[data-bs-theme="dark"] .btn-cell-nx:hover .icon-nx-witness {
+  filter: drop-shadow(0 2px 10px rgba(56, 189, 248, 0.6));
+}
+
+[data-bs-theme="dark"] .btn-cell-nx:active {
+  background-color: transparent !important;
+  color: #7dd3fc !important;
+}
+
+[data-bs-theme="dark"] .btn-cell-nx:active::before {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(0.92) !important;
+  background: radial-gradient(circle at center, rgba(56, 189, 248, 0.35) 0%, rgba(56, 189, 248, 0.12) 50%, transparent 80%) !important;
 }
 
 /* ── Hover directo sobre el botón de eliminar: el halo se expande flotando libremente ── */

@@ -1,8 +1,18 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
-import { Camera, CameraDTO, CameraMapper, CameraRegisterRequest, CameraUpdateRequest } from '../../core/domain/entities/camera.models';
+import { map, catchError, timeout } from 'rxjs/operators';
+import {
+  Camera,
+  CameraDTO,
+  CameraMapper,
+  CameraProbeRequest,
+  CameraProbeResponse,
+  CameraRegisterRequest,
+  CameraUpdateRequest,
+  PtzPresetsResponse,
+  DigitalOutputsResponse
+} from '../../core/domain/entities/camera.models';
 import { ICameraRepository } from '../../core/domain/repositories/camera.repository';
 import { AppEnvironment } from '../../core/config/app-environment';
 
@@ -11,6 +21,7 @@ import { AppEnvironment } from '../../core/config/app-environment';
 })
 export class CameraHttpRepository implements ICameraRepository {
   private readonly apiUrl = `${AppEnvironment.apiUrl}/frontend/cameras`;
+
   constructor(private http: HttpClient) {}
 
   getAll(): Observable<Camera[]> {
@@ -24,7 +35,8 @@ export class CameraHttpRepository implements ICameraRepository {
   }
 
   getByHost(hostFingerprint: string): Observable<Camera[]> {
-    return this.http.get<CameraDTO[]>(`${this.apiUrl}/${hostFingerprint}`).pipe(
+    const encodedHost = encodeURIComponent(hostFingerprint);
+    return this.http.get<CameraDTO[]>(`${this.apiUrl}/${encodedHost}`).pipe(
       map(dtos => (dtos || []).map(CameraMapper.toDomain)),
       catchError(err => {
         console.error('Error in CameraHttpRepository.getByHost:', err);
@@ -33,40 +45,45 @@ export class CameraHttpRepository implements ICameraRepository {
     );
   }
 
-  register(camera: CameraRegisterRequest): Observable<Camera> {
-    // POST /frontend/cameras/ (Frontend API con token de sesión Bearer)
-    const url = this.apiUrl.endsWith('/') ? this.apiUrl : `${this.apiUrl}/`;
-    return this.http.post<any>(url, camera).pipe(
+  getById(cameraId: string): Observable<Camera> {
+    const encodedId = encodeURIComponent(cameraId);
+    return this.http.get<CameraDTO>(`${this.apiUrl}/${encodedId}/detail`).pipe(
       map(dto => CameraMapper.toDomain(dto))
     );
   }
 
-  update(cameraId: string, body: CameraUpdateRequest): Observable<any> {
-    // PATCH /frontend/cameras/{camera_id} (con fallback a PUT si el backend lo requiere)
-    return this.http.patch<any>(`${this.apiUrl}/${cameraId}`, body).pipe(
-      catchError(err => {
-        if (err.status === 405) {
-          return this.http.put<any>(`${this.apiUrl}/${cameraId}`, body);
-        }
-        if (err.status !== 400 && err.status !== 401 && err.status !== 403 && err.status !== 404 && err.status !== 422) {
-          console.warn('[BACKEND-WORKAROUND] Camera update returned status ' + err.status + '. Assuming success. Please fix backend.', err);
-          return of(null);
-        }
-        throw err;
-      })
+  register(camera: CameraRegisterRequest): Observable<Camera> {
+    const url = this.apiUrl.endsWith('/') ? this.apiUrl : `${this.apiUrl}/`;
+    return this.http.post<CameraDTO>(url, camera).pipe(
+      map(dto => CameraMapper.toDomain(dto))
     );
   }
 
-  delete(cameraId: string): Observable<any> {
-    // DELETE /frontend/cameras/{camera_id}
-    return this.http.delete<any>(`${this.apiUrl}/${cameraId}`).pipe(
-      catchError(err => {
-        if (err.status !== 400 && err.status !== 401 && err.status !== 403 && err.status !== 404 && err.status !== 422) {
-          console.warn('[BACKEND-WORKAROUND] Camera delete returned status ' + err.status + '. Assuming success. Please fix backend.', err);
-          return of(null);
-        }
-        throw err;
-      })
+  update(cameraId: string, body: CameraUpdateRequest): Observable<Camera> {
+    const encodedId = encodeURIComponent(cameraId);
+    return this.http.patch<CameraDTO>(`${this.apiUrl}/${encodedId}`, body).pipe(
+      map(dto => CameraMapper.toDomain(dto))
     );
+  }
+
+  probe<T = any>(req: CameraProbeRequest): Observable<CameraProbeResponse<T>> {
+    return this.http.post<CameraProbeResponse<T>>(`${this.apiUrl}/probe`, req).pipe(
+      timeout(30000)
+    );
+  }
+
+  delete(cameraId: string): Observable<void> {
+    const encodedId = encodeURIComponent(cameraId);
+    return this.http.delete<void>(`${this.apiUrl}/${encodedId}`);
+  }
+
+  getPtzPresets(cameraId: string): Observable<PtzPresetsResponse> {
+    const encodedId = encodeURIComponent(cameraId);
+    return this.http.get<PtzPresetsResponse>(`${this.apiUrl}/${encodedId}/ptz_presets`);
+  }
+
+  getDigitalOutputs(cameraId: string): Observable<DigitalOutputsResponse> {
+    const encodedId = encodeURIComponent(cameraId);
+    return this.http.get<DigitalOutputsResponse>(`${this.apiUrl}/${encodedId}/digital_outputs`);
   }
 }

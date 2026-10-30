@@ -579,6 +579,9 @@
             [class.host-card--updated]="hostService.updatedHostIds().has(host.fingerprint)"
             [class.host-card--deleting]="hostService.deletingHostIds().has(host.fingerprint)"
             [class.has-delete-permission]="permissionsService.hasPermission('Hosts', 'eliminar')"
+            [class.is-hovered]="hoveredHostId() === host.id"
+            (mouseenter)="hoveredHostId.set(host.id)"
+            (mouseleave)="hoveredHostId.set(null)"
             (click)="goToCameras(host.fingerprint)">
             <!-- Estado -->
             <td class="col-status text-center">

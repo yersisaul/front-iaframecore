@@ -358,5 +358,13 @@ describe('Nodos', () => {
     expect(transferIcons[0].classList.contains('transfer-connected-true')).toBe(true);
     expect(transferIcons[1].classList.contains('transfer-connected-false')).toBe(true);
   });
+
+  it('should track hoveredHostId reactively for table rows', () => {
+    expect(component.hoveredHostId()).toBeNull();
+    component.hoveredHostId.set('host-123');
+    expect(component.hoveredHostId()).toBe('host-123');
+    component.hoveredHostId.set(null);
+    expect(component.hoveredHostId()).toBeNull();
+  });
 });
 

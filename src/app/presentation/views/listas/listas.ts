@@ -139,6 +139,7 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
 
   readonly successfulUploads = signal<FaceUploadResult[]>([]);
   readonly failedUploads = signal<FaceUploadResult[]>([]);
+  readonly skippedExistingFilesCount = signal<number>(0);
 
   readonly uploadPercentage = computed<number>(() => {
     const total = this.uploadTotalCount();
@@ -714,6 +715,7 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   openAddSubjectModal(): void {
     if (this.listType() === 'face_recognition') {
       this.faceImportDrafts.set([]);
+      this.skippedExistingFilesCount.set(0);
       this.showFloatingAddButton.set(false);
       this.showAddFaceSubjectModal.set(true);
     } else {
@@ -730,6 +732,9 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   closeAddFaceSubjectModal(): void {
     if (this.isUploadingFaceSubjects()) return;
 
+    const listId = this.selectedListId();
+    const hadSuccesses = this.successfulUploads().length > 0;
+
     this.faceImportDrafts().forEach(d => {
       if (d.previewUrl && d.previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(d.previewUrl);
@@ -743,6 +748,11 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     this.failedUploads.set([]);
     this.uploadCurrentIndex.set(0);
     this.uploadTotalCount.set(0);
+    this.skippedExistingFilesCount.set(0);
+
+    if (hadSuccesses && listId) {
+      this.listService.loadListDetails(listId).subscribe();
+    }
   }
 
   closeAddPlateSubjectModal(): void {
@@ -790,22 +800,39 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   private addFilesToDraft(fileList: FileList): void {
     const filesArray = Array.from(fileList);
     const currentDrafts = this.faceImportDrafts();
+    const existingSubjectNames = new Set(
+      this.listDetails()
+        .map(d => (d.nombre_asociado || '').trim().toLowerCase())
+        .filter(n => n.length > 0)
+    );
     const newDrafts: SubjectImportDraft[] = [];
+    let duplicatesInListCount = 0;
 
     filesArray.forEach(file => {
-      // Evitar duplicados por nombre de archivo y tamaño exacto
-      const isDuplicate = currentDrafts.some(d => d.file.name === file.name && d.file.size === file.size) ||
+      const subjectName = this.extractNameFromFilename(file.name);
+      const isAlreadyInList = existingSubjectNames.has(subjectName.trim().toLowerCase());
+
+      const isDuplicateInDrafts = currentDrafts.some(d => d.file.name === file.name && d.file.size === file.size) ||
         newDrafts.some(d => d.file.name === file.name && d.file.size === file.size);
 
-      if (!isDuplicate) {
+      if (isAlreadyInList) {
+        duplicatesInListCount++;
+        return;
+      }
+
+      if (!isDuplicateInDrafts) {
         newDrafts.push({
           file,
-          name: this.extractNameFromFilename(file.name),
+          name: subjectName,
           previewUrl: URL.createObjectURL(file),
           isEditingName: false
         });
       }
     });
+
+    if (duplicatesInListCount > 0) {
+      this.skippedExistingFilesCount.update(c => c + duplicatesInListCount);
+    }
 
     if (newDrafts.length > 0) {
       this.faceImportDrafts.update(current => [...current, ...newDrafts]);
@@ -1261,6 +1288,22 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
       this.uploadCurrentIndex.set(i + 1);
       this.uploadCurrentFileName.set(draft.name);
 
+      // Verificación preventiva: no registrar si ya existe en listDetails
+      const alreadyRegistered = this.listDetails().find(d => 
+        (d.nombre_asociado || '').trim().toLowerCase() === draft.name.trim().toLowerCase()
+      );
+
+      if (alreadyRegistered) {
+        successes.push({
+          file: draft.file,
+          name: draft.name,
+          previewUrl: draft.previewUrl,
+          detailId: alreadyRegistered.detail_id
+        });
+        this.successfulUploads.set([...successes]);
+        continue;
+      }
+
       try {
         const result = await firstValueFrom(
           this.listService.uploadAndAddSubject(listId, '', draft.name, draft.file)
@@ -1313,6 +1356,22 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
       const draft = toRetry[i];
       this.uploadCurrentIndex.set(i + 1);
       this.uploadCurrentFileName.set(draft.name);
+
+      // Verificación preventiva contra falsos fallos previos (e.g. timeout de red pero guardado en backend)
+      const alreadyRegistered = this.listDetails().find(d => 
+        (d.nombre_asociado || '').trim().toLowerCase() === draft.name.trim().toLowerCase()
+      );
+
+      if (alreadyRegistered) {
+        successes.push({
+          file: draft.file,
+          name: draft.name,
+          previewUrl: draft.previewUrl,
+          detailId: alreadyRegistered.detail_id
+        });
+        this.successfulUploads.set([...successes]);
+        continue;
+      }
 
       try {
         const result = await firstValueFrom(

@@ -5,13 +5,53 @@ export interface CameraLocation {
   lon: number | string;
 }
 
+export type StreamType = 'Onvif' | 'rtsp' | 'rtmp' | 'nx' | 'Archivo';
+export type DecoderType = 'opencv' | 'ffmpeg';
+export type PtzMode = 'auto' | 'completa' | 'solo_zoom' | 'desactivado';
+export type ProveedorDetecciones = 'servidor' | 'camara';
+export type ProbeType = 'nx_list_cameras' | 'onvif_profiles' | 'validate_stream' | 'validate_file';
+
+export interface OnvifProfileInfo {
+  codec: string;
+  fps: number;
+  legible: boolean;
+  resolucion: string;
+}
+
+export interface OnvifProfilesProbeData {
+  fabricante?: string;
+  perfiles?: OnvifProfileInfo[];
+  tokens?: string[];
+  [key: string]: any;
+}
+
+export interface NxCameraInfo {
+  id: string;
+  name: string;
+  ipAddress?: string;
+  [key: string]: any;
+}
+
+export interface CameraProbeRequest {
+  fingerprint_host: string;
+  probe_type: ProbeType;
+  params: Record<string, any>;
+}
+
+export interface CameraProbeResponse<T = any> {
+  request_id?: string;
+  fingerprint_host?: string;
+  probe_type?: ProbeType;
+  data: T;
+}
+
 export interface Camera {
   id: string;
   name: string;
   hostFingerprint: string;
-  streamType: string;
+  streamType: StreamType | string;
   status: string;
-  decoder: string;
+  decoder: DecoderType | string;
   location: CameraLocation;
   createdAt: Date | null;
   rtspUrl?: string;
@@ -25,7 +65,11 @@ export interface Camera {
   user?: string;
   password?: string;
   httpPort?: number;
+  streams?: string[] | null;
   selectedStream?: number;
+  selectedProfileToken?: string;
+  ptzMode?: PtzMode;
+  proveedorDetecciones?: ProveedorDetecciones;
 }
 
 export interface CameraDTO {
@@ -49,22 +93,23 @@ export interface CameraDTO {
   user?: string;
   password?: string;
   http_port?: number;
+  streams?: string[] | null;
   selected_stream?: number;
+  selected_profile_token?: string;
+  ptz_mode?: string;
+  proveedor_detecciones?: string;
 }
 
-export type StreamType = 'Onvif' | 'rtsp' | 'rtmp' | 'nx';
-export type DecoderType = 'opencv' | 'ffmpeg';
-
-export interface CameraRegisterRequest {
+export interface CameraFrontendCreateRequest {
   camera_id?: string | null;
   camera_name: string;
   fingerprint_host: string;
   stream_type: StreamType;
   decoder?: DecoderType | null;
-  location?: {
-    lat: string | number;
-    lon: string | number;
-  } | null;
+  location: {
+    lat: string;
+    lon: string;
+  };
   stream_url?: string | null;
   nx_id?: string | null;
   forced_resolution?: string | null;
@@ -74,31 +119,43 @@ export interface CameraRegisterRequest {
   user?: string | null;
   password?: string | null;
   http_port?: number | null;
-  streams?: Array<Record<string, any>> | null;
+  streams?: string[] | null;
   selected_stream?: number | null;
+  selected_profile_token?: string | null;
+  ptz_mode?: PtzMode | null;
+  proveedor_detecciones?: ProveedorDetecciones | null;
 }
 
-export interface CameraUpdateRequest {
-  camera_name?: string;
-  fingerprint_host?: string;
-  stream_type?: StreamType | string;
-  decoder?: DecoderType | string | null;
+// Retrocompatibilidad con código existente
+export type CameraRegisterRequest = CameraFrontendCreateRequest;
+
+export interface CameraFrontendUpdateRequest {
+  camera_name?: string | null;
+  fingerprint_host?: string | null;
+  stream_type?: StreamType | null;
+  decoder?: DecoderType | null;
   location?: {
-    lat: string | number;
-    lon: string | number;
+    lat: string;
+    lon: string;
   } | null;
   stream_url?: string | null;
   nx_id?: string | null;
   forced_resolution?: string | null;
   forced_fps?: number | null;
-  compatibility_mode?: boolean;
+  compatibility_mode?: boolean | null;
   ip_address?: string | null;
   user?: string | null;
   password?: string | null;
   http_port?: number | null;
-  streams?: Array<Record<string, any>> | null;
+  streams?: string[] | null;
   selected_stream?: number | null;
+  selected_profile_token?: string | null;
+  ptz_mode?: PtzMode | null;
+  proveedor_detecciones?: ProveedorDetecciones | null;
 }
+
+// Retrocompatibilidad con código existente
+export type CameraUpdateRequest = CameraFrontendUpdateRequest;
 
 export class CameraMapper {
   static toDomain(dto: any): Camera {
@@ -121,8 +178,40 @@ export class CameraMapper {
       user: dto.user || undefined,
       password: dto.password || undefined,
       httpPort: dto.http_port !== undefined ? dto.http_port : dto.httpPort,
-      selectedStream: dto.selected_stream !== undefined ? dto.selected_stream : dto.selectedStream
+      streams: Array.isArray(dto.streams)
+        ? dto.streams.map((s: any) => (typeof s === 'string' ? s : (s.stream_index !== undefined ? `stream_${s.stream_index}` : JSON.stringify(s))))
+        : (dto.streams || undefined),
+      selectedStream: dto.selected_stream !== undefined ? dto.selected_stream : dto.selectedStream,
+      selectedProfileToken: dto.selected_profile_token || dto.selectedProfileToken || undefined,
+      ptzMode: dto.ptz_mode || dto.ptzMode || undefined,
+      proveedorDetecciones: dto.proveedor_detecciones || dto.proveedorDetecciones || undefined
     };
   }
 }
 
+export interface PtzPreset {
+  name: string;
+  token: string;
+}
+
+export interface PtzPresetsResponse {
+  request_id?: string;
+  camera_id: string;
+  fingerprint_host?: string;
+  clase_ptz?: string;
+  presets: PtzPreset[];
+}
+
+export interface DigitalOutput {
+  token: string;
+  modo?: string;
+  retardo?: string;
+  reposo?: string;
+}
+
+export interface DigitalOutputsResponse {
+  request_id?: string;
+  camera_id: string;
+  fingerprint_host?: string;
+  outputs: DigitalOutput[];
+}

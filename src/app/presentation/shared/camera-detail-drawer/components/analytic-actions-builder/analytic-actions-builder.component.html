@@ -48,6 +48,7 @@
     <div class="action-rule-card d-flex align-items-center p-3 rounded-3 border bg-surface transition-all"
       [attr.data-action-index]="idx" [class.is-draggable]="actionsList().length > 1"
       [class.is-dragging]="draggedIndex() === idx" [class.no-anim]="isTransitionDisabled()"
+      [class.has-open-field-dropdown]="activeOpenDropdown()?.actionIndex === idx"
       [style.transform]="getCardTransform(idx)" (pointerdown)="startPointerDrag(idx, $event)">
 
       <!-- Agarrador Draggable (Solo SVG sin cuadro envolvente en área izquierda) -->
@@ -196,6 +197,184 @@
             <label class="form-label text-muted small font-semibold mb-1 ps-2">Contraseña NX</label>
             <input type="password" class="form-control text-paragraph-sm rounded-3"
               [(ngModel)]="actionItem.accion.password" (ngModelChange)="emitActions()" />
+          </div>
+        </div>
+        }
+
+        <!-- Formulario: Ir a Preset -->
+        @if (actionItem.tipo.startsWith('Ir a Preset')) {
+        <div class="row g-2.5 mt-1 align-inputs-bottom">
+          <!-- Dropdown Preset (Nombre) -->
+          <div class="col-12 position-relative">
+            <label class="form-label text-muted small font-semibold mb-1 ps-2">Preset</label>
+            <button type="button" class="custom-action-dropdown-trigger" data-field="preset"
+              [class.is-open]="isFieldDropdownOpen(idx, 'preset')" [disabled]="isLoadingPresets()"
+              (click)="toggleFieldDropdown(idx, 'preset', $event)">
+              <span class="text-truncate flex-grow-1 text-start" [class.text-muted]="!actionItem.accion.preset">
+                @if (isLoadingPresets()) {
+                <span class="spinner-border spinner-border-sm me-1 text-primary align-middle" role="status"></span>
+                <span>Cargando presets...</span>
+                } @else {
+                {{ actionItem.accion.preset || 'Seleccionar preset...' }}
+                }
+              </span>
+              <span class="icon-svg icon-chevron-down dropdown-chevron ms-1.5 flex-shrink-0"
+                style="width: 0.75rem; height: 0.75rem;"></span>
+            </button>
+
+            @if (isFieldDropdownOpen(idx, 'preset')) {
+            <div class="custom-action-dropdown-menu shadow-lg"
+              [class.custom-dropdown-up]="isFieldDropdownUp(idx, 'preset')"
+              [class.custom-dropdown-down]="!isFieldDropdownUp(idx, 'preset')"
+              (pointerdown)="$event.stopPropagation()"
+              (click)="$event.stopPropagation()">
+              @if (ptzPresets().length === 0) {
+              <div class="dropdown-empty-state py-2 px-3 text-muted text-nano">
+                Sin presets configurados
+              </div>
+              } @else {
+              @for (preset of ptzPresets(); track preset.token) {
+              <button type="button" class="dropdown-option-item w-100 border-0 bg-transparent text-start"
+                [class.is-selected]="actionItem.accion.preset === preset.name"
+                (click)="selectPreset(actionItem, preset, $event)">
+                <span class="option-name text-truncate me-2">{{ preset.name }}</span>
+                <span class="dropdown-token-badge flex-shrink-0">Token {{ preset.token }}</span>
+              </button>
+              }
+              }
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        <!-- Formulario: Activar salida digital -->
+        @if (actionItem.tipo.startsWith('Activar salida digital')) {
+        <div class="row g-2.5 mt-1 align-inputs-bottom">
+          <!-- Fila 1: Salida Digital (col-12) -->
+          <div class="col-12 position-relative mb-2">
+            <label class="form-label text-muted small font-semibold mb-1 ps-2">Salida Digital</label>
+            <button type="button" class="custom-action-dropdown-trigger" data-field="salida_token"
+              [class.is-open]="isFieldDropdownOpen(idx, 'salida_token')" [disabled]="isLoadingOutputs()"
+              (click)="toggleFieldDropdown(idx, 'salida_token', $event)">
+              <span class="text-truncate flex-grow-1 text-start" [class.text-muted]="!actionItem.accion.salida_token">
+                @if (isLoadingOutputs()) {
+                <span class="spinner-border spinner-border-sm me-1 text-primary align-middle" role="status"></span>
+                <span>Cargando salidas...</span>
+                } @else {
+                {{ getDigitalOutputLabel(actionItem.accion.salida_token) || 'Seleccionar salida...' }}
+                }
+              </span>
+              <span class="icon-svg icon-chevron-down dropdown-chevron ms-1.5 flex-shrink-0"
+                style="width: 0.75rem; height: 0.75rem;"></span>
+            </button>
+
+            @if (isFieldDropdownOpen(idx, 'salida_token')) {
+            <div class="custom-action-dropdown-menu shadow-lg"
+              [class.custom-dropdown-up]="isFieldDropdownUp(idx, 'salida_token')"
+              [class.custom-dropdown-down]="!isFieldDropdownUp(idx, 'salida_token')"
+              (pointerdown)="$event.stopPropagation()"
+              (click)="$event.stopPropagation()">
+              @if (digitalOutputs().length === 0) {
+              <div class="dropdown-empty-state py-2 px-3 text-muted text-nano">
+                Sin salidas digitales disponibles
+              </div>
+              } @else {
+              @for (output of digitalOutputs(); track output.token) {
+              <button type="button" class="dropdown-option-item w-100 border-0 bg-transparent text-start"
+                [class.is-selected]="actionItem.accion.salida_token === output.token"
+                (click)="selectDigitalOutput(actionItem, output, $event)">
+                <span class="option-name text-truncate me-2">{{ output.modo || output.token }}</span>
+                <span class="dropdown-token-badge flex-shrink-0">{{ output.token }}</span>
+              </button>
+              }
+              }
+            </div>
+            }
+          </div>
+
+          <!-- Fila 2: Estado (col-6) -->
+          <div class="col-6 position-relative">
+            <label class="form-label text-muted small font-semibold mb-1 ps-2">Estado</label>
+            <button type="button" class="custom-action-dropdown-trigger" data-field="estado"
+              [class.is-open]="isFieldDropdownOpen(idx, 'estado')" (click)="toggleFieldDropdown(idx, 'estado', $event)">
+              <span class="text-truncate flex-grow-1 text-start">
+                {{ actionItem.accion.estado === 'desactivar' ? 'Desactivar' : 'Activar' }}
+              </span>
+              <span class="icon-svg icon-chevron-down dropdown-chevron ms-1.5 flex-shrink-0"
+                style="width: 0.75rem; height: 0.75rem;"></span>
+            </button>
+
+            @if (isFieldDropdownOpen(idx, 'estado')) {
+            <div class="custom-action-dropdown-menu shadow-lg"
+              [class.custom-dropdown-up]="isFieldDropdownUp(idx, 'estado')"
+              [class.custom-dropdown-down]="!isFieldDropdownUp(idx, 'estado')"
+              (pointerdown)="$event.stopPropagation()"
+              (click)="$event.stopPropagation()">
+              <button type="button" class="dropdown-option-item w-100 border-0 bg-transparent text-start"
+                [class.is-selected]="actionItem.accion.estado !== 'desactivar'"
+                (click)="selectEstadoSalida(actionItem, 'activar', $event)">
+                <span class="option-name font-semibold">Activar</span>
+              </button>
+              <button type="button" class="dropdown-option-item w-100 border-0 bg-transparent text-start"
+                [class.is-selected]="actionItem.accion.estado === 'desactivar'"
+                (click)="selectEstadoSalida(actionItem, 'desactivar', $event)">
+                <span class="option-name font-semibold">Desactivar</span>
+              </button>
+            </div>
+            }
+          </div>
+
+          <!-- Fila 2: Duración (col-6) -->
+          <div class="col-6">
+            <label class="form-label text-muted small font-semibold mb-1 ps-2">Duración (segundos)</label>
+            <input type="number" class="form-control text-paragraph-sm rounded-3" min="1" max="3600"
+              [(ngModel)]="actionItem.accion.duracion_s" (ngModelChange)="emitActions()" />
+          </div>
+        </div>
+        }
+
+        <!-- Formulario: Autotracking PTZ -->
+        @if (actionItem.tipo.startsWith('Autotracking PTZ')) {
+        <div class="row g-2.5 mt-1 align-inputs-bottom">
+          <!-- Columna 1: Retorno (col-6) -->
+          <div class="col-6 position-relative">
+            <label class="form-label text-muted small font-semibold mb-1 ps-2">Retorno</label>
+            <button type="button" class="custom-action-dropdown-trigger" data-field="retorno"
+              [class.is-open]="isFieldDropdownOpen(idx, 'retorno')"
+              (click)="toggleFieldDropdown(idx, 'retorno', $event)">
+              <span class="text-truncate flex-grow-1 text-start">
+                {{ actionItem.accion.retorno === false ? 'Inactivo' : 'Activo' }}
+              </span>
+              <span class="icon-svg icon-chevron-down dropdown-chevron ms-1.5 flex-shrink-0"
+                style="width: 0.75rem; height: 0.75rem;"></span>
+            </button>
+
+            @if (isFieldDropdownOpen(idx, 'retorno')) {
+            <div class="custom-action-dropdown-menu shadow-lg"
+              [class.custom-dropdown-up]="isFieldDropdownUp(idx, 'retorno')"
+              [class.custom-dropdown-down]="!isFieldDropdownUp(idx, 'retorno')"
+              (pointerdown)="$event.stopPropagation()"
+              (click)="$event.stopPropagation()">
+              <button type="button" class="dropdown-option-item w-100 border-0 bg-transparent text-start"
+                [class.is-selected]="actionItem.accion.retorno !== false"
+                (click)="selectRetornoAutotracking(actionItem, true, $event)">
+                <span class="option-name font-semibold">Activo</span>
+              </button>
+              <button type="button" class="dropdown-option-item w-100 border-0 bg-transparent text-start"
+                [class.is-selected]="actionItem.accion.retorno === false"
+                (click)="selectRetornoAutotracking(actionItem, false, $event)">
+                <span class="option-name font-semibold">Inactivo</span>
+              </button>
+            </div>
+            }
+          </div>
+
+          <!-- Columna 2: Duración (col-6) -->
+          <div class="col-6">
+            <label class="form-label text-muted small font-semibold mb-1 ps-2">Duración (segundos)</label>
+            <input type="number" class="form-control text-paragraph-sm rounded-3" min="1" max="3600"
+              [(ngModel)]="actionItem.accion.duracion_s" (ngModelChange)="emitActions()" />
           </div>
         </div>
         }

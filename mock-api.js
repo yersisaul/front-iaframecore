@@ -212,11 +212,18 @@ dbHosts.forEach((host, i) => {
   // 2 Cámaras por cada Host
   const cam1 = {
     camera_id: `cam-uuid-${(i * 2 + 1).toString().padStart(3, '0')}`,
-    camera_name: `Camara-${(i * 2 + 1).toString().padStart(2, '0')}-${host.hostname}`,
+    camera_name: i === 0 ? `Camara-ONVIF-Principal` : `Camara-${(i * 2 + 1).toString().padStart(2, '0')}-${host.hostname}`,
     fingerprint_host: hostFp,
-    stream_type: 'RTSP',
+    stream_type: i === 0 ? 'Onvif' : 'RTSP',
     status: 'active',
-    decoder: 'h264',
+    decoder: 'opencv',
+    ip_address: i === 0 ? '192.168.1.50' : undefined,
+    http_port: i === 0 ? 80 : undefined,
+    user: i === 0 ? 'admin' : undefined,
+    password: i === 0 ? 'Admin12345*' : undefined,
+    streams: i === 0 ? ['Profile_1', 'Profile_2', 'Profile_3'] : undefined,
+    selected_stream: i === 0 ? 0 : undefined,
+    selected_profile_token: i === 0 ? 'Profile_1' : undefined,
     location: { 
       lat: -12.046374 + (Math.random() * 0.1 - 0.05), 
       lon: -77.042793 + (Math.random() * 0.1 - 0.05) 
@@ -226,11 +233,17 @@ dbHosts.forEach((host, i) => {
   
   const cam2 = {
     camera_id: `cam-uuid-${(i * 2 + 2).toString().padStart(3, '0')}`,
-    camera_name: `Camara-${(i * 2 + 2).toString().padStart(2, '0')}-${host.hostname}`,
+    camera_name: i === 0 ? `Camara-NX-Acceso` : `Camara-${(i * 2 + 2).toString().padStart(2, '0')}-${host.hostname}`,
     fingerprint_host: hostFp,
-    stream_type: 'RTSP',
+    stream_type: i === 0 ? 'nx' : 'RTSP',
     status: i % 3 === 0 ? 'inactive' : 'active',
-    decoder: 'h265',
+    decoder: 'opencv',
+    ip_address: i === 0 ? '192.168.1.100' : undefined,
+    http_port: i === 0 ? 7001 : undefined,
+    user: i === 0 ? 'admin' : undefined,
+    password: i === 0 ? 'NxAdmin2026*' : undefined,
+    nx_id: i === 0 ? 'NX-CAM-01' : undefined,
+    stream_url: i === 0 ? 'rtsp://admin:NxAdmin2026*@192.168.1.100:7001/NX-CAM-01?stream=0&' : undefined,
     location: { 
       lat: -12.046374 + (Math.random() * 0.1 - 0.05), 
       lon: -77.042793 + (Math.random() * 0.1 - 0.05) 
@@ -1203,6 +1216,104 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ---- RUTA: POST /frontend/cameras/probe ----
+    if ((pathname === '/frontend/cameras/probe' || pathname === '/frontend/cameras/probe/') && req.method === 'POST') {
+      const { fingerprint_host, probe_type, params } = parsedBody || {};
+      let data = {};
+
+      if (probe_type === 'onvif_profiles') {
+        data = {
+          fabricante: 'Hikvision Core Mock',
+          perfiles: [
+            { codec: 'H264', fps: 30, legible: true, resolucion: '1920x1080' },
+            { codec: 'H264', fps: 15, legible: true, resolucion: '1280x720' },
+            { codec: 'MJPEG', fps: 10, legible: true, resolucion: '640x480' }
+          ],
+          tokens: ['Profile_1', 'Profile_2', 'Profile_3']
+        };
+      } else if (probe_type === 'nx_list_cameras') {
+        data = {
+          cameras: [
+            { id: 'NX-CAM-01', name: 'Acceso Principal (NX)', ipAddress: params?.ip || '192.168.1.100' },
+            { id: 'NX-CAM-02', name: 'Estacionamiento Norte (NX)', ipAddress: params?.ip || '192.168.1.101' },
+            { id: 'NX-CAM-03', name: 'Recepción Central (NX)', ipAddress: params?.ip || '192.168.1.102' }
+          ]
+        };
+      } else if (probe_type === 'validate_stream') {
+        data = {
+          valido: true,
+          codec: 'H264',
+          resolucion: '1920x1080',
+          fps: 25,
+          mensaje: 'Stream validado exitosamente'
+        };
+      } else if (probe_type === 'validate_file') {
+        data = {
+          valido: true,
+          duracion_segundos: 120,
+          formato: 'mp4',
+          mensaje: 'Archivo de video verificado'
+        };
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        request_id: 'mock-req-' + Date.now(),
+        fingerprint_host: fingerprint_host || 'HOST-ABC123XYZ',
+        probe_type,
+        data
+      }));
+      return;
+    }
+
+    // ---- RUTA: GET /frontend/cameras/{camera_id}/detail ----
+    const camDetailMatch = pathname.match(/^\/frontend\/cameras\/([^\/]+)\/detail\/?$/);
+    if (camDetailMatch && req.method === 'GET') {
+      const cameraId = camDetailMatch[1];
+      const camera = dbCameras.find(c => c.camera_id === cameraId);
+      if (camera) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(camera));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ detail: 'Cámara no encontrada' }));
+      }
+      return;
+    }
+
+    // ---- RUTA: POST /frontend/cameras/ (Crear cámara) ----
+    if ((pathname === '/frontend/cameras/' || pathname === '/frontend/cameras') && req.method === 'POST') {
+      const newId = parsedBody?.camera_id || ('CAM-' + Math.random().toString(36).substring(2, 8).toUpperCase());
+      const newCamera = {
+        camera_id: newId,
+        camera_name: parsedBody?.camera_name || 'Nueva Cámara',
+        fingerprint_host: parsedBody?.fingerprint_host,
+        stream_type: parsedBody?.stream_type || 'rtsp',
+        status: 'online',
+        decoder: parsedBody?.decoder || 'opencv',
+        location: parsedBody?.location || { lat: '0', lon: '0' },
+        created_at: new Date().toISOString(),
+        stream_url: parsedBody?.stream_url || (parsedBody?.stream_type === 'nx' ? `http://nx-server/media/${parsedBody?.nx_id}` : ''),
+        nx_id: parsedBody?.nx_id || null,
+        forced_resolution: parsedBody?.forced_resolution || null,
+        forced_fps: parsedBody?.forced_fps || null,
+        compatibility_mode: !!parsedBody?.compatibility_mode,
+        ip_address: parsedBody?.ip_address || null,
+        user: parsedBody?.user || null,
+        password: parsedBody?.password || null,
+        http_port: parsedBody?.http_port || null,
+        streams: parsedBody?.streams || null,
+        selected_stream: parsedBody?.selected_stream !== undefined ? parsedBody?.selected_stream : null,
+        selected_profile_token: parsedBody?.selected_profile_token || null,
+        ptz_mode: parsedBody?.ptz_mode || 'auto',
+        proveedor_detecciones: parsedBody?.proveedor_detecciones || 'servidor'
+      };
+      dbCameras.unshift(newCamera);
+      res.writeHead(201, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(newCamera));
+      return;
+    }
+
     // ---- RUTA: GET /frontend/cameras/ (global) ----
     if ((pathname === '/frontend/cameras/' || pathname === '/frontend/cameras') && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1214,18 +1325,20 @@ const server = http.createServer((req, res) => {
     const camsHostMatch = pathname.match(/^\/frontend\/cameras\/([^\/]+)$/);
     if (camsHostMatch && req.method === 'GET') {
       const hostFp = camsHostMatch[1];
-      const cams = dbCameras.filter(c => c.fingerprint_host === hostFp);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(cams));
-      return;
+      if (hostFp !== 'probe') {
+        const cams = dbCameras.filter(c => c.fingerprint_host === hostFp);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(cams));
+        return;
+      }
     }
 
-    // ---- RUTA: PATCH /frontend/cameras/{camera_id} o POST /frontend/cameras/update/{camera_id} (legacy) ----
+    // ---- RUTA: PATCH /frontend/cameras/{camera_id} ----
     const updateCamMatch = pathname.match(/^\/frontend\/cameras\/([^\/]+)$/);
     const legacyUpdateCamMatch = pathname.match(/^\/frontend\/cameras\/update\/([^\/]+)$/);
     if ((updateCamMatch && req.method === 'PATCH') || (legacyUpdateCamMatch && req.method === 'POST')) {
       const cameraId = legacyUpdateCamMatch ? legacyUpdateCamMatch[1] : updateCamMatch[1];
-      if (cameraId !== 'update' && cameraId !== 'delete') {
+      if (cameraId !== 'update' && cameraId !== 'delete' && cameraId !== 'probe') {
         const index = dbCameras.findIndex(c => c.camera_id === cameraId);
         if (index !== -1) {
           dbCameras[index] = { ...dbCameras[index], ...parsedBody };
@@ -1239,12 +1352,12 @@ const server = http.createServer((req, res) => {
       }
     }
 
-    // ---- RUTA: DELETE /frontend/cameras/{camera_id} o DELETE /frontend/cameras/delete/{camera_id} (legacy) ----
+    // ---- RUTA: DELETE /frontend/cameras/{camera_id} ----
     const deleteCamMatch = pathname.match(/^\/frontend\/cameras\/([^\/]+)$/);
     const legacyDeleteCamMatch = pathname.match(/^\/frontend\/cameras\/delete\/([^\/]+)$/);
     if ((deleteCamMatch && req.method === 'DELETE') || (legacyDeleteCamMatch && req.method === 'DELETE')) {
       const cameraId = legacyDeleteCamMatch ? legacyDeleteCamMatch[1] : deleteCamMatch[1];
-      if (cameraId !== 'update' && cameraId !== 'delete') {
+      if (cameraId !== 'update' && cameraId !== 'delete' && cameraId !== 'probe') {
         const index = dbCameras.findIndex(c => c.camera_id === cameraId);
         if (index !== -1) {
           dbCameras.splice(index, 1);

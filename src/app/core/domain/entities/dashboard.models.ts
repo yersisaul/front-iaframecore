@@ -32,6 +32,7 @@ export interface DashboardCreateRequest {
   url: string;
   description?: string | null;
   img_minio_object_name?: string | null;
+  file?: File | null;
   // Campos de compatibilidad
   nombre?: string;
   descripcion?: string | null;
@@ -44,6 +45,7 @@ export interface DashboardUpdateRequest {
   url: string;
   description?: string | null;
   img_minio_object_name?: string | null;
+  file?: File | null;
   // Campos de compatibilidad
   nombre?: string;
   descripcion?: string | null;
@@ -81,11 +83,12 @@ export class DashboardMapper {
     url_img?: string | null;
     id?: string;
     dashboard_id?: string;
+    file?: File | null;
   }): DashboardCreateRequest {
     const name = (domain.name || domain.nombre || '').trim();
     const desc = domain.description !== undefined
-      ? (domain.description?.trim() || null)
-      : (domain.descripcion !== undefined ? (domain.descripcion?.trim() || null) : null);
+      ? (domain.description?.trim() || '')
+      : (domain.descripcion !== undefined ? (domain.descripcion?.trim() || '') : '');
     const imgObjectName = domain.img_minio_object_name !== undefined
       ? domain.img_minio_object_name
       : (domain.url_img || null);
@@ -100,7 +103,8 @@ export class DashboardMapper {
       description: desc,
       descripcion: desc,
       img_minio_object_name: imgObjectName,
-      url_img: imgObjectName
+      url_img: imgObjectName,
+      file: domain.file || null
     };
   }
 
@@ -114,11 +118,12 @@ export class DashboardMapper {
     url_img?: string | null;
     id?: string;
     dashboard_id?: string;
+    file?: File | null;
   }): DashboardUpdateRequest {
     const name = (domain.name || domain.nombre || '').trim();
     const desc = domain.description !== undefined
-      ? (domain.description?.trim() || null)
-      : (domain.descripcion !== undefined ? (domain.descripcion?.trim() || null) : null);
+      ? (domain.description?.trim() || '')
+      : (domain.descripcion !== undefined ? (domain.descripcion?.trim() || '') : '');
     const imgObjectName = domain.img_minio_object_name !== undefined
       ? domain.img_minio_object_name
       : (domain.url_img || null);
@@ -133,7 +138,8 @@ export class DashboardMapper {
       description: desc,
       descripcion: desc,
       img_minio_object_name: imgObjectName,
-      url_img: imgObjectName
+      url_img: imgObjectName,
+      file: domain.file || null
     };
   }
 
@@ -147,6 +153,7 @@ export class DashboardMapper {
     url_img?: string | null;
     id?: string;
     dashboard_id?: string;
+    file?: File | null;
   }>): Partial<DashboardCreateRequest> {
     const result: any = {};
 
@@ -166,8 +173,8 @@ export class DashboardMapper {
 
     if (partial.description !== undefined || partial.descripcion !== undefined) {
       const desc = partial.description !== undefined
-        ? (partial.description?.trim() || null)
-        : (partial.descripcion?.trim() || null);
+        ? (partial.description?.trim() || '')
+        : (partial.descripcion?.trim() || '');
       result.description = desc;
       result.descripcion = desc;
     }
@@ -178,6 +185,69 @@ export class DashboardMapper {
       result.url_img = img;
     }
 
+    if (partial.file !== undefined) {
+      result.file = partial.file;
+    }
+
     return result;
+  }
+
+  /**
+   * Genera el objeto FormData requerido por el backend FastAPI (multipart/form-data)
+   * para POST /frontend/dashboards/ y PUT /frontend/dashboards/{id}
+   */
+  static toFormData(data: DashboardCreateRequest | DashboardUpdateRequest | {
+    name?: string;
+    nombre?: string;
+    url?: string;
+    description?: string | null;
+    descripcion?: string | null;
+    file?: File | null;
+  }): FormData {
+    const formData = new FormData();
+    const name = (data.name || data.nombre || '').trim();
+    const url = (data.url || '').trim();
+    const description = (data.description !== undefined && data.description !== null)
+      ? data.description.trim()
+      : ((data.descripcion !== undefined && data.descripcion !== null) ? data.descripcion.trim() : '');
+
+    if (name) {
+      formData.append('name', name);
+    }
+    if (url) {
+      formData.append('url', url);
+    }
+    // FastAPI exige 'description' como string obligatorio
+    formData.append('description', description);
+
+    if (data.file instanceof File) {
+      formData.append('file', data.file);
+    }
+
+    return formData;
+  }
+
+  /**
+   * Genera el objeto FormData para actualización parcial PATCH /frontend/dashboards/{id}
+   */
+  static toPatchFormData(partial: Partial<DashboardCreateRequest> & { file?: File | null }): FormData {
+    const formData = new FormData();
+    if (partial.name !== undefined || partial.nombre !== undefined) {
+      const name = (partial.name || partial.nombre || '').trim();
+      formData.append('name', name);
+    }
+    if (partial.url !== undefined) {
+      formData.append('url', partial.url.trim());
+    }
+    if (partial.description !== undefined || partial.descripcion !== undefined) {
+      const desc = partial.description !== undefined
+        ? (partial.description?.trim() || '')
+        : (partial.descripcion?.trim() || '');
+      formData.append('description', desc);
+    }
+    if (partial.file instanceof File) {
+      formData.append('file', partial.file);
+    }
+    return formData;
   }
 }

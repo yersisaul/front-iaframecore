@@ -731,6 +731,9 @@
             [class.card-crud-status-active]="cameraActiveStatusIds().has(camera.id)"
             [class.card-crud-status-inactive]="cameraInactiveStatusIds().has(camera.id)"
             [class.has-delete-permission]="permissionsService.hasPermission('Cámaras', 'eliminar')"
+            [class.is-hovered]="hoveredCameraId() === camera.id"
+            (mouseenter)="hoveredCameraId.set(camera.id)"
+            (mouseleave)="hoveredCameraId.set(null)"
             (click)="openAiPanel(camera)">
             <!-- Estado -->
             <td class="col-status text-center">
@@ -821,7 +824,7 @@
             <td class="col-add-column text-center p-0"></td>
             }
 
-            <!-- ÚLTIMA COLUMNA ACTIVA (Con el botón de eliminar al hacer hover en la fila) -->
+            <!-- ÚLTIMA COLUMNA ACTIVA (Con el botón de eliminar y NX al hacer hover en la fila) -->
             @if (activeActionColumn() === 'decoder') {
             <td class="col-decoder text-center">
               <div class="table-decoder-cell-inner">
@@ -832,14 +835,25 @@
                   </span>
                 </div>
 
-                @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
-                <button type="button"
-                  class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
-                  (click)="$event.stopPropagation(); openDeleteModal(camera, $event)" title="Eliminar cámara"
-                  aria-label="Eliminar cámara">
-                  <span class="icon-svg icon-trash"></span>
-                </button>
-                }
+                <div class="table-cell-actions">
+                  @if (canOpenInNx(camera)) {
+                  <button type="button"
+                    class="btn-cell-action btn-cell-nx d-inline-flex align-items-center justify-content-center"
+                    (click)="$event.stopPropagation(); openInNx(camera, $event)" title="Abrir cámara en Nx Witness"
+                    aria-label="Abrir cámara en Nx Witness">
+                    <span class="icon-svg icon-nx-witness"></span>
+                  </button>
+                  }
+
+                  @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
+                  <button type="button"
+                    class="btn-cell-action btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
+                    (click)="$event.stopPropagation(); openDeleteModal(camera, $event)" title="Eliminar cámara"
+                    aria-label="Eliminar cámara">
+                    <span class="icon-svg icon-trash"></span>
+                  </button>
+                  }
+                </div>
               </div>
             </td>
             } @else if (activeActionColumn() === 'stream') {
@@ -863,28 +877,50 @@
                   </div>
                 </div>
 
-                @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
-                <button type="button"
-                  class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
-                  (click)="$event.stopPropagation(); openDeleteModal(camera, $event)" title="Eliminar cámara"
-                  aria-label="Eliminar cámara">
-                  <span class="icon-svg icon-trash"></span>
-                </button>
-                }
+                <div class="table-cell-actions">
+                  @if (canOpenInNx(camera)) {
+                  <button type="button"
+                    class="btn-cell-action btn-cell-nx d-inline-flex align-items-center justify-content-center"
+                    (click)="$event.stopPropagation(); openInNx(camera, $event)" title="Abrir cámara en Nx Witness"
+                    aria-label="Abrir cámara en Nx Witness">
+                    <span class="icon-svg icon-nx-witness"></span>
+                  </button>
+                  }
+
+                  @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
+                  <button type="button"
+                    class="btn-cell-action btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
+                    (click)="$event.stopPropagation(); openDeleteModal(camera, $event)" title="Eliminar cámara"
+                    aria-label="Eliminar cámara">
+                    <span class="icon-svg icon-trash"></span>
+                  </button>
+                  }
+                </div>
               </div>
             </td>
             } @else {
-            <!-- Cuando NO hay columnas de datos visibles, [+] es la última y aloja el botón de eliminar en hover -->
+            <!-- Cuando NO hay columnas de datos visibles, [+] es la última y aloja las acciones en hover -->
             <td class="col-add-column text-center p-0">
               <div class="table-add-column-cell-inner">
-                @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
-                <button type="button"
-                  class="btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
-                  (click)="$event.stopPropagation(); openDeleteModal(camera, $event)" title="Eliminar cámara"
-                  aria-label="Eliminar cámara">
-                  <span class="icon-svg icon-trash"></span>
-                </button>
-                }
+                <div class="table-cell-actions">
+                  @if (canOpenInNx(camera)) {
+                  <button type="button"
+                    class="btn-cell-action btn-cell-nx d-inline-flex align-items-center justify-content-center"
+                    (click)="$event.stopPropagation(); openInNx(camera, $event)" title="Abrir cámara en Nx Witness"
+                    aria-label="Abrir cámara en Nx Witness">
+                    <span class="icon-svg icon-nx-witness"></span>
+                  </button>
+                  }
+
+                  @if (permissionsService.hasPermission('Cámaras', 'eliminar')) {
+                  <button type="button"
+                    class="btn-cell-action btn-cell-delete btn-table-delete d-inline-flex align-items-center justify-content-center"
+                    (click)="$event.stopPropagation(); openDeleteModal(camera, $event)" title="Eliminar cámara"
+                    aria-label="Eliminar cámara">
+                    <span class="icon-svg icon-trash"></span>
+                  </button>
+                  }
+                </div>
               </div>
             </td>
             }

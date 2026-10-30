@@ -688,4 +688,68 @@ describe('Camaras', () => {
     const normalCam = CameraMapper.toDomain(nonNxDto);
     expect(normalCam.nxId).toBeUndefined();
   });
+
+  it('should track hoveredCameraId reactively for table rows', () => {
+    expect(component.hoveredCameraId()).toBeNull();
+    component.hoveredCameraId.set('cam-123');
+    expect(component.hoveredCameraId()).toBe('cam-123');
+    component.hoveredCameraId.set(null);
+    expect(component.hoveredCameraId()).toBeNull();
+  });
+
+  it('should evaluate canOpenInNx correctly based on isInNxBrowser and camera.nxId', () => {
+    const camWithNx: Camera = {
+      id: 'cam-1',
+      name: 'Cam 1',
+      hostFingerprint: 'host-1',
+      streamType: 'rtsp',
+      status: 'active',
+      decoder: 'nx',
+      location: { lat: 0, lon: 0 },
+      createdAt: new Date(),
+      nxId: 'uuid-123'
+    };
+    const camWithoutNx: Camera = {
+      id: 'cam-2',
+      name: 'Cam 2',
+      hostFingerprint: 'host-1',
+      streamType: 'rtsp',
+      status: 'active',
+      decoder: 'opencv',
+      location: { lat: 0, lon: 0 },
+      createdAt: new Date()
+    };
+
+    // Outside Nx browser
+    (component as any).nxWitnessService.isInNxBrowser.set(false);
+    expect(component.canOpenInNx(camWithNx)).toBe(false);
+    expect(component.canOpenInNx(camWithoutNx)).toBe(false);
+
+    // Inside Nx browser
+    (component as any).nxWitnessService.isInNxBrowser.set(true);
+    expect(component.canOpenInNx(camWithNx)).toBe(true);
+    expect(component.canOpenInNx(camWithoutNx)).toBe(false);
+  });
+
+  it('should call openCamera on nxWitnessService when openInNx is called', async () => {
+    const camWithNx: Camera = {
+      id: 'cam-1',
+      name: 'Cam Test Nx',
+      hostFingerprint: 'host-1',
+      streamType: 'rtsp',
+      status: 'active',
+      decoder: 'nx',
+      location: { lat: 0, lon: 0 },
+      createdAt: new Date(),
+      nxId: 'uuid-999'
+    };
+    const openCameraSpy = vi.spyOn((component as any).nxWitnessService, 'openCamera').mockResolvedValue({ ok: true });
+    const mockEvent = new MouseEvent('click');
+    const stopPropSpy = vi.spyOn(mockEvent, 'stopPropagation');
+
+    await component.openInNx(camWithNx, mockEvent);
+
+    expect(stopPropSpy).toHaveBeenCalled();
+    expect(openCameraSpy).toHaveBeenCalledWith('uuid-999', 'Cam Test Nx');
+  });
 });

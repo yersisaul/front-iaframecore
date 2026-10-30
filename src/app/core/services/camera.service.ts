@@ -1,7 +1,15 @@
 import { Injectable, signal } from '@angular/core';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { Camera, CameraRegisterRequest, CameraUpdateRequest } from '../domain/entities/camera.models';
+import {
+  Camera,
+  CameraProbeRequest,
+  CameraProbeResponse,
+  CameraRegisterRequest,
+  CameraUpdateRequest,
+  PtzPresetsResponse,
+  DigitalOutputsResponse
+} from '../domain/entities/camera.models';
 import { ICameraRepository } from '../domain/repositories/camera.repository';
 import { GetCamerasUseCase } from '../domain/use-cases/get-cameras.use-case';
 
@@ -101,51 +109,73 @@ export class CameraService {
     );
   }
 
+  getCameraById(cameraId: string): Observable<Camera> {
+    return this.cameraRepository.getById(cameraId).pipe(
+      tap(cam => this.upsertCameraLocal(cam))
+    );
+  }
+
   registerCamera(request: CameraRegisterRequest): Observable<Camera> {
     return this.cameraRepository.register(request).pipe(
       tap(newCamera => {
-        if (this.activeHostFingerprint() === null || this.activeHostFingerprint() === newCamera.hostFingerprint) {
-          this.cameras.update(list => [newCamera, ...list]);
-          this.markAsNew(newCamera.id);
+        this.upsertCameraLocal(newCamera);
+      })
+    );
+  }
+
+  updateCamera(cameraId: string, body: CameraUpdateRequest): Observable<Camera> {
+    return this.cameraRepository.update(cameraId, body).pipe(
+      tap(updatedCamera => {
+        if (updatedCamera && updatedCamera.id) {
+          this.upsertCameraLocal(updatedCamera);
+        } else {
+          this.markAsUpdated(cameraId);
         }
       })
     );
   }
 
-  updateCamera(cameraId: string, body: CameraUpdateRequest): Observable<any> {
-    return this.cameraRepository.update(cameraId, body).pipe(
+  probeCamera<T = any>(req: CameraProbeRequest): Observable<CameraProbeResponse<T>> {
+    return this.cameraRepository.probe<T>(req);
+  }
+
+  deleteCamera(cameraId: string): Observable<void> {
+    return this.cameraRepository.delete(cameraId).pipe(
       tap(() => {
-        this.cameras.update(list => list.map(c => {
-          if (c.id === cameraId) {
-            return {
-              ...c,
-              name: body.camera_name !== undefined ? body.camera_name : c.name,
-              hostFingerprint: body.fingerprint_host !== undefined ? body.fingerprint_host : c.hostFingerprint,
-              streamType: (body.stream_type as string) !== undefined ? (body.stream_type as string) : c.streamType,
-              decoder: (body.decoder as string) !== undefined ? ((body.decoder as string) || '') : c.decoder,
-              location: body.location !== undefined && body.location !== null ? body.location : c.location,
-              streamUrl: body.stream_url !== undefined ? (body.stream_url || undefined) : c.streamUrl,
-              rtspUrl: body.stream_url !== undefined ? (body.stream_url || undefined) : c.rtspUrl,
-              nxId: body.nx_id !== undefined ? (body.nx_id || undefined) : c.nxId,
-              forcedResolution: body.forced_resolution !== undefined ? (body.forced_resolution || undefined) : c.forcedResolution,
-              forcedFps: body.forced_fps !== undefined ? (body.forced_fps ?? undefined) : c.forcedFps,
-              compatibilityMode: body.compatibility_mode !== undefined ? body.compatibility_mode : c.compatibilityMode,
-              ipAddress: body.ip_address !== undefined ? (body.ip_address || undefined) : c.ipAddress,
-              user: body.user !== undefined ? (body.user || undefined) : c.user,
-              password: body.password !== undefined ? (body.password || undefined) : c.password,
-              httpPort: body.http_port !== undefined ? (body.http_port ?? undefined) : c.httpPort,
-              selectedStream: body.selected_stream !== undefined ? (body.selected_stream ?? undefined) : c.selectedStream
-            };
-          }
-          return c;
-        }));
-        this.markAsUpdated(cameraId);
+        this.deleteCameraLocal(cameraId);
       })
     );
   }
 
-  deleteCamera(cameraId: string): Observable<any> {
-    return this.cameraRepository.delete(cameraId);
+  getPtzPresets(cameraId: string): Observable<PtzPresetsResponse> {
+    return this.cameraRepository.getPtzPresets(cameraId);
+  }
+
+  getDigitalOutputs(cameraId: string): Observable<DigitalOutputsResponse> {
+    return this.cameraRepository.getDigitalOutputs(cameraId);
+  }
+
+  upsertCameraLocal(camera: Camera): void {
+    let exists = false;
+    this.cameras.update(list => {
+      const idx = list.findIndex(c => c.id === camera.id);
+      if (idx !== -1) {
+        exists = true;
+        const copy = [...list];
+        copy[idx] = camera;
+        return copy;
+      }
+      if (this.activeHostFingerprint() === null || this.activeHostFingerprint() === camera.hostFingerprint) {
+        return [camera, ...list];
+      }
+      return list;
+    });
+
+    if (exists) {
+      this.markAsUpdated(camera.id);
+    } else {
+      this.markAsNew(camera.id);
+    }
   }
 
   updateCameraStatusLocal(cameraId: string, status: string): void {

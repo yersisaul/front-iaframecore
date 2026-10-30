@@ -2,52 +2,70 @@
 <div class="modal-premium-overlay" (mousedown)="onBackdropMouseDown($event)" (mouseup)="onBackdropMouseUp($event)"
   role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal-premium-card create-camera-card">
+    <form [formGroup]="cameraForm" (ngSubmit)="onSubmit()" class="modal-form-wrapper d-flex flex-column h-100 min-h-0">
 
-    <!-- ════════════════════════════════════════════════════════
-         CABECERA DEL MODAL
-         ════════════════════════════════════════════════════════ -->
-    <div class="modal-premium-header d-flex align-items-center justify-content-between mb-3">
-      <div class="d-flex align-items-center gap-3">
-        <div class="modal-header-icon-wrap icon-camera-theme">
-          <span class="icon-svg icon-camara icon-modal-header"></span>
+      <!-- ════════════════════════════════════════════════════════
+           CABECERA DEL MODAL
+           ════════════════════════════════════════════════════════ -->
+      <div class="modal-premium-header d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="modal-header-icon-wrap icon-camera-theme">
+            <span class="icon-svg icon-camara icon-modal-header"></span>
+          </div>
+          <div>
+            <h5 id="modal-title" class="modal-title-heading fw-bold mb-0 fs-6">{{ modalTitle }}</h5>
+            <p class="text-muted mb-0 small mt-1" style="font-size: 0.78rem;">
+              @if (preselectedHostId) {
+              Configura los parámetros de streaming para este nodo
+              } @else {
+              Configura los parámetros de streaming y asignación de nodo
+              }
+            </p>
+          </div>
         </div>
-        <div>
-          <h5 id="modal-title" class="modal-title-heading fw-bold mb-0 fs-6">{{ modalTitle }}</h5>
-          <p class="text-muted mb-0 small mt-0.5" style="font-size: 0.78rem;">
-            @if (preselectedHostId) {
-            Configura los parámetros de streaming para este nodo
+
+        <!-- Botones de Acción en el Encabezado Superior Derecho -->
+        <div class="modal-header-actions d-flex align-items-center gap-2">
+          <button type="button" class="btn-modal-cancel header-action-btn" (click)="onCancel()"
+            [disabled]="isSubmitting()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-modal-confirm header-action-btn" [disabled]="!canSubmit"
+            [title]="submitButtonTooltip">
+            @if (isSubmitting()) {
+            <span class="premium-button-spinner"></span>
+            <span>{{ mode === 'edit' ? 'Guardando...' : 'Creando...' }}</span>
+            } @else if (isProbing()) {
+            <span class="premium-button-spinner"></span>
+            <span>Verificando...</span>
             } @else {
-            Configura los parámetros de streaming y asignación de nodo
+            <span class="icon-svg icon-btn-action" [class.icon-plus]="mode === 'create'"
+              [class.icon-check]="mode === 'edit'"></span>
+            <span>{{ mode === 'edit' ? 'Guardar Cambios' : 'Crear Cámara' }}</span>
             }
-          </p>
+          </button>
         </div>
       </div>
-    </div>
 
-    <!-- Banner de Error si ocurre -->
-    @if (errorMessage()) {
-    <div class="alert alert-danger-custom d-flex align-items-center gap-2 mb-3 p-2.5 rounded-3 animate-fade-in"
-      role="alert">
-      <span class="icon-svg icon-info-circle flex-shrink-0 icon-alert-msg"></span>
-      <span class="small flex-grow-1">{{ errorMessage() }}</span>
-    </div>
-    }
+      <!-- Banner de Error si ocurre -->
+      @if (errorMessage()) {
+      <div class="alert alert-danger-custom d-flex align-items-center gap-2 mb-3 p-2 rounded-3 animate-fade-in"
+        role="alert">
+        <span class="icon-svg icon-info-circle flex-shrink-0 icon-alert-msg"></span>
+        <span class="small flex-grow-1">{{ errorMessage() }}</span>
+      </div>
+      }
 
-    <!-- ════════════════════════════════════════════════════════
-         CUERPO DEL FORMULARIO
-         ════════════════════════════════════════════════════════ -->
-    <form [formGroup]="cameraForm" (ngSubmit)="onSubmit()" class="modal-form-wrapper d-flex flex-column min-h-0">
-      <div class="modal-scroll-body pe-1">
-
-        <!-- ════════════════════════════════════════════════════════
-             DISPOSICIÓN EN 2 COLUMNAS REACTIVAS (UNIDADES RELATIVAS)
-             ════════════════════════════════════════════════════════ -->
+      <!-- ════════════════════════════════════════════════════════
+           CUERPO DEL FORMULARIO
+           ════════════════════════════════════════════════════════ -->
+      <div class="modal-body-container flex-grow-1 min-h-0">
         <div class="modal-columns-grid">
 
           <!-- ══════════════════════════════════════════════════════
-               COLUMNA IZQUIERDA: PUNTOS 1, 2 Y 3
+               COLUMNA IZQUIERDA: PUNTOS 1, 2 Y 3 (CON SCROLL INDEPENDIENTE)
                ══════════════════════════════════════════════════════ -->
-          <div class="modal-column-left d-flex flex-column gap-3">
+          <div class="modal-column-left d-flex flex-column gap-3 pe-1">
 
             <!-- BLOQUE 1: IDENTIFICACIÓN Y NODO ASIGNADO -->
             <div class="form-section-card p-3 rounded-3" [class.has-open-dropdown]="activeDropdown() === 'host'">
@@ -130,7 +148,7 @@
                         <!-- Lista de Nodos Filtrados -->
                         <div class="dropdown-items-scroll scrollable-menu p-1">
                           @if (filteredHostOptions().length === 0) {
-                          <div class="text-muted small text-center py-2.5 opacity-60">No se encontraron nodos</div>
+                          <div class="text-muted small text-center py-2 opacity-60">No se encontraron nodos</div>
                           }
                           @for (h of filteredHostOptions(); track h.fingerprint) {
                           @let isSelected = cameraForm.get('fingerprint_host')?.value === h.fingerprint;
@@ -163,19 +181,24 @@
             </div>
 
             <!-- BLOQUE 2: PROTOCOLO Y STREAMING (SELECTOR EN DROPDOWN ESTILIZADO) -->
-            <div class="form-section-card p-3 rounded-3">
+            <div class="form-section-card p-3 rounded-3"
+              [class.has-open-dropdown]="activeDropdown() === 'streamType' || activeDropdown() === 'nxCamera' || activeDropdown() === 'onvifProfile'">
               <h6 class="section-title d-flex align-items-center gap-2 mb-3">
                 <span class="section-num">2</span>
                 <span>Protocolo y Transmisión</span>
               </h6>
 
-              <!-- Fila de Tipo de Flujo de Video y URL del Stream -->
-              <div class="row g-3">
-                <!-- Dropdown de Tipo de Flujo de Video -->
-                <div [class]="currentStreamType === 'nx' ? 'col-12 col-md-6' : 'col-12'">
-                  <div class="premium-input-group position-relative">
+              <!-- Fila de Tipo de Flujo de Video y Selector de Cámara -->
+              <div class="row g-3"
+                [class.has-open-dropdown]="activeDropdown() === 'streamType' || activeDropdown() === 'nxCamera'">
+                <!-- Dropdown de Tipo de Flujo de Video (col-12 sin flujo, col-md-6 con flujo) -->
+                <div [class]="currentStreamType ? 'col-12 col-md-6' : 'col-12'"
+                  [class.has-open-dropdown]="activeDropdown() === 'streamType'">
+                  <div class="premium-input-group position-relative"
+                    [class.has-open-dropdown]="activeDropdown() === 'streamType'">
                     <label class="premium-input-label">Tipo de Flujo de Video <span class="text-danger">*</span></label>
-                    <div class="filter-dropdown-wrapper w-100 position-relative">
+                    <div class="filter-dropdown-wrapper w-100 position-relative"
+                      [class.is-dropdown-open]="activeDropdown() === 'streamType'">
                       <button type="button"
                         class="btn btn-filter-dropdown dropdown-field-trigger w-100 d-flex align-items-center justify-content-between gap-2"
                         [class.is-invalid-warning]="isFieldInvalid('stream_type')"
@@ -194,7 +217,7 @@
 
                       <!-- Menú Desplegable con opciones de Stream Type -->
                       @if (activeDropdown() === 'streamType') {
-                      <div class="filter-dropdown-menu modal-dropdown-menu w-100 p-1.5 shadow-lg"
+                      <div class="filter-dropdown-menu modal-dropdown-menu w-100 p-2 shadow-lg"
                         (click)="$event.stopPropagation()">
                         @for (type of streamTypeOptions; track type.value) {
                         @let isSelected = currentStreamType === type.value;
@@ -217,11 +240,110 @@
                   </div>
                 </div>
 
-                <!-- Campos condicionales para Nx Witness: ID de Cámara en la fila superior -->
+                <!-- Selector de Cámara en Nx Witness (Dropdown interactivo cuando stream_type es nx) -->
                 @if (currentStreamType === 'nx') {
+                <div class="col-12 col-md-6" [class.has-open-dropdown]="activeDropdown() === 'nxCamera'">
+                  <div class="premium-input-group position-relative"
+                    [class.has-open-dropdown]="activeDropdown() === 'nxCamera'">
+                    <label class="premium-input-label">Cámara en Nx Witness <span class="text-danger">*</span></label>
+                    <div class="filter-dropdown-wrapper w-100 position-relative"
+                      [class.is-dropdown-open]="activeDropdown() === 'nxCamera'">
+                      <button type="button"
+                        class="btn btn-filter-dropdown dropdown-field-trigger w-100 d-flex align-items-center justify-content-between gap-2"
+                        [class.is-invalid-warning]="isFieldInvalid('nx_id')"
+                        [disabled]="nxCamerasList().length === 0 && !cameraForm.get('nx_id')?.value"
+                        (click)="toggleDropdown('nxCamera', $event); clearFieldAlert('nx_id')">
+                        <div class="d-flex align-items-center gap-2 text-truncate pe-1 min-w-0">
+                          @if (isProbing()) {
+                          <span class="spinner-border spinner-border-sm text-primary flex-shrink-0"
+                            role="status"></span>
+                          } @else {
+                          <span class="icon-svg filter-icon icon-input-prefix"
+                            [class.icon-camara]="!isFieldInvalid('nx_id')"
+                            [class.icon-warning]="isFieldInvalid('nx_id')"></span>
+                          }
+                          <span class="text-truncate" [class.font-monospace]="!!cameraForm.get('nx_id')?.value"
+                            [class.fw-semibold]="!!cameraForm.get('nx_id')?.value"
+                            [class.text-muted]="!cameraForm.get('nx_id')?.value"
+                            [title]="cameraForm.get('nx_id')?.value ? cleanNxId(cameraForm.get('nx_id')?.value) : ''"
+                            style="font-size: 0.8rem;">
+                            {{ currentNxCameraLabel }}
+                          </span>
+                        </div>
+                        <span
+                          class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 icon-dropdown-chevron"
+                          [class.rotated]="activeDropdown() === 'nxCamera'"></span>
+                      </button>
+
+                      <!-- Menú Desplegable con opciones de Cámaras NX Detectadas -->
+                      @if (activeDropdown() === 'nxCamera' && nxCamerasList().length > 0) {
+                      <div class="filter-dropdown-menu modal-dropdown-menu w-100 p-2 shadow-lg"
+                        (click)="$event.stopPropagation()">
+                        <!-- Barra de Búsqueda rápida si hay más de 3 cámaras -->
+                        @if (nxCamerasList().length > 3) {
+                        <div class="p-1 pb-2 border-bottom mb-1">
+                          <div class="nx-dropdown-search-wrapper position-relative">
+                            <span class="icon-svg icon-search nx-dropdown-search-icon"></span>
+                            <input #nxSearchInput type="text" class="nx-dropdown-search-input"
+                              [value]="nxCameraSearch()" (input)="nxCameraSearch.set(nxSearchInput.value)"
+                              placeholder="Filtrar por nombre o ID..." />
+                            @if (nxCameraSearch()) {
+                            <button type="button" class="btn-clear-search"
+                              (click)="nxSearchInput.value = ''; nxCameraSearch.set('')"
+                              title="Limpiar filtro">✕</button>
+                            }
+                          </div>
+                        </div>
+                        }
+
+                        <!-- Lista Scrollable de Cámaras -->
+                        <div class="dropdown-items-scroll scrollable-menu p-1" style="max-height: 14rem;">
+                          @if (filteredNxCameras().length === 0) {
+                          <div class="text-muted small text-center py-2 opacity-60">No se encontraron cámaras</div>
+                          }
+                          @for (nxCam of filteredNxCameras(); track nxCam.id) {
+                          @let isSelected = cameraForm.get('nx_id')?.value === cleanNxId(nxCam.id);
+                          <button type="button"
+                            class="dropdown-item nx-dropdown-cam-item d-flex align-items-center justify-content-between py-2 px-2 rounded w-100 mb-1"
+                            [class.active]="isSelected" (click)="selectNxCamera(nxCam, $event)"
+                            (mouseenter)="checkNxMarquee($event)" (mouseleave)="resetNxMarquee($event)"
+                            [title]="nxCam.name + ' (' + cleanNxId(nxCam.id) + ')'">
+                            <div class="d-flex align-items-center gap-2 min-w-0 pe-2 flex-grow-1">
+                              <div class="nx-dropdown-icon-box flex-shrink-0" [class.active]="isSelected">
+                                <span class="icon-svg icon-camara"></span>
+                              </div>
+                              <div class="d-flex flex-column text-start min-w-0 flex-grow-1" style="overflow: hidden;">
+                                <div class="nx-cam-name-container">
+                                  <span class="fw-semibold nx-cam-name-marquee">
+                                    {{ nxCam.name }}
+                                  </span>
+                                </div>
+                                <span class="text-muted text-truncate font-monospace" style="font-size: 0.68rem;">
+                                  {{ cleanNxId(nxCam.id) }}
+                                </span>
+                              </div>
+                            </div>
+                            @if (isSelected) {
+                            <span class="icon-svg icon-check text-primary flex-shrink-0 icon-badge-check"></span>
+                            }
+                          </button>
+                          }
+                        </div>
+                      </div>
+                      }
+                    </div>
+                    @if (isFieldInvalid('nx_id')) {
+                    <span class="premium-error-msg">Selecciona una cámara detectada del servidor Nx Witness.</span>
+                    }
+                  </div>
+                </div>
+                } @else if (currentStreamType) {
+                <!-- ID de Cámara en Nx Witness (Input de texto opcional para otros flujos) -->
                 <div class="col-12 col-md-6">
                   <div class="premium-input-group">
-                    <label class="premium-input-label">ID de Cámara NX <span class="text-danger">*</span></label>
+                    <label class="premium-input-label">
+                      ID de Cámara en Nx Witness <span class="text-muted small fw-normal ms-1">(Opcional)</span>
+                    </label>
                     <div class="input-icon-wrapper">
                       <span class="icon-svg input-icon icon-input-prefix"
                         [class.icon-nx-witness]="!isFieldInvalid('nx_id')"
@@ -229,22 +351,42 @@
                       <input type="text" class="premium-input-control"
                         [class.is-invalid-warning]="isFieldInvalid('nx_id')" formControlName="nx_id"
                         (focus)="clearFieldAlert('nx_id')" (click)="clearFieldAlert('nx_id')"
-                        placeholder="Ej. NX-ABC123XYZ" autocomplete="off" />
+                        placeholder="Ej. NX-ID o GUID de cámara (opcional)" autocomplete="off" />
                     </div>
-                    @if (isFieldInvalid('nx_id')) {
-                    <span class="premium-error-msg">El ID es requerido.</span>
-                    }
                   </div>
                 </div>
                 }
 
-                <!-- Campos condicionales para RTSP / RTMP: URL del Stream en fila independiente a ancho completo -->
+                <!-- Campos condicionales para RTSP / RTMP: URL del Stream con verificación automática -->
                 @if (currentStreamType === 'rtsp' || currentStreamType === 'rtmp') {
                 <div class="col-12">
                   <div class="premium-input-group">
-                    <label class="premium-input-label">
-                      URL del Stream ({{ currentStreamType | uppercase }}) <span class="text-danger">*</span>
-                    </label>
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                      <label class="premium-input-label mb-0">
+                        URL del Stream ({{ currentStreamType | uppercase }}) <span class="text-danger">*</span>
+                      </label>
+                      <!-- Indicador de Estado Inline -->
+                      <div class="inline-probe-status d-flex align-items-center gap-2">
+                        @if (isProbing()) {
+                        <span class="probe-pill probing">
+                          <span class="spinner-border spinner-border-sm" role="status"></span>
+                          <span>Comprobando flujo...</span>
+                        </span>
+                        } @else if (probeStatus() === 'success') {
+                        <span class="probe-pill success">
+                          <span class="icon-svg icon-check"></span>
+                          <span>Flujo verificado</span>
+                        </span>
+                        } @else if (probeStatus() === 'error') {
+                        <span class="probe-pill error">
+                          <span class="icon-svg icon-warning"></span>
+                          <span>Sin conexión</span>
+                          <button type="button" class="btn-probe-retry-link" (click)="retryProbe()"
+                            title="Reintentar">Reintentar</button>
+                        </span>
+                        }
+                      </div>
+                    </div>
                     <div class="input-icon-wrapper">
                       <span class="icon-svg input-icon icon-input-prefix"
                         [class.icon-external-link]="!isFieldInvalid('stream_url')"
@@ -256,39 +398,67 @@
                     </div>
                     @if (isFieldInvalid('stream_url')) {
                     <span class="premium-error-msg">
-                      Ingresa una URL válida que inicie con rtsp://, rtmp://, http:// o https://
+                      Ingresa una URL válida que inicie con rtsp:// o rtmp://
                     </span>
                     }
                   </div>
                 </div>
                 }
 
-                <!-- Campos condicionales para Nx Witness: URL del Stream en fila independiente a ancho completo -->
-                @if (currentStreamType === 'nx') {
+                <!-- Campos condicionales para Archivo: Ruta del archivo de video en el nodo con verificación automática -->
+                @if (currentStreamType === 'Archivo') {
                 <div class="col-12">
                   <div class="premium-input-group">
-                    <label class="premium-input-label">URL del Stream NX <span class="text-danger">*</span></label>
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                      <label class="premium-input-label mb-0">
+                        Ruta del Archivo de Video <span class="text-danger">*</span>
+                      </label>
+                      <!-- Indicador de Estado Inline para Archivo -->
+                      <div class="inline-probe-status d-flex align-items-center gap-2">
+                        @if (isProbing()) {
+                        <span class="probe-pill probing">
+                          <span class="spinner-border spinner-border-sm" role="status"></span>
+                          <span>Comprobando archivo...</span>
+                        </span>
+                        } @else if (probeStatus() === 'success') {
+                        <span class="probe-pill success">
+                          <span class="icon-svg icon-check"></span>
+                          <span>Archivo verificado</span>
+                        </span>
+                        } @else if (probeStatus() === 'error') {
+                        <span class="probe-pill error">
+                          <span class="icon-svg icon-warning"></span>
+                          <span>Archivo inaccesible</span>
+                          <button type="button" class="btn-probe-retry-link" (click)="retryProbe()"
+                            title="Reintentar">Reintentar</button>
+                        </span>
+                        }
+                      </div>
+                    </div>
                     <div class="input-icon-wrapper">
                       <span class="icon-svg input-icon icon-input-prefix"
-                        [class.icon-external-link]="!isFieldInvalid('stream_url')"
+                        [class.icon-folder]="!isFieldInvalid('stream_url')"
                         [class.icon-warning]="isFieldInvalid('stream_url')"></span>
                       <input type="text" class="premium-input-control"
                         [class.is-invalid-warning]="isFieldInvalid('stream_url')" formControlName="stream_url"
                         (focus)="clearFieldAlert('stream_url')" (click)="clearFieldAlert('stream_url')"
-                        placeholder="Ej. rtsp://192.168.1.100:7001/media/..." autocomplete="off" />
+                        placeholder="Ej. /home/user/video.mp4 o C:\videos\video.mp4" autocomplete="off" />
                     </div>
                     @if (isFieldInvalid('stream_url')) {
-                    <span class="premium-error-msg">Ingresa la URL del flujo de video NX.</span>
+                    <span class="premium-error-msg">
+                      Ingresa la ruta absoluta del archivo de video en el nodo.
+                    </span>
                     }
                   </div>
                 </div>
                 }
+
               </div>
 
               <!-- Campos condicionales para ONVIF -->
               @if (currentStreamType === 'Onvif') {
               <div class="onvif-fields-wrapper mt-2 p-3 rounded-3">
-                <div class="row g-2.5 mb-2">
+                <div class="row g-2 mb-2">
                   <div class="col-12 col-md-8">
                     <div class="premium-input-group">
                       <label class="premium-input-label">Dirección IP <span class="text-danger">*</span></label>
@@ -325,7 +495,7 @@
                   </div>
                 </div>
 
-                <div class="row g-2.5 mb-2">
+                <div class="row g-2 mb-2">
                   <div class="col-12 col-md-6">
                     <div class="premium-input-group">
                       <label class="premium-input-label">Usuario Onvif <span class="text-danger">*</span></label>
@@ -367,21 +537,230 @@
                   </div>
                 </div>
 
-                <div class="row g-2.5">
-                  <div class="col-12 col-md-4">
-                    <div class="premium-input-group">
-                      <label class="premium-input-label">Índice de Stream</label>
-                      <input type="number" class="premium-input-control" formControlName="selected_stream"
-                        (focus)="clearFieldAlert('selected_stream')" (click)="clearFieldAlert('selected_stream')"
-                        placeholder="Ej. 0 (Principal) o 1" min="0" />
+                <div class="d-flex align-items-center justify-content-between mt-2 mb-2">
+                  <span class="small text-muted" style="font-size: 0.75rem;">Detección automática de perfiles y
+                    tokens</span>
+                  <div class="inline-probe-status d-flex align-items-center gap-2">
+                    @if (isProbing()) {
+                    <span class="probe-pill probing">
+                      <span class="spinner-border spinner-border-sm" role="status"></span>
+                      <span>Detectando perfiles...</span>
+                    </span>
+                    } @else if (probeStatus() === 'success') {
+                    <span class="probe-pill success">
+                      <span class="icon-svg icon-check"></span>
+                      <span>{{ onvifTokens().length }} perfil(es) detectados</span>
+                    </span>
+                    } @else if (probeStatus() === 'error') {
+                    <span class="probe-pill error">
+                      <span class="icon-svg icon-warning"></span>
+                      <span>Fallo de conexión</span>
+                      <button type="button" class="btn-probe-retry-link" (click)="retryProbe()"
+                        title="Reintentar">Reintentar</button>
+                    </span>
+                    }
+                  </div>
+                </div>
+
+                <!-- Selector de Perfil ONVIF (Solo visible en modo edición) -->
+                @if (mode === 'edit') {
+                <div class="row g-2 mt-1" [class.has-open-dropdown]="activeDropdown() === 'onvifProfile'">
+                  <div class="col-12" [class.has-open-dropdown]="activeDropdown() === 'onvifProfile'">
+                    <div class="premium-input-group position-relative"
+                      [class.has-open-dropdown]="activeDropdown() === 'onvifProfile'">
+                      <label class="premium-input-label">Perfil ONVIF (Stream) <span
+                          class="text-danger">*</span></label>
+                      <div class="filter-dropdown-wrapper w-100 position-relative"
+                        [class.is-dropdown-open]="activeDropdown() === 'onvifProfile'">
+                        <button type="button"
+                          class="btn btn-filter-dropdown dropdown-field-trigger w-100 d-flex align-items-center justify-content-between gap-2"
+                          [disabled]="onvifTokens().length === 0 && !cameraForm.get('selected_profile_token')?.value"
+                          (click)="toggleDropdown('onvifProfile', $event)">
+                          <div class="d-flex align-items-center gap-2 text-truncate pe-1 min-w-0">
+                            @if (isProbing()) {
+                            <span class="spinner-border spinner-border-sm text-primary flex-shrink-0"
+                              role="status"></span>
+                            } @else {
+                            <span class="icon-svg filter-icon icon-input-prefix icon-camara"></span>
+                            }
+                            <span class="text-truncate"
+                              [class.fw-semibold]="!!cameraForm.get('selected_profile_token')?.value || onvifTokens().length > 0"
+                              [class.text-muted]="!cameraForm.get('selected_profile_token')?.value && onvifTokens().length === 0"
+                              [title]="currentOnvifProfileLabel" style="font-size: 0.8rem;">
+                              {{ currentOnvifProfileLabel }}
+                            </span>
+                          </div>
+                          <span
+                            class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 icon-dropdown-chevron"
+                            [class.rotated]="activeDropdown() === 'onvifProfile'"></span>
+                        </button>
+
+                        <!-- Menú Desplegable con opciones de Perfiles ONVIF -->
+                        @if (activeDropdown() === 'onvifProfile' && onvifTokens().length > 0) {
+                        <div class="filter-dropdown-menu modal-dropdown-menu w-100 p-2 shadow-lg"
+                          (click)="$event.stopPropagation()">
+                          <div class="dropdown-items-scroll scrollable-menu p-1" style="max-height: 14rem;">
+                            @for (token of onvifTokens(); track token; let idx = $index) {
+                            @let prof = onvifProfiles()[idx];
+                            @let isSelected = cameraForm.get('selected_stream')?.value === idx ||
+                            cameraForm.get('selected_profile_token')?.value === token;
+                            <button type="button"
+                              class="dropdown-item d-flex align-items-center justify-content-between py-2 px-2 rounded w-100 mb-1"
+                              [class.active]="isSelected" (click)="selectOnvifProfile(idx, token, $event)">
+                              <div class="d-flex align-items-center gap-2 min-w-0 pe-2 flex-grow-1">
+                                <span class="badge flex-shrink-0" [class.bg-primary]="isSelected"
+                                  [class.bg-secondary]="!isSelected" style="font-size: 0.7rem;">
+                                  #{{ idx }}
+                                </span>
+                                <div class="d-flex flex-column text-start min-w-0 flex-grow-1">
+                                  <span class="fw-semibold text-truncate" style="font-size: 0.8rem;">
+                                    {{ token }}
+                                  </span>
+                                  @if (prof) {
+                                  <span class="text-muted text-truncate" style="font-size: 0.68rem;">
+                                    {{ prof.codec || 'H264' }} • {{ prof.resolucion || 'HD' }} • {{ prof.fps || 25 }}
+                                    FPS
+                                  </span>
+                                  }
+                                </div>
+                              </div>
+                              @if (isSelected) {
+                              <span class="icon-svg icon-check text-primary flex-shrink-0 icon-badge-check"></span>
+                              }
+                            </button>
+                            }
+                          </div>
+                        </div>
+                        }
+                      </div>
                     </div>
                   </div>
+                </div>
+                }
+              </div>
+              }
+
+              <!-- Campos condicionales para Nx Witness -->
+              @if (currentStreamType === 'nx') {
+              <div class="nx-fields-wrapper mt-2 p-3 rounded-3">
+                <div class="row g-2 mb-2">
                   <div class="col-12 col-md-8">
                     <div class="premium-input-group">
-                      <label class="premium-input-label">Stream URL (Opcional)</label>
-                      <input type="text" class="premium-input-control" formControlName="stream_url"
-                        (focus)="clearFieldAlert('stream_url')" (click)="clearFieldAlert('stream_url')"
-                        placeholder="Ej. rtsp://192.168.1.50:554/profile1 (opcional)" autocomplete="off" />
+                      <label class="premium-input-label">Dirección IP Servidor NX <span
+                          class="text-danger">*</span></label>
+                      <div class="input-icon-wrapper">
+                        <span class="icon-svg input-icon icon-input-prefix"
+                          [class.icon-map]="!isFieldInvalid('ip_address')"
+                          [class.icon-warning]="isFieldInvalid('ip_address')"></span>
+                        <input type="text" class="premium-input-control"
+                          [class.is-invalid-warning]="isFieldInvalid('ip_address')" formControlName="ip_address"
+                          (focus)="clearFieldAlert('ip_address')" (click)="clearFieldAlert('ip_address')"
+                          placeholder="Ej. 192.168.1.100" autocomplete="off" />
+                      </div>
+                      @if (isFieldInvalid('ip_address')) {
+                      <span class="premium-error-msg">Requerido para Servidor NX.</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <div class="premium-input-group">
+                      <label class="premium-input-label">Puerto Servidor NX <span class="text-danger">*</span></label>
+                      <div class="input-icon-wrapper">
+                        <span class="icon-svg input-icon icon-input-prefix"
+                          [class.icon-server]="!isFieldInvalid('http_port')"
+                          [class.icon-warning]="isFieldInvalid('http_port')"></span>
+                        <input type="number" class="premium-input-control"
+                          [class.is-invalid-warning]="isFieldInvalid('http_port')" formControlName="http_port"
+                          (focus)="clearFieldAlert('http_port')" (click)="clearFieldAlert('http_port')"
+                          placeholder="Ej. 7001" min="1" max="65535" />
+                      </div>
+                      @if (isFieldInvalid('http_port')) {
+                      <span class="premium-error-msg">Puerto (1-65535).</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row g-2 mb-2">
+                  <div class="col-12 col-md-6">
+                    <div class="premium-input-group">
+                      <label class="premium-input-label">Usuario Servidor NX <span class="text-danger">*</span></label>
+                      <div class="input-icon-wrapper">
+                        <span class="icon-svg input-icon icon-input-prefix" [class.icon-user]="!isFieldInvalid('user')"
+                          [class.icon-warning]="isFieldInvalid('user')"></span>
+                        <input type="text" class="premium-input-control"
+                          [class.is-invalid-warning]="isFieldInvalid('user')" formControlName="user"
+                          (focus)="clearFieldAlert('user')" (click)="clearFieldAlert('user')" placeholder="Ej. admin"
+                          autocomplete="off" />
+                      </div>
+                      @if (isFieldInvalid('user')) {
+                      <span class="premium-error-msg">Usuario de NX requerido.</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="premium-input-group">
+                      <label class="premium-input-label">Contraseña Servidor NX <span class="text-danger">*</span></label>
+                      <div class="input-icon-wrapper">
+                        <span class="icon-svg input-icon icon-input-prefix"
+                          [class.icon-lock]="!isFieldInvalid('password')"
+                          [class.icon-warning]="isFieldInvalid('password')"></span>
+                        <input [type]="showPassword() ? 'text' : 'password'"
+                          class="premium-input-control input-has-suffix"
+                          [class.is-invalid-warning]="isFieldInvalid('password')" formControlName="password"
+                          (focus)="clearFieldAlert('password')" (click)="clearFieldAlert('password')"
+                          placeholder="Ej. Contraseña de NX" />
+                        <button type="button" class="btn-field-icon-suffix transition-all"
+                          (click)="togglePasswordVisibility()" [title]="showPassword() ? 'Ocultar' : 'Mostrar'">
+                          <span class="icon-svg icon-input-prefix" [class.icon-eye]="showPassword()"
+                            [class.icon-eye-off]="!showPassword()"></span>
+                        </button>
+                      </div>
+                      @if (isFieldInvalid('password')) {
+                      <span class="premium-error-msg">Contraseña de NX requerida.</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Estado de conexión y descubrimiento -->
+                <div class="d-flex align-items-center justify-content-between mt-2 mb-2">
+                  <span class="small text-muted" style="font-size: 0.75rem;">Descubrimiento automático de cámaras
+                    NX</span>
+                  <div class="inline-probe-status d-flex align-items-center gap-2">
+                    @if (isProbing()) {
+                    <span class="probe-pill probing">
+                      <span class="spinner-border spinner-border-sm" role="status"></span>
+                      <span>Descubriendo cámaras...</span>
+                    </span>
+                    } @else if (probeStatus() === 'success') {
+                    <span class="probe-pill success">
+                      <span class="icon-svg icon-check"></span>
+                      <span>{{ nxCamerasList().length }} cámara(s) detectadas</span>
+                    </span>
+                    } @else if (probeStatus() === 'error') {
+                    <span class="probe-pill error">
+                      <span class="icon-svg icon-warning"></span>
+                      <span>Fallo de conexión</span>
+                      <button type="button" class="btn-probe-retry-link" (click)="retryProbe()"
+                        title="Reintentar">Reintentar</button>
+                    </span>
+                    }
+                  </div>
+                </div>
+
+                <div class="row g-2 mt-1">
+                  <div class="col-12">
+                    <div class="premium-input-group">
+                      <label class="premium-input-label">Stream URL RTSP</label>
+                      <div class="input-icon-wrapper">
+                        <span class="icon-svg input-icon icon-input-prefix icon-external-link"></span>
+                        <input type="text" class="premium-input-control font-monospace" formControlName="stream_url"
+                          (focus)="clearFieldAlert('stream_url')" (click)="clearFieldAlert('stream_url')"
+                          [title]="cameraForm.get('stream_url')?.value || ''"
+                          placeholder="rtsp://user:password@0.0.0.0:7001/00000000-0000-0000-0000-000000000000?stream=0&"
+                          autocomplete="off" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -389,49 +768,87 @@
               }
             </div>
 
-            <!-- BLOQUE 3: PROCESAMIENTO DE VIDEO (ANTERIORMENTE PUNTO 4) -->
+            <!-- BLOQUE 3: PROCESAMIENTO DE VIDEO -->
             <div class="form-section-card p-3 rounded-3"
-              [class.has-open-dropdown]="activeDropdown() === 'decoder' || activeDropdown() === 'resolution'">
+              [class.has-open-dropdown]="activeDropdown() === 'resolution' || activeDropdown() === 'ptzMode'">
               <h6 class="section-title d-flex align-items-center gap-2 mb-3">
                 <span class="section-num">3</span>
                 <span>Procesamiento de Video</span>
               </h6>
 
-              <div class="row g-3 video-processing-row align-items-start">
-                <!-- 1. Dropdown Decodificador (Primero) -->
-                <div class="col-12 col-md-4 decoder-col" [class.has-open-dropdown]="activeDropdown() === 'decoder'">
+              <!-- Fila 1: Selector Pill: Decodificador (OpenCV / FFmpeg) -->
+              <div class="row g-3 mb-3">
+                <div class="col-12">
+                  <div class="premium-input-group">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <label class="premium-input-label mb-0">
+                        Decodificador <span class="text-danger">*</span>
+                      </label>
+                      <span class="small text-muted font-monospace" style="font-size: 0.72rem;">
+                        {{ isFfmpegDecoder ? 'FFmpeg (Reescalado/FPS)' : 'OpenCV (Nativo)' }}
+                      </span>
+                    </div>
+                    <div
+                      class="media-toggle-pill-wrapper p-1 rounded-pill d-flex align-items-center gap-1 border shadow-xs">
+                      <button type="button"
+                        class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center py-1 px-3 rounded-pill transition-all"
+                        [class.active]="!isFfmpegDecoder" (click)="setDecoder('opencv')"
+                        title="Usar decodificador OpenCV nativo">
+                        <span class="fw-bold">OpenCV</span>
+                      </button>
+                      <button type="button"
+                        class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center py-1 px-3 rounded-pill transition-all"
+                        [class.active]="isFfmpegDecoder" (click)="setDecoder('ffmpeg')"
+                        title="Usar decodificador FFmpeg con reescalado y control de FPS">
+                        <span class="fw-bold">FFmpeg</span>
+                      </button>
+                    </div>
+                    <span class="form-hint-text">Motor de decodificación de video</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Fila 2: Trío FFmpeg (Resolución Forzada, FPS Forzado, Modo Compatibilidad) -->
+              @if (isFfmpegDecoder) {
+              <div class="row g-2 ffmpeg-controls-row mb-3"
+                [class.has-open-dropdown]="activeDropdown() === 'resolution'">
+                <!-- 1. Dropdown Resolución Forzada (col-12 col-md-4) -->
+                <div class="col-12 col-md-4 ffmpeg-field-col ffmpeg-col-resolution animate-fade-in"
+                  [class.has-open-dropdown]="activeDropdown() === 'resolution'">
                   <div class="premium-input-group position-relative"
-                    [class.has-open-dropdown]="activeDropdown() === 'decoder'">
-                    <label class="premium-input-label">
-                      Decodificador <span class="text-danger">*</span>
-                    </label>
+                    [class.has-open-dropdown]="activeDropdown() === 'resolution'">
+                    <label class="premium-input-label">Resolución Forzada</label>
                     <div class="filter-dropdown-wrapper w-100 position-relative"
-                      [class.is-dropdown-open]="activeDropdown() === 'decoder'">
+                      [class.is-dropdown-open]="activeDropdown() === 'resolution'">
                       <button type="button"
                         class="btn btn-filter-dropdown dropdown-field-trigger w-100 d-flex align-items-center justify-content-between gap-2"
-                        [class.is-invalid-warning]="isFieldInvalid('decoder')"
-                        (click)="toggleDropdown('decoder', $event); clearFieldAlert('decoder')">
+                        (click)="toggleDropdown('resolution', $event)">
                         <div class="d-flex align-items-center gap-2 text-truncate pe-1">
-                          <span class="icon-svg filter-icon flex-shrink-0 icon-input-prefix"
-                            [class.icon-refresh]="!isFieldInvalid('decoder')"
-                            [class.icon-warning]="isFieldInvalid('decoder')"></span>
-                          <span class="text-truncate" [class.text-muted]="!cameraForm.get('decoder')?.value">{{
-                            currentDecoderLabel }}</span>
+                          <span class="icon-svg icon-compact filter-icon flex-shrink-0 icon-input-prefix"></span>
+                          <span class="text-truncate"
+                            [class.text-muted]="!cameraForm.get('forced_resolution')?.value">{{
+                            currentResolutionLabel }}</span>
                         </div>
-                        <span
-                          class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 icon-dropdown-chevron"
-                          [class.rotated]="activeDropdown() === 'decoder'"></span>
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                          @if (cameraForm.get('forced_resolution')?.value) {
+                          <span role="button" class="clear-badge-btn" (click)="selectResolution('', $event)"
+                            title="Limpiar resolución">✕</span>
+                          }
+                          <span
+                            class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 icon-dropdown-chevron"
+                            [class.rotated]="activeDropdown() === 'resolution'"></span>
+                        </div>
                       </button>
 
-                      @if (activeDropdown() === 'decoder') {
+                      @if (activeDropdown() === 'resolution') {
                       <div class="filter-dropdown-menu modal-dropdown-menu dropup-menu w-100 p-2 shadow-lg"
                         (click)="$event.stopPropagation()">
-                        @for (dec of decoderOptions; track dec.value) {
-                        @let isSelected = cameraForm.get('decoder')?.value === dec.value;
+                        @for (opt of filteredResolutionOptions(); track opt.value) {
+                        @let isSelected = cameraForm.get('forced_resolution')?.value === opt.value;
                         <button type="button"
                           class="dropdown-item d-flex align-items-center justify-content-between py-2 px-2 rounded w-100 mb-1"
-                          [class.active]="isSelected" (click)="selectDecoder(dec.value, $event)">
-                          <span class="text-truncate fw-semibold" style="font-size: 0.8rem;">{{ dec.label }}</span>
+                          [class.active]="isSelected" (click)="selectResolution(opt.value, $event)">
+                          <span class="text-truncate fw-semibold" style="font-size: 0.8rem;">{{ opt.label }}</span>
                           @if (isSelected) {
                           <span class="icon-svg icon-check text-primary flex-shrink-0 icon-badge-check"></span>
                           }
@@ -440,104 +857,167 @@
                       </div>
                       }
                     </div>
-                    <span class="form-hint-text">Motor de decodificación</span>
+                    <span class="form-hint-text">Reescalado fijo del stream</span>
                   </div>
                 </div>
 
-                <!-- 2. Contenedor de Resolución y FPS (Aparecen con arrastre a la derecha solo con FFmpeg) -->
-                <div class="col-12 col-md-8 ffmpeg-fields-wrapper" [class.show-ffmpeg]="isFfmpegDecoder"
-                  [class.has-open-dropdown]="activeDropdown() === 'resolution'">
-                  <div class="row g-3 ffmpeg-fields-inner">
-                    <!-- 2. Dropdown Resolución Forzada -->
-                    <div class="col-12 col-md-6 ffmpeg-field-col ffmpeg-col-resolution"
-                      [class.has-open-dropdown]="activeDropdown() === 'resolution'">
-                      <div class="premium-input-group position-relative"
-                        [class.has-open-dropdown]="activeDropdown() === 'resolution'">
-                        <label class="premium-input-label">Resolución Forzada</label>
-                        <div class="filter-dropdown-wrapper w-100 position-relative"
-                          [class.is-dropdown-open]="activeDropdown() === 'resolution'">
-                          <button type="button"
-                            class="btn btn-filter-dropdown dropdown-field-trigger w-100 d-flex align-items-center justify-content-between gap-2"
-                            (click)="toggleDropdown('resolution', $event)">
-                            <div class="d-flex align-items-center gap-2 text-truncate pe-1">
-                              <span class="icon-svg icon-compact filter-icon flex-shrink-0 icon-input-prefix"></span>
-                              <span class="text-truncate"
-                                [class.text-muted]="!cameraForm.get('forced_resolution')?.value">{{
-                                currentResolutionLabel }}</span>
-                            </div>
-                            <div class="d-flex align-items-center gap-1.5 flex-shrink-0">
-                              @if (cameraForm.get('forced_resolution')?.value) {
-                              <span role="button" class="clear-badge-btn" (click)="selectResolution('', $event)"
-                                title="Limpiar resolución">✕</span>
-                              }
-                              <span
-                                class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 icon-dropdown-chevron"
-                                [class.rotated]="activeDropdown() === 'resolution'"></span>
-                            </div>
-                          </button>
-
-                          @if (activeDropdown() === 'resolution') {
-                          <div class="filter-dropdown-menu modal-dropdown-menu dropup-menu w-100 p-2 shadow-lg"
-                            (click)="$event.stopPropagation()">
-                            @for (opt of resolutionOptions; track opt.value) {
-                            @let isSelected = cameraForm.get('forced_resolution')?.value === opt.value;
-                            <button type="button"
-                              class="dropdown-item d-flex align-items-center justify-content-between py-2 px-2 rounded w-100 mb-1"
-                              [class.active]="isSelected" (click)="selectResolution(opt.value, $event)">
-                              <span class="text-truncate fw-semibold" style="font-size: 0.8rem;">{{ opt.label }}</span>
-                              @if (isSelected) {
-                              <span class="icon-svg icon-check text-primary flex-shrink-0 icon-badge-check"></span>
-                              }
-                            </button>
-                            }
-                          </div>
-                          }
-                        </div>
-                        <span class="form-hint-text">Reescalado fijo del stream</span>
-                      </div>
+                <!-- 2. FPS Forzado (col-12 col-md-4) -->
+                <div class="col-12 col-md-4 ffmpeg-field-col ffmpeg-col-fps animate-fade-in">
+                  <div class="premium-input-group">
+                    <label class="premium-input-label">FPS Forzado (1 - {{ maxAllowedFps() }})</label>
+                    <div class="input-icon-wrapper">
+                      <span class="icon-svg input-icon icon-input-prefix"
+                        [class.icon-activity]="!isFieldInvalid('forced_fps')"
+                        [class.icon-warning]="isFieldInvalid('forced_fps')"></span>
+                      <input type="number" step="1" class="premium-input-control"
+                        [class.is-invalid-warning]="isFieldInvalid('forced_fps')" formControlName="forced_fps"
+                        (focus)="clearFieldAlert('forced_fps')" (click)="clearFieldAlert('forced_fps')"
+                        (keydown)="onFpsKeydown($event)" (paste)="onFpsPaste($event)" placeholder="Ej. 15, 25 o 30"
+                        min="1" [max]="maxAllowedFps()" />
                     </div>
+                    @if (isFieldInvalid('forced_fps')) {
+                    <span class="premium-error-msg">Debe ser un valor entre 1 y {{ maxAllowedFps() }} FPS.</span>
+                    } @else if (activeOnvifProfile()) {
+                    <span class="form-hint-text text-primary">Máx. perfil: {{ maxAllowedFps() }} FPS</span>
+                    } @else {
+                    <span class="form-hint-text">Límite de cuadros/seg</span>
+                    }
+                  </div>
+                </div>
 
-                    <!-- 3. FPS Forzado -->
-                    <div class="col-12 col-md-6 ffmpeg-field-col ffmpeg-col-fps">
-                      <div class="premium-input-group">
-                        <label class="premium-input-label">FPS Forzado (5 - 15)</label>
-                        <div class="input-icon-wrapper">
-                          <span class="icon-svg input-icon icon-input-prefix"
-                            [class.icon-activity]="!isFieldInvalid('forced_fps')"
-                            [class.icon-warning]="isFieldInvalid('forced_fps')"></span>
-                          <input type="number" step="1" class="premium-input-control"
-                            [class.is-invalid-warning]="isFieldInvalid('forced_fps')" formControlName="forced_fps"
-                            (focus)="clearFieldAlert('forced_fps')" (click)="clearFieldAlert('forced_fps')"
-                            (keydown)="onFpsKeydown($event)" (paste)="onFpsPaste($event)" placeholder="Ej. 5, 10 o 15"
-                            min="5" max="15" />
-                        </div>
-                        @if (isFieldInvalid('forced_fps')) {
-                        <span class="premium-error-msg">La cifra ingresada no entra en el límite de 5 a 15 FPS.</span>
-                        }
-                        <span class="form-hint-text">Límite de cuadros/seg</span>
-                      </div>
+                <!-- 3. Modo Compatibilidad (col-12 col-md-4) -->
+                <div class="col-12 col-md-4 ffmpeg-field-col ffmpeg-col-compat animate-fade-in">
+                  <div class="premium-input-group">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <label class="premium-input-label mb-0">
+                        Modo Compatibilidad
+                      </label>
+                      <span class="small text-muted font-monospace" style="font-size: 0.72rem;">
+                        {{ isCompatibilityMode ? 'Activado' : 'Desactivado' }}
+                      </span>
                     </div>
+                    <div
+                      class="media-toggle-pill-wrapper p-1 rounded-pill d-flex align-items-center gap-1 border shadow-xs">
+                      <button type="button"
+                        class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center py-1 px-3 rounded-pill transition-all"
+                        [class.active]="!isCompatibilityMode" (click)="setCompatibilityMode(false)"
+                        title="Desactivar modo compatibilidad (No)">
+                        <span class="fw-bold">No</span>
+                      </button>
+                      <button type="button"
+                        class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center py-1 px-3 rounded-pill transition-all"
+                        [class.active]="isCompatibilityMode" (click)="setCompatibilityMode(true)"
+                        title="Activar modo compatibilidad (Sí)">
+                        <span class="fw-bold">Sí</span>
+                      </button>
+                    </div>
+                    <span class="form-hint-text">Timestamps irregulares</span>
                   </div>
                 </div>
               </div>
+              }
+
+              <!-- Fila 3: Opciones Avanzadas ONVIF (Modo PTZ y Proveedor de Detecciones - Solo en ONVIF y Modo Edición) -->
+              @if (currentStreamType === 'Onvif' && mode === 'edit') {
+              <div class="row g-2 onvif-advanced-controls-row pt-2"
+                [class.has-open-dropdown]="activeDropdown() === 'ptzMode'">
+
+                <!-- 1. Modo PTZ (col-12 col-md-6) -->
+                <div class="col-12 col-md-6 ptz-field-col" [class.has-open-dropdown]="activeDropdown() === 'ptzMode'">
+                  <div class="premium-input-group position-relative"
+                    [class.has-open-dropdown]="activeDropdown() === 'ptzMode'">
+                    <label class="premium-input-label">Modo PTZ</label>
+                    <div class="filter-dropdown-wrapper w-100 position-relative"
+                      [class.is-dropdown-open]="activeDropdown() === 'ptzMode'">
+                      <button type="button"
+                        class="btn btn-filter-dropdown dropdown-field-trigger w-100 d-flex align-items-center justify-content-between gap-2"
+                        (click)="toggleDropdown('ptzMode', $event)">
+                        <div class="d-flex align-items-center gap-2 text-truncate pe-1">
+                          <span class="icon-svg icon-activity filter-icon flex-shrink-0 icon-input-prefix"></span>
+                          <span class="text-truncate">{{ currentPtzModeLabel }}</span>
+                        </div>
+                        <span
+                          class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 icon-dropdown-chevron"
+                          [class.rotated]="activeDropdown() === 'ptzMode'"></span>
+                      </button>
+
+                      @if (activeDropdown() === 'ptzMode') {
+                      <div class="filter-dropdown-menu modal-dropdown-menu dropup-menu w-100 p-2 shadow-lg"
+                        (click)="$event.stopPropagation()">
+                        @for (ptz of ptzModeOptions; track ptz.value) {
+                        @let isSelected = cameraForm.get('ptz_mode')?.value === ptz.value;
+                        <button type="button"
+                          class="dropdown-item d-flex align-items-center justify-content-between py-2 px-2 rounded w-100 mb-1"
+                          [class.active]="isSelected" (click)="selectPtzMode(ptz.value, $event)">
+                          <div class="d-flex flex-column text-truncate pe-2">
+                            <span class="fw-semibold text-truncate" style="font-size: 0.8rem;">{{ ptz.label }}</span>
+                            <span class="text-muted small text-truncate" style="font-size: 0.7rem;">{{ ptz.description
+                              }}</span>
+                          </div>
+                          @if (isSelected) {
+                          <span class="icon-svg icon-check text-primary flex-shrink-0 icon-badge-check"></span>
+                          }
+                        </button>
+                        }
+                      </div>
+                      }
+                    </div>
+                    <span class="form-hint-text">Control de paneo, inclinación y zoom</span>
+                  </div>
+                </div>
+
+                <!-- 2. Proveedor de Detecciones (col-12 col-md-6) -->
+                <div class="col-12 col-md-6 proveedor-field-col">
+                  <div class="premium-input-group">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <label class="premium-input-label mb-0">
+                        Proveedor de Detecciones
+                      </label>
+                      <span class="small text-muted font-monospace" style="font-size: 0.72rem;">
+                        {{ currentProveedorDetecciones === 'servidor' ? 'Servidor IA' : 'Cámara On-Device' }}
+                      </span>
+                    </div>
+                    <div
+                      class="media-toggle-pill-wrapper p-1 rounded-pill d-flex align-items-center gap-1 border shadow-xs">
+                      <button type="button"
+                        class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center py-1 px-3 rounded-pill transition-all"
+                        [class.active]="currentProveedorDetecciones === 'servidor'"
+                        (click)="setProveedorDetecciones('servidor')"
+                        title="Detecciones procesadas por el servidor de analíticas">
+                        <span class="fw-bold">Servidor</span>
+                      </button>
+                      <button type="button"
+                        class="btn-media-toggle flex-fill d-flex align-items-center justify-content-center py-1 px-3 rounded-pill transition-all"
+                        [class.active]="currentProveedorDetecciones === 'camara'"
+                        (click)="setProveedorDetecciones('camara')"
+                        title="Detecciones procesadas en el chip nativo de la cámara">
+                        <span class="fw-bold">Cámara</span>
+                      </button>
+                    </div>
+                    <span class="form-hint-text">Origen del motor de analíticas</span>
+                  </div>
+                </div>
+
+              </div>
+              }
             </div>
 
           </div>
           <!-- Fin modal-column-left -->
 
           <!-- ════════════════════════════════════════════════════════
-           COLUMNA DERECHA: PUNTO 4 (GEOLOCALIZACIÓN Y MAPA)
+           COLUMNA DERECHA: PUNTO 4 (GEOLOCALIZACIÓN Y MAPA - SIN SCROLL)
            ════════════════════════════════════════════════════════ -->
-          <div class="modal-column-right d-flex flex-column gap-3">
+          <div class="modal-column-right d-flex flex-column">
 
             <!-- BLOQUE 4: GEOLOCALIZACIÓN (ANTERIORMENTE PUNTO 3) -->
-            <div class="form-section-card p-3 rounded-3 h-100 d-flex flex-column">
-              <h6 class="section-title d-flex align-items-center gap-2 mb-3">
+            <div class="form-section-card p-3 rounded-3 h-100 d-flex flex-column overflow-hidden">
+              <h6 class="section-title d-flex align-items-center gap-2 mb-2 flex-shrink-0">
                 <span class="section-num">4</span>
                 <span>Geolocalización</span>
               </h6>
 
-              <div class="row g-3 mb-3">
+              <div class="row g-2 mb-2 flex-shrink-0">
                 <div class="col-6">
                   <div class="premium-input-group">
                     <label class="premium-input-label">Latitud (lat) <span class="text-danger">*</span></label>
@@ -602,26 +1082,7 @@
         </div>
         <!-- Fin modal-columns-grid -->
       </div>
-      <!-- Fin modal-scroll-body -->
-
-      <!-- ════════════════════════════════════════════════════════
-           FOOTER DE ACCIONES DEL MODAL (ESTILO OFICIAL DE MODAL: 50% / 50%)
-           ════════════════════════════════════════════════════════ -->
-      <div class="modal-premium-actions d-flex align-items-center gap-3 w-100">
-        <button type="button" class="btn-modal-cancel flex-fill" (click)="onCancel()" [disabled]="isSubmitting()">
-          Cancelar
-        </button>
-        <button type="submit" class="btn-modal-confirm flex-fill" [disabled]="isSubmitting()">
-          @if (isSubmitting()) {
-          <span class="premium-button-spinner"></span>
-          <span>{{ mode === 'edit' ? 'Guardando cambios...' : 'Registrando cámara...' }}</span>
-          } @else {
-          <span class="icon-svg icon-btn-action" [class.icon-plus]="mode === 'create'"
-            [class.icon-check]="mode === 'edit'"></span>
-          <span>{{ mode === 'edit' ? 'Guardar Cambios' : 'Crear Cámara' }}</span>
-          }
-        </button>
-      </div>
+      <!-- Fin modal-body-container -->
 
     </form>
   </div>

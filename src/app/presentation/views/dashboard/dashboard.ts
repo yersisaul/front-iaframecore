@@ -7,8 +7,7 @@ import { EmptyStateComponent } from '../../shared/empty-state/empty-state.compon
 import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
 import { MediaUrlPipe } from '../../shared/pipes/media-url.pipe';
 import { IDashboardRepository } from '../../../core/domain/repositories/dashboard.repository';
-import { IStorageRepository } from '../../../core/domain/repositories/storage.repository';
-import { DashboardItem, DashboardMapper } from '../../../core/domain/entities/dashboard.models';
+import { DashboardItem, DashboardMapper, DashboardCreateRequest } from '../../../core/domain/entities/dashboard.models';
 import { DashboardService } from '../../../core/services/dashboard.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { MediaFileService } from '../../../core/services/media-file.service';
@@ -31,7 +30,6 @@ import { MetadataMapper } from '../../../data/mappers/metadata.mapper';
 export class Dashboard implements OnInit, OnDestroy {
   private sanitizer = inject(DomSanitizer);
   private dashboardRepo = inject(IDashboardRepository);
-  private storageRepo = inject(IStorageRepository);
   private mediaFileService = inject(MediaFileService);
   readonly dashboardService = inject(DashboardService);
   readonly permissionsService = inject(PermissionsService);
@@ -565,7 +563,7 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   /**
-   * Guarda o actualiza el dashboard (ejecuta primero el upload si hay imagen pendiente)
+   * Guarda o actualiza el dashboard enviando multipart/form-data al backend
    */
   saveDashboard(): void {
     const nombre = this.formNombre().trim();
@@ -607,44 +605,21 @@ export class Dashboard implements OnInit, OnDestroy {
     this.formError.set(null);
 
     const pendingFile = this.selectedImageFile();
-
-    // Tarea en serie 1: Subir imagen al endpoint /frontend/extra/upload/dashboard solo al confirmar guardar
-    if (pendingFile) {
-      this.storageRepo.uploadImage('dashboard', pendingFile).subscribe({
-        next: (uploadRes) => {
-          // uploadRes.url contiene el img_minio_object_name retornado por MinIO
-          const finalImgObjectName = uploadRes.url || null;
-          this.executeSaveDashboard(nombre, url, descripcion, finalImgObjectName);
-        },
-        error: (err) => {
-          console.error('Error al subir imagen del dashboard:', err);
-          this.formError.set(err?.error?.detail || 'Error al subir la imagen del dashboard. Intenta de nuevo.');
-          this.isSaving.set(false);
-        }
-      });
-    } else {
-      // Sin archivo nuevo: conservar el objeto previo (o null si fue removido)
-      const currentObjName = this.formImgMinioObjectName() ?? this.formUrlImg();
-      this.executeSaveDashboard(nombre, url, descripcion, currentObjName);
-    }
+    this.executeSaveDashboard(nombre, url, descripcion, pendingFile);
   }
 
   /**
-   * Tarea en serie 2: Persistir datos del dashboard con img_minio_object_name
+   * Persiste datos del dashboard en el backend (POST/PATCH con multipart/form-data)
    */
-  private executeSaveDashboard(nombre: string, url: string, descripcion: string, imgMinioObjectName: string | null): void {
+  private executeSaveDashboard(nombre: string, url: string, descripcion: string, file: File | null): void {
     if (this.isEditMode()) {
       const id = this.editingId()!;
-      const patchDto = DashboardMapper.toPatchDto({
-        dashboard_id: id,
+      const patchDto: Partial<DashboardCreateRequest> = {
         name: nombre,
-        nombre,
         url,
-        description: descripcion || null,
-        descripcion: descripcion || null,
-        img_minio_object_name: imgMinioObjectName,
-        url_img: imgMinioObjectName
-      });
+        description: descripcion || '',
+        ...(file ? { file } : {})
+      };
 
       this.dashboardRepo.patch(id, patchDto).subscribe({
         next: (updated) => {
@@ -663,15 +638,12 @@ export class Dashboard implements OnInit, OnDestroy {
         }
       });
     } else {
-      const createDto = DashboardMapper.toCreateDto({
+      const createDto: DashboardCreateRequest = {
         name: nombre,
-        nombre,
         url,
-        description: descripcion || null,
-        descripcion: descripcion || null,
-        img_minio_object_name: imgMinioObjectName,
-        url_img: imgMinioObjectName
-      });
+        description: descripcion || '',
+        file: file || null
+      };
 
       this.dashboardRepo.create(createDto).subscribe({
         next: (created) => {

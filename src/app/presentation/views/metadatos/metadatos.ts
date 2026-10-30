@@ -390,39 +390,39 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   readonly hasActiveFilters = computed<boolean>(() => {
     const f = this.filters();
     return f.camaras.length > 0 ||
-           f.tipoObjeto.length > 0 ||
-           f.edad.length > 0 ||
-           f.genero.length > 0 ||
-           f.reconocimiento.length > 0 ||
-           f.colores.length > 0 ||
-           f.posturas.length > 0 ||
-           f.confiabilidadMin > 0 ||
-           f.confiabilidadMax < 1 ||
-           f.timestampDesde !== null ||
-           f.timestampHasta !== null ||
-           Boolean(f.search && f.search.trim().length > 0) ||
-           (f.imageEmbedding !== null && f.imageEmbedding !== undefined) ||
-           (f.imageSearchUrl !== null && f.imageSearchUrl !== undefined) ||
-           f.coincidenciaFiltro !== 'all';
+      f.tipoObjeto.length > 0 ||
+      f.edad.length > 0 ||
+      f.genero.length > 0 ||
+      f.reconocimiento.length > 0 ||
+      f.colores.length > 0 ||
+      f.posturas.length > 0 ||
+      f.confiabilidadMin > 0 ||
+      f.confiabilidadMax < 1 ||
+      f.timestampDesde !== null ||
+      f.timestampHasta !== null ||
+      Boolean(f.search && f.search.trim().length > 0) ||
+      (f.imageEmbedding !== null && f.imageEmbedding !== undefined) ||
+      (f.imageSearchUrl !== null && f.imageSearchUrl !== undefined) ||
+      f.coincidenciaFiltro !== 'all';
   });
 
   readonly hasActiveTempFilters = computed<boolean>(() => {
     const f = this.tempFilters();
     return f.camaras.length > 0 ||
-           f.tipoObjeto.length > 0 ||
-           f.edad.length > 0 ||
-           f.genero.length > 0 ||
-           f.reconocimiento.length > 0 ||
-           f.colores.length > 0 ||
-           f.posturas.length > 0 ||
-           f.confiabilidadMin > 0 ||
-           f.confiabilidadMax < 1 ||
-           f.timestampDesde !== null ||
-           f.timestampHasta !== null ||
-           Boolean(f.search && f.search.trim().length > 0) ||
-           (f.imageEmbedding !== null && f.imageEmbedding !== undefined) ||
-           (f.imageSearchUrl !== null && f.imageSearchUrl !== undefined) ||
-           f.coincidenciaFiltro !== 'all';
+      f.tipoObjeto.length > 0 ||
+      f.edad.length > 0 ||
+      f.genero.length > 0 ||
+      f.reconocimiento.length > 0 ||
+      f.colores.length > 0 ||
+      f.posturas.length > 0 ||
+      f.confiabilidadMin > 0 ||
+      f.confiabilidadMax < 1 ||
+      f.timestampDesde !== null ||
+      f.timestampHasta !== null ||
+      Boolean(f.search && f.search.trim().length > 0) ||
+      (f.imageEmbedding !== null && f.imageEmbedding !== undefined) ||
+      (f.imageSearchUrl !== null && f.imageSearchUrl !== undefined) ||
+      f.coincidenciaFiltro !== 'all';
   });
 
   // True only when tempFilters differ from the currently applied filters (dirty state)
@@ -440,18 +440,18 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     };
 
     return !arraysEqual([...t.camaras].sort(), [...a.camaras].sort()) ||
-           !arraysEqual([...t.tipoObjeto].sort(), [...a.tipoObjeto].sort()) ||
-           !arraysEqual([...t.edad].sort(), [...a.edad].sort()) ||
-           !arraysEqual([...t.genero].sort(), [...a.genero].sort()) ||
-           !arraysEqual([...t.reconocimiento].sort(), [...a.reconocimiento].sort()) ||
-           !arraysEqual([...t.colores].sort(), [...a.colores].sort()) ||
-           !arraysEqual([...t.posturas].sort(), [...a.posturas].sort()) ||
-           t.confiabilidadMin !== a.confiabilidadMin ||
-           t.confiabilidadMax !== a.confiabilidadMax ||
-           !datesEqual(t.timestampDesde, a.timestampDesde) ||
-           !datesEqual(t.timestampHasta, a.timestampHasta) ||
-           (t.search || '') !== (a.search || '') ||
-           t.coincidenciaFiltro !== (a.coincidenciaFiltro || 'all');
+      !arraysEqual([...t.tipoObjeto].sort(), [...a.tipoObjeto].sort()) ||
+      !arraysEqual([...t.edad].sort(), [...a.edad].sort()) ||
+      !arraysEqual([...t.genero].sort(), [...a.genero].sort()) ||
+      !arraysEqual([...t.reconocimiento].sort(), [...a.reconocimiento].sort()) ||
+      !arraysEqual([...t.colores].sort(), [...a.colores].sort()) ||
+      !arraysEqual([...t.posturas].sort(), [...a.posturas].sort()) ||
+      t.confiabilidadMin !== a.confiabilidadMin ||
+      t.confiabilidadMax !== a.confiabilidadMax ||
+      !datesEqual(t.timestampDesde, a.timestampDesde) ||
+      !datesEqual(t.timestampHasta, a.timestampHasta) ||
+      (t.search || '') !== (a.search || '') ||
+      t.coincidenciaFiltro !== (a.coincidenciaFiltro || 'all');
   });
 
   // Responsive calculations
@@ -642,7 +642,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     if (containerWidth <= 0) return;
     const newCols = Math.max(1, Math.floor((containerWidth + 24) / (335 + 24)));
     const oldCols = this.columns();
-    
+
     if (newCols !== oldCols) {
       const currentSize = this.pageSize();
       let multiplier = Math.round(currentSize / oldCols);
@@ -955,7 +955,8 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      second: '2-digit'
     });
   }
 
@@ -1073,7 +1074,7 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
-      
+
       // Revocar el object URL anterior si existía para evitar fugas de memoria
       const prevUrl = this.tempFilters().imageSearchUrl;
       if (prevUrl && prevUrl.startsWith('blob:')) {

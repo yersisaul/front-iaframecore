@@ -160,7 +160,7 @@ export class ListService {
     };
     return this.listRepository.registerListDetail(detail, file).pipe(
       tap(registeredDetail => {
-        this.listDetails.update(current => [...current, registeredDetail]);
+        this.addOrUpdateListDetailLocal(registeredDetail);
         this.isLoading.set(false);
       }),
       catchError(err => {
@@ -183,7 +183,7 @@ export class ListService {
     };
     return this.listRepository.registerListDetail(detail, file).pipe(
       tap(registeredDetail => {
-        this.listDetails.update(current => [...current, registeredDetail]);
+        this.addOrUpdateListDetailLocal(registeredDetail);
         this.isLoading.set(false);
       }),
       catchError(err => {
@@ -248,7 +248,7 @@ export class ListService {
 
     return this.listRepository.registerListDetail(detail).pipe(
       tap(newDetail => {
-        this.listDetails.update(current => [...current, newDetail]);
+        this.addOrUpdateListDetailLocal(newDetail);
         this.isLoading.set(false);
       }),
       catchError(err => {

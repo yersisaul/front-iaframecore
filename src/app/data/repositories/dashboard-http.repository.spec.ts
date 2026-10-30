@@ -109,7 +109,11 @@ describe('DashboardHttpRepository', () => {
       expect(created.img_minio_object_name).toBe('images/dashboards/2026/10/19/ebfd7720-7495-4281-900c-61904a71ac76.png');
     });
 
-    expect(mockHttp.post).toHaveBeenCalledWith(`${baseUrl}/`, payload);
+    expect(mockHttp.post).toHaveBeenCalledWith(`${baseUrl}/`, expect.any(FormData));
+    const calledPostFormData = mockHttp.post.mock.calls[0][1] as FormData;
+    expect(calledPostFormData.get('name')).toBe('dsasad');
+    expect(calledPostFormData.get('url')).toBe('asd.com');
+    expect(calledPostFormData.get('description')).toBe('asd');
   });
 
   it('PUT /frontend/dashboards/{dashboard_id} - should update full dashboard via update()', () => {
@@ -138,7 +142,11 @@ describe('DashboardHttpRepository', () => {
       expect(updated.img_minio_object_name).toBe('dashboards/2024/06/15/updated.jpg');
     });
 
-    expect(mockHttp.put).toHaveBeenCalledWith(`${baseUrl}/${dashId}`, updatePayload);
+    expect(mockHttp.put).toHaveBeenCalledWith(`${baseUrl}/${dashId}`, expect.any(FormData));
+    const calledPutFormData = mockHttp.put.mock.calls[0][1] as FormData;
+    expect(calledPutFormData.get('name')).toBe('Dashboard Actualizado');
+    expect(calledPutFormData.get('url')).toBe('http://localhost:5601/frontend/dashboards/updated');
+    expect(calledPutFormData.get('description')).toBe('Nueva descripción');
   });
 
   it('PATCH /frontend/dashboards/{dashboard_id} - should partially update dashboard via patch()', () => {
@@ -162,7 +170,9 @@ describe('DashboardHttpRepository', () => {
       expect(updated.descripcion).toBe('Descripción editada parcialmente');
     });
 
-    expect(mockHttp.patch).toHaveBeenCalledWith(`${baseUrl}/${dashId}`, patchPayload);
+    expect(mockHttp.patch).toHaveBeenCalledWith(`${baseUrl}/${dashId}`, expect.any(FormData));
+    const calledPatchFormData = mockHttp.patch.mock.calls[0][1] as FormData;
+    expect(calledPatchFormData.get('description')).toBe('Descripción editada parcialmente');
   });
 
   it('DELETE /frontend/dashboards/{dashboard_id} - should delete dashboard', () => {

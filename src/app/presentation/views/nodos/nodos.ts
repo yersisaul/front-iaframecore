@@ -49,6 +49,9 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
   readonly hostToDelete = signal<Host | null>(null);
   readonly isDeletingHost = signal<boolean>(false);
 
+  // ── Hover activo para compatibilidad con Nx Witness (Qt WebEngine) ──────────
+  readonly hoveredHostId = signal<string | null>(null);
+
   openDeleteHostModal(host: Host, event?: Event): void {
     if (event) event.stopPropagation();
     this.hostToDelete.set(host);

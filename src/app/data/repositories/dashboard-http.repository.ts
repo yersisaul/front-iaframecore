@@ -25,20 +25,23 @@ export class DashboardHttpRepository implements IDashboardRepository {
     );
   }
 
-  create(data: DashboardCreateRequest): Observable<DashboardItem> {
-    return this.http.post<DashboardResponse>(`${this.baseUrl}/`, data).pipe(
+  create(data: DashboardCreateRequest | FormData): Observable<DashboardItem> {
+    const payload = data instanceof FormData ? data : DashboardMapper.toFormData(data);
+    return this.http.post<DashboardResponse>(`${this.baseUrl}/`, payload).pipe(
       map(DashboardMapper.toDomain)
     );
   }
 
-  update(id: string, data: DashboardUpdateRequest): Observable<DashboardItem> {
-    return this.http.put<DashboardResponse>(`${this.baseUrl}/${id}`, data).pipe(
+  update(id: string, data: DashboardUpdateRequest | FormData): Observable<DashboardItem> {
+    const payload = data instanceof FormData ? data : DashboardMapper.toFormData(data);
+    return this.http.put<DashboardResponse>(`${this.baseUrl}/${id}`, payload).pipe(
       map(DashboardMapper.toDomain)
     );
   }
 
-  patch(id: string, data: Partial<DashboardCreateRequest>): Observable<DashboardItem> {
-    return this.http.patch<DashboardResponse>(`${this.baseUrl}/${id}`, data).pipe(
+  patch(id: string, data: Partial<DashboardCreateRequest> | FormData): Observable<DashboardItem> {
+    const payload = data instanceof FormData ? data : DashboardMapper.toPatchFormData(data);
+    return this.http.patch<DashboardResponse>(`${this.baseUrl}/${id}`, payload).pipe(
       map(DashboardMapper.toDomain)
     );
   }

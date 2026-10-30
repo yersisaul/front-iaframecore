@@ -957,6 +957,17 @@
       <!-- PASO 1: PREPARACIÓN -->
       @if (faceImportStep() === 'prepare') {
       <div class="modal-body-custom">
+        @if (skippedExistingFilesCount() > 0) {
+        <div class="alert alert-warning py-2 px-3 rounded-3 extra-small d-flex align-items-center justify-content-between mb-3 border border-warning-subtle"
+          style="background-color: rgba(var(--bs-warning-rgb), 0.12); font-size: 0.78rem;">
+          <div class="d-flex align-items-center gap-2">
+            <span class="icon-svg icon-alert flex-shrink-0 text-warning" style="width: 16px; height: 16px;"></span>
+            <span>Se omitieron <strong>{{ skippedExistingFilesCount() }}</strong> foto(s) porque ya están registradas en esta lista de control.</span>
+          </div>
+          <button type="button" class="btn-close" style="font-size: 0.6rem;" (click)="skippedExistingFilesCount.set(0)"></button>
+        </div>
+        }
+
         <!-- Zona de Carga con Drag & Drop -->
         <div class="mb-4">
           <div

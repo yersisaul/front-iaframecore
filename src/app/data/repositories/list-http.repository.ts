@@ -396,17 +396,6 @@ export class ListHttpRepository implements IListRepository {
         if (err.status === 422) {
           console.error('[ListRepo] registerListDetail 422 — validation detail:', JSON.stringify(err?.error?.detail));
         }
-        if (AppEnvironment.enableBackendWorkarounds && err.status === 500) {
-          console.warn('[BACKEND-WORKAROUND] registerListDetail returned status 500. Simulating success with a temporary ID.', err);
-          return of({
-            detail_id: detail.detail_id || 'temp-id-' + Math.random().toString(36).substring(2, 11),
-            list_id: detail.list_id || '',
-            nombre_asociado: detail.nombre_asociado || '',
-            fingerprint_host: detail.fingerprint_host || '',
-            embedding: detail.embedding || [],
-            metadata: detail.metadata || {}
-          } as ListDetail);
-        }
         throw err;
       })
     );

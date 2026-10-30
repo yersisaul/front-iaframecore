@@ -18,6 +18,7 @@ import { Camera } from '../../../core/domain/entities/camera.models';
 import { Host } from '../../../core/domain/entities/host.models';
 import { ReliabilityAlert, alertRelatesToHost } from '../../../core/domain/entities/reliability-alert.models';
 import { ReliabilityAlertService } from '../../../core/services/reliability-alert.service';
+import { NxWitnessApiService } from '../../../core/services/nx-witness-api.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
@@ -51,6 +52,12 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
   private listService = inject(ListService);
   private reliabilityAlertService = inject(ReliabilityAlertService);
   public permissionsService = inject(PermissionsService);
+  private nxWitnessService = inject(NxWitnessApiService);
+
+  readonly isInNxBrowser = this.nxWitnessService.isInNxBrowser;
+
+  // ── Hover activo para compatibilidad con Nx Witness (Qt WebEngine) ──────────
+  readonly hoveredCameraId = signal<string | null>(null);
 
   @ViewChild('camerasContainer', { static: false }) camerasContainer!: ElementRef<HTMLDivElement>;
 
@@ -1393,18 +1400,32 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
         this.isEditingCamera.set(false);
       },
       error: (err) => {
-        // El backend puede retornar 500 incluso cuando la operación se completó exitosamente.
-        // Solo mostramos alerta si es un error real del cliente (4xx).
-        if (err?.status >= 400 && err?.status < 500) {
-          console.error('Error updating camera:', err);
-          alert('Error al guardar la información de la cámara. Por favor, intente de nuevo.');
-        } else {
-          // 5xx: la operación se aplicó en el backend, tratamos como éxito
-          console.warn('[camaras] update 5xx swallowed, reloading cameras:', err?.status);
-          this.isEditingCamera.set(false);
-        }
+        console.error('Error updating camera:', err);
+        alert(err?.error?.detail || 'Error al guardar la información de la cámara. Por favor, intente de nuevo.');
       }
     });
+  }
+
+  // ── Nx Witness Integration ──────────────────────────────────────────────────
+  canOpenInNx(camera: Camera): boolean {
+    if (!this.isInNxBrowser() || !camera) {
+      return false;
+    }
+    return !!camera.nxId;
+  }
+
+  async openInNx(camera: Camera, event?: Event): Promise<void> {
+    if (event) {
+      event.stopPropagation();
+    }
+    if (!camera?.nxId) {
+      console.warn('[Camaras] La cámara no tiene nxId asociado:', camera);
+      return;
+    }
+    const result = await this.nxWitnessService.openCamera(camera.nxId, camera.name);
+    if (!result.ok && result.message) {
+      console.warn('[Camaras] Error al abrir cámara en Nx Witness:', result.message);
+    }
   }
 
   openDeleteModal(camera: Camera, event?: Event): void {
@@ -1430,19 +1451,9 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
         this.closeAiPanel();
       },
       error: (err) => {
-        // El backend puede retornar 500 incluso cuando el delete se completó exitosamente.
-        // Solo mostramos alerta si es un error real del cliente (4xx).
-        if (err?.status >= 400 && err?.status < 500) {
-          console.error('Error deleting camera:', err);
-          this.isDeletingCamera.set(false);
-          alert('Error al eliminar la cámara. Por favor, intente de nuevo.');
-        } else {
-          // 5xx: la cámara se eliminó en el backend, tratamos como éxito
-          console.warn('[camaras] delete 5xx swallowed, closing modal:', err?.status);
-          this.isDeletingCamera.set(false);
-          this.closeDeleteModal();
-          this.closeAiPanel();
-        }
+        console.error('Error deleting camera:', err);
+        this.isDeletingCamera.set(false);
+        alert(err?.error?.detail || 'Error al eliminar la cámara. Por favor, intente de nuevo.');
       }
     });
   }
@@ -1944,6 +1955,8 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       { header: 'Nombre de Cámara', key: 'name' },
       { header: 'ID Cámara', key: 'id' },
       { header: 'NX ID', key: 'nxId' },
+      { header: 'Modo PTZ', key: 'ptzMode' },
+      { header: 'Perfil ONVIF', key: 'selectedProfileToken' },
       { header: 'Nodo', key: 'hostName' },
       { header: 'IP del Nodo', key: 'hostIp' },
       { header: 'Fingerprint Nodo', key: 'hostFingerprint' },
@@ -1957,19 +1970,20 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const data = this.filteredCameras().map(c => {
       const isOnline = this.isCameraOnline(c);
       const analytics = this.getAnalyticsForCamera(c.id).map(a => this.getAnalyticLabel(a.type)).join(', ');
-      const isNxCodec = (c.decoder || '').toLowerCase().includes('nx') || (c.streamType || '').toLowerCase().includes('nx');
       return {
         status: isOnline ? 'Online' : 'Offline',
         name: c.name,
         id: c.id,
-        nxId: (c.nxId && isNxCodec) ? c.nxId : 'N/A',
+        nxId: c.nxId || 'N/A',
+        ptzMode: c.ptzMode ? c.ptzMode.toUpperCase() : 'AUTO',
+        selectedProfileToken: c.selectedProfileToken || 'N/A',
         hostName: this.getHostName(c.hostFingerprint),
         hostIp: this.getHostIp(c.hostFingerprint),
         hostFingerprint: c.hostFingerprint,
-        streamType: c.streamType.toUpperCase(),
-        decoder: c.decoder.toUpperCase(),
-        lat: c.location.lat,
-        lon: c.location.lon,
+        streamType: (c.streamType || '').toUpperCase(),
+        decoder: (c.decoder || '').toUpperCase(),
+        lat: c.location?.lat ?? '',
+        lon: c.location?.lon ?? '',
         analytics: analytics || 'Ninguna'
       };
     });
@@ -1985,6 +1999,8 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
       { header: 'Nombre de Cámara', key: 'name' },
       { header: 'ID Cámara', key: 'id' },
       { header: 'NX ID', key: 'nxId' },
+      { header: 'Modo PTZ', key: 'ptzMode' },
+      { header: 'Perfil ONVIF', key: 'selectedProfileToken' },
       { header: 'Nodo', key: 'hostName' },
       { header: 'IP del Nodo', key: 'hostIp' },
       { header: 'Fingerprint Nodo', key: 'hostFingerprint' },
@@ -1998,19 +2014,20 @@ export class Camaras implements OnInit, OnDestroy, AfterViewInit {
     const data = this.filteredCameras().map(c => {
       const isOnline = this.isCameraOnline(c);
       const analytics = this.getAnalyticsForCamera(c.id).map(a => this.getAnalyticLabel(a.type)).join(', ');
-      const isNxCodec = (c.decoder || '').toLowerCase().includes('nx') || (c.streamType || '').toLowerCase().includes('nx');
       return {
         status: isOnline ? 'Online' : 'Offline',
         name: c.name,
         id: c.id,
-        nxId: (c.nxId && isNxCodec) ? c.nxId : 'N/A',
+        nxId: c.nxId || 'N/A',
+        ptzMode: c.ptzMode ? c.ptzMode.toUpperCase() : 'AUTO',
+        selectedProfileToken: c.selectedProfileToken || 'N/A',
         hostName: this.getHostName(c.hostFingerprint),
         hostIp: this.getHostIp(c.hostFingerprint),
         hostFingerprint: c.hostFingerprint,
-        streamType: c.streamType.toUpperCase(),
-        decoder: c.decoder.toUpperCase(),
-        lat: c.location.lat,
-        lon: c.location.lon,
+        streamType: (c.streamType || '').toUpperCase(),
+        decoder: (c.decoder || '').toUpperCase(),
+        lat: c.location?.lat ?? '',
+        lon: c.location?.lon ?? '',
         analytics: analytics || 'Ninguna'
       };
     });

@@ -90,4 +90,30 @@ describe('DashboardMapper', () => {
     expect(patchDto.name).toBeUndefined();
     expect(patchDto.url).toBeUndefined();
   });
+
+  it('should generate FormData correctly for POST/PUT requests', () => {
+    const data = {
+      name: 'Dashboard Prueba',
+      url: 'http://test.url',
+      description: 'Mi descripción'
+    };
+
+    const formData = DashboardMapper.toFormData(data);
+
+    expect(formData.get('name')).toBe('Dashboard Prueba');
+    expect(formData.get('url')).toBe('http://test.url');
+    expect(formData.get('description')).toBe('Mi descripción');
+  });
+
+  it('should default empty description in FormData to empty string instead of null', () => {
+    const data = {
+      name: 'Dashboard Sin Desc',
+      url: 'http://test.url',
+      description: null
+    };
+
+    const formData = DashboardMapper.toFormData(data);
+
+    expect(formData.get('description')).toBe('');
+  });
 });
