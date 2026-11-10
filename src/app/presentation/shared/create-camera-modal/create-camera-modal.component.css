@@ -935,6 +935,140 @@ input[type="number"] {
   box-shadow: 0 0 0.375rem rgba(16, 185, 129, 0.5);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   SELECTOR DE NODO (DROPDOWN-HOST) - AJUSTE EXTERIOR E INTERIOR
+   ══════════════════════════════════════════════════════════════ */
+.modal-dropdown-menu.dropdown-host {
+  left: 0 !important;
+  right: auto !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  padding: 0.375rem !important;
+}
+
+@media (max-width: 62rem) {
+  .modal-dropdown-menu.dropdown-host {
+    left: 0 !important;
+    right: auto !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+.modal-dropdown-menu.dropdown-host .dropdown-search-header {
+  flex-shrink: 0;
+  padding: 0.25rem;
+}
+
+:host-context([data-bs-theme="dark"]) .modal-dropdown-menu.dropdown-host .dropdown-search-header,
+:host-context([data-theme="dark"]) .modal-dropdown-menu.dropdown-host .dropdown-search-header,
+:host-context(.dark) .modal-dropdown-menu.dropdown-host .dropdown-search-header {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.modal-dropdown-menu.dropdown-host .dropdown-items-scroll {
+  flex: 1 1 auto;
+  max-height: min(13.75rem, 28vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.host-dropdown-item {
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.host-dropdown-item:hover {
+  transform: translateX(1px);
+}
+
+/* ── Camera Count Badge / Tag por Nodo ── */
+.camera-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  font-size: 0.7rem;
+  padding: 0.125rem 0.4375rem;
+  border-radius: 1.25rem;
+  font-weight: 600;
+  background: var(--bg-filter-cell, rgba(0, 0, 0, 0.04));
+  color: var(--text-muted, #64748b);
+  border: 1px solid var(--border-color, #cbd5e1);
+  white-space: nowrap;
+  line-height: 1.2;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.camera-badge-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  background-color: var(--text-muted, #64748b);
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.camera-count-num {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.camera-count-badge.has-cameras {
+  background: rgba(43, 127, 255, 0.09);
+  color: var(--primary, #2563eb);
+  border-color: rgba(43, 127, 255, 0.25);
+}
+
+.camera-count-badge.has-cameras .camera-badge-icon {
+  background-color: var(--primary, #2563eb);
+}
+
+:host-context([data-bs-theme="dark"]) .camera-count-badge,
+:host-context([data-theme="dark"]) .camera-count-badge,
+:host-context(.dark) .camera-count-badge {
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:host-context([data-bs-theme="dark"]) .camera-count-badge .camera-badge-icon,
+:host-context([data-theme="dark"]) .camera-count-badge .camera-badge-icon,
+:host-context(.dark) .camera-count-badge .camera-badge-icon {
+  background-color: #94a3b8;
+}
+
+:host-context([data-bs-theme="dark"]) .camera-count-badge.has-cameras,
+:host-context([data-theme="dark"]) .camera-count-badge.has-cameras,
+:host-context(.dark) .camera-count-badge.has-cameras {
+  background: rgba(43, 127, 255, 0.18);
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.32);
+}
+
+:host-context([data-bs-theme="dark"]) .camera-count-badge.has-cameras .camera-badge-icon,
+:host-context([data-theme="dark"]) .camera-count-badge.has-cameras .camera-badge-icon,
+:host-context(.dark) .camera-count-badge.has-cameras .camera-badge-icon {
+  background-color: #60a5fa;
+}
+
+.host-dropdown-item.active .camera-count-badge {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.host-dropdown-item.active .camera-count-badge.has-cameras {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.host-dropdown-item.active .camera-count-badge.has-cameras .camera-badge-icon {
+  background-color: #ffffff;
+}
+
 /* Campos ONVIF y NX */
 .onvif-fields-wrapper,
 .nx-fields-wrapper {
@@ -1194,6 +1328,7 @@ input[type="number"] {
     opacity: 0;
     transform: translateY(-0.25rem);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1612,10 +1747,14 @@ input[type="number"] {
 }
 
 @keyframes nxDropdownMarquee {
-  0%, 15% {
+
+  0%,
+  15% {
     transform: translate3d(0, 0, 0);
   }
-  85%, 100% {
+
+  85%,
+  100% {
     transform: translate3d(var(--nx-marquee-shift, -20px), 0, 0);
   }
 }

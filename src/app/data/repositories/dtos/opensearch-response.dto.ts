@@ -53,7 +53,7 @@ export interface OsBaseDocDto {
   camara_id?: string;
   camara_id_nx?: string;
   timestamp: string;
-  timestamp_real?: number | string;
+  timestamp_real?: string;
   confiabilidad: number;
   img_minio_object_name?: string;
   video_minio_object_name?: string;

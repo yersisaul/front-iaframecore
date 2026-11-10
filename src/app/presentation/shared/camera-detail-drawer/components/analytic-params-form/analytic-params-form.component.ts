@@ -124,7 +124,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
   readonly tiempoComportamiento = signal<number>(3);
   readonly condicionEventoComportamiento = signal<string>('Cumple');
   readonly confianzaPostura = signal<number>(0.6);
-  readonly confianzaRF = signal<number>(0.4);
+  readonly confianzaRF = signal<number>(49);
   readonly nDeteccionesRF = signal<number>(3);
   readonly nReconocimientosRF = signal<number>(1);
   readonly aforoMaximo = signal<number>(20);
@@ -576,7 +576,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
       case 'list_id':
         return (sel === 'face_recognition' || sel === 'license_plate_recognition') && this.selectedListIds().length === 0;
       case 'confianza_rf':
-        return sel === 'face_recognition' && (this.confianzaRF() < 0.25 || this.confianzaRF() > 0.85);
+        return sel === 'face_recognition' && (this.confianzaRF() < 0 || this.confianzaRF() > 100);
       case 'n_detecciones_rf':
         return sel === 'face_recognition' && (this.nDeteccionesRF() < 1 || this.nDeteccionesRF() > 5);
       case 'n_reconocimientos_rf':
@@ -701,8 +701,8 @@ export class AnalyticParamsFormComponent implements OnChanges {
       if (this.selectedListIds().length === 0) {
         return { valid: false, target: 'list_id', message: 'Debes seleccionar al menos una Lista de Control Facial para continuar.' };
       }
-      if (this.confianzaRF() < 0.25 || this.confianzaRF() > 0.85) {
-        return { valid: false, target: 'confianza_rf', message: 'Umbral de Similitud Facial debe estar entre 0.25 y 0.85.' };
+      if (this.confianzaRF() < 0 || this.confianzaRF() > 100) {
+        return { valid: false, target: 'confianza_rf', message: 'Umbral de Similitud Facial debe estar entre 0 y 100.' };
       }
       if (this.nDeteccionesRF() < 1 || this.nDeteccionesRF() > 5) {
         return { valid: false, target: 'n_detecciones_rf', message: 'Filtro de Detecciones Previas debe estar entre 1 y 5.' };
@@ -1482,7 +1482,11 @@ export class AnalyticParamsFormComponent implements OnChanges {
     if (params['pose_estimation_model'] !== undefined) this.poseEstimationModel.set(params['pose_estimation_model']);
     if (params['condicion_evento'] !== undefined) this.condicionEventoComportamiento.set(params['condicion_evento']);
     if (params['confianza_postura'] !== undefined) this.confianzaPostura.set(Number(params['confianza_postura']));
-    if (params['confianza'] !== undefined) this.confianzaRF.set(Number(params['confianza']));
+    if (params['confianza'] !== undefined && params['confianza'] !== null) {
+      const rawConf = Number(params['confianza']);
+      const pct = Math.min(100, Math.max(0, Math.round((rawConf / 0.57) * 100)));
+      this.confianzaRF.set(pct);
+    }
     if (params['n_reconocimientos'] !== undefined) this.nReconocimientosRF.set(Number(params['n_reconocimientos']));
     if (params['Aforo'] !== undefined) this.aforoMaximo.set(Number(params['Aforo']));
     if (params['Aforo actual'] !== undefined) this.aforoActual.set(Number(params['Aforo actual']));
@@ -1704,7 +1708,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
       specificParams['confianza_postura'] = this.confianzaPostura();
     } else if (selType === 'face_recognition') {
       specificParams['Modelo'] = 'dependencias/weights/face_detection/yolov8n-face-5keypoints.pt';
-      specificParams['confianza'] = this.confianzaRF();
+      specificParams['confianza'] = Number(((this.confianzaRF() / 100) * 0.57).toFixed(4));
       specificParams['N_Detecciones'] = this.nDeteccionesRF();
       specificParams['n_reconocimientos'] = this.nReconocimientosRF();
     } else if (selType === 'license_plate_recognition') {

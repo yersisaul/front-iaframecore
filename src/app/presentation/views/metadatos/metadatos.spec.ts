@@ -118,8 +118,8 @@ describe('Metadatos', () => {
     // Sin timestampReal ni timestamp -> false
     expect(component.canOpenInNx({ camaraIdNx: 'cam-1', timestampReal: undefined, timestamp: undefined })).toBe(false);
 
-    // Sin timestampReal pero con fallback a Date timestamp -> true
-    expect(component.canOpenInNx({ camaraIdNx: 'cam-1', timestampReal: undefined, timestamp: new Date(1729353012000) })).toBe(true);
+    // Sin timestampReal (aunque tenga Date timestamp, NO hay fallback) -> false
+    expect(component.canOpenInNx({ camaraIdNx: 'cam-1', timestampReal: undefined, timestamp: new Date(1729353012000) })).toBe(false);
 
     // Sin camaraIdNx ni cámara en sistema
     expect(component.canOpenInNx({ camaraIdNx: '', timestampReal: 1729353012000 })).toBe(false);

@@ -188,7 +188,7 @@
             [class.rotated]="activeDropdown() === 'status'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'status') {
-        <div class="filter-dropdown-menu dropdown-status" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-status scrollable-menu" (click)="$event.stopPropagation()">
           @if (filterOptions().status.length === 0) {
           <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }
@@ -274,7 +274,7 @@
             [class.rotated]="activeDropdown() === 'streamType'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'streamType') {
-        <div class="filter-dropdown-menu dropdown-streamType" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-streamType scrollable-menu" (click)="$event.stopPropagation()">
           @if (filterOptions().streamType.length === 0) {
           <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }
@@ -302,7 +302,7 @@
             [class.rotated]="activeDropdown() === 'decoder'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'decoder') {
-        <div class="filter-dropdown-menu dropdown-decoder" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-decoder scrollable-menu" (click)="$event.stopPropagation()">
           @if (filterOptions().decoder.length === 0) {
           <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }

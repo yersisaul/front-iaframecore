@@ -1157,17 +1157,9 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     return !!nxId && tsMs !== undefined;
   }
 
-  private getRecordTimestampMs(record: { timestampReal?: number; timestamp?: Date | string }): number | undefined {
+  private getRecordTimestampMs(record: { timestampReal?: number }): number | undefined {
     if (typeof record.timestampReal === 'number' && Number.isFinite(record.timestampReal) && record.timestampReal > 0) {
       return record.timestampReal;
-    }
-    if (record.timestamp instanceof Date) {
-      const ms = record.timestamp.getTime();
-      return isNaN(ms) ? undefined : ms;
-    }
-    if (typeof record.timestamp === 'string' && record.timestamp.trim()) {
-      const ms = new Date(record.timestamp).getTime();
-      return isNaN(ms) ? undefined : ms;
     }
     return undefined;
   }
@@ -1201,6 +1193,10 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
     const tsMs = this.getRecordTimestampMs(record);
+    if (tsMs === undefined) {
+      console.warn('[Eventos] No se puede abrir en Nx: el registro no cuenta con un timestamp_real válido.');
+      return;
+    }
     const result = await this.nxWitnessService.openCamera(nxId, record.nombreCamara, tsMs);
     if (!result.ok && result.message) {
       console.warn('[Eventos] Error al abrir cámara en Nx Witness:', result.message);

@@ -1,5 +1,5 @@
 <div class="custom-select-wrapper position-relative d-inline-block" [class.is-open]="isOpen()"
-  [class.is-disabled]="disabled">
+  [class.is-disabled]="disabled" [class.open-upward]="openUpward()">
   <!-- Trigger Pill Button -->
   <button type="button" class="custom-select-trigger d-flex align-items-center justify-content-between gap-2 shadow-sm"
     [class.size-sm]="size === 'sm'" [class.size-md]="size === 'md'" [class.size-lg]="size === 'lg'"
@@ -10,7 +10,9 @@
 
   <!-- Dropdown Menu (Replicando el diseño idéntico de los otros dropdowns de la app) -->
   @if (isOpen()) {
-  <div class="filter-dropdown-menu custom-select-menu p-1 shadow-lg animation-popover-in"
+  <div class="filter-dropdown-menu custom-select-menu p-1 shadow-lg"
+    [class.menu-upward]="openUpward()"
+    [class.animation-popover-in]="!openUpward()"
     (click)="$event.stopPropagation()">
     <div class="custom-select-menu-inner">
       @for (opt of normalizedOptions(); track opt.value) {

@@ -47,6 +47,10 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   readonly isNxOpening = this.nxWitnessService.isOpening;
   readonly hoveredCardId = signal<string | null>(null);
 
+  // Estado del modal de imagen en pantalla completa (Lightbox)
+  readonly previewImageRecord = signal<MetaRecord | null>(null);
+  readonly previewAspectRatio = signal<number | null>(null);
+
   // Watchlist Modal Integration
   readonly showAddToWatchlistModal = signal<boolean>(false);
   readonly selectedRecordForWatchlist = signal<any | null>(null);
@@ -1199,17 +1203,9 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     return !!nxId && tsMs !== undefined;
   }
 
-  private getRecordTimestampMs(record: { timestampReal?: number; timestamp?: Date | string }): number | undefined {
+  private getRecordTimestampMs(record: { timestampReal?: number }): number | undefined {
     if (typeof record.timestampReal === 'number' && Number.isFinite(record.timestampReal) && record.timestampReal > 0) {
       return record.timestampReal;
-    }
-    if (record.timestamp instanceof Date) {
-      const ms = record.timestamp.getTime();
-      return isNaN(ms) ? undefined : ms;
-    }
-    if (typeof record.timestamp === 'string' && record.timestamp.trim()) {
-      const ms = new Date(record.timestamp).getTime();
-      return isNaN(ms) ? undefined : ms;
     }
     return undefined;
   }
@@ -1243,9 +1239,46 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
     const tsMs = this.getRecordTimestampMs(record);
+    if (tsMs === undefined) {
+      console.warn('[Metadatos] No se puede abrir en Nx: el registro no cuenta con un timestamp_real válido.');
+      return;
+    }
     const result = await this.nxWitnessService.openCamera(nxId, record.camara, tsMs);
     if (!result.ok && result.message) {
       console.warn('[Metadatos] Error al abrir cámara en Nx Witness:', result.message);
+    }
+  }
+
+  // ── Modal de Imagen en Pantalla Completa (Lightbox) ──
+  openImagePreviewModal(record: MetaRecord, event?: Event): void {
+    let initialAspect: number | null = null;
+    if (event && event.currentTarget) {
+      const btn = event.currentTarget as HTMLElement;
+      const cardImg = btn.closest('.card-img-wrapper')?.querySelector('img') as HTMLImageElement | null;
+      if (cardImg && cardImg.naturalWidth && cardImg.naturalHeight) {
+        initialAspect = cardImg.naturalWidth / cardImg.naturalHeight;
+      }
+    }
+    this.previewAspectRatio.set(initialAspect);
+    this.previewImageRecord.set(record);
+  }
+
+  closeImagePreviewModal(): void {
+    this.previewImageRecord.set(null);
+    this.previewAspectRatio.set(null);
+  }
+
+  onPreviewImageLoaded(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    if (img && img.naturalWidth && img.naturalHeight) {
+      this.previewAspectRatio.set(img.naturalWidth / img.naturalHeight);
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKeyDown(): void {
+    if (this.previewImageRecord()) {
+      this.closeImagePreviewModal();
     }
   }
 }

@@ -105,7 +105,7 @@
             [class.rotated]="activeDropdown() === 'status'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'status') {
-        <div class="filter-dropdown-menu dropdown-status p-2" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-status p-2 scrollable-menu" (click)="$event.stopPropagation()">
           @if (filterOptions().status.length === 0) {
           <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }
@@ -142,7 +142,7 @@
             [class.rotated]="activeDropdown() === 'os'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'os') {
-        <div class="filter-dropdown-menu dropdown-os p-2" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-os p-2 scrollable-menu" (click)="$event.stopPropagation()">
           @if (filterOptions().os.length === 0) {
           <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }
@@ -171,7 +171,7 @@
             [class.rotated]="activeDropdown() === 'arch'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'arch') {
-        <div class="filter-dropdown-menu dropdown-arch p-2" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-arch p-2 scrollable-menu" (click)="$event.stopPropagation()">
           @if (filterOptions().arch.length === 0) {
           <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }
@@ -200,16 +200,16 @@
             [class.rotated]="activeDropdown() === 'gpu'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'gpu') {
-        <div class="filter-dropdown-menu dropdown-gpu p-2" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-gpu p-2 scrollable-menu" (click)="$event.stopPropagation()">
           @if (filterOptions().gpu.length === 0) {
           <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }
           @for (gpu of filterOptions().gpu; track gpu) {
           @let isSelected = tempFilterGPU().includes(gpu);
           <button type="button"
-            class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center justify-content-between"
-            [class.active]="isSelected" (click)="toggleFilterValue('gpu', gpu, $event)">
-            <span>{{ gpu }}</span>
+            class="dropdown-item py-1.5 px-3 rounded d-flex align-items-center justify-content-between gap-2"
+            [class.active]="isSelected" (click)="toggleFilterValue('gpu', gpu, $event)" [title]="gpu">
+            <span class="text-truncate">{{ gpu }}</span>
             @if (isSelected) {
             <span class="icon-svg icon-check text-primary flex-shrink-0" style="width: 12px; height: 12px;"></span>
             }
@@ -229,7 +229,7 @@
             [class.rotated]="activeDropdown() === 'vram'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'vram') {
-        <div class="filter-dropdown-menu dropdown-vram p-2" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-vram p-2 scrollable-menu" (click)="$event.stopPropagation()">
           @if (filterOptions().vram.length === 0) {
           <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }
@@ -258,7 +258,7 @@
             [class.rotated]="activeDropdown() === 'version'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'version') {
-        <div class="filter-dropdown-menu dropdown-version p-2" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-version p-2 scrollable-menu" (click)="$event.stopPropagation()">
           @if (filterOptions().version.length === 0) {
           <div class="text-muted small text-center py-2 opacity-60">Sin opciones registradas</div>
           }
@@ -579,10 +579,8 @@
             [class.host-card--updated]="hostService.updatedHostIds().has(host.fingerprint)"
             [class.host-card--deleting]="hostService.deletingHostIds().has(host.fingerprint)"
             [class.has-delete-permission]="permissionsService.hasPermission('Hosts', 'eliminar')"
-            [class.is-hovered]="hoveredHostId() === host.id"
-            (mouseenter)="hoveredHostId.set(host.id)"
-            (mouseleave)="hoveredHostId.set(null)"
-            (click)="goToCameras(host.fingerprint)">
+            [class.is-hovered]="hoveredHostId() === host.id" (mouseenter)="hoveredHostId.set(host.id)"
+            (mouseleave)="hoveredHostId.set(null)" (click)="goToCameras(host.fingerprint)">
             <!-- Estado -->
             <td class="col-status text-center">
               <span class="d-inline-flex align-items-center justify-content-center gap-2">
@@ -854,15 +852,25 @@
                   [class.icon-windows]="!!host.hwInfo?.system?.toLowerCase()?.includes('windows')"
                   [class.icon-nodos]="!host.hwInfo?.system?.toLowerCase()?.includes('linux') && !host.hwInfo?.system?.toLowerCase()?.includes('windows')">
                 </span>
-                <div class="d-flex flex-column flex-grow-1 overflow-hidden">
-                  <div class="d-flex align-items-center justify-content-between">
-                    <span class="nm-item-hostname fw-bold text-truncate" style="max-width: 140px;"
-                      [title]="host.hostname">{{ host.hostname }}</span>
-                    <span class="status-dot"
-                      [class.online]="host.status === 'active' || host.status === 'online'"></span>
+                <!-- Columna 2: Info del Nodo (Elástico, sin max-width) -->
+                <div class="d-flex flex-column flex-grow-1 overflow-hidden min-w-0">
+                  <div class="d-flex align-items-center min-w-0">
+                    <span class="nm-item-hostname fw-bold text-truncate" [title]="host.hostname">
+                      {{ host.hostname }}
+                    </span>
                   </div>
-                  <span class="font-monospace text-muted small nm-item-subtext" style="font-size: 0.65rem;">IP: {{
-                    host.ipAddress }}</span>
+                  <span class="font-monospace text-muted small nm-item-subtext text-truncate mt-0.5" style="font-size: 0.65rem;">
+                    IP: {{ host.ipAddress }}
+                  </span>
+                </div>
+
+                <!-- Columna 3: Dot de Estado (Centrado verticalmente en medio a la derecha) -->
+                <div class="d-flex align-items-center flex-shrink-0 ms-auto">
+                  <span class="status-dot"
+                    [class]="'status-dot ' + getStatusCssClass(host.status)"
+                    [class.online]="host.status === 'active' || host.status === 'online'"
+                    [title]="'Estado: ' + (host.status || 'Offline')">
+                  </span>
                 </div>
               </div>
               } @empty {
@@ -923,17 +931,14 @@
                 <span class="custom-chk-indicator flex-shrink-0"
                   [class.checked]="selectedCameraIds().has(cam.id)"></span>
 
-                <!-- Info de Cámara y Nodo Origen -->
-                <div class="d-flex flex-column flex-grow-1 overflow-hidden">
-                  <div class="d-flex align-items-center justify-content-between">
-                    <span class="nm-item-hostname fw-bold text-truncate" style="max-width: 155px;" [title]="cam.name">
+                <!-- Columna 2: Info de Cámara y Nodo Origen (Elástico, sin max-width) -->
+                <div class="d-flex flex-column flex-grow-1 overflow-hidden min-w-0">
+                  <div class="d-flex align-items-center min-w-0">
+                    <span class="nm-item-hostname fw-bold text-truncate" [title]="cam.name">
                       {{ cam.name }}
                     </span>
-                    <span class="camera-codec-badge font-monospace" style="font-size: 0.62rem;">
-                      {{ (cam.decoder || '').toUpperCase() }} / {{ (cam.streamType || '').toUpperCase() }}
-                    </span>
                   </div>
-                  <div class="d-flex align-items-center gap-1.5 mt-1">
+                  <div class="d-flex align-items-center gap-2 mt-1 min-w-0">
                     <span class="badge badge-node-source text-truncate" style="max-width: 150px;"
                       [title]="getHostName(cam.hostFingerprint)">
                       {{ getHostName(cam.hostFingerprint) }}
@@ -944,6 +949,17 @@
                     </span>
                     }
                   </div>
+                </div>
+
+                <!-- Columna 3: Códec y Dot de Estado Real (Centrado verticalmente en medio a la derecha) -->
+                <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+                  <span class="camera-codec-badge font-monospace" style="font-size: 0.62rem;">
+                    {{ (cam.decoder || '').toUpperCase() }} / {{ (cam.streamType || '').toUpperCase() }}
+                  </span>
+                  <span class="status-dot"
+                    [class]="'status-dot ' + getCameraStatusClass(cam)"
+                    [title]="'Estado: ' + getCameraStatusLabel(cam)">
+                  </span>
                 </div>
               </div>
               } @empty {
@@ -1029,19 +1045,29 @@
                   [class.icon-windows]="!!host.hwInfo?.system?.toLowerCase()?.includes('windows')"
                   [class.icon-nodos]="!host.hwInfo?.system?.toLowerCase()?.includes('linux') && !host.hwInfo?.system?.toLowerCase()?.includes('windows')">
                 </span>
-                <div class="d-flex flex-column flex-grow-1 overflow-hidden">
-                  <div class="d-flex align-items-center justify-content-between">
-                    <span class="nm-item-hostname fw-bold text-truncate" style="max-width: 140px;"
-                      [title]="host.hostname">{{ host.hostname }}</span>
-                    @if (isTargetHostDisabled(host.fingerprint)) {
-                    <span class="badge-node-origin-pill" title="Nodo de origen de cámaras seleccionadas">Origen</span>
-                    } @else {
-                    <span class="status-dot"
-                      [class.online]="host.status === 'active' || host.status === 'online'"></span>
-                    }
+                <!-- Columna 2: Info del Nodo (Elástico, sin max-width) -->
+                <div class="d-flex flex-column flex-grow-1 overflow-hidden min-w-0">
+                  <div class="d-flex align-items-center min-w-0">
+                    <span class="nm-item-hostname fw-bold text-truncate" [title]="host.hostname">
+                      {{ host.hostname }}
+                    </span>
                   </div>
-                  <span class="font-monospace text-muted small nm-item-subtext" style="font-size: 0.65rem;">IP: {{
-                    host.ipAddress }}</span>
+                  <span class="font-monospace text-muted small nm-item-subtext text-truncate mt-0.5" style="font-size: 0.65rem;">
+                    IP: {{ host.ipAddress }}
+                  </span>
+                </div>
+
+                <!-- Columna 3: Pill de Origen o Dot de Estado (Centrado verticalmente en medio a la derecha) -->
+                <div class="d-flex align-items-center flex-shrink-0 ms-auto">
+                  @if (isTargetHostDisabled(host.fingerprint)) {
+                  <span class="badge-node-origin-pill" title="Nodo de origen de cámaras seleccionadas">Origen</span>
+                  } @else {
+                  <span class="status-dot"
+                    [class]="'status-dot ' + getStatusCssClass(host.status)"
+                    [class.online]="host.status === 'active' || host.status === 'online'"
+                    [title]="'Estado: ' + (host.status || 'Offline')">
+                  </span>
+                  }
                 </div>
               </div>
               } @empty {

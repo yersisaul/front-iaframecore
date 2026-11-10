@@ -366,5 +366,54 @@ describe('Nodos', () => {
     component.hoveredHostId.set(null);
     expect(component.hoveredHostId()).toBeNull();
   });
+
+  describe('Camera Real Status Resolvers in Migration Modal', () => {
+    const mockCamera = (status: string, hostFp = 'host-1'): any => ({
+      id: 'cam-1',
+      name: 'Camara Test',
+      status,
+      hostFingerprint: hostFp,
+      decoder: 'opencv',
+      streamType: 'rtsp'
+    });
+
+    beforeEach(() => {
+      const hostService = TestBed.inject(HostService);
+      hostService.allHosts.set([
+        { fingerprint: 'host-online', status: 'online' } as any,
+        { fingerprint: 'host-offline', status: 'offline' } as any
+      ]);
+    });
+
+    it('should resolve Online status when camera and host are online', () => {
+      const cam = mockCamera('online', 'host-online');
+      expect(component.getCameraStatusClass(cam)).toBe('online');
+      expect(component.getCameraStatusLabel(cam)).toBe('Online');
+    });
+
+    it('should resolve Offline status when camera is offline', () => {
+      const cam = mockCamera('offline', 'host-online');
+      expect(component.getCameraStatusClass(cam)).toBe('offline');
+      expect(component.getCameraStatusLabel(cam)).toBe('Offline');
+    });
+
+    it('should resolve Degraded status when camera is degraded', () => {
+      const cam = mockCamera('degraded', 'host-online');
+      expect(component.getCameraStatusClass(cam)).toBe('degraded');
+      expect(component.getCameraStatusLabel(cam)).toBe('Degraded');
+    });
+
+    it('should resolve Recovering status when camera is recovering', () => {
+      const cam = mockCamera('recovering', 'host-online');
+      expect(component.getCameraStatusClass(cam)).toBe('recovering');
+      expect(component.getCameraStatusLabel(cam)).toBe('Recovering');
+    });
+
+    it('should resolve Pending status when camera is online but host is offline (VMS rule)', () => {
+      const cam = mockCamera('online', 'host-offline');
+      expect(component.getCameraStatusClass(cam)).toBe('pending');
+      expect(component.getCameraStatusLabel(cam)).toBe('Pending');
+    });
+  });
 });
 

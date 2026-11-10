@@ -45,6 +45,7 @@ export class CustomSelectComponent {
   readonly normalizedOptions = signal<SelectOption[]>([]);
   readonly selectedValue = signal<any>(null);
   readonly isOpen = signal<boolean>(false);
+  readonly openUpward = signal<boolean>(false);
 
   readonly selectedOption = computed(() => {
     const val = this.selectedValue();
@@ -73,7 +74,27 @@ export class CustomSelectComponent {
   toggleOpen(event: MouseEvent): void {
     event.stopPropagation();
     if (this.disabled) return;
-    this.isOpen.update(v => !v);
+    const willOpen = !this.isOpen();
+    if (willOpen) {
+      this.checkPlacement();
+    }
+    this.isOpen.set(willOpen);
+  }
+
+  private checkPlacement(): void {
+    try {
+      const hostEl = this.elementRef.nativeElement as HTMLElement;
+      const trigger = hostEl.querySelector('.custom-select-trigger') as HTMLElement || hostEl;
+      const rect = trigger.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const menuExpectedHeight = 210;
+
+      this.openUpward.set(spaceBelow < menuExpectedHeight && spaceAbove > spaceBelow);
+    } catch {
+      this.openUpward.set(false);
+    }
   }
 
   selectOption(opt: SelectOption, event: MouseEvent): void {

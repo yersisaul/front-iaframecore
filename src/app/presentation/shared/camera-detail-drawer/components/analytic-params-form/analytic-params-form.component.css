@@ -422,6 +422,10 @@
   box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.04);
   backdrop-filter: blur(12px);
   animation: classesDropdownScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: min(65vh, 24rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .type-dropdown-menu {

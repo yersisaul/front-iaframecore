@@ -2018,8 +2018,9 @@ code.code-badge {
 }
 
 .filter-dropdown-menu.scrollable-menu {
-  max-height: 280px;
+  max-height: min(50vh, 280px);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .camera-search-wrapper,
@@ -4717,7 +4718,6 @@ code.code-badge {
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
   line-height: 1.25;
-  vertical-align: middle;
 }
 
 .camera-table-nx-subtext {
@@ -4729,7 +4729,6 @@ code.code-badge {
   white-space: nowrap !important;
   line-height: 1.2;
   margin-top: 2px;
-  vertical-align: middle;
 }
 
 .nm-table-tr:hover .camera-table-name-text {

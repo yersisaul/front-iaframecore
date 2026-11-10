@@ -719,11 +719,21 @@
             </div>
 
             <!-- Glassmorphism Quick Action Strip (Bottom of Image) -->
+            @let hasImage = !!record.imgMinioObjectName || !!record.urlImg;
             @let hasEmbedding = record.embedding && record.embedding.length > 0;
             @let canAdd = canAddToList(record);
             @let canNx = canOpenInNx(record);
-            @if (hasEmbedding || canAdd || canNx) {
+            @if (hasImage || hasEmbedding || canAdd || canNx) {
             <div class="ed-img-overlay">
+              @if (hasImage) {
+              <button type="button" class="btn-overlay-action btn-fullscreen" [id]="'btn-fullscreen-' + record.id"
+                (click)="openImagePreviewModal(record, $event); $event.stopPropagation()"
+                title="Ampliar imagen / Pantalla completa">
+                <span class="icon-svg icon-magnify" style="width: 12px; height: 12px;"></span>
+                <span>Ampliar</span>
+              </button>
+              }
+
               @if (hasEmbedding) {
               <button type="button" class="btn-overlay-action btn-coincidence"
                 (click)="filtrarPorCoincidencia(record); $event.stopPropagation()"
@@ -746,7 +756,7 @@
               <button type="button" class="btn-overlay-action btn-nx-open"
                 [id]="'btn-nx-open-' + record.id"
                 (click)="openInNx(record, $event)"
-                [title]="'Abrir cámara en Nx Witness (' + formatDate(record.timestampReal || record.timestamp) + ')'">
+                [title]="'Abrir cámara en Nx Witness (' + formatDate(record.timestampReal) + ')'">
                 <span class="icon-svg icon-nx-witness" style="width: 12px; height: 12px;"></span>
                 <span>Ver en NX</span>
               </button>
@@ -925,6 +935,28 @@
       </div>
 
     </div>
+  </div>
+  }
+
+  <!-- Modal Pantalla Completa para Imagen de Metadato (Lightbox) -->
+  @if (previewImageRecord(); as previewItem) {
+  @let previewImg = previewItem.imgMinioObjectName | mediaUrl | async;
+  <div class="meta-lightbox-backdrop" (click)="closeImagePreviewModal()" role="dialog" aria-modal="true">
+    @if (previewImg) {
+    <img [src]="previewImg" class="meta-lightbox-img"
+      [style.--aspect]="previewAspectRatio() || 1"
+      (load)="onPreviewImageLoaded($event)"
+      (click)="$event.stopPropagation()"
+      [alt]="previewItem.camara" />
+    } @else {
+    <div class="meta-lightbox-loading d-flex flex-column align-items-center justify-content-center p-5 text-white"
+      (click)="$event.stopPropagation()">
+      <div class="spinner-border text-primary mb-3" role="status">
+        <span class="visually-hidden">Cargando imagen...</span>
+      </div>
+      <span class="small fw-medium">Cargando imagen...</span>
+    </div>
+    }
   </div>
   }
 </div>

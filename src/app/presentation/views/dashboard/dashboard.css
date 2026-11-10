@@ -286,6 +286,10 @@
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.dashboard-preview-img.object-fit-cover {
+  object-fit: cover !important;
+}
+
 .dashboard-item-card:hover .dashboard-preview-img {
   transform: scale(1.02);
 }

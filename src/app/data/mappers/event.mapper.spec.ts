@@ -8,7 +8,7 @@ describe('EventMapper', () => {
       _source: {
         event_id: 'ev-custom-id',
         timestamp: '2026-10-19T17:30:12.345Z',
-        timestamp_real: 1729359012.345, // Segundos con decimales
+        timestamp_real: '2026-11-04T17:58:34.477+00:00', // Formato ISO Date
         nombre_camara: 'Entrada Vehicular',
         id_camara: 'cam-01',
         camara_id_nx: 'nx-uuid-camera-abc',
@@ -25,8 +25,7 @@ describe('EventMapper', () => {
     expect(domain.camaraIdNx).toBe('nx-uuid-camera-abc');
     expect(domain.idCamara).toBe('cam-01');
     expect(domain.nombreCamara).toBe('Entrada Vehicular');
-    // 1729359012.345 * 1000 = 1729359012345 ms
-    expect(domain.timestampReal).toBe(1729359012345);
+    expect(domain.timestampReal).toBe(Date.parse('2026-11-04T17:58:34.477+00:00'));
   });
 
   it('should handle missing camara_id_nx and fallback id_camara / camara_id', () => {

@@ -1196,7 +1196,11 @@ body:not(.dark) .form-select option {
   box-shadow: var(--card-shadow-hover);
   border-radius: 12px !important;
   gap: 2px !important;
-  padding: 6px !important
+  padding: 6px !important;
+  max-height: min(60vh, 320px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 [data-bs-theme="dark"] .dropdown-menu,
@@ -1210,9 +1214,19 @@ body:not(.dark) .form-select option {
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
 }
 
+/* El dropdown de fechas contiene sub-popovers (calendario y selector de hora) que no deben cortarse */
 .filter-dropdown-menu.dropdown-fechas {
   right: 0 !important;
   left: auto !important;
+  max-height: none !important;
+  overflow-y: visible !important;
+  overflow-x: visible !important;
+}
+
+.filter-dropdown-menu .dropdown-item,
+.dropdown-menu .dropdown-item {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* ── Dropdown Search Fixed Header & Scrollable Items ── */
@@ -1242,7 +1256,7 @@ body:not(.dark) .form-select option {
 }
 
 .dropdown-items-scroll {
-  max-height: 280px;
+  max-height: min(50vh, 280px);
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
@@ -2170,8 +2184,7 @@ body,
 main,
 .overflow-auto,
 .overflow-y-auto,
-.scroll-container,
-.scrollable-menu {
+.scroll-container {
   scrollbar-width: none !important;
   /* Firefox */
   -ms-overflow-style: none !important;
@@ -2185,10 +2198,14 @@ main,
   height: 0 !important;
 }
 
-/* ── Global Accessible & Styled Scrollbars for Content Containers ── */
+/* ── Global Accessible & Styled Scrollbars for Content Containers & Dropdowns ── */
 .custom-scrollbar,
 .drawer-scroll-area,
-.modal-body-content {
+.modal-body-content,
+.filter-dropdown-menu,
+.dropdown-items-scroll,
+.scrollable-menu,
+.modal-filter-dropdown-menu {
   overflow-y: auto !important;
   scrollbar-gutter: stable;
   scrollbar-width: thin !important;
@@ -2198,21 +2215,33 @@ main,
 
 .custom-scrollbar::-webkit-scrollbar,
 .drawer-scroll-area::-webkit-scrollbar,
-.modal-body-content::-webkit-scrollbar {
+.modal-body-content::-webkit-scrollbar,
+.filter-dropdown-menu::-webkit-scrollbar,
+.dropdown-items-scroll::-webkit-scrollbar,
+.scrollable-menu::-webkit-scrollbar,
+.modal-filter-dropdown-menu::-webkit-scrollbar {
   display: block !important;
-  width: 6px !important;
-  height: 6px !important;
+  width: 5px !important;
+  height: 5px !important;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track,
 .drawer-scroll-area::-webkit-scrollbar-track,
-.modal-body-content::-webkit-scrollbar-track {
+.modal-body-content::-webkit-scrollbar-track,
+.filter-dropdown-menu::-webkit-scrollbar-track,
+.dropdown-items-scroll::-webkit-scrollbar-track,
+.scrollable-menu::-webkit-scrollbar-track,
+.modal-filter-dropdown-menu::-webkit-scrollbar-track {
   background: transparent !important;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb,
 .drawer-scroll-area::-webkit-scrollbar-thumb,
-.modal-body-content::-webkit-scrollbar-thumb {
+.modal-body-content::-webkit-scrollbar-thumb,
+.filter-dropdown-menu::-webkit-scrollbar-thumb,
+.dropdown-items-scroll::-webkit-scrollbar-thumb,
+.scrollable-menu::-webkit-scrollbar-thumb,
+.modal-filter-dropdown-menu::-webkit-scrollbar-thumb {
   background-color: rgba(100, 116, 139, 0.4) !important;
   border-radius: 9999px !important;
   transition: background-color 0.2s ease !important;
@@ -2220,25 +2249,45 @@ main,
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover,
 .drawer-scroll-area::-webkit-scrollbar-thumb:hover,
-.modal-body-content::-webkit-scrollbar-thumb:hover {
+.modal-body-content::-webkit-scrollbar-thumb:hover,
+.filter-dropdown-menu::-webkit-scrollbar-thumb:hover,
+.dropdown-items-scroll::-webkit-scrollbar-thumb:hover,
+.scrollable-menu::-webkit-scrollbar-thumb:hover,
+.modal-filter-dropdown-menu::-webkit-scrollbar-thumb:hover {
   background-color: rgba(59, 130, 246, 0.8) !important;
 }
 
 [data-bs-theme="dark"] .custom-scrollbar,
 [data-bs-theme="dark"] .drawer-scroll-area,
 [data-bs-theme="dark"] .modal-body-content,
+[data-bs-theme="dark"] .filter-dropdown-menu,
+[data-bs-theme="dark"] .dropdown-items-scroll,
+[data-bs-theme="dark"] .scrollable-menu,
+[data-bs-theme="dark"] .modal-filter-dropdown-menu,
 .dark .custom-scrollbar,
 .dark .drawer-scroll-area,
-.dark .modal-body-content {
+.dark .modal-body-content,
+.dark .filter-dropdown-menu,
+.dark .dropdown-items-scroll,
+.dark .scrollable-menu,
+.dark .modal-filter-dropdown-menu {
   scrollbar-color: rgba(255, 255, 255, 0.28) transparent !important;
 }
 
 [data-bs-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb,
 [data-bs-theme="dark"] .drawer-scroll-area::-webkit-scrollbar-thumb,
 [data-bs-theme="dark"] .modal-body-content::-webkit-scrollbar-thumb,
+[data-bs-theme="dark"] .filter-dropdown-menu::-webkit-scrollbar-thumb,
+[data-bs-theme="dark"] .dropdown-items-scroll::-webkit-scrollbar-thumb,
+[data-bs-theme="dark"] .scrollable-menu::-webkit-scrollbar-thumb,
+[data-bs-theme="dark"] .modal-filter-dropdown-menu::-webkit-scrollbar-thumb,
 .dark .custom-scrollbar::-webkit-scrollbar-thumb,
 .dark .drawer-scroll-area::-webkit-scrollbar-thumb,
-.dark .modal-body-content::-webkit-scrollbar-thumb {
+.dark .modal-body-content::-webkit-scrollbar-thumb,
+.dark .filter-dropdown-menu::-webkit-scrollbar-thumb,
+.dark .dropdown-items-scroll::-webkit-scrollbar-thumb,
+.dark .scrollable-menu::-webkit-scrollbar-thumb,
+.dark .modal-filter-dropdown-menu::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.25) !important;
 }
 

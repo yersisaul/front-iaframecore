@@ -11,6 +11,7 @@ import { DashboardItem, DashboardMapper, DashboardCreateRequest } from '../../..
 import { DashboardService } from '../../../core/services/dashboard.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { MediaFileService } from '../../../core/services/media-file.service';
+import { ThemeService } from '../../../core/services/theme.service';
 import { MetadataMapper } from '../../../data/mappers/metadata.mapper';
 
 @Component({
@@ -31,8 +32,12 @@ export class Dashboard implements OnInit, OnDestroy {
   private sanitizer = inject(DomSanitizer);
   private dashboardRepo = inject(IDashboardRepository);
   private mediaFileService = inject(MediaFileService);
+  private themeService = inject(ThemeService);
   readonly dashboardService = inject(DashboardService);
   readonly permissionsService = inject(PermissionsService);
+  readonly isDarkMode = this.themeService.darkMode;
+  // IDs de dashboards cuyas imágenes remotas fallaron al cargar (para fallback reactivo a imagen default)
+  readonly failedImageIds = signal<Set<string>>(new Set<string>());
 
   @ViewChild('embeddedIframe', { static: false }) embeddedIframe!: ElementRef<HTMLIFrameElement>;
 
@@ -529,17 +534,49 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   /**
-   * Fallback si una imagen de tarjeta falla al cargar
+   * Calcula el índice determinista (1, 2 o 3) para un dashboard basado en su ID.
+   * Garantiza que cada tablero conserve siempre el mismo set de imagen sin parpadeos.
    */
-  onCardImageError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-    if (img) {
-      img.style.display = 'none';
-      const parent = img.parentElement;
-      const placeholder = parent?.querySelector('.dashboard-preview-placeholder') as HTMLElement;
-      if (placeholder) {
-        placeholder.style.display = 'flex';
-      }
+  getDefaultImageIndex(id?: string | null): number {
+    if (!id) return 1;
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = (hash << 5) - hash + id.charCodeAt(i);
+      hash |= 0;
+    }
+    return (Math.abs(hash) % 3) + 1; // 1, 2 o 3
+  }
+
+  /**
+   * Obtiene la ruta del asset por defecto según el ID del dashboard y el tema activo (wt o dk).
+   * Se actualiza reactivamente cuando conmuta el tema claro/oscuro.
+   */
+  getDefaultDashboardImage(id?: string | null): string {
+    const index = this.getDefaultImageIndex(id);
+    const themeSuffix = this.isDarkMode() ? 'dk' : 'wt';
+    return `/assets/images/dashboards/dashboard_default_${index}_${themeSuffix}.jpg`;
+  }
+
+  /**
+   * Determina de forma reactiva si la imagen remota de un dashboard falló al cargar
+   */
+  isImageFailed(id?: string | null): boolean {
+    return !!id && this.failedImageIds().has(id);
+  }
+
+  /**
+   * Fallback reactivo si una imagen remota de tarjeta falla al cargar.
+   * Registra el ID en failedImageIds para que el template transicione de inmediato
+   * al bloque @else y responda dinámicamente a los cambios de tema (wt / dk).
+   */
+  onCardImageError(event: Event, dashboardId?: string): void {
+    if (dashboardId) {
+      this.failedImageIds.update(set => {
+        if (set.has(dashboardId)) return set;
+        const next = new Set(set);
+        next.add(dashboardId);
+        return next;
+      });
     }
   }
 
@@ -624,6 +661,12 @@ export class Dashboard implements OnInit, OnDestroy {
       this.dashboardRepo.patch(id, patchDto).subscribe({
         next: (updated) => {
           this.dashboardService.addOrUpdateDashboardLocal(updated);
+          this.failedImageIds.update(set => {
+            if (!set.has(id)) return set;
+            const next = new Set(set);
+            next.delete(id);
+            return next;
+          });
           // Precargar en caché la URL temporal del objeto actualizado
           if (updated.img_minio_object_name) {
             this.mediaFileService.prefetchFileUrl(updated.img_minio_object_name);

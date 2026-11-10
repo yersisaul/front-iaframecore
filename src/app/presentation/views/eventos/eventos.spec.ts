@@ -147,8 +147,8 @@ describe('Eventos', () => {
       // Con camaraIdNx y timestampReal válidos -> true
       expect(component.canOpenInNx(record)).toBe(true);
 
-      // Sin timestampReal pero con timestamp Date válido -> true (fallback)
-      expect(component.canOpenInNx({ ...record, timestampReal: undefined, timestamp: new Date(1729353012000) })).toBe(true);
+      // Sin timestampReal (aunque tenga timestamp Date válido, NO hay fallback) -> false
+      expect(component.canOpenInNx({ ...record, timestampReal: undefined, timestamp: new Date(1729353012000) })).toBe(false);
 
       // Sin timestampReal ni timestamp válido -> false
       expect(component.canOpenInNx({ ...record, timestampReal: undefined, timestamp: undefined })).toBe(false);

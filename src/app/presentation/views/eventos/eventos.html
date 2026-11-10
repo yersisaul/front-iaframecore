@@ -542,7 +542,7 @@
               @if (canNx) {
               <button type="button" class="btn-overlay-action btn-nx-open" [id]="'btn-nx-open-' + record.id"
                 (click)="openInNx(record, $event)"
-                [title]="'Abrir cámara en Nx Witness (' + formatDate(record.timestampReal || record.timestamp) + ')'">
+                [title]="'Abrir cámara en Nx Witness (' + formatDate(record.timestampReal) + ')'">
                 <span class="icon-svg icon-nx-witness" style="width: 12px; height: 12px;"></span>
                 <span>Ver en NX</span>
               </button>

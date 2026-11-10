@@ -19,8 +19,13 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .premium-detail-modal.select-camera-modal {
@@ -51,6 +56,7 @@
     opacity: 0;
     transform: scale(0.95) translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -288,6 +294,9 @@
   gap: 2px !important;
   padding: 6px !important;
   min-width: 200px !important;
+  max-height: min(45vh, 250px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
 }
 
 [data-bs-theme="dark"] .modal-filter-dropdown-menu,
@@ -446,6 +455,7 @@
     opacity: 0;
     transform: translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

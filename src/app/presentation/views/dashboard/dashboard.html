@@ -115,22 +115,16 @@
           <!-- Cuerpo de la tarjeta: Espacio para foto del dashboard -->
           <div class="card-body p-3 d-flex flex-column justify-content-center flex-grow-1">
             @let objectKey = item.img_minio_object_name || item.url_img;
-            @let resolvedImg = objectKey ? (objectKey | mediaUrl | async) : null;
+            @let isFailed = isImageFailed(item.id);
+            @let resolvedImg = (!isFailed && objectKey) ? (objectKey | mediaUrl | async) : null;
             <div
-              class="dashboard-preview-container position-relative overflow-hidden rounded-3 d-flex align-items-center justify-content-center w-100 flex-grow-1"
-              [class.has-image]="!!objectKey" [attr.data-img-url]="objectKey || 'SIN_URL'"
-              [attr.data-raw-src]="objectKey || 'NULL'">
-              @if (resolvedImg) {
+              class="dashboard-preview-container has-image position-relative overflow-hidden rounded-3 d-flex align-items-center justify-content-center w-100 flex-grow-1"
+              [attr.data-img-url]="objectKey || 'DEFAULT_IMAGE'"
+              [attr.data-raw-src]="objectKey || 'DEFAULT'">
+              @if (resolvedImg && !isFailed) {
               <img [src]="resolvedImg" class="dashboard-preview-img w-100 h-100 object-fit-contain"
-                [attr.data-src]="objectKey" [alt]="item.nombre" (error)="onCardImageError($event)">
-              <div
-                class="dashboard-preview-placeholder d-none flex-column align-items-center justify-content-center text-muted"
-                [attr.data-img-url]="objectKey || 'SIN_URL'"
-                [title]="'Origen: ' + (objectKey || 'Sin imagen en payload')">
-                <span class="icon-svg icon-dashboard opacity-40 mb-2" style="width: 2rem; height: 2rem;"></span>
-                <span class="small opacity-60 fw-medium">Vista previa del tablero</span>
-              </div>
-              } @else if (objectKey) {
+                [attr.data-src]="objectKey" [alt]="item.nombre" (error)="onCardImageError($event, item.id)">
+              } @else if (objectKey && !isFailed && resolvedImg === null) {
               <!-- Indicador de carga temporal de la imagen desde MinIO -->
               <div class="dashboard-preview-placeholder d-flex flex-column align-items-center justify-content-center text-muted">
                 <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
@@ -139,13 +133,10 @@
                 <span class="small opacity-60 fw-medium">Cargando vista previa...</span>
               </div>
               } @else {
-              <!-- Espacio libre para foto del dashboard -->
-              <div
-                class="dashboard-preview-placeholder d-flex flex-column align-items-center justify-content-center text-muted"
-                [attr.data-img-url]="'SIN_URL'" [title]="'Origen: Sin imagen configurada'">
-                <span class="icon-svg icon-dashboard opacity-40 mb-2" style="width: 2rem; height: 2rem;"></span>
-                <span class="small opacity-60 fw-medium">Vista previa del tablero</span>
-              </div>
+              <!-- Imagen por defecto: reactiva a tema claro/oscuro y alternada por ID -->
+              <img [src]="getDefaultDashboardImage(item.id)"
+                class="dashboard-preview-img w-100 h-100 object-fit-cover"
+                [alt]="item.nombre" loading="lazy">
               }
             </div>
           </div>
@@ -241,9 +232,13 @@
     <div
       class="browser-iframe-viewport position-relative flex-grow-1 overflow-hidden d-flex align-items-center justify-content-center">
       @let morphObjKey = morphItem()?.img_minio_object_name || morphItem()?.url_img;
-      @let morphResolved = morphObjKey ? (morphObjKey | mediaUrl | async) : null;
-      @if (morphResolved) {
+      @let morphFailed = isImageFailed(morphItem()?.id);
+      @let morphResolved = (!morphFailed && morphObjKey) ? (morphObjKey | mediaUrl | async) : null;
+      @if (morphResolved && !morphFailed) {
       <img [src]="morphResolved" class="w-100 h-100 object-fit-cover morph-preview-img"
+        style="object-position: top center;" alt="" (error)="onCardImageError($event, morphItem()?.id)" />
+      } @else if (morphItem()?.id) {
+      <img [src]="getDefaultDashboardImage(morphItem()?.id)" class="w-100 h-100 object-fit-cover morph-preview-img"
         style="object-position: top center;" alt="" />
       } @else {
       <div class="d-flex flex-column align-items-center justify-content-center text-muted">

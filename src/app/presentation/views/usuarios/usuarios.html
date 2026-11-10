@@ -78,7 +78,7 @@
             [class.rotated]="activeDropdown() === 'rol'" style="width: 10px; height: 10px;"></span>
         </button>
         @if (activeDropdown() === 'rol') {
-        <div class="filter-dropdown-menu dropdown-rol" (click)="$event.stopPropagation()">
+        <div class="filter-dropdown-menu dropdown-rol scrollable-menu" (click)="$event.stopPropagation()">
           <!-- Opción: Todos -->
           <button type="button" class="dropdown-item d-flex align-items-center justify-content-between"
             [class.active]="!appliedRoleFilter()" (click)="selectRoleFilter(null, $event)">

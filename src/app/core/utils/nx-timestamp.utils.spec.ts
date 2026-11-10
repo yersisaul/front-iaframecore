@@ -9,28 +9,29 @@ describe('toEpochMs', () => {
     expect(toEpochMs('   ')).toBeUndefined();
   });
 
-  it('debe devolver undefined para valores no numéricos o menores/iguales a cero', () => {
-    expect(toEpochMs(NaN)).toBeUndefined();
+  it('debe rechazar números y cadenas numéricas (ya no se aceptan numbers)', () => {
+    expect(toEpochMs(1729353012 as any)).toBeUndefined();
+    expect(toEpochMs(1729353012.345 as any)).toBeUndefined();
+    expect(toEpochMs(0 as any)).toBeUndefined();
+    expect(toEpochMs(-1500 as any)).toBeUndefined();
+    expect(toEpochMs(NaN as any)).toBeUndefined();
+    expect(toEpochMs('1729353012')).toBeUndefined();
+    expect(toEpochMs('1729353012.345')).toBeUndefined();
     expect(toEpochMs('abc')).toBeUndefined();
-    expect(toEpochMs(0)).toBeUndefined();
-    expect(toEpochMs(-1500)).toBeUndefined();
   });
 
-  it('debe convertir segundos a milisegundos y redondear al entero exacto', () => {
-    // 1729353012 segundos
-    expect(toEpochMs(1729353012)).toBe(1729353012000);
-    expect(toEpochMs('1729353012')).toBe(1729353012000);
+  it('debe parsear correctamente cadenas de fecha en formato ISO 8601 a milisegundos de época', () => {
+    const isoStringWithTz = '2026-11-04T17:58:34.477+00:00';
+    const expectedMsWithTz = Date.parse(isoStringWithTz);
+    expect(toEpochMs(isoStringWithTz)).toBe(expectedMsWithTz);
 
-    // Con decimales (microsegundos/fracciones de segundo)
-    expect(toEpochMs(1729353012.3456)).toBe(1729353012346);
-    expect(toEpochMs('1729353012.3454')).toBe(1729353012345);
-    expect(toEpochMs(1729353012.5)).toBe(1729353012500);
+    const isoStringUtc = '2026-10-19T17:30:12.345Z';
+    const expectedMsUtc = Date.parse(isoStringUtc);
+    expect(toEpochMs(isoStringUtc)).toBe(expectedMsUtc);
   });
 
-  it('debe conservar valores que ya vienen en milisegundos (> 1e11) redondeándolos si tienen decimales', () => {
-    const ms = 1729353012345;
-    expect(toEpochMs(ms)).toBe(ms);
-    expect(toEpochMs('1729353012345')).toBe(ms);
-    expect(toEpochMs(1729353012345.8)).toBe(1729353012346);
+  it('debe parsear correctamente instancias nativas de Date', () => {
+    const date = new Date('2026-11-04T17:58:34.477Z');
+    expect(toEpochMs(date)).toBe(date.getTime());
   });
 });

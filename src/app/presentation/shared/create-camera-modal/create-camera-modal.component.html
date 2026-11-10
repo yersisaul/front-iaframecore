@@ -111,28 +111,38 @@
                         class="btn btn-filter-dropdown dropdown-field-trigger w-100 d-flex align-items-center justify-content-between gap-2"
                         [class.active]="!!selectedHost" [class.is-invalid-warning]="isFieldInvalid('fingerprint_host')"
                         (click)="toggleDropdown('host', $event); clearFieldAlert('fingerprint_host')">
-                        <div class="d-flex align-items-center gap-2 text-truncate">
-                          <span class="icon-svg filter-icon icon-input-prefix"
+                        <div class="d-flex align-items-center gap-2 text-truncate min-w-0">
+                          <span class="icon-svg filter-icon icon-input-prefix flex-shrink-0"
                             [class.icon-nodos]="!isFieldInvalid('fingerprint_host')"
                             [class.icon-warning]="isFieldInvalid('fingerprint_host')"></span>
                           <span class="text-truncate" [class.text-muted]="!selectedHost">{{ selectedHostLabel }}</span>
                         </div>
-                        <span
-                          class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 icon-dropdown-chevron"
-                          [class.rotated]="activeDropdown() === 'host'"></span>
+                        <div class="d-flex align-items-center gap-1.5 flex-shrink-0">
+                          @if (selectedHost) {
+                          <span class="camera-count-badge"
+                            [class.has-cameras]="getHostCameraCount(selectedHost.fingerprint) > 0"
+                            [title]="getHostCameraCount(selectedHost.fingerprint) + (getHostCameraCount(selectedHost.fingerprint) === 1 ? ' cámara asignada' : ' cámaras asignadas')">
+                            <span class="icon-svg icon-camara camera-badge-icon"></span>
+                            <span class="camera-count-num">{{ getHostCameraCount(selectedHost.fingerprint) }}</span>
+                          </span>
+                          }
+                          <span
+                            class="icon-svg icon-chevron-down dropdown-chevron transition-all flex-shrink-0 icon-dropdown-chevron"
+                            [class.rotated]="activeDropdown() === 'host'"></span>
+                        </div>
                       </button>
 
                       <!-- Menú Desplegable con Barra de Búsqueda Integrada -->
                       @if (activeDropdown() === 'host') {
                       <div class="filter-dropdown-menu modal-dropdown-menu dropdown-host w-100 shadow-lg"
                         (click)="$event.stopPropagation()">
-                        <!-- Barra de Búsqueda de Nodos -->
+                        <!-- Barra de Búsqueda de Nodos fija arriba -->
                         <div class="dropdown-search-header">
-                          <div class="camera-search-input-row d-flex align-items-center gap-1 rounded px-2 py-1">
+                          <div class="camera-search-input-row w-100 d-flex align-items-center gap-1 rounded px-2 py-1">
                             <span class="icon-svg icon-search opacity-50 icon-search-prefix"></span>
                             <input #nodeSearchInput type="text"
                               class="camera-search-input border-0 bg-transparent w-100"
-                              placeholder="Ej. Servidor-1 o 192.168.1.50" [value]="hostSearch()"
+                              placeholder="Buscar por nombre o IP..." [value]="hostSearch()"
                               (input)="hostSearch.set(nodeSearchInput.value)" (click)="$event.stopPropagation()"
                               autocomplete="off" />
                             @if (hostSearch()) {
@@ -145,7 +155,7 @@
                           </div>
                         </div>
 
-                        <!-- Lista de Nodos Filtrados -->
+                        <!-- Lista de Nodos Filtrados con scroll dedicado -->
                         <div class="dropdown-items-scroll scrollable-menu p-1">
                           @if (filteredHostOptions().length === 0) {
                           <div class="text-muted small text-center py-2 opacity-60">No se encontraron nodos</div>
@@ -153,21 +163,34 @@
                           @for (h of filteredHostOptions(); track h.fingerprint) {
                           @let isSelected = cameraForm.get('fingerprint_host')?.value === h.fingerprint;
                           <button type="button"
-                            class="dropdown-item d-flex align-items-center justify-content-between py-2 px-2 rounded w-100"
+                            class="dropdown-item host-dropdown-item d-flex align-items-center justify-content-between p-2 rounded w-100"
                             [class.active]="isSelected" (click)="selectHost(h.fingerprint, $event)">
-                            <div class="d-flex align-items-center gap-2 min-w-0 pe-2">
+                            <div class="d-flex align-items-center gap-2 min-w-0 pe-2 flex-grow-1">
                               <span class="host-status-dot flex-shrink-0"
-                                [class.online]="h.status === 'online' || h.status === 'active'"></span>
-                              <span class="text-truncate fw-semibold" style="font-size: 0.8rem;">
-                                {{ h.hostname || 'Nodo ' + h.ipAddress }}
-                              </span>
-                              <span class="text-muted text-truncate opacity-75 small" style="font-size: 0.72rem;">
-                                {{ h.ipAddress }}
-                              </span>
+                                [class.online]="h.status === 'online' || h.status === 'active'"
+                                [title]="(h.status === 'online' || h.status === 'active') ? 'Nodo Online' : 'Nodo Offline'"></span>
+                              <div class="d-flex flex-column text-start min-w-0 flex-grow-1">
+                                <span class="text-truncate fw-semibold host-item-name" style="font-size: 0.8rem;">
+                                  {{ h.hostname || 'Nodo ' + h.ipAddress }}
+                                </span>
+                                <span class="text-muted text-truncate font-monospace opacity-75 small"
+                                  style="font-size: 0.7rem;">
+                                  {{ h.ipAddress }}
+                                </span>
+                              </div>
                             </div>
-                            @if (isSelected) {
-                            <span class="icon-svg icon-check text-primary flex-shrink-0 icon-badge-check"></span>
-                            }
+                            <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-2">
+                              <!-- Tag de conteo de cámaras -->
+                              <span class="camera-count-badge"
+                                [class.has-cameras]="getHostCameraCount(h.fingerprint) > 0"
+                                [title]="getHostCameraCount(h.fingerprint) + (getHostCameraCount(h.fingerprint) === 1 ? ' cámara asignada' : ' cámaras asignadas')">
+                                <span class="icon-svg icon-camara camera-badge-icon"></span>
+                                <span class="camera-count-num">{{ getHostCameraCount(h.fingerprint) }}</span>
+                              </span>
+                              @if (isSelected) {
+                              <span class="icon-svg icon-check text-primary flex-shrink-0 icon-badge-check"></span>
+                              }
+                            </div>
                           </button>
                           }
                         </div>
@@ -700,7 +723,8 @@
                   </div>
                   <div class="col-12 col-md-6">
                     <div class="premium-input-group">
-                      <label class="premium-input-label">Contraseña Servidor NX <span class="text-danger">*</span></label>
+                      <label class="premium-input-label">Contraseña Servidor NX <span
+                          class="text-danger">*</span></label>
                       <div class="input-icon-wrapper">
                         <span class="icon-svg input-icon icon-input-prefix"
                           [class.icon-lock]="!isFieldInvalid('password')"

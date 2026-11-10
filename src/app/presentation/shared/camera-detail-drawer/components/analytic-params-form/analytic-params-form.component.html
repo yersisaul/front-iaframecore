@@ -1355,25 +1355,37 @@
         </div>
         }
       </div>
-      <div class="col-6">
-        <label class="form-label text-muted small font-semibold mb-1"
-          title="Umbral de similitud al comparar rostros con una lista (min: 0.25 - max: 0.85).">Umbral de Similitud
-          Facial</label>
-        <input type="number" class="form-control text-paragraph-sm rounded-3" step="0.05" min="0.25" max="0.85"
+      <!-- Fila 2 (col-12): Umbral de Similitud Facial (Range Slider a ancho completo) -->
+      <div class="col-12 slider-field-group"
+        title="Umbral de similitud al comparar rostros con una lista de control (0% a 100% - escala interna 0.0 a 0.57).">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <label class="form-label text-muted small font-semibold mb-0"
+            title="Umbral de similitud al comparar rostros con una lista de control (0% a 100% - escala interna 0.0 a 0.57).">
+            Umbral de Similitud Facial
+          </label>
+          <span class="slider-field-value font-monospace fw-semibold text-primary">
+            {{ confianzaRF() }}%
+          </span>
+        </div>
+        <input type="range" class="form-range custom-slider"
+          min="0" max="100" step="1"
           [class.element-highlight-amber-pulse]="highlightErrorTarget === 'confianza_rf'"
           [class.is-invalid]="isParamInvalid('confianza_rf')"
-          [ngModel]="confianzaRF()" (ngModelChange)="confianzaRF.set($event)"
-          title="Umbral de similitud al comparar rostros con una lista (min: 0.25 - max: 0.85)." />
+          [ngModel]="confianzaRF()" (ngModelChange)="confianzaRF.set(+$event)"
+          title="Umbral de similitud al comparar rostros con una lista de control (0% a 100% - escala interna 0.0 a 0.57)." />
         @if (isParamInvalid('confianza_rf')) {
         <div class="text-danger small mt-1" style="font-size: 0.72rem; font-weight: 500;">
-          Debe estar entre 0.25 y 0.85
+          Debe estar entre 0 y 100
         </div>
         }
       </div>
+
+      <!-- Fila 3 Inferior Izquierda (col-6): Filtro de Detecciones Previas -->
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
-          title="Número de veces que se debe detectar un rostro antes de hacer comparación con una lista, ayuda a reducir la carga de procesamiento (min: 1 - max: 5).">Filtro
-          de Detecciones Previas</label>
+          title="Número de veces que se debe detectar un rostro antes de hacer comparación con una lista, ayuda a reducir la carga de procesamiento (min: 1 - max: 5).">
+          Filtro de Detecciones Previas
+        </label>
         <input type="number" class="form-control text-paragraph-sm rounded-3" min="1" max="5"
           [class.element-highlight-amber-pulse]="highlightErrorTarget === 'n_detecciones_rf'"
           [class.is-invalid]="isParamInvalid('n_detecciones_rf')"
@@ -1385,10 +1397,13 @@
         </div>
         }
       </div>
+
+      <!-- Fila 3 Inferior Derecha (col-6): Confirmaciones de Coincidencia -->
       <div class="col-6">
         <label class="form-label text-muted small font-semibold mb-1"
-          title="Cantidad de veces que un rostro debe hacer match con una lista definida para que se genere el evento (min: 1 - max: 5).">Confirmaciones
-          de Coincidencia</label>
+          title="Cantidad de veces que un rostro debe hacer match con una lista definida para que se genere el evento (min: 1 - max: 5).">
+          Confirmaciones de Coincidencia
+        </label>
         <input type="number" class="form-control text-paragraph-sm rounded-3" min="1" max="5"
           [class.element-highlight-amber-pulse]="highlightErrorTarget === 'n_reconocimientos_rf'"
           [class.is-invalid]="isParamInvalid('n_reconocimientos_rf')"

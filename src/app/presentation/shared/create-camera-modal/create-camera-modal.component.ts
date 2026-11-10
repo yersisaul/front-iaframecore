@@ -288,6 +288,22 @@ export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy 
     );
   });
 
+  readonly cameraCountsByHost = computed<Record<string, number>>(() => {
+    const cams = this.cameraService.cameras();
+    const map: Record<string, number> = {};
+    for (const c of cams) {
+      if (c.hostFingerprint) {
+        map[c.hostFingerprint] = (map[c.hostFingerprint] || 0) + 1;
+      }
+    }
+    return map;
+  });
+
+  getHostCameraCount(fingerprint?: string | null): number {
+    if (!fingerprint) return 0;
+    return this.cameraCountsByHost()[fingerprint] || 0;
+  }
+
   cameraForm!: FormGroup;
 
   @ViewChild('mapContainer') mapContainer?: ElementRef<HTMLDivElement>;
@@ -309,11 +325,17 @@ export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy 
   ngOnInit(): void {
     this.initForm();
     this.setupAutoProbe();
+    if (this.cameraService.cameras().length === 0) {
+      this.cameraService.getAllCameras().subscribe();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['show']) {
       if (this.show) {
+        if (this.cameraService.cameras().length === 0) {
+          this.cameraService.getAllCameras().subscribe();
+        }
         if (this.mode === 'edit' && this.camera) {
           this.editingCameraSnapshot = { ...this.camera };
           this.populateForm(this.editingCameraSnapshot);
@@ -471,9 +493,9 @@ export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy 
         this.onvifProfiles.set([]);
         this.onvifTokens.set([]);
         this.lastProbedKey = '';
-        if (field === 'ip_address' || field === 'http_port' || field === 'user') {
-          this.cameraForm.get('nx_id')?.setValue('', { emitEvent: false });
+        if (field === 'ip_address' || field === 'http_port' || field === 'user' || field === 'password') {
           if (this.currentStreamType === 'nx') {
+            this.cameraForm.get('nx_id')?.setValue('', { emitEvent: false });
             this.cameraForm.get('stream_url')?.setValue('', { emitEvent: false });
           }
           if (this.currentStreamType === 'Onvif') {
@@ -546,8 +568,8 @@ export class CreateCameraModalComponent implements OnInit, OnChanges, OnDestroy 
       this.onvifProfiles.set([]);
       this.onvifTokens.set([]);
       this.lastProbedKey = '';
-      this.cameraForm.get('nx_id')?.setValue('', { emitEvent: false });
       if (this.currentStreamType === 'nx') {
+        this.cameraForm.get('nx_id')?.setValue('', { emitEvent: false });
         this.cameraForm.get('stream_url')?.setValue('', { emitEvent: false });
       }
       if (this.currentStreamType === 'Onvif') {

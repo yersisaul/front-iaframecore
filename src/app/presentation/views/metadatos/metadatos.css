@@ -1859,6 +1859,22 @@
   transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
+/* Fullscreen preview button */
+.btn-fullscreen:hover {
+  background-color: var(--primary, #3b82f6) !important;
+  border-color: var(--primary, #3b82f6) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45);
+}
+
+.btn-fullscreen:hover .icon-svg {
+  transform: scale(1.15);
+}
+
+.btn-fullscreen:active {
+  transform: translateY(0) scale(0.95);
+}
+
 /* Coincidence vector search button */
 .btn-coincidence:hover {
   background-color: var(--primary) !important;
@@ -1949,4 +1965,63 @@
 ::ng-deep [data-bs-theme="dark"] .plate-modal-card {
   background-color: var(--bg-modal, #1e293b);
   border-color: var(--border-modal, #334155);
+}
+
+/* ── Modal Lightbox Pantalla Completa (Metadatos) ── */
+.meta-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  background-color: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: metaLightboxFadeIn 0.2s ease-out;
+  cursor: zoom-out;
+}
+
+.meta-lightbox-img {
+  --aspect: 1;
+  width: min(90vw, calc(88vh * var(--aspect, 1)));
+  height: auto;
+  aspect-ratio: var(--aspect, 1);
+  max-width: 92vw;
+  max-height: 88vh;
+  object-fit: contain;
+  border-radius: 14px;
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.15);
+  user-select: none;
+  cursor: default;
+  animation: metaLightboxZoomIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.meta-lightbox-loading {
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  cursor: default;
+}
+
+@keyframes metaLightboxFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes metaLightboxZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

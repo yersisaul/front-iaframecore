@@ -14,7 +14,12 @@ import { CameraService } from '../../../core/services/camera.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { Host, GpuObservability } from '../../../core/domain/entities/host.models';
-import { getCameraStatusFilterLabel } from '../../../core/utils/camera-status.utils';
+import { Camera } from '../../../core/domain/entities/camera.models';
+import {
+  getCameraEffectiveStatus,
+  getCameraStatusCssClass,
+  getCameraStatusFilterLabel
+} from '../../../core/utils/camera-status.utils';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
 import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
@@ -1382,5 +1387,15 @@ export class Nodos implements OnInit, AfterViewInit, OnDestroy {
     }
     const totalSelected = selected.reduce((sum, st) => sum + this.getStatusCount(st), 0);
     return `${totalSelected}`;
+  }
+
+  // ── Camera Real Status Resolvers ───────────────────────────────────────────
+  getCameraStatusClass(camera: Camera | null | undefined): string {
+    const status = getCameraEffectiveStatus(camera, this.hostService.allHosts());
+    return getCameraStatusCssClass(status);
+  }
+
+  getCameraStatusLabel(camera: Camera | null | undefined): string {
+    return getCameraEffectiveStatus(camera, this.hostService.allHosts());
   }
 }
