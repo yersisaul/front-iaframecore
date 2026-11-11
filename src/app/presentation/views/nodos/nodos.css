@@ -1974,7 +1974,7 @@ option {
 
 .nm-columns-wrapper {
   display: grid;
-  grid-template-columns: 1fr 48px 1fr;
+  grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr);
   gap: 16px;
   align-items: stretch;
   position: relative;
@@ -1984,7 +1984,7 @@ option {
 
 @media (max-width: 820px) {
   .nm-columns-wrapper {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
   }
 
@@ -2064,6 +2064,7 @@ option {
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  min-width: 0;
 }
 
 .nm-column-title {
@@ -2130,7 +2131,9 @@ option {
   height: 100%;
   max-height: 56vh;
   min-height: 24rem;
+  min-width: 0;
   flex: 1;
+  overflow-x: hidden !important;
   overflow-y: auto !important;
   scrollbar-gutter: stable;
   scrollbar-width: thin !important;
@@ -2385,6 +2388,7 @@ option {
 /* Tarjeta de Lista (.nm-list-item) y reactividad por OS */
 .nm-list-item {
   padding: 14px 18px;
+  min-width: 0;
   /* Tarjeta más grande y espaciosa */
   border-radius: 8px;
   cursor: pointer;
@@ -2552,7 +2556,14 @@ option {
   opacity: 0.8;
 }
 
+/* Utilidad faltante usada en el HTML del modal de migración */
+.nm-list-item .min-w-0 {
+  min-width: 0 !important;
+}
+
 .nm-item-hostname {
+  display: block;
+  min-width: 0;
   font-size: 0.92rem !important;
   /* Más visible y legible */
   font-weight: 700 !important;
