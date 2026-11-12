@@ -60,7 +60,7 @@
 
   <!-- Barra de Filtros Horizontal -->
   @if (activeTab() === 'usuarios' && showFilters()) {
-  <div class="horizontal-filters-bar mb-4">
+  <div class="horizontal-filters-bar mb-3">
     <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
       <!-- 1. FILTRO DE ROL (SELECCIÓN ÚNICA - DISEÑO VMS ESTÁNDAR) -->
@@ -226,14 +226,15 @@
         @if (permissionsService.hasPermission('Usuarios', 'editar')) {
         <div class="user-card-actions-group">
           <!-- Editar datos -->
-          <button type="button" class="btn-user-card-action btn-user-card-edit" (click)="openEditModal(user); $event.stopPropagation()"
-            title="Editar Usuario" aria-label="Editar Usuario">
+          <button type="button" class="btn-user-card-action btn-user-card-edit"
+            (click)="openEditModal(user); $event.stopPropagation()" title="Editar Usuario" aria-label="Editar Usuario">
             <span class="icon-svg icon-edit"></span>
             <span class="btn-label">Editar</span>
           </button>
           <!-- Cambiar clave -->
-          <button type="button" class="btn-user-card-action btn-user-card-password" (click)="openPasswordModal(user); $event.stopPropagation()"
-            title="Actualizar Contraseña" aria-label="Actualizar Contraseña">
+          <button type="button" class="btn-user-card-action btn-user-card-password"
+            (click)="openPasswordModal(user); $event.stopPropagation()" title="Actualizar Contraseña"
+            aria-label="Actualizar Contraseña">
             <span class="icon-svg icon-lock"></span>
             <span class="btn-label">Contraseña</span>
           </button>
@@ -267,14 +268,13 @@
           @for (rol of availableRoles(); track rol.rol_id) {
           <div
             class="w-100 p-3 rounded-3 mb-2 border transition-all role-card-item d-flex align-items-center justify-content-between"
-            [class.is-hovered]="hoveredRoleId() === rol.rol_id"
-            [ngStyle]="getRoleStyle(rol.nombre)" [class.active-role-card]="selectedRoleForEdit()?.rol_id === rol.rol_id"
+            [class.is-hovered]="hoveredRoleId() === rol.rol_id" [ngStyle]="getRoleStyle(rol.nombre)"
+            [class.active-role-card]="selectedRoleForEdit()?.rol_id === rol.rol_id"
             [class.border-primary]="selectedRoleForEdit()?.rol_id === rol.rol_id"
             [class.role-card--new]="permissionsService.newRoleIds().has(rol.rol_id)"
             [class.role-card--updated]="permissionsService.updatedRoleIds().has(rol.rol_id)"
             [class.role-card--deleting]="permissionsService.deletingRoleIds().has(rol.rol_id)"
-            (mouseenter)="hoveredRoleId.set(rol.rol_id)"
-            (mouseleave)="hoveredRoleId.set(null)"
+            (mouseenter)="hoveredRoleId.set(rol.rol_id)" (mouseleave)="hoveredRoleId.set(null)"
             (click)="selectRoleForEdit(rol)" style="background: var(--bg-surface, transparent); cursor: pointer;">
             <div class="flex-grow-1 pe-2">
               <span class="role-badge mb-1 d-inline-block">{{ rol.nombre }}</span>
@@ -283,10 +283,8 @@
             <div class="d-flex align-items-center flex-shrink-0">
               @if (!isSystemRole(rol.nombre) && permissionsService.hasPermission('Roles', 'eliminar')) {
               <span role="button" tabindex="0" class="icon-svg icon-trash role-btn-action role-btn-delete"
-                (click)="openDeleteRoleModal(rol, $event)"
-                (keydown.enter)="openDeleteRoleModal(rol, $event)"
-                (keydown.space)="openDeleteRoleModal(rol, $event)"
-                title="Eliminar Rol" aria-label="Eliminar Rol">
+                (click)="openDeleteRoleModal(rol, $event)" (keydown.enter)="openDeleteRoleModal(rol, $event)"
+                (keydown.space)="openDeleteRoleModal(rol, $event)" title="Eliminar Rol" aria-label="Eliminar Rol">
               </span>
               }
 

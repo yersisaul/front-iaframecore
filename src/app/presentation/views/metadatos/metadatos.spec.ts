@@ -10,6 +10,8 @@ import { IStorageRepository } from '../../../core/domain/repositories/storage.re
 import { IMetadataRepository } from '../../../core/domain/repositories/metadata.repository';
 import { IListRepository } from '../../../core/domain/repositories/list.repository';
 import { ICameraRepository } from '../../../core/domain/repositories/camera.repository';
+import { IAuthRepository } from '../../../core/domain/repositories/auth.repository';
+import { MediaFileService } from '../../../core/services/media-file.service';
 
 describe('Metadatos', () => {
   let component: Metadatos;
@@ -45,6 +47,7 @@ describe('Metadatos', () => {
   };
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [Metadatos],
       providers: [
@@ -54,7 +57,9 @@ describe('Metadatos', () => {
         { provide: IStorageRepository, useValue: mockStorageRepository },
         { provide: IMetadataRepository, useValue: mockMetadataRepository },
         { provide: IListRepository, useValue: mockListRepository },
-        { provide: ICameraRepository, useValue: mockCameraRepository }
+        { provide: ICameraRepository, useValue: mockCameraRepository },
+        { provide: IAuthRepository, useValue: { login: () => of() } },
+        { provide: MediaFileService, useValue: { getFileUrl: () => of('') } }
       ]
     }).compileComponents();
 
@@ -138,6 +143,58 @@ describe('Metadatos', () => {
     await component.openInNx(record);
 
     expect(openCameraSpy).toHaveBeenCalledWith('nx-cam-uuid', 'Entrada', 1729353012000);
+  });
+
+  it('should render En espera / En vivo compact switch at the end of filters-row without badge and sync with buffer banner', () => {
+    const metadataService = (component as any).metadataService;
+    fixture.detectChanges();
+
+    const toggleBtn = fixture.nativeElement.querySelector('.filters-row #btn-toggle-live-metadata') as HTMLButtonElement | null;
+    expect(toggleBtn).toBeTruthy();
+    expect(component.isLivePaused()).toBe(true);
+    expect(toggleBtn!.getAttribute('role')).toBe('switch');
+    expect(toggleBtn!.getAttribute('aria-checked')).toBe('false');
+    expect(toggleBtn!.classList.contains('is-live')).toBe(false);
+    expect(toggleBtn!.textContent).toContain('En espera');
+    expect(toggleBtn!.querySelector('.live-switch-thumb-icon.icon-pause-simple')).toBeTruthy();
+    expect(toggleBtn!.querySelector('.live-switch-badge')).toBeNull();
+
+    // Simular llegada de un metadato en espera mientras el switch está en "En espera"
+    metadataService.addNewRecord({
+      id: 'meta-buf-1',
+      camara: 'Cam 1',
+      timestamp: '2026-11-12T12:00:00Z',
+      confiabilidad: 0.9,
+      colores: []
+    });
+    fixture.detectChanges();
+
+    // No debe renderizar live-switch-badge en el switch; el conteo vive en el banner inferior
+    expect(toggleBtn!.querySelector('.live-switch-badge')).toBeNull();
+    const bannerBtn = Array.from(fixture.nativeElement.querySelectorAll('button'))
+      .find((b: any) => b.textContent?.includes('Ver nuevos metadatos')) as HTMLButtonElement | undefined;
+    expect(bannerBtn).toBeTruthy();
+
+    // Pulsar "Ver nuevos metadatos" debe traer el buffer y cambiar el switch a "En vivo"
+    bannerBtn!.click();
+    fixture.detectChanges();
+
+    expect(component.isLivePaused()).toBe(false);
+    expect(component.bufferedEvents().length).toBe(0);
+    expect(toggleBtn!.getAttribute('aria-checked')).toBe('true');
+    expect(toggleBtn!.classList.contains('is-live')).toBe(true);
+    expect(toggleBtn!.textContent).toContain('En vivo');
+    expect(toggleBtn!.querySelector('.live-switch-thumb-icon.icon-play-simple')).toBeTruthy();
+
+    // Pulsar el switch vuelve a "En espera"
+    toggleBtn!.click();
+    fixture.detectChanges();
+
+    expect(component.isLivePaused()).toBe(true);
+    expect(toggleBtn!.getAttribute('aria-checked')).toBe('false');
+    expect(toggleBtn!.classList.contains('is-live')).toBe(false);
+    expect(toggleBtn!.textContent).toContain('En espera');
+    expect(toggleBtn!.querySelector('.live-switch-thumb-icon.icon-pause-simple')).toBeTruthy();
   });
 });
 

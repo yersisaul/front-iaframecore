@@ -113,6 +113,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -1783,7 +1784,6 @@ code.code-badge {
   position: relative;
   overflow: visible !important;
   z-index: 100;
-  margin-bottom: 1.5rem !important;
   animation: filterBarSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -5206,9 +5206,20 @@ code.code-badge {
 }
 
 @keyframes pulse-dot {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.25); opacity: 1; }
-  100% { transform: scale(0.95); opacity: 0.8; }
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
 }
 
 .node-options-dropdown-menu {
@@ -5259,4 +5270,4 @@ code.code-badge {
 
 [data-bs-theme="dark"] .node-options-dropdown-menu .dropdown-item:hover {
   background-color: rgba(255, 255, 255, 0.06);
-}
+}

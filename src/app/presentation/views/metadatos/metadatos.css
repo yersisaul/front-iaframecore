@@ -2010,6 +2010,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -2020,8 +2021,143 @@
     opacity: 0;
     transform: scale(0.92);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+/* ── Switch compacto "En espera / En vivo" alineado al sistema de filtros ── */
+.live-switch-control {
+  position: relative;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  width: 106px;
+  height: 37.5px;
+  padding: 3px;
+  border-radius: 30px;
+  border: 1.5px solid var(--border-filter-dropdown-btn);
+  background-color: var(--bg-filter-dropdown-btn);
+  color: var(--text-filter-dropdown-btn);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition:
+    background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.live-switch-control:hover {
+  background-color: var(--bg-filter-dropdown-btn-hover);
+  border-color: var(--border-filter-dropdown-btn-hover);
+  color: var(--text-filter-dropdown-btn-hover);
+  transform: translateY(-1px);
+}
+
+.live-switch-control:active {
+  transform: translateY(0);
+}
+
+.live-switch-control:focus-visible {
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+}
+
+.live-switch-thumb {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--bg-preset-btn, #f1f5f9);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  transition:
+    transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.live-switch-thumb-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* play-simple.svg ya trae desplazamiento derecho (+2.42u) en su viewBox 24x24:
+   ampliar a 20px iguala el peso visual de pausa (~9x10px) y -1px equilibra el centrado óptico */
+.live-switch-thumb-icon.icon-play-simple {
+  width: 20px;
+  height: 20px;
+  transform: translateX(-1px);
+}
+
+.live-switch-text {
+  position: absolute;
+  left: 34px;
+  right: 8px;
+  text-align: center;
+  font-size: 0.78125rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: color 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Estado EN VIVO activado (misma paleta que .btn-filter-dropdown.active) */
+.live-switch-control.is-live {
+  background-color: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.live-switch-control.is-live:hover {
+  background-color: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.16);
+}
+
+.live-switch-control.is-live .live-switch-thumb {
+  transform: translateX(69px);
+  background-color: var(--primary);
+  border-color: transparent;
+  color: var(--text-on-primary-btn, #ffffff);
+}
+
+.live-switch-control.is-live .live-switch-text {
+  left: 8px;
+  right: 34px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* Dark Mode */
+:host-context(.dark) .live-switch-control:not(.is-live) .live-switch-thumb,
+:host-context([data-bs-theme="dark"]) .live-switch-control:not(.is-live) .live-switch-thumb,
+::ng-deep .dark .live-switch-control:not(.is-live) .live-switch-thumb,
+::ng-deep [data-bs-theme="dark"] .live-switch-control:not(.is-live) .live-switch-thumb {
+  background-color: #334155;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .live-switch-control,
+  .live-switch-thumb,
+  .live-switch-text {
+    transition: none;
   }
 }

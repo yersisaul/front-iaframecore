@@ -80,9 +80,14 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   readonly pageSize = this.metadataService.pageSize;
   readonly newRecordIds = this.metadataService.newRecordIds;
   readonly bufferedEvents = this.metadataService.bufferedEvents;
+  readonly isLivePaused = this.metadataService.isLivePaused;
 
   applyBufferedEvents(): void {
     this.metadataService.applyBufferedEvents();
+  }
+
+  toggleLivePause(): void {
+    this.metadataService.toggleLivePause();
   }
 
   readonly isSidebarCollapsed = this.sidebarService.isCollapsed;
@@ -619,6 +624,9 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   ngOnDestroy(): void {
     this.metadataService.isViewActive.set(false);
     this.metadataService.activeIndex.set(null);
+    this.metadataService.bufferedEvents.set([]);
+    this.metadataService.snapshotCutoff.set(null);
+    this.metadataService.setLivePaused(true);
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }

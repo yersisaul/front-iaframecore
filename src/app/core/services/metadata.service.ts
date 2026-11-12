@@ -3,7 +3,7 @@ import { Observable, of, Subscription, share } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { MetaIndexName, MetaRecord, MetaIndexInfo, MetaRostro } from '../domain/entities/metadata.models';
 import { MetaFilterState, MetaFilterOptions, defaultFilterState, defaultFilterOptions } from '../domain/entities/metadata.filters.models';
-import { IMetadataRepository } from '../domain/repositories/metadata.repository';
+import { IMetadataRepository, MetadataSearchOptions } from '../domain/repositories/metadata.repository';
 import { SearchMetadataUseCase } from '../domain/use-cases/search-metadata.use-case';
 import { parseUtcDate } from '../utils/date-utils';
 
@@ -58,7 +58,61 @@ export class MetadataService {
   readonly pageSize = signal<number>(60);
   readonly newRecordIds = signal<Set<string>>(new Set());
   readonly bufferedEvents = signal<MetaRecord[]>([]);
+  /**
+   * Estado de pausa para la llegada de nuevos metadatos en tiempo real.
+   * true = pausado por defecto (acumula nuevos metadatos en modalidad buffer).
+   * false = tiempo real activo (inserta nuevos metadatos directamente en página 1 sin filtros).
+   */
+  readonly isLivePaused = signal<boolean>(true);
+  /**
+   * Techo temporal del snapshot actual. Cuando está definido, todas las consultas paginadas
+   * se acotan a `timestamp <= snapshotCutoff` para evitar desplazamientos y fugas del buffer.
+   */
+  readonly snapshotCutoff = signal<Date | null>(null);
   readonly allImageSearchResults = signal<MetaRostro[]>([]);
+
+  private getAnchorTimestampFromRecords(records: MetaRecord[], fallback: Date): Date {
+    if (!records || records.length === 0) return fallback;
+    let maxMs = 0;
+    for (const r of records) {
+      const ms = getRecordTimestampMs(r);
+      if (ms > maxMs) maxMs = ms;
+    }
+    return maxMs > 0 ? new Date(maxMs) : fallback;
+  }
+
+  toggleLivePause(): void {
+    this.setLivePaused(!this.isLivePaused());
+  }
+
+  setLivePaused(paused: boolean): void {
+    const wasPaused = this.isLivePaused();
+    this.isLivePaused.set(paused);
+
+    if (!wasPaused && paused) {
+      // Al pausar manualmente, congelar el snapshot en el registro más reciente actualmente visible
+      if (!this.snapshotCutoff()) {
+        this.snapshotCutoff.set(this.getAnchorTimestampFromRecords(this.records(), new Date()));
+      }
+      return;
+    }
+
+    // Al reanudar en página 1 sin filtros activos, volcar primero el buffer para mantener el orden cronológico
+    if (wasPaused && !paused) {
+      const canAutoFlush =
+        this.currentPage() === 1 &&
+        !this.hasActiveFilters(this.filters()) &&
+        !this.isLoading();
+
+      if (canAutoFlush) {
+        if (this.bufferedEvents().length > 0) {
+          this.applyBufferedEvents();
+        } else {
+          this.snapshotCutoff.set(null);
+        }
+      }
+    }
+  }
 
   markAsNew(id: string): void {
     this.newRecordIds.update(s => new Set([...s, id]));
@@ -146,7 +200,8 @@ export class MetadataService {
     const activeFiltersExist = this.hasActiveFilters(f);
     const isPaginating = this.currentPage() > 1;
     const isQueryLoading = this.isLoading();
-    const shouldBuffer = activeFiltersExist || isPaginating || isQueryLoading;
+    const isPaused = this.isLivePaused();
+    const shouldBuffer = isPaused || activeFiltersExist || isPaginating || isQueryLoading;
 
     if (shouldBuffer) {
       this.bufferedEvents.update(prev => {
@@ -169,9 +224,21 @@ export class MetadataService {
   }
 
   applyBufferedEvents(): void {
+    // Al mostrar los registros del buffer, activar el modo tiempo real si estaba pausado
+    if (this.isLivePaused()) {
+      this.isLivePaused.set(false);
+    }
+
     const buffer = this.bufferedEvents();
     this.bufferedEvents.set([]);
-    if (buffer.length === 0) return;
+    const hasFilters = this.hasActiveFilters(this.filters());
+
+    if (buffer.length === 0) {
+      if (!hasFilters && this.currentPage() === 1) {
+        this.snapshotCutoff.set(null);
+      }
+      return;
+    }
 
     if (this.currentPage() === 1) {
       // ⚡ INSTANTÁNEO (0ms de red): Ya estamos en la página 1, insertamos localmente
@@ -185,8 +252,16 @@ export class MetadataService {
       });
       this.totalRecords.update(t => t + buffer.length);
       buffer.forEach(e => this.markAsNew(e.id));
+
+      // Sin filtros en página 1 vuelve a directo; con filtros avanza el snapshot para mantener consistente la paginación
+      if (!hasFilters) {
+        this.snapshotCutoff.set(null);
+      } else {
+        this.snapshotCutoff.set(this.getAnchorTimestampFromRecords(this.records(), new Date()));
+      }
     } else {
-      // 🌐 NAVEGACIÓN (Página > 1 a Página 1): Carga los registros reales de la Página 1
+      // 🌐 NAVEGACIÓN (Página > 1 a Página 1): Reinicia snapshot y carga los registros reales de la Página 1
+      this.snapshotCutoff.set(null);
       this.currentPage.set(1);
       this.loadCurrentPage(buffer);
     }
@@ -252,6 +327,7 @@ export class MetadataService {
 
   setActiveIndex(index: MetaIndexName): void {
     this.bufferedEvents.set([]);
+    this.snapshotCutoff.set(null);
     this.allImageSearchResults.set([]);
     this.activeIndex.set(index);
     this.currentPage.set(1);
@@ -260,6 +336,7 @@ export class MetadataService {
 
   updateFilters(newFilters: Partial<MetaFilterState>): void {
     this.bufferedEvents.set([]);
+    this.snapshotCutoff.set(null);
     if (newFilters.imageFile === null || (newFilters.imageFile === undefined && !this.filters().imageFile)) {
       this.allImageSearchResults.set([]);
     }
@@ -273,6 +350,7 @@ export class MetadataService {
 
   resetFilters(): void {
     this.bufferedEvents.set([]);
+    this.snapshotCutoff.set(null);
     this.allImageSearchResults.set([]);
     this.filters.set(defaultFilterState());
     this.currentPage.set(1);
@@ -280,6 +358,17 @@ export class MetadataService {
   }
 
   setPage(page: number): void {
+    const activeFiltersExist = this.hasActiveFilters(this.filters());
+    const isPaused = this.isLivePaused();
+
+    if (page > 1 && !this.snapshotCutoff()) {
+      // Al salir de pág. 1 hacia pág. > 1 (incluso en tiempo real), anclar snapshot para evitar desplazamientos
+      this.snapshotCutoff.set(this.getAnchorTimestampFromRecords(this.records(), new Date()));
+    } else if (page === 1 && !isPaused && !activeFiltersExist) {
+      // Al volver a pág. 1 en tiempo real sin filtros, liberar el snapshot para mostrar datos en directo
+      this.snapshotCutoff.set(null);
+    }
+
     this.currentPage.set(page);
     this.loadCurrentPage();
   }
@@ -301,6 +390,8 @@ export class MetadataService {
 
     if (this.activeIndex() !== index) {
       this.activeIndex.set(index);
+      this.bufferedEvents.set([]);
+      this.snapshotCutoff.set(null);
       this.filterOptions.set(defaultFilterOptions());
       changed = true;
       indexChanged = true;
@@ -400,12 +491,24 @@ export class MetadataService {
       return;
     }
 
+    const queryStartedAt = new Date();
+    const activeSnapshot = this.snapshotCutoff();
+    const bufferedIds = this.bufferedEvents().map(b => b.id);
+    const searchOptions: MetadataSearchOptions | undefined =
+      activeSnapshot || bufferedIds.length > 0
+        ? {
+            snapshotHasta: activeSnapshot,
+            excludeIds: bufferedIds
+          }
+        : undefined;
+
     this.isLoading.set(true);
     this.activeSubscription = this.searchMetadataUseCase.execute(
       idx,
       filters,
       this.currentPage(),
-      this.pageSize()
+      this.pageSize(),
+      searchOptions
     ).subscribe({
       next: res => {
         const totalPages = res.total > 0 ? Math.ceil(res.total / this.pageSize()) : 1;
@@ -425,17 +528,25 @@ export class MetadataService {
           bufferPrefix.forEach(r => this.markAsNew(r.id));
         }
 
+        const activeFiltersExist = this.hasActiveFilters(this.filters());
+        const isPage1 = this.currentPage() === 1;
+        const isPaused = this.isLivePaused();
+        const shouldFreezeSnapshot = isPaused || activeFiltersExist || !isPage1;
+
+        if (shouldFreezeSnapshot && !this.snapshotCutoff()) {
+          this.snapshotCutoff.set(this.getAnchorTimestampFromRecords(finalRecords, queryStartedAt));
+        } else if (!shouldFreezeSnapshot) {
+          this.snapshotCutoff.set(null);
+        }
+
         // Deduplicación contra el buffer:
         // Si llegaron metadatos al buffer durante la carga de OpenSearch que YA vinieron en res.records,
         // eliminarlos del buffer para no tener duplicados.
         const resIds = new Set(finalRecords.map(r => r.id));
         const remainingBuffer = this.bufferedEvents().filter(b => !resIds.has(b.id));
 
-        // En la página 1 y SIN filtros activos, incorporar el buffer AUTOMÁTICAMENTE al inicio del grid ordenado por timestamp
-        const activeFiltersExist = this.hasActiveFilters(this.filters());
-        const isPage1 = this.currentPage() === 1;
-
-        if (isPage1 && !activeFiltersExist && remainingBuffer.length > 0) {
+        // En la página 1, SIN filtros activos y CON tiempo real activo (!isPaused), incorporar el buffer AUTOMÁTICAMENTE
+        if (isPage1 && !activeFiltersExist && !isPaused && remainingBuffer.length > 0) {
           const combined = [...remainingBuffer, ...finalRecords];
           const deduplicated = combined.filter((item, index, self) =>
             index === self.findIndex(t => t.id === item.id)

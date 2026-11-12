@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { IMetadataRepository, MetadataSearchResult } from '../repositories/metadata.repository';
+import { IMetadataRepository, MetadataSearchOptions, MetadataSearchResult } from '../repositories/metadata.repository';
 import { MetaIndexName } from '../entities/metadata.models';
 import { MetaFilterState } from '../entities/metadata.filters.models';
 
@@ -14,8 +14,9 @@ export class SearchMetadataUseCase {
     index: MetaIndexName,
     filters: MetaFilterState,
     page: number,
-    pageSize: number
+    pageSize: number,
+    options?: MetadataSearchOptions
   ): Observable<MetadataSearchResult> {
-    return this.metadataRepository.search(index, filters, page, pageSize);
+    return this.metadataRepository.search(index, filters, page, pageSize, options);
   }
 }

@@ -86,7 +86,7 @@
 
   <!-- Barra de Filtros Horizontal -->
   @if (showFilterPanel()) {
-  <div class="horizontal-filters-bar mb-4">
+  <div class="horizontal-filters-bar mb-3">
     <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
       <!-- 1. ESTADO -->
@@ -859,15 +859,15 @@
                       {{ host.hostname }}
                     </span>
                   </div>
-                  <span class="font-monospace text-muted small nm-item-subtext text-truncate mt-0.5" style="font-size: 0.65rem;">
+                  <span class="font-monospace text-muted small nm-item-subtext text-truncate mt-0.5"
+                    style="font-size: 0.65rem;">
                     IP: {{ host.ipAddress }}
                   </span>
                 </div>
 
                 <!-- Columna 3: Dot de Estado (Centrado verticalmente en medio a la derecha) -->
                 <div class="d-flex align-items-center flex-shrink-0 ms-auto">
-                  <span class="status-dot"
-                    [class]="'status-dot ' + getStatusCssClass(host.status)"
+                  <span class="status-dot" [class]="'status-dot ' + getStatusCssClass(host.status)"
                     [class.online]="host.status === 'active' || host.status === 'online'"
                     [title]="'Estado: ' + (host.status || 'Offline')">
                   </span>
@@ -956,8 +956,7 @@
                   <span class="camera-codec-badge font-monospace" style="font-size: 0.62rem;">
                     {{ (cam.decoder || '').toUpperCase() }} / {{ (cam.streamType || '').toUpperCase() }}
                   </span>
-                  <span class="status-dot"
-                    [class]="'status-dot ' + getCameraStatusClass(cam)"
+                  <span class="status-dot" [class]="'status-dot ' + getCameraStatusClass(cam)"
                     [title]="'Estado: ' + getCameraStatusLabel(cam)">
                   </span>
                 </div>
@@ -1052,7 +1051,8 @@
                       {{ host.hostname }}
                     </span>
                   </div>
-                  <span class="font-monospace text-muted small nm-item-subtext text-truncate mt-0.5" style="font-size: 0.65rem;">
+                  <span class="font-monospace text-muted small nm-item-subtext text-truncate mt-0.5"
+                    style="font-size: 0.65rem;">
                     IP: {{ host.ipAddress }}
                   </span>
                 </div>
@@ -1062,8 +1062,7 @@
                   @if (isTargetHostDisabled(host.fingerprint)) {
                   <span class="badge-node-origin-pill" title="Nodo de origen de cámaras seleccionadas">Origen</span>
                   } @else {
-                  <span class="status-dot"
-                    [class]="'status-dot ' + getStatusCssClass(host.status)"
+                  <span class="status-dot" [class]="'status-dot ' + getStatusCssClass(host.status)"
                     [class.online]="host.status === 'active' || host.status === 'online'"
                     [title]="'Estado: ' + (host.status || 'Offline')">
                   </span>

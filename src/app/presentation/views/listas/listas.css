@@ -581,15 +581,15 @@ button.list-btn-action {
 }
 
 /* Si no están dentro de list-card-actions, mantener separación por margin */
-.list-item-row:hover > .list-btn-action,
-.list-item-row.list-card-hovered > .list-btn-action {
+.list-item-row:hover>.list-btn-action,
+.list-item-row.list-card-hovered>.list-btn-action {
   margin-left: 1.25rem !important;
 }
 
-.list-item-row:hover > .list-btn-action + .list-btn-action,
-.list-item-row.list-card-hovered > .list-btn-action + .list-btn-action,
-.list-item-row:hover > .list-btn-edit ~ .list-btn-delete,
-.list-item-row.list-card-hovered > .list-btn-edit ~ .list-btn-delete {
+.list-item-row:hover>.list-btn-action+.list-btn-action,
+.list-item-row.list-card-hovered>.list-btn-action+.list-btn-action,
+.list-item-row:hover>.list-btn-edit~.list-btn-delete,
+.list-item-row.list-card-hovered>.list-btn-edit~.list-btn-delete {
   margin-left: var(--list-actions-gap, 24px) !important;
 }
 
@@ -713,6 +713,7 @@ button.list-btn-action {
 }
 
 @keyframes listCardMarquee {
+
   0%,
   15% {
     transform: translate3d(0, 0, 0);
@@ -855,7 +856,6 @@ button.list-btn-action {
   position: relative;
   overflow: visible !important;
   z-index: 100;
-  padding-bottom: 1rem;
   animation: filterBarSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -1421,11 +1421,14 @@ button.list-btn-action {
 }
 
 @keyframes subjectCardMarquee {
-  0%, 15% {
+
+  0%,
+  15% {
     transform: translate3d(0, 0, 0);
   }
 
-  85%, 100% {
+  85%,
+  100% {
     transform: translate3d(var(--subject-marquee-shift, -50px), 0, 0);
   }
 }
@@ -1493,11 +1496,14 @@ button.list-btn-action {
 }
 
 @keyframes sightingMarqueeScroll {
-  0%, 15% {
+
+  0%,
+  15% {
     transform: translate3d(0, 0, 0);
   }
 
-  85%, 100% {
+  85%,
+  100% {
     transform: translate3d(var(--subject-marquee-shift, -50px), 0, 0);
   }
 }

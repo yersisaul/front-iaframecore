@@ -169,7 +169,7 @@
 
   <!-- Barra de Filtros Horizontal -->
   @if (showFilterPanel()) {
-  <div class="horizontal-filters-bar mb-4">
+  <div class="horizontal-filters-bar mb-3">
     <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
       <!-- 1. ESTADO DE ACTIVIDAD -->
@@ -731,10 +731,8 @@
             [class.card-crud-status-active]="cameraActiveStatusIds().has(camera.id)"
             [class.card-crud-status-inactive]="cameraInactiveStatusIds().has(camera.id)"
             [class.has-delete-permission]="permissionsService.hasPermission('Cámaras', 'eliminar')"
-            [class.is-hovered]="hoveredCameraId() === camera.id"
-            (mouseenter)="hoveredCameraId.set(camera.id)"
-            (mouseleave)="hoveredCameraId.set(null)"
-            (click)="openAiPanel(camera)">
+            [class.is-hovered]="hoveredCameraId() === camera.id" (mouseenter)="hoveredCameraId.set(camera.id)"
+            (mouseleave)="hoveredCameraId.set(null)" (click)="openAiPanel(camera)">
             <!-- Estado -->
             <td class="col-status text-center">
               <span class="table-status-badge d-inline-flex align-items-center justify-content-center">

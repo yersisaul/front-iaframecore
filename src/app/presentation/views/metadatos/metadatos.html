@@ -39,7 +39,7 @@
 
   <!-- Barra de Filtros Horizontal -->
   @if (showFilters()) {
-  <div class="horizontal-filters-bar mb-4">
+  <div class="horizontal-filters-bar mb-3">
     <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
       <!-- 1. CÁMARAS -->
       <div class="filter-dropdown-wrapper position-relative">
@@ -128,7 +128,8 @@
           [class.active]="tempFilters().colores.length > 0" (click)="toggleDropdown('colores', $event)"
           [title]="activeIndex() === 'rostros' ? 'Filtrar por tez' : 'Filtrar por colores'">
           <span class="icon-svg icon-grid filter-icon" style="width: 14px; height: 14px;"></span>
-          <span>{{ activeIndex() === 'rostros' ? 'Tez' : 'Colores' }} ({{ tempFilters().colores.length || (activeIndex() === 'rostros' ? 'Todas' : 'Todos') }})</span>
+          <span>{{ activeIndex() === 'rostros' ? 'Tez' : 'Colores' }} ({{ tempFilters().colores.length || (activeIndex()
+            === 'rostros' ? 'Todas' : 'Todos') }})</span>
           <span class="icon-svg icon-chevron-down dropdown-chevron transition-all"
             [class.rotated]="activeDropdown() === 'colores'" style="width: 10px; height: 10px;"></span>
         </button>
@@ -610,12 +611,27 @@
         }
       </div>
 
+      <!-- 10. SWITCH COMPACTO EN ESPERA / EN VIVO -->
+      <div class="filter-dropdown-wrapper position-relative">
+        <button type="button" id="btn-toggle-live-metadata" role="switch" [attr.aria-checked]="!isLivePaused()"
+          class="live-switch-control" [class.is-live]="!isLivePaused()" [attr.aria-label]="isLivePaused()
+            ? 'Cambiar de En espera a En vivo'
+            : 'Cambiar de En vivo a En espera'" [title]="isLivePaused()
+            ? 'En espera: los nuevos metadatos se acumulan en el aviso inferior sin mover la vista.'
+            : 'En vivo: los nuevos metadatos aparecen automáticamente.'" (click)="toggleLivePause()">
+          <span class="live-switch-thumb" aria-hidden="true">
+            <span class="icon-svg live-switch-thumb-icon" [class.icon-pause-simple]="isLivePaused()"
+              [class.icon-play-simple]="!isLivePaused()"></span>
+          </span>
+          <span class="live-switch-text">{{ isLivePaused() ? 'En espera' : 'En vivo' }}</span>
+        </button>
+      </div>
+
       <!-- Vista previa del patrón de imagen para búsqueda -->
       @if (tempFilters().imageSearchUrl) {
       @let previewUrl = (tempFilters().imageSearchUrl | mediaUrl | async) || tempFilters().imageSearchUrl;
       <div class="image-search-preview-pill d-flex align-items-center gap-2 border rounded-pill px-3 py-1 shadow-sm">
-        <img [src]="previewUrl"
-          style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;"
+        <img [src]="previewUrl" style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;"
           alt="Patrón" />
         <span class="small text-muted fw-semibold">Patrón de Imagen</span>
         <button type="button" class="btn-close btn-close-xs" (click)="clearImageSearch()"></button>
@@ -654,6 +670,8 @@
           <span class="fw-semibold">
             @if (hasActiveFilters()) {
             Hay {{ bufferedEvents().length }} nuevo(s) metadato(s) que coinciden con tus filtros activos.
+            } @else if (isLivePaused()) {
+            Vista fija: hay {{ bufferedEvents().length }} nuevo(s) metadato(s) esperando para mostrarse.
             } @else {
             Hay {{ bufferedEvents().length }} nuevo(s) metadato(s) disponible(s).
             }
@@ -678,8 +696,8 @@
         @for (record of records(); track (record.id + '-' + $index)) {
         <div class="card metadata-card border-0 shadow-sm rounded-3 position-relative"
           [class.metadata-card--live-new]="newRecordIds().has(record.id)"
-          [class.is-hovered]="hoveredCardId() === record.id"
-          (mouseenter)="onCardMouseEnter(record.id, $event)" (mouseleave)="onCardMouseLeave(record.id, $event)">
+          [class.is-hovered]="hoveredCardId() === record.id" (mouseenter)="onCardMouseEnter(record.id, $event)"
+          (mouseleave)="onCardMouseLeave(record.id, $event)">
 
           <!-- Image section with overlay -->
           @let resolvedImg = record.imgMinioObjectName | mediaUrl | async;
@@ -688,8 +706,7 @@
             [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
             [attr.data-raw-src]="record.imgMinioObjectName || 'NULL'">
             <!-- Fallback placeholder (visible if no image or if image fails 404) -->
-            <div class="placeholder-img-icon"
-              [attr.data-img-url]="resolvedImg || 'SIN_URL_RESUELTA'"
+            <div class="placeholder-img-icon" [attr.data-img-url]="resolvedImg || 'SIN_URL_RESUELTA'"
               [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'">
               <span class="icon-svg icon-warning fallback-icon"></span>
               <span class="fallback-text">SIN IMAGEN</span>
@@ -697,11 +714,9 @@
 
             @if (resolvedImg) {
             <img [src]="resolvedImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
-              [attr.data-src]="resolvedImg"
-              [attr.data-minio-object]="record.imgMinioObjectName"
+              [attr.data-src]="resolvedImg" [attr.data-minio-object]="record.imgMinioObjectName"
               class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
-              draggable="false"
-              alt="Thumbnail" />
+              draggable="false" alt="Thumbnail" />
             }
 
             <!-- Floating Reliability / Similarity Badge (Top-Left) -->
@@ -745,16 +760,14 @@
 
               @if (canAdd) {
               <button type="button" class="btn-overlay-action btn-watchlist"
-                (click)="openAddToListModal(record); $event.stopPropagation()"
-                title="Agregar a lista de control">
+                (click)="openAddToListModal(record); $event.stopPropagation()" title="Agregar a lista de control">
                 <span class="icon-svg icon-plus" style="width: 12px; height: 12px;"></span>
                 <span>Añadir a lista</span>
               </button>
               }
 
               @if (canNx) {
-              <button type="button" class="btn-overlay-action btn-nx-open"
-                [id]="'btn-nx-open-' + record.id"
+              <button type="button" class="btn-overlay-action btn-nx-open" [id]="'btn-nx-open-' + record.id"
                 (click)="openInNx(record, $event)"
                 [title]="'Abrir cámara en Nx Witness (' + formatDate(record.timestampReal) + ')'">
                 <span class="icon-svg icon-nx-witness" style="width: 12px; height: 12px;"></span>
@@ -869,8 +882,7 @@
         <div class="d-flex align-items-center gap-3 mb-3 p-2 border rounded bg-light-translucent">
           @let modalImg = record.imgMinioObjectName | mediaUrl | async;
           @if (modalImg) {
-          <img [src]="modalImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
-            [attr.data-src]="modalImg"
+          <img [src]="modalImg" (load)="onImageLoad($event)" (error)="onImageError($event)" [attr.data-src]="modalImg"
             [attr.data-minio-object]="record.imgMinioObjectName"
             class="rounded object-fit-contain shadow-sm border bg-dark" style="width: 60px; height: 60px;" />
           } @else {
@@ -943,11 +955,8 @@
   @let previewImg = previewItem.imgMinioObjectName | mediaUrl | async;
   <div class="meta-lightbox-backdrop" (click)="closeImagePreviewModal()" role="dialog" aria-modal="true">
     @if (previewImg) {
-    <img [src]="previewImg" class="meta-lightbox-img"
-      [style.--aspect]="previewAspectRatio() || 1"
-      (load)="onPreviewImageLoaded($event)"
-      (click)="$event.stopPropagation()"
-      [alt]="previewItem.camara" />
+    <img [src]="previewImg" class="meta-lightbox-img" [style.--aspect]="previewAspectRatio() || 1"
+      (load)="onPreviewImageLoaded($event)" (click)="$event.stopPropagation()" [alt]="previewItem.camara" />
     } @else {
     <div class="meta-lightbox-loading d-flex flex-column align-items-center justify-content-center p-5 text-white"
       (click)="$event.stopPropagation()">

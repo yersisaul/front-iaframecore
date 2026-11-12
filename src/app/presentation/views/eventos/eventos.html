@@ -30,7 +30,7 @@
 
   <!-- Horizontal Filter Bar -->
   @if (showFilters()) {
-  <div class="horizontal-filters-bar mb-4">
+  <div class="horizontal-filters-bar mb-3">
     <div class="filters-row d-flex flex-wrap gap-2 align-items-center">
 
       <!-- 1. FILTRO CÁMARAS -->
@@ -480,8 +480,7 @@
         @for (record of records(); track (record.id + '-' + $index)) {
         <div class="card event-card border-0 shadow-sm rounded-3 position-relative"
           [class.event-card--live-new]="newRecordIds().has(record.id)"
-          [class.is-hovered]="hoveredCardId() === record.id"
-          (mouseenter)="onCardMouseEnter(record.id, $event)"
+          [class.is-hovered]="hoveredCardId() === record.id" (mouseenter)="onCardMouseEnter(record.id, $event)"
           (mouseleave)="onCardMouseLeave(record.id, $event)">
 
           <!-- Thumbnail Image -->
@@ -502,8 +501,7 @@
             <img [src]="resolvedImgUrl" (load)="onImageLoad($event)" (error)="onImageError($event)"
               [attr.data-src]="resolvedImgUrl" [attr.data-minio-object]="record.imgMinioObjectName"
               class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
-              draggable="false"
-              alt="Event Thumbnail" />
+              draggable="false" alt="Event Thumbnail" />
             }
 
             <!-- Floating Reliability / Similarity Badge (Top-Left) -->

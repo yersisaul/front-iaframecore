@@ -4,7 +4,7 @@ import { Observable, of, forkJoin, EMPTY } from 'rxjs';
 import { map, catchError, switchMap, expand, reduce } from 'rxjs/operators';
 import { MetaFilterState, MetaFilterOptions, defaultFilterOptions } from '../../core/domain/entities/metadata.filters.models';
 import { MetaIndexName, MetaRecord, MetaIndexInfo, MetaRostro } from '../../core/domain/entities/metadata.models';
-import { IMetadataRepository, MetadataSearchResult } from '../../core/domain/repositories/metadata.repository';
+import { IMetadataRepository, MetadataSearchOptions, MetadataSearchResult } from '../../core/domain/repositories/metadata.repository';
 import { MetadataMapper } from '../mappers/metadata.mapper';
 import { OsResponse, CatIndexResponse } from './dtos/opensearch-response.dto';
 import { AppEnvironment } from '../../core/config/app-environment';
@@ -48,27 +48,29 @@ export class OpenSearchRepository implements IMetadataRepository {
     index: MetaIndexName,
     filters: MetaFilterState,
     page: number,
-    pageSize: number
+    pageSize: number,
+    options?: MetadataSearchOptions
   ): Observable<MetadataSearchResult> {
     if (pageSize >= 10000 || pageSize <= 0) {
-      return this.fetchAllMetadataInRange(index, filters);
+      return this.fetchAllMetadataInRange(index, filters, options);
     }
-    return this.searchPage(index, filters, page, pageSize);
+    return this.searchPage(index, filters, page, pageSize, options);
   }
 
   private fetchAllMetadataInRange(
     index: MetaIndexName,
-    filters: MetaFilterState
+    filters: MetaFilterState,
+    options?: MetadataSearchOptions
   ): Observable<MetadataSearchResult> {
     const fetchChunkSize = 5000;
 
-    return this.searchPageWithSearchAfter(index, filters, fetchChunkSize, null).pipe(
+    return this.searchPageWithSearchAfter(index, filters, fetchChunkSize, null, options).pipe(
       expand(prevResult => {
         const currentCount = prevResult.records.length;
         if (currentCount === 0 || currentCount >= prevResult.total || !prevResult.lastSort) {
           return EMPTY;
         }
-        return this.searchPageWithSearchAfter(index, filters, fetchChunkSize, prevResult.lastSort).pipe(
+        return this.searchPageWithSearchAfter(index, filters, fetchChunkSize, prevResult.lastSort, options).pipe(
           map(nextResult => ({
             records: [...prevResult.records, ...nextResult.records],
             total: nextResult.total,
@@ -85,9 +87,10 @@ export class OpenSearchRepository implements IMetadataRepository {
     index: MetaIndexName,
     filters: MetaFilterState,
     pageSize: number,
-    searchAfter: any[] | null
+    searchAfter: any[] | null,
+    options?: MetadataSearchOptions
   ): Observable<InternalMetadataSearchResult> {
-    const mustFilters = this.buildMustFilters(index, filters);
+    const mustFilters = this.buildMustFilters(index, filters, options);
     const aggs = this.buildAggs(index);
 
     const queryBody: any = {
@@ -137,9 +140,10 @@ export class OpenSearchRepository implements IMetadataRepository {
     index: MetaIndexName,
     filters: MetaFilterState,
     page: number,
-    pageSize: number
+    pageSize: number,
+    options?: MetadataSearchOptions
   ): Observable<MetadataSearchResult> {
-    const mustFilters = this.buildMustFilters(index, filters);
+    const mustFilters = this.buildMustFilters(index, filters, options);
     const aggs = this.buildAggs(index);
 
     let queryBody: any;
@@ -208,7 +212,7 @@ export class OpenSearchRepository implements IMetadataRepository {
   }
 
 
-  private buildMustFilters(index: MetaIndexName, filters: MetaFilterState): any[] {
+  private buildMustFilters(index: MetaIndexName, filters: MetaFilterState, options?: MetadataSearchOptions): any[] {
     const mustFilters: any[] = [];
 
     if (filters.tipoObjeto && filters.tipoObjeto.length > 0) {
@@ -376,11 +380,28 @@ export class OpenSearchRepository implements IMetadataRepository {
     if (filters.timestampDesde) {
       timestampRange.gte = filters.timestampDesde.toISOString();
     }
-    if (filters.timestampHasta) {
-      timestampRange.lte = filters.timestampHasta.toISOString();
+    let effectiveHasta: Date | null = filters.timestampHasta ? new Date(filters.timestampHasta) : null;
+    if (options?.snapshotHasta) {
+      const snapDate = new Date(options.snapshotHasta);
+      if (!isNaN(snapDate.getTime()) && (!effectiveHasta || snapDate.getTime() < effectiveHasta.getTime())) {
+        effectiveHasta = snapDate;
+      }
+    }
+    if (effectiveHasta) {
+      timestampRange.lte = effectiveHasta.toISOString();
     }
     if (Object.keys(timestampRange).length > 0) {
       mustFilters.push({ range: { timestamp: timestampRange } });
+    }
+
+    if (options?.excludeIds && options.excludeIds.length > 0) {
+      mustFilters.push({
+        bool: {
+          must_not: [
+            { ids: { values: options.excludeIds.slice(0, 500) } }
+          ]
+        }
+      });
     }
 
     if (filters.search && filters.search.trim()) {

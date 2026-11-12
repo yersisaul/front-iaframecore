@@ -8,13 +8,19 @@ export interface MetadataSearchResult {
   filterOptions: MetaFilterOptions;
 }
 
+export interface MetadataSearchOptions {
+  snapshotHasta?: Date | null;
+  excludeIds?: string[];
+}
+
 export abstract class IMetadataRepository {
   abstract getAvailableIndices(): Observable<MetaIndexInfo[]>;
   abstract search(
     index: MetaIndexName,
     filters: MetaFilterState,
     page: number,
-    pageSize: number
+    pageSize: number,
+    options?: MetadataSearchOptions
   ): Observable<MetadataSearchResult>;
   abstract searchFacesByImage(file: File, size: number): Observable<MetaRostro[]>;
   abstract getById(index: MetaIndexName, docId: string): Observable<MetaRecord>;

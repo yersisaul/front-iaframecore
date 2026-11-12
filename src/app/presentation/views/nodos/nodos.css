@@ -1135,7 +1135,6 @@
   position: relative;
   overflow: visible !important;
   z-index: 100;
-  margin-bottom: 1.5rem !important;
   animation: filterBarSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -2294,6 +2293,7 @@ option {
     transform: scale(0.4);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -2355,7 +2355,7 @@ option {
   color: #ffffff !important;
   transform: scale(1.08);
   box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.25),
-              0 6px 20px rgba(var(--primary-rgb), 0.45) !important;
+    0 6px 20px rgba(var(--primary-rgb), 0.45) !important;
 }
 
 .flow-arrow-wrap.is-active .flow-arrow-svg {
@@ -2373,7 +2373,7 @@ option {
   border-color: #93c5fd !important;
   color: #ffffff !important;
   box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.35),
-              0 8px 24px rgba(var(--primary-rgb), 0.55) !important;
+    0 8px 24px rgba(var(--primary-rgb), 0.55) !important;
 }
 
 :host-context([data-bs-theme="dark"]) .flow-arrow-wrap.is-active .flow-arrow-svg,
