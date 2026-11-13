@@ -87,8 +87,7 @@
       @if (!selectedListId()) {
       <div
         class="card bento-card w-100 p-4 flex-grow-1 d-flex flex-column align-items-center justify-content-center min-h-0 overflow-hidden">
-        <app-empty-state title="Ninguna Lista de Control Seleccionada"
-          description="Por favor, seleccione una watchlist en el menú izquierdo para visualizar sus integrantes y cargar su historial de avistamientos."
+        <app-empty-state title="Ninguna Lista de Control Seleccionada" [description]="emptyNoSelectionDescription()"
           iconClass="icon-list" [showAction]="false">
         </app-empty-state>
       </div>
@@ -278,16 +277,14 @@
             <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
           </div>
           } @else if (listDetails().length === 0) {
-          <app-empty-state title="No Hay Sujetos Registrados"
-            description="Registra sujetos a esta watchlist desde Metadatos haciendo clic en 'Agregar a Lista', o haz clic en 'Agregar Sujeto' arriba."
-            iconClass="icon-user" actionText="Agregar Sujeto" actionIconClass="icon-plus"
+          <app-empty-state [title]="emptyListTitle()" [description]="emptyListDescription()"
+            [iconClass]="emptyListIconClass()" [actionText]="emptyListActionText()" actionIconClass="icon-plus"
             [showAction]="permissionsService.hasPermission('Detalles Listas', 'crear')"
             (action)="openAddSubjectModal()">
           </app-empty-state>
           } @else if (filteredListDetails().length === 0) {
-          <app-empty-state title="Sin Coincidencias"
-            description="No se encontraron sujetos con los filtros de búsqueda o criterios activos."
-            iconClass="icon-search" actionText="Restablecer Filtros" actionIconClass="icon-close" [showAction]="true"
+          <app-empty-state title="Sin Coincidencias" [description]="emptyFilteredDescription()" iconClass="icon-search"
+            actionText="Restablecer Filtros" actionIconClass="icon-close" [showAction]="true"
             (action)="onResetFilters()">
           </app-empty-state>
           } @else {
@@ -326,10 +323,8 @@
               <!-- Subject Avatar/Image -->
               @let objName = detail.img_minio_object_name || detail.metadata?.img_minio_object_name;
               @let resolvedDetailImg = objName ? (objName | mediaUrl | async) : null;
-              <div class="subject-card-img-wrapper"
-                [attr.data-img-url]="resolvedDetailImg || 'SIN_URL_RESUELTA'"
-                [attr.data-minio-object]="objName || 'SIN_OBJETO_MINIO'"
-                [attr.data-raw-src]="objName || 'NULL'">
+              <div class="subject-card-img-wrapper" [attr.data-img-url]="resolvedDetailImg || 'SIN_URL_RESUELTA'"
+                [attr.data-minio-object]="objName || 'SIN_OBJETO_MINIO'" [attr.data-raw-src]="objName || 'NULL'">
                 <div class="subject-card-placeholder shadow-sm"
                   [attr.data-img-url]="resolvedDetailImg || 'SIN_URL_RESUELTA'"
                   [attr.data-minio-object]="objName || 'SIN_OBJETO_MINIO'"
@@ -344,8 +339,7 @@
                 </div>
                 @if (resolvedDetailImg) {
                 <img [src]="resolvedDetailImg" (error)="onImageError($event)" (load)="onImageLoad($event)"
-                  [attr.data-src]="resolvedDetailImg"
-                  [attr.data-minio-object]="objName"
+                  [attr.data-src]="resolvedDetailImg" [attr.data-minio-object]="objName"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'" class="subject-card-avatar shadow-sm"
                   alt="Foto" />
@@ -474,8 +468,7 @@
                 </div>
                 @if (resolvedActiveImg) {
                 <img [src]="resolvedActiveImg" (error)="onImageError($event)" (load)="onImageLoad($event)"
-                  [attr.data-src]="resolvedActiveImg"
-                  [attr.data-minio-object]="activeObjName"
+                  [attr.data-src]="resolvedActiveImg" [attr.data-minio-object]="activeObjName"
                   class="identity-avatar object-fit-cover shadow-sm cursor-pointer"
                   [class.rounded-circle]="listType() === 'face_recognition'"
                   [class.rounded-3]="listType() !== 'face_recognition'"
@@ -539,7 +532,8 @@
                     @if (permissionsService.hasPermission('Detalles Listas', 'editar')) {
                     <button
                       class="btn-ghost p-1 text-primary-hover rounded-circle edit-subject-icon-btn d-flex align-items-center justify-content-center flex-shrink-0"
-                      (click)="openEditSubjectModal(activeDetail); $event.stopPropagation()" title="Editar Sujeto">
+                      (click)="openEditSubjectModal(activeDetail); $event.stopPropagation()"
+                      [title]="isPlateList() ? 'Editar Placa' : 'Editar Sujeto'">
                       <span class="icon-svg icon-edit text-muted opacity-60" style="width: 14px; height: 14px;"></span>
                     </button>
                     }
@@ -660,8 +654,7 @@
                     </div>
                     @if (resolvedHitImg) {
                     <img [src]="resolvedHitImg" (error)="onImageError($event)" (load)="onImageLoad($event)"
-                      [attr.data-src]="resolvedHitImg"
-                      [attr.data-raw-src]="hit.imagen"
+                      [attr.data-src]="resolvedHitImg" [attr.data-raw-src]="hit.imagen"
                       class="timeline-sighting-img rounded-circle shadow-xs" alt="Avistamiento" />
                     }
                   </div>
@@ -714,8 +707,7 @@
     <div class="sighting-preview-hero position-relative">
       @let resolvedHitPreview = hit.imagen ? (hit.imagen | mediaUrl | async) : null;
       <div class="subject-card-placeholder flex-column align-items-center justify-content-center"
-        [attr.data-img-url]="resolvedHitPreview || 'SIN_URL_RESUELTA'"
-        [attr.data-raw-src]="hit.imagen || 'NULL'"
+        [attr.data-img-url]="resolvedHitPreview || 'SIN_URL_RESUELTA'" [attr.data-raw-src]="hit.imagen || 'NULL'"
         [title]="'Origen: ' + (resolvedHitPreview || hit.imagen || 'Sin imagen en payload')"
         [style.display]="resolvedHitPreview ? 'none' : 'flex'"
         style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; background-color: var(--bg-dark-surface, var(--bg-primary)); z-index: 1;">
@@ -729,9 +721,8 @@
       <div class="sighting-preview-img-container w-100 h-100 position-relative cursor-pointer"
         (click)="openFullscreenImage(resolvedHitPreview, $event)" title="Clic para ver en pantalla completa">
         <img [src]="resolvedHitPreview" (error)="onImageError($event)" (load)="onImageLoad($event)"
-          [attr.data-src]="resolvedHitPreview"
-          [attr.data-raw-src]="hit.imagen"
-          class="sighting-preview-img" alt="Avistamiento" />
+          [attr.data-src]="resolvedHitPreview" [attr.data-raw-src]="hit.imagen" class="sighting-preview-img"
+          alt="Avistamiento" />
         <div class="sighting-preview-zoom-overlay">
           <span class="icon-svg icon-fullscreen"
             style="width: 20px; height: 20px; background-color: currentColor;"></span>
@@ -815,13 +806,14 @@
           </div>
         </div>
 
-        <!-- Sujeto asociado -->
+        <!-- Sujeto / Placa asociada -->
         <div class="sighting-preview-row sighting-preview-row--highlight">
           <div class="sighting-preview-icon sp-icon--subject">
-            <span class="icon-svg icon-user" style="width: 14px; height: 14px; background-color: currentColor;"></span>
+            <span class="icon-svg" [class.icon-car]="isPlateList()" [class.icon-user]="!isPlateList()"
+              style="width: 14px; height: 14px; background-color: currentColor;"></span>
           </div>
           <div class="sighting-preview-field">
-            <span class="sp-label">Sujeto Asociado</span>
+            <span class="sp-label">{{ isPlateList() ? 'Placa Asociada' : 'Sujeto Asociado' }}</span>
             <span class="sp-value fw-bold">{{ selectedSubjectDetail()?.nombre_asociado ||
               formatPlate(selectedSubjectDetail()?.metadata?.text_placa) || '—' }}</span>
           </div>
@@ -958,13 +950,16 @@
       @if (faceImportStep() === 'prepare') {
       <div class="modal-body-custom">
         @if (skippedExistingFilesCount() > 0) {
-        <div class="alert alert-warning py-2 px-3 rounded-3 extra-small d-flex align-items-center justify-content-between mb-3 border border-warning-subtle"
+        <div
+          class="alert alert-warning py-2 px-3 rounded-3 extra-small d-flex align-items-center justify-content-between mb-3 border border-warning-subtle"
           style="background-color: rgba(var(--bs-warning-rgb), 0.12); font-size: 0.78rem;">
           <div class="d-flex align-items-center gap-2">
             <span class="icon-svg icon-alert flex-shrink-0 text-warning" style="width: 16px; height: 16px;"></span>
-            <span>Se omitieron <strong>{{ skippedExistingFilesCount() }}</strong> foto(s) porque ya están registradas en esta lista de control.</span>
+            <span>Se omitieron <strong>{{ skippedExistingFilesCount() }}</strong> foto(s) porque ya están registradas en
+              esta lista de control.</span>
           </div>
-          <button type="button" class="btn-close" style="font-size: 0.6rem;" (click)="skippedExistingFilesCount.set(0)"></button>
+          <button type="button" class="btn-close" style="font-size: 0.6rem;"
+            (click)="skippedExistingFilesCount.set(0)"></button>
         </div>
         }
 
@@ -1337,8 +1332,7 @@
                 </span>
               </div>
             </div>
-            <button type="button" class="btn-icon-svg-action"
-              (click)="removePlateFile($event)" title="Remover imagen"
+            <button type="button" class="btn-icon-svg-action" (click)="removePlateFile($event)" title="Remover imagen"
               [disabled]="isSavingSubject()">
               <span class="icon-svg icon-close text-danger" style="width: 15px; height: 15px;"></span>
             </button>
@@ -1519,7 +1513,7 @@
   <!-- Modal de Confirmación: Eliminar Lista de Control (REUTILIZABLE DRY) -->
   <app-confirm-delete-modal [show]="showDeleteListModal()" title="Eliminar Lista de Control"
     [itemName]="listToDelete()?.name || ''" messagePrefix="¿Estás seguro de que deseas eliminar la lista "
-    messageSuffix="? Se eliminarán todos los sujetos asociados y esta acción no se puede deshacer."
+    [messageSuffix]="isPlateList() ? '? Se eliminarán todas las placas asociadas y esta acción no se puede deshacer.' : '? Se eliminarán todos los sujetos asociados y esta acción no se puede deshacer.'"
     [isDeleting]="isDeletingList()" (confirm)="confirmDeleteWatchlist()" (cancel)="closeDeleteListModal()">
   </app-confirm-delete-modal>
 

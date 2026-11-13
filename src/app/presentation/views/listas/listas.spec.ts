@@ -40,6 +40,7 @@ describe('Listas', () => {
   };
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [Listas],
       providers: [
@@ -95,5 +96,74 @@ describe('Listas', () => {
     component.closeEditFaceSubjectModal();
     expect(component.showEditFaceSubjectModal()).toBe(false);
     expect(component.editFaceSubjectName()).toBe('');
+  });
+
+  it('should display plate-specific empty-state-view texts and icon when viewing an empty plate list', () => {
+    const listService = (component as any).listService;
+    component.listTypeParam.set('placas');
+    listService.lists.set([{
+      list_id: 'plate-list-1',
+      name: 'Placas Sospechosas',
+      list_type: 'plate_recognition',
+      description: 'Control LPR'
+    }]);
+    component.selectedListId.set('plate-list-1');
+    listService.listDetails.set([]);
+    fixture.detectChanges();
+
+    const emptyView = fixture.nativeElement.querySelector('.empty-state-view') as HTMLElement | null;
+    expect(emptyView).toBeTruthy();
+    expect(emptyView!.textContent).toContain('No Hay Placas Registradas');
+    expect(emptyView!.textContent).toContain('Agregar Placa');
+    expect(emptyView!.textContent).not.toContain('Sujetos');
+    expect(emptyView!.querySelector('.icon-car')).toBeTruthy();
+  });
+
+  it('should display plate-specific empty-state-view message when plate list search has no matches', () => {
+    const listService = (component as any).listService;
+    component.listTypeParam.set('placas');
+    listService.lists.set([{
+      list_id: 'plate-list-1',
+      name: 'Placas Sospechosas',
+      list_type: 'plate_recognition',
+      description: 'Control LPR'
+    }]);
+    component.selectedListId.set('plate-list-1');
+    listService.listDetails.set([{
+      detail_id: 'det-1',
+      list_id: 'plate-list-1',
+      nombre_asociado: 'Carlos Ruiz',
+      fingerprint_host: '',
+      embedding: [],
+      img_minio_object_name: '',
+      metadata: { text_placa: 'ABC123' }
+    }]);
+    component.searchQuery.set('ZZZ999');
+    fixture.detectChanges();
+
+    const emptyView = fixture.nativeElement.querySelector('.empty-state-view') as HTMLElement | null;
+    expect(emptyView).toBeTruthy();
+    expect(emptyView!.textContent).toContain('Sin Coincidencias');
+    expect(emptyView!.textContent).toContain('No se encontraron placas con los filtros de búsqueda o criterios activos.');
+  });
+
+  it('should keep subject-specific empty-state-view texts and icon when viewing an empty face list', () => {
+    const listService = (component as any).listService;
+    component.listTypeParam.set('rostros');
+    listService.lists.set([{
+      list_id: 'face-list-1',
+      name: 'Personas VIP',
+      list_type: 'face_recognition',
+      description: 'Control RF'
+    }]);
+    component.selectedListId.set('face-list-1');
+    listService.listDetails.set([]);
+    fixture.detectChanges();
+
+    const emptyView = fixture.nativeElement.querySelector('.empty-state-view') as HTMLElement | null;
+    expect(emptyView).toBeTruthy();
+    expect(emptyView!.textContent).toContain('No Hay Sujetos Registrados');
+    expect(emptyView!.textContent).toContain('Agregar Sujeto');
+    expect(emptyView!.querySelector('.icon-user')).toBeTruthy();
   });
 });

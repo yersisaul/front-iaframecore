@@ -86,6 +86,37 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   readonly listType = computed<'face_recognition' | 'plate_recognition'>(() => {
     return this.listTypeParam() === 'placas' ? 'plate_recognition' : 'face_recognition';
   });
+  readonly isPlateList = computed(() => this.listType() === 'plate_recognition');
+
+  readonly emptyNoSelectionDescription = computed(() =>
+    this.isPlateList()
+      ? 'Por favor, seleccione una lista de control en el menú izquierdo para visualizar sus placas registradas y cargar su historial de avistamientos.'
+      : 'Por favor, seleccione una lista de control en el menú izquierdo para visualizar sus sujetos registrados y cargar su historial de avistamientos.'
+  );
+
+  readonly emptyListTitle = computed(() =>
+    this.isPlateList() ? 'No Hay Placas Registradas' : 'No Hay Sujetos Registrados'
+  );
+
+  readonly emptyListDescription = computed(() =>
+    this.isPlateList()
+      ? "Registra placas en esta lista desde Metadatos haciendo clic en 'Agregar a Lista', o haz clic en 'Agregar Placa' arriba."
+      : "Registra sujetos en esta lista desde Metadatos haciendo clic en 'Agregar a Lista', o haz clic en 'Agregar Sujeto' arriba."
+  );
+
+  readonly emptyListIconClass = computed(() =>
+    this.isPlateList() ? 'icon-car' : 'icon-user'
+  );
+
+  readonly emptyListActionText = computed(() =>
+    this.isPlateList() ? 'Agregar Placa' : 'Agregar Sujeto'
+  );
+
+  readonly emptyFilteredDescription = computed(() =>
+    this.isPlateList()
+      ? 'No se encontraron placas con los filtros de búsqueda o criterios activos.'
+      : 'No se encontraron sujetos con los filtros de búsqueda o criterios activos.'
+  );
 
   readonly selectedListId = signal<string | null>(null);
 
@@ -1751,7 +1782,11 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     const detail = this.listDetails().find(d => d.detail_id === detailId);
     if (detail) {
       this.subjectToDeleteId.set(detailId);
-      this.subjectToDeleteName.set(detail.nombre_asociado || this.formatPlate(detail.metadata?.text_placa) || 'Sujeto sin nombre');
+      this.subjectToDeleteName.set(
+        detail.nombre_asociado ||
+        this.formatPlate(detail.metadata?.text_placa) ||
+        (this.isPlateList() ? 'Placa sin identificar' : 'Sujeto sin nombre')
+      );
       this.showDeleteSubjectModal.set(true);
     }
   }
