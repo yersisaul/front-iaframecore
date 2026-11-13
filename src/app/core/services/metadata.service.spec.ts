@@ -96,26 +96,62 @@ describe('MetadataService (Pause & Buffer)', () => {
     expect(service.totalRecords()).toBe(2);
   });
 
-  it('should NOT flush buffer when resuming on page > 1 or with active filters', () => {
-    // Case A: page > 1
+  it('should return to page 1 and flush buffer when toggling from En espera to En vivo on page > 1 (with or without buffer)', () => {
+    // Subcaso A: página 2 con eventos en buffer
+    service.snapshotCutoff.set(new Date('2026-11-12T09:30:00.000Z'));
     service.currentPage.set(2);
-    service.addNewRecord(makeRecord('m-page2', '2026-11-12T10:00:00Z'));
+    service.addNewRecord(makeRecord('m-page2', '2026-11-12T10:05:00Z'));
+    mockMetadataRepo.search.mockReturnValue(of({
+      records: [makeRecord('m-p1', '2026-11-12T10:00:00Z')],
+      total: 120,
+      filterOptions: defaultFilterOptions()
+    }));
 
     service.toggleLivePause(); // true -> false
 
     expect(service.isLivePaused()).toBe(false);
-    expect(service.currentPage()).toBe(2);
-    expect(service.bufferedEvents().map(r => r.id)).toEqual(['m-page2']);
+    expect(service.currentPage()).toBe(1);
+    expect(service.bufferedEvents().length).toBe(0);
+    expect(service.snapshotCutoff()).toBeNull();
+    expect(mockMetadataRepo.search).toHaveBeenLastCalledWith(
+      'personas',
+      expect.anything(),
+      1,
+      60,
+      undefined
+    );
+    expect(service.records().map(r => r.id)).toEqual(['m-page2', 'm-p1']);
 
-    // Case B: page 1 with active filters
-    service.currentPage.set(1);
+    // Subcaso B: página 3 con buffer vacío también regresa a página 1 y recarga en vivo
     service.setLivePaused(true);
-    service.filters.set({ ...defaultFilterState(), camaras: ['Cam 1'] });
+    service.snapshotCutoff.set(new Date('2026-11-12T10:05:00.000Z'));
+    service.currentPage.set(3);
+    mockMetadataRepo.search.mockClear();
 
     service.toggleLivePause(); // true -> false
 
     expect(service.isLivePaused()).toBe(false);
-    expect(service.bufferedEvents().map(r => r.id)).toEqual(['m-page2']);
+    expect(service.currentPage()).toBe(1);
+    expect(service.snapshotCutoff()).toBeNull();
+    expect(mockMetadataRepo.search).toHaveBeenLastCalledWith(
+      'personas',
+      expect.anything(),
+      1,
+      60,
+      undefined
+    );
+  });
+
+  it('should NOT auto-flush buffer when resuming on page 1 with active filters', () => {
+    service.currentPage.set(1);
+    service.filters.set({ ...defaultFilterState(), camaras: ['Cam 1'] });
+    service.addNewRecord(makeRecord('m-filt', '2026-11-12T10:00:00Z'));
+
+    service.toggleLivePause(); // true -> false
+
+    expect(service.isLivePaused()).toBe(false);
+    expect(service.currentPage()).toBe(1);
+    expect(service.bufferedEvents().map(r => r.id)).toEqual(['m-filt']);
   });
 
   it('should NOT auto-merge remainingBuffer in loadCurrentPage while paused', () => {

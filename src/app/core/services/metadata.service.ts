@@ -97,15 +97,17 @@ export class MetadataService {
       return;
     }
 
-    // Al reanudar en página 1 sin filtros activos, volcar primero el buffer para mantener el orden cronológico
+    // Al reanudar: si está en página > 1 devuelve a página 1 y vuelca buffer;
+    // si está en página 1 sin filtros activos, vuelca el buffer localmente o libera snapshot
     if (wasPaused && !paused) {
-      const canAutoFlush =
+      const isOtherPage = this.currentPage() > 1;
+      const canAutoFlushOnPage1 =
         this.currentPage() === 1 &&
         !this.hasActiveFilters(this.filters()) &&
         !this.isLoading();
 
-      if (canAutoFlush) {
-        if (this.bufferedEvents().length > 0) {
+      if (isOtherPage || canAutoFlushOnPage1) {
+        if (this.bufferedEvents().length > 0 || isOtherPage) {
           this.applyBufferedEvents();
         } else {
           this.snapshotCutoff.set(null);
@@ -234,7 +236,11 @@ export class MetadataService {
     const hasFilters = this.hasActiveFilters(this.filters());
 
     if (buffer.length === 0) {
-      if (!hasFilters && this.currentPage() === 1) {
+      if (this.currentPage() > 1) {
+        this.snapshotCutoff.set(null);
+        this.currentPage.set(1);
+        this.loadCurrentPage();
+      } else if (!hasFilters) {
         this.snapshotCutoff.set(null);
       }
       return;

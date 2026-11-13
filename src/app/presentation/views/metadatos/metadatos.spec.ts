@@ -196,6 +196,34 @@ describe('Metadatos', () => {
     expect(toggleBtn!.textContent).toContain('En espera');
     expect(toggleBtn!.querySelector('.live-switch-thumb-icon.icon-pause-simple')).toBeTruthy();
   });
+
+  it('should navigate back to page 1 and flush buffer when clicking live switch from page > 1', () => {
+    const metadataService = (component as any).metadataService;
+    fixture.detectChanges();
+
+    metadataService.currentPage.set(2);
+    metadataService.addNewRecord({
+      id: 'meta-p2-buf',
+      camara: 'Cam 1',
+      timestamp: '2026-11-12T12:10:00Z',
+      confiabilidad: 0.92,
+      colores: []
+    });
+    fixture.detectChanges();
+
+    const toggleBtn = fixture.nativeElement.querySelector('#btn-toggle-live-metadata') as HTMLButtonElement;
+    expect(component.currentPage()).toBe(2);
+    expect(component.bufferedEvents().length).toBe(1);
+
+    toggleBtn.click();
+    fixture.detectChanges();
+
+    expect(component.isLivePaused()).toBe(false);
+    expect(component.currentPage()).toBe(1);
+    expect(component.bufferedEvents().length).toBe(0);
+    expect(toggleBtn.getAttribute('aria-checked')).toBe('true');
+    expect(toggleBtn.textContent).toContain('En vivo');
+  });
 });
 
 
