@@ -29,8 +29,8 @@ describe('AnalyticParamsFormComponent - Umbral de Similitud Facial', () => {
     await fixture.whenStable();
   });
 
-  it('debe inicializar confianzaRF con valor por defecto 70 (escala 0 a 100)', () => {
-    expect(component.confianzaRF()).toBe(70);
+  it('debe inicializar confianzaRF con valor estándar 86 (0.49 de 0.57 en escala 0 a 100)', () => {
+    expect(component.confianzaRF()).toBe(86);
   });
 
   it('debe validar que confianza_rf sea válido entre 0 y 100', () => {
@@ -174,5 +174,50 @@ describe('AnalyticParamsFormComponent - Umbral de Similitud Facial', () => {
     });
 
     expect(component.confianzaRF()).toBe(0);
+  });
+
+  it('debe emitir 0.4902 en BD con el valor estándar por defecto de 86%', () => {
+    component.selectedType.set('face_recognition');
+
+    let emittedPayload: any = null;
+    component.formChanged.subscribe((payload) => {
+      emittedPayload = payload;
+    });
+
+    component.emitFormValues();
+
+    expect(component.confianzaRF()).toBe(86);
+    expect(emittedPayload.specific_params.confianza).toBe(0.4902);
+  });
+
+  it('debe cargar valor estándar 0.49 de BD convirtiéndolo a 86% en el slider', () => {
+    component.selectedType.set('face_recognition');
+    component.initialValues = {
+      type: 'face_recognition',
+      parameters: {
+        confianza: 0.49
+      }
+    };
+
+    component.ngOnChanges({
+      initialValues: new SimpleChange(null, component.initialValues, true)
+    });
+
+    expect(component.confianzaRF()).toBe(86);
+  });
+
+  it('debe restablecer confianzaRF a 86 si initialValues omite el parámetro confianza', () => {
+    component.selectedType.set('face_recognition');
+    component.confianzaRF.set(25);
+    component.initialValues = {
+      type: 'face_recognition',
+      parameters: {}
+    };
+
+    component.ngOnChanges({
+      initialValues: new SimpleChange(null, component.initialValues, true)
+    });
+
+    expect(component.confianzaRF()).toBe(86);
   });
 });

@@ -28,6 +28,13 @@ export interface NodeModelItem {
   classes: ModelClassOption[];
 }
 
+// Escala interna del backend para Reconocimiento Facial: [0.0, 0.57], estándar operativo 0.49 (86%)
+const FACE_SIMILARITY_MAX_RAW = 0.57;
+const FACE_SIMILARITY_STANDARD_RAW = 0.49;
+const FACE_SIMILARITY_DEFAULT_PCT = Math.round(
+  (FACE_SIMILARITY_STANDARD_RAW / FACE_SIMILARITY_MAX_RAW) * 100
+);
+
 @Component({
   selector: 'app-analytic-params-form',
   standalone: true,
@@ -124,7 +131,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
   readonly tiempoComportamiento = signal<number>(3);
   readonly condicionEventoComportamiento = signal<string>('Cumple');
   readonly confianzaPostura = signal<number>(0.6);
-  readonly confianzaRF = signal<number>(49);
+  readonly confianzaRF = signal<number>(FACE_SIMILARITY_DEFAULT_PCT);
   readonly nDeteccionesRF = signal<number>(3);
   readonly nReconocimientosRF = signal<number>(1);
   readonly aforoMaximo = signal<number>(20);
@@ -1482,10 +1489,12 @@ export class AnalyticParamsFormComponent implements OnChanges {
     if (params['pose_estimation_model'] !== undefined) this.poseEstimationModel.set(params['pose_estimation_model']);
     if (params['condicion_evento'] !== undefined) this.condicionEventoComportamiento.set(params['condicion_evento']);
     if (params['confianza_postura'] !== undefined) this.confianzaPostura.set(Number(params['confianza_postura']));
-    if (params['confianza'] !== undefined && params['confianza'] !== null) {
+    if (params['confianza'] !== undefined && params['confianza'] !== null && !Number.isNaN(Number(params['confianza']))) {
       const rawConf = Number(params['confianza']);
-      const pct = Math.min(100, Math.max(0, Math.round((rawConf / 0.57) * 100)));
+      const pct = Math.min(100, Math.max(0, Math.round((rawConf / FACE_SIMILARITY_MAX_RAW) * 100)));
       this.confianzaRF.set(pct);
+    } else {
+      this.confianzaRF.set(FACE_SIMILARITY_DEFAULT_PCT);
     }
     if (params['n_reconocimientos'] !== undefined) this.nReconocimientosRF.set(Number(params['n_reconocimientos']));
     if (params['Aforo'] !== undefined) this.aforoMaximo.set(Number(params['Aforo']));
@@ -1708,7 +1717,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
       specificParams['confianza_postura'] = this.confianzaPostura();
     } else if (selType === 'face_recognition') {
       specificParams['Modelo'] = 'dependencias/weights/face_detection/yolov8n-face-5keypoints.pt';
-      specificParams['confianza'] = Number(((this.confianzaRF() / 100) * 0.57).toFixed(4));
+      specificParams['confianza'] = Number(((this.confianzaRF() / 100) * FACE_SIMILARITY_MAX_RAW).toFixed(4));
       specificParams['N_Detecciones'] = this.nDeteccionesRF();
       specificParams['n_reconocimientos'] = this.nReconocimientosRF();
     } else if (selType === 'license_plate_recognition') {
