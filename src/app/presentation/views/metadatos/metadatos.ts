@@ -24,6 +24,8 @@ import { FilterActionsComponent } from '../../shared/filter-actions/filter-actio
 import { CustomSelectComponent } from '../../shared/custom-select/custom-select.component';
 import { MediaUrlPipe } from '../../shared/pipes/media-url.pipe';
 
+export type VehicleImageVariant = 'vehicle' | 'plate';
+
 @Component({
   selector: 'app-metadatos',
   standalone: true,
@@ -46,10 +48,12 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
   readonly isInNxBrowser = this.nxWitnessService.isInNxBrowser;
   readonly isNxOpening = this.nxWitnessService.isOpening;
   readonly hoveredCardId = signal<string | null>(null);
+  readonly hoveredExpandCardId = signal<string | null>(null);
 
   // Estado del modal de imagen en pantalla completa (Lightbox)
   readonly previewImageRecord = signal<MetaRecord | null>(null);
   readonly previewAspectRatio = signal<number | null>(null);
+  readonly selectedImageVariantByRecord = signal<Record<string, VehicleImageVariant>>({});
 
   // Watchlist Modal Integration
   readonly showAddToWatchlistModal = signal<boolean>(false);
@@ -1059,6 +1063,9 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     if (this.hoveredCardId() === recordId) {
       this.hoveredCardId.set(null);
     }
+    if (this.hoveredExpandCardId() === recordId) {
+      this.hoveredExpandCardId.set(null);
+    }
     if (event?.currentTarget) {
       const card = event.currentTarget as HTMLElement;
       const headerBlock = card.querySelector('.card-header-camera') as HTMLElement | null;
@@ -1069,6 +1076,33 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
           titleEl.style.removeProperty('--marquee-shift');
         }
       }
+    }
+  }
+
+  onExpandAreaMouseEnter(recordId: string): void {
+    this.hoveredExpandCardId.set(recordId);
+  }
+
+  onExpandAreaMouseLeave(recordId: string): void {
+    if (this.hoveredExpandCardId() === recordId) {
+      this.hoveredExpandCardId.set(null);
+    }
+  }
+
+  onInternalControlMouseLeave(recordId: string, hasImage: boolean, event: MouseEvent): void {
+    if (!hasImage) {
+      this.onExpandAreaMouseLeave(recordId);
+      return;
+    }
+    const currentTarget = event.currentTarget as HTMLElement | null;
+    const wrapper = currentTarget?.closest('.card-img-wrapper');
+    const related = event.relatedTarget as HTMLElement | null;
+    const stillInWrapper = !!(wrapper && related && wrapper.contains(related));
+    const overInternalControl = !!related?.closest('.vehicle-crop-switcher, .btn-overlay-action');
+    if (stillInWrapper && !overInternalControl) {
+      this.hoveredExpandCardId.set(recordId);
+    } else {
+      this.onExpandAreaMouseLeave(recordId);
     }
   }
 
@@ -1257,10 +1291,60 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
+  // ── Selector de imagen Vehículo / Placa y Lightbox ──
+  getPlateCropObjectName(record: MetaRecord | null | undefined): string {
+    if (!record || !('imgPlateCropMinioObjectName' in record)) return '';
+    return (record.imgPlateCropMinioObjectName || '').trim();
+  }
+
+  hasPlateCropImage(record: MetaRecord | null | undefined): boolean {
+    return !!this.getPlateCropObjectName(record);
+  }
+
+  hasBothVehicleImages(record: MetaRecord | null | undefined): boolean {
+    return !!(record && (record.imgMinioObjectName || record.urlImg) && this.hasPlateCropImage(record));
+  }
+
+  getSelectedImageVariant(record: MetaRecord | null | undefined): VehicleImageVariant {
+    if (!record || !this.hasPlateCropImage(record)) return 'vehicle';
+    return this.selectedImageVariantByRecord()[record.id] === 'plate' ? 'plate' : 'vehicle';
+  }
+
+  private resolveVariantImageObjectName(record: MetaRecord | null | undefined, variant: VehicleImageVariant): string {
+    if (!record) return '';
+    const plateObj = this.getPlateCropObjectName(record);
+    const vehicleObj = record.imgMinioObjectName || record.urlImg || '';
+    if (variant === 'plate' && plateObj) {
+      return plateObj;
+    }
+    return vehicleObj || plateObj;
+  }
+
+  getActiveCardImageObjectName(record: MetaRecord | null | undefined): string {
+    return this.resolveVariantImageObjectName(record, this.getSelectedImageVariant(record));
+  }
+
+  setCardImageVariant(record: MetaRecord, variant: VehicleImageVariant, event?: Event): void {
+    event?.stopPropagation();
+    const triggerEl = event?.currentTarget as HTMLElement | null;
+    const cardImg = triggerEl?.closest('.card-img-wrapper')?.querySelector('img') as HTMLImageElement | null;
+    if (cardImg) {
+      cardImg.style.display = '';
+      cardImg.removeAttribute('data-retry-count');
+    }
+    const nextVariant: VehicleImageVariant = (variant === 'plate' && this.hasPlateCropImage(record))
+      ? 'plate'
+      : 'vehicle';
+    this.selectedImageVariantByRecord.update(prev => ({
+      ...prev,
+      [record.id]: nextVariant
+    }));
+  }
+
   // ── Modal de Imagen en Pantalla Completa (Lightbox) ──
   openImagePreviewModal(record: MetaRecord, event?: Event): void {
     let initialAspect: number | null = null;
-    if (event && event.currentTarget) {
+    if (this.getSelectedImageVariant(record) === 'vehicle' && event && event.currentTarget) {
       const btn = event.currentTarget as HTMLElement;
       const cardImg = btn.closest('.card-img-wrapper')?.querySelector('img') as HTMLImageElement | null;
       if (cardImg && cardImg.naturalWidth && cardImg.naturalHeight) {

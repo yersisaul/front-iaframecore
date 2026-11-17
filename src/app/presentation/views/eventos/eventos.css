@@ -1046,6 +1046,10 @@
   overflow: hidden;
 }
 
+.card-img-wrapper.is-clickable {
+  cursor: pointer;
+}
+
 .placeholder-img-icon {
   pointer-events: none !important;
 }
@@ -1072,8 +1076,12 @@
 .event-card.is-hovered .ed-img-overlay,
 .card-img-wrapper:hover .ed-img-overlay {
   opacity: 1 !important;
-  pointer-events: auto !important;
+  pointer-events: none !important;
   transform: translateY(0) !important;
+}
+
+.ed-img-overlay .btn-overlay-action {
+  pointer-events: auto;
 }
 
 .btn-overlay-action {
@@ -1105,20 +1113,35 @@
   transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-/* Botón Pantalla Completa */
-.btn-fullscreen:hover {
-  background-color: var(--primary, #3b82f6) !important;
-  border-color: var(--primary, #3b82f6) !important;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45);
+/* Overlay SVG centrado sobre toda la imagen al hacer hover (mouseenter / mouseleave) */
+.card-expand-indicator {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.btn-fullscreen:hover .icon-svg {
-  transform: scale(1.15);
+.card-expand-indicator .icon-svg {
+  width: 42px;
+  height: 42px;
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.65));
+  transform: scale(0.9);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.btn-fullscreen:active {
-  transform: translateY(0) scale(0.95);
+.card-img-wrapper.is-clickable.is-expand-hovered .card-expand-indicator {
+  opacity: 1 !important;
+}
+
+.card-img-wrapper.is-clickable.is-expand-hovered .card-expand-indicator .icon-svg {
+  transform: scale(1);
 }
 
 /* Botón Nx Witness */

@@ -72,6 +72,7 @@ export interface OsVehiculoDto extends OsBaseDocDto {
   tipo_objeto: string;
   colores: OsColorDto[];
   reconocimiento: string;
+  img_plate_crop_minio_object_name?: string;
 }
 
 export interface OsRostroDto extends OsBaseDocDto {

@@ -207,6 +207,10 @@
   border-top-right-radius: 8px !important;
 }
 
+.metadata-card .card-img-wrapper.is-clickable {
+  cursor: pointer;
+}
+
 .metadata-card .card-body {
   flex: 0 0 auto !important;
   padding: 0.875rem 1rem 1rem 1rem !important;
@@ -349,11 +353,11 @@
   }
 }
 
-/* Floating Analytic & Reliability Overlays (Top Corners of Thumbnail Image) */
-.index-badge-overlay,
+/* Floating Reliability Overlay (Top-Left Corner of Thumbnail Image) */
 .reliability-badge-overlay {
   position: absolute;
   top: 10px;
+  left: 10px;
   background-color: var(--bg-backdrop);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -366,15 +370,6 @@
   z-index: 10;
   pointer-events: none;
   line-height: 1.25;
-}
-
-.index-badge-overlay {
-  right: 10px;
-  text-transform: uppercase;
-}
-
-.reliability-badge-overlay {
-  left: 10px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1826,8 +1821,12 @@
 .metadata-card.is-hovered .ed-img-overlay,
 .card-img-wrapper:hover .ed-img-overlay {
   opacity: 1 !important;
-  pointer-events: auto !important;
+  pointer-events: none !important;
   transform: translateY(0) !important;
+}
+
+.ed-img-overlay .btn-overlay-action {
+  pointer-events: auto;
 }
 
 .btn-overlay-action {
@@ -1859,20 +1858,35 @@
   transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-/* Fullscreen preview button */
-.btn-fullscreen:hover {
-  background-color: var(--primary, #3b82f6) !important;
-  border-color: var(--primary, #3b82f6) !important;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45);
+/* Overlay SVG centrado sobre toda la imagen al hacer hover (mouseenter / mouseleave) */
+.card-expand-indicator {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.btn-fullscreen:hover .icon-svg {
-  transform: scale(1.15);
+.card-expand-indicator .icon-svg {
+  width: 42px;
+  height: 42px;
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.65));
+  transform: scale(0.9);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.btn-fullscreen:active {
-  transform: translateY(0) scale(0.95);
+.card-img-wrapper.is-clickable.is-expand-hovered .card-expand-indicator {
+  opacity: 1 !important;
+}
+
+.card-img-wrapper.is-clickable.is-expand-hovered .card-expand-indicator .icon-svg {
+  transform: scale(1);
 }
 
 /* Coincidence vector search button */
@@ -1980,7 +1994,7 @@
   justify-content: center;
   padding: 1.5rem;
   animation: metaLightboxFadeIn 0.2s ease-out;
-  cursor: zoom-out;
+  cursor: default;
 }
 
 .meta-lightbox-img {
@@ -2004,6 +2018,64 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(8px);
   cursor: default;
+}
+
+/* ── Selector Vehículo / Placa en tarjetas (mismo tamaño y glassmorphism que .btn-overlay-action) ── */
+.vehicle-crop-switcher {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 20px;
+  background-color: var(--bg-backdrop);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.metadata-card:hover .vehicle-crop-switcher,
+.metadata-card.is-hovered .vehicle-crop-switcher,
+.card-img-wrapper:hover .vehicle-crop-switcher,
+.vehicle-crop-switcher:focus-within {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateX(-50%) translateY(0) !important;
+}
+
+.vehicle-crop-btn {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  padding: 0.32rem 0.72rem;
+  border-radius: 18px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vehicle-crop-btn:hover:not(.active) {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.vehicle-crop-btn.active {
+  background-color: var(--primary, #2563eb);
+  color: var(--text-on-primary-btn, #ffffff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 @keyframes metaLightboxFadeIn {

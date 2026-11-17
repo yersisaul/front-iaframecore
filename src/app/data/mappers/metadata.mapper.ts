@@ -74,6 +74,7 @@ export class MetadataMapper {
       ? hit._score
       : (typeof src.confiabilidad === 'number' ? src.confiabilidad : 0);
     const imgMinioObjectName = src.img_minio_object_name || '';
+    const imgPlateCropMinioObjectName = src.img_plate_crop_minio_object_name || '';
     return {
       id: hit._id,
       camara: src.camara || '',
@@ -83,6 +84,7 @@ export class MetadataMapper {
       timestampReal: toEpochMs(src.timestamp_real),
       confiabilidad: score,
       imgMinioObjectName,
+      imgPlateCropMinioObjectName,
       urlImg: imgMinioObjectName,
       tipoObjeto: src.tipo_objeto || '',
       colores: Array.isArray(src.colores) ? src.colores.map(MetadataMapper.toDomainColor) : [],

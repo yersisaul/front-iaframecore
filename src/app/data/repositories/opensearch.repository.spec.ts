@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { OpenSearchRepository } from './opensearch.repository';
+import { MetadataMapper } from '../mappers/metadata.mapper';
 import { defaultFilterState } from '../../core/domain/entities/metadata.filters.models';
 import { AppEnvironment } from '../../core/config/app-environment';
 
@@ -93,6 +94,41 @@ describe('OpenSearchRepository (Snapshot query options)', () => {
     });
 
     req.flush({ hits: { total: { value: 0 }, hits: [] }, aggregations: {} });
+  });
+
+  it('should map img_plate_crop_minio_object_name on vehicle records when present and default to empty string', () => {
+    const withPlate = MetadataMapper.toDomainVehiculo({
+      _id: 'veh-1',
+      _score: 0.95,
+      _source: {
+        camara: 'Entrada',
+        timestamp: '2026-11-17T10:00:00Z',
+        confiabilidad: 0.95,
+        img_minio_object_name: 'vehicles/veh-1.jpg',
+        img_plate_crop_minio_object_name: 'plates/plate-1.jpg',
+        tipo_objeto: 'automovil',
+        colores: [],
+        reconocimiento: 'ABC123'
+      }
+    });
+    expect(withPlate.imgMinioObjectName).toBe('vehicles/veh-1.jpg');
+    expect(withPlate.imgPlateCropMinioObjectName).toBe('plates/plate-1.jpg');
+
+    const withoutPlate = MetadataMapper.toDomainVehiculo({
+      _id: 'veh-2',
+      _score: 0.9,
+      _source: {
+        camara: 'Entrada',
+        timestamp: '2026-11-17T10:01:00Z',
+        confiabilidad: 0.9,
+        img_minio_object_name: 'vehicles/veh-2.jpg',
+        tipo_objeto: 'camioneta',
+        colores: [],
+        reconocimiento: ''
+      }
+    });
+    expect(withoutPlate.imgMinioObjectName).toBe('vehicles/veh-2.jpg');
+    expect(withoutPlate.imgPlateCropMinioObjectName).toBe('');
   });
 });
 

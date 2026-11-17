@@ -486,7 +486,11 @@
           <!-- Thumbnail Image -->
           @let rawImgTarget = record.imgMinioObjectName || record.urlImg;
           @let resolvedImgUrl = rawImgTarget ? (rawImgTarget | mediaUrl | async) : null;
-          <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center"
+          <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center is-clickable"
+            [class.is-expand-hovered]="hoveredExpandCardId() === record.id"
+            (mouseenter)="onExpandAreaMouseEnter(record.id)"
+            (mouseleave)="onExpandAreaMouseLeave(record.id)"
+            (click)="openImageDetailsModal(record)"
             [attr.data-img-url]="resolvedImgUrl || 'SIN_URL_RESUELTA'"
             [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
             [attr.data-raw-src]="rawImgTarget || 'NULL'">
@@ -527,25 +531,25 @@
               {{ record.analitica }}
             </div>
 
+            <!-- Indicador SVG centrado sobre la imagen al hacer hover (toda el área abre el detalle) -->
+            <div class="card-expand-indicator" aria-hidden="true">
+              <span class="icon-svg icon-fullscreen"></span>
+            </div>
+
             <!-- Glassmorphism Quick Action Strip (Bottom of Image) -->
             @let canNx = canOpenInNx(record);
+            @if (canNx) {
             <div class="ed-img-overlay">
-              <button type="button" class="btn-overlay-action btn-fullscreen" [id]="'btn-fullscreen-' + record.id"
-                (click)="openImageDetailsModal(record); $event.stopPropagation()"
-                title="Ver imagen en detalle / Pantalla completa">
-                <span class="icon-svg icon-magnify" style="width: 12px; height: 12px;"></span>
-                <span>Detalle</span>
-              </button>
-
-              @if (canNx) {
               <button type="button" class="btn-overlay-action btn-nx-open" [id]="'btn-nx-open-' + record.id"
-                (click)="openInNx(record, $event)"
+                (mouseenter)="onExpandAreaMouseLeave(record.id)"
+                (mouseleave)="onInternalControlMouseLeave(record.id, $event)"
+                (click)="openInNx(record, $event); $event.stopPropagation()"
                 [title]="'Abrir cámara en Nx Witness (' + formatDate(record.timestampReal) + ')'">
                 <span class="icon-svg icon-nx-witness" style="width: 12px; height: 12px;"></span>
                 <span>Ver en NX</span>
               </button>
-              }
             </div>
+            }
           </div>
 
           <!-- Card Body Details -->

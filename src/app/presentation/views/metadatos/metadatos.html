@@ -700,23 +700,31 @@
           (mouseleave)="onCardMouseLeave(record.id, $event)">
 
           <!-- Image section with overlay -->
-          @let resolvedImg = record.imgMinioObjectName | mediaUrl | async;
+          @let activeObjName = getActiveCardImageObjectName(record);
+          @let hasImage = !!activeObjName || !!record.imgMinioObjectName || !!record.urlImg ||
+          hasPlateCropImage(record);
+          @let resolvedImg = activeObjName | mediaUrl | async;
           <div class="card-img-wrapper position-relative bg-dark d-flex align-items-center justify-content-center"
+            [class.is-clickable]="hasImage"
+            [class.is-expand-hovered]="hasImage && hoveredExpandCardId() === record.id"
+            (mouseenter)="hasImage && onExpandAreaMouseEnter(record.id)"
+            (mouseleave)="onExpandAreaMouseLeave(record.id)"
+            (click)="hasImage && openImagePreviewModal(record, $event)"
             [attr.data-img-url]="resolvedImg || 'SIN_URL_RESUELTA'"
-            [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'"
-            [attr.data-raw-src]="record.imgMinioObjectName || 'NULL'">
+            [attr.data-minio-object]="activeObjName || 'SIN_OBJETO_MINIO'"
+            [attr.data-raw-src]="activeObjName || 'NULL'">
             <!-- Fallback placeholder (visible if no image or if image fails 404) -->
             <div class="placeholder-img-icon" [attr.data-img-url]="resolvedImg || 'SIN_URL_RESUELTA'"
-              [attr.data-minio-object]="record.imgMinioObjectName || 'SIN_OBJETO_MINIO'">
+              [attr.data-minio-object]="activeObjName || 'SIN_OBJETO_MINIO'">
               <span class="icon-svg icon-warning fallback-icon"></span>
               <span class="fallback-text">SIN IMAGEN</span>
             </div>
 
             @if (resolvedImg) {
             <img [src]="resolvedImg" (load)="onImageLoad($event)" (error)="onImageError($event)"
-              [attr.data-src]="resolvedImg" [attr.data-minio-object]="record.imgMinioObjectName"
+              [attr.data-src]="resolvedImg" [attr.data-minio-object]="activeObjName"
               class="card-img-top object-fit-contain w-100 h-100 position-relative" style="z-index: 1;"
-              draggable="false" alt="Thumbnail" />
+              draggable="false" [alt]="getSelectedImageVariant(record) === 'plate' ? 'Crop de placa' : 'Thumbnail'" />
             }
 
             <!-- Floating Reliability / Similarity Badge (Top-Left) -->
@@ -728,29 +736,42 @@
             </div>
             }
 
-            <!-- Floating Index Type indicator (Top-Right) -->
-            <div class="index-badge-overlay text-capitalize">
-              {{ activeIndex() }}
+            <!-- Switcher compacto Vehículo / Placa cuando existe img_plate_crop_minio_object_name -->
+            @if (hasBothVehicleImages(record)) {
+            <div class="vehicle-crop-switcher" (click)="$event.stopPropagation()"
+              (mouseenter)="onExpandAreaMouseLeave(record.id)"
+              (mouseleave)="onInternalControlMouseLeave(record.id, hasImage, $event)" role="group"
+              aria-label="Cambiar entre imagen del vehículo y recorte de la placa">
+              <button type="button" class="vehicle-crop-btn"
+                [class.active]="getSelectedImageVariant(record) === 'vehicle'"
+                (click)="setCardImageVariant(record, 'vehicle', $event)" title="Imagen del vehículo (por defecto)">
+                Vehículo
+              </button>
+              <button type="button" class="vehicle-crop-btn"
+                [class.active]="getSelectedImageVariant(record) === 'plate'"
+                (click)="setCardImageVariant(record, 'plate', $event)" title="Recorte de la placa">
+                Placa
+              </button>
             </div>
+            }
+
+            <!-- Indicador SVG centrado sobre la imagen al hacer hover (toda la imagen extiende) -->
+            @if (hasImage) {
+            <div class="card-expand-indicator" aria-hidden="true">
+              <span class="icon-svg icon-fullscreen"></span>
+            </div>
+            }
 
             <!-- Glassmorphism Quick Action Strip (Bottom of Image) -->
-            @let hasImage = !!record.imgMinioObjectName || !!record.urlImg;
             @let hasEmbedding = record.embedding && record.embedding.length > 0;
             @let canAdd = canAddToList(record);
             @let canNx = canOpenInNx(record);
-            @if (hasImage || hasEmbedding || canAdd || canNx) {
+            @if (hasEmbedding || canAdd || canNx) {
             <div class="ed-img-overlay">
-              @if (hasImage) {
-              <button type="button" class="btn-overlay-action btn-fullscreen" [id]="'btn-fullscreen-' + record.id"
-                (click)="openImagePreviewModal(record, $event); $event.stopPropagation()"
-                title="Ampliar imagen / Pantalla completa">
-                <span class="icon-svg icon-magnify" style="width: 12px; height: 12px;"></span>
-                <span>Ampliar</span>
-              </button>
-              }
-
               @if (hasEmbedding) {
               <button type="button" class="btn-overlay-action btn-coincidence"
+                (mouseenter)="onExpandAreaMouseLeave(record.id)"
+                (mouseleave)="onInternalControlMouseLeave(record.id, hasImage, $event)"
                 (click)="filtrarPorCoincidencia(record); $event.stopPropagation()"
                 title="Filtrar por coincidencia vectorial">
                 <span class="icon-svg icon-search" style="width: 12px; height: 12px;"></span>
@@ -760,6 +781,8 @@
 
               @if (canAdd) {
               <button type="button" class="btn-overlay-action btn-watchlist"
+                (mouseenter)="onExpandAreaMouseLeave(record.id)"
+                (mouseleave)="onInternalControlMouseLeave(record.id, hasImage, $event)"
                 (click)="openAddToListModal(record); $event.stopPropagation()" title="Agregar a lista de control">
                 <span class="icon-svg icon-plus" style="width: 12px; height: 12px;"></span>
                 <span>Añadir a lista</span>
@@ -768,7 +791,9 @@
 
               @if (canNx) {
               <button type="button" class="btn-overlay-action btn-nx-open" [id]="'btn-nx-open-' + record.id"
-                (click)="openInNx(record, $event)"
+                (mouseenter)="onExpandAreaMouseLeave(record.id)"
+                (mouseleave)="onInternalControlMouseLeave(record.id, hasImage, $event)"
+                (click)="openInNx(record, $event); $event.stopPropagation()"
                 [title]="'Abrir cámara en Nx Witness (' + formatDate(record.timestampReal) + ')'">
                 <span class="icon-svg icon-nx-witness" style="width: 12px; height: 12px;"></span>
                 <span>Ver en NX</span>
@@ -952,7 +977,8 @@
 
   <!-- Modal Pantalla Completa para Imagen de Metadato (Lightbox) -->
   @if (previewImageRecord(); as previewItem) {
-  @let previewImg = previewItem.imgMinioObjectName | mediaUrl | async;
+  @let previewObjName = previewItem.imgMinioObjectName || previewItem.urlImg || getPlateCropObjectName(previewItem);
+  @let previewImg = previewObjName | mediaUrl | async;
   <div class="meta-lightbox-backdrop" (click)="closeImagePreviewModal()" role="dialog" aria-modal="true">
     @if (previewImg) {
     <img [src]="previewImg" class="meta-lightbox-img" [style.--aspect]="previewAspectRatio() || 1"

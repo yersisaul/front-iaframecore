@@ -185,4 +185,88 @@ describe('Eventos', () => {
       expect(openCameraSpy).toHaveBeenCalledWith('nx-uuid-999', 'Camara Principal', 1729353012000);
     });
   });
+
+  describe('Card image detail trigger & hover indicator', () => {
+    it('should omit Detalle button, preserve analytic badge, handle hover indicator around Ver en NX, and open modal on card-img-wrapper click', () => {
+      const isInNxSpy = vi.spyOn((component as any).nxWitnessService, 'isInNxBrowser').mockReturnValue(true);
+      const openCameraSpy = vi.spyOn((component as any).nxWitnessService, 'openCamera').mockResolvedValue({ ok: true });
+      const eventService = (component as any).eventService;
+
+      eventService.records.set([
+        {
+          id: 'ev-card-1',
+          nombreCamara: 'Acceso Norte',
+          idCamara: 'cam-01',
+          camaraIdNx: 'nx-uuid-1234',
+          analitica: 'Reconocimiento Facial',
+          detalleEvento: 'Coincidencia detectada',
+          timestamp: new Date('2026-11-17T12:00:00Z'),
+          timestampReal: 1729353012000,
+          confiabilidad: 0.95,
+          imgMinioObjectName: 'events/ev-card-1.jpg',
+          urlImg: 'events/ev-card-1.jpg'
+        },
+        {
+          id: 'ev-card-2',
+          nombreCamara: 'Acceso Sur',
+          idCamara: 'cam-02',
+          analitica: 'Cruce de Linea',
+          detalleEvento: 'Cruce detectado',
+          timestamp: new Date('2026-11-17T12:01:00Z'),
+          confiabilidad: 0.85,
+          imgMinioObjectName: '',
+          urlImg: ''
+        }
+      ]);
+      fixture.detectChanges();
+
+      const cards = fixture.nativeElement.querySelectorAll('.event-card') as NodeListOf<HTMLElement>;
+      expect(cards.length).toBe(2);
+
+      // Conserva el badge de analítica en la esquina superior derecha y elimina el botón Detalle
+      expect(cards[0].querySelector('.index-badge-overlay')?.textContent?.trim()).toBe('Reconocimiento Facial');
+      expect(cards[0].querySelector('#btn-fullscreen-ev-card-1')).toBeNull();
+      expect(cards[1].querySelector('#btn-fullscreen-ev-card-2')).toBeNull();
+
+      const imgWrapper1 = cards[0].querySelector('.card-img-wrapper') as HTMLElement;
+      expect(imgWrapper1.classList.contains('is-clickable')).toBe(true);
+      expect(imgWrapper1.querySelector('.card-expand-indicator .icon-fullscreen')).toBeTruthy();
+
+      // Mouseenter en el área superior activa el indicador; entrar a Ver en NX lo oculta; regresar lo restaura
+      imgWrapper1.dispatchEvent(new MouseEvent('mouseenter'));
+      fixture.detectChanges();
+      expect(imgWrapper1.classList.contains('is-expand-hovered')).toBe(true);
+
+      const nxBtn = cards[0].querySelector('#btn-nx-open-ev-card-1') as HTMLButtonElement;
+      expect(nxBtn).toBeTruthy();
+      nxBtn.dispatchEvent(new MouseEvent('mouseenter'));
+      fixture.detectChanges();
+      expect(imgWrapper1.classList.contains('is-expand-hovered')).toBe(false);
+
+      nxBtn.dispatchEvent(new MouseEvent('mouseleave', { relatedTarget: imgWrapper1 }));
+      fixture.detectChanges();
+      expect(imgWrapper1.classList.contains('is-expand-hovered')).toBe(true);
+
+      // Clic en Ver en NX no abre el modal de detalle
+      nxBtn.click();
+      fixture.detectChanges();
+      expect(openCameraSpy).toHaveBeenCalled();
+      expect(component.selectedEventForModal()).toBeNull();
+
+      // Cuando canOpenInNx es false, ni siquiera renderiza .ed-img-overlay
+      isInNxSpy.mockReturnValue(false);
+      expect(cards[1].querySelector('.ed-img-overlay')).toBeNull();
+
+      // Clic en cualquier parte de card-img-wrapper abre el modal de detalle (con o sin imagen)
+      imgWrapper1.click();
+      fixture.detectChanges();
+      expect(component.selectedEventForModal()?.id).toBe('ev-card-1');
+
+      component.closeImageDetailsModal();
+      const imgWrapper2 = cards[1].querySelector('.card-img-wrapper') as HTMLElement;
+      imgWrapper2.click();
+      fixture.detectChanges();
+      expect(component.selectedEventForModal()?.id).toBe('ev-card-2');
+    });
+  });
 });

@@ -92,6 +92,9 @@ export class WebsocketService {
             if (newRecord?.imgMinioObjectName) {
               this.mediaFileService.prefetchFileUrl(newRecord.imgMinioObjectName);
             }
+            if ('imgPlateCropMinioObjectName' in newRecord && newRecord.imgPlateCropMinioObjectName) {
+              this.mediaFileService.prefetchFileUrl(newRecord.imgPlateCropMinioObjectName);
+            }
 
             // Validar que el nuevo registro cumpla con TODOS los filtros activos en pantalla (incluyendo coincidencia vectorial)
             if (!this.matchesMetadataFilters(newRecord, activeFilters)) {

@@ -331,6 +331,7 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
 
   // Modal state
   readonly selectedEventForModal = signal<EventRecord | null>(null);
+  readonly hoveredExpandCardId = signal<string | null>(null);
   
   // Magnifier Zoom state in modal
   readonly isZoomed = signal<boolean>(false);
@@ -1006,6 +1007,9 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     if (this.hoveredCardId() === recordId) {
       this.hoveredCardId.set(null);
     }
+    if (this.hoveredExpandCardId() === recordId) {
+      this.hoveredExpandCardId.set(null);
+    }
     if (event?.currentTarget) {
       const card = event.currentTarget as HTMLElement;
       const headerBlock = card.querySelector('.card-header-camera') as HTMLElement | null;
@@ -1016,6 +1020,29 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
           titleEl.style.removeProperty('--marquee-shift');
         }
       }
+    }
+  }
+
+  onExpandAreaMouseEnter(recordId: string): void {
+    this.hoveredExpandCardId.set(recordId);
+  }
+
+  onExpandAreaMouseLeave(recordId: string): void {
+    if (this.hoveredExpandCardId() === recordId) {
+      this.hoveredExpandCardId.set(null);
+    }
+  }
+
+  onInternalControlMouseLeave(recordId: string, event: MouseEvent): void {
+    const currentTarget = event.currentTarget as HTMLElement | null;
+    const wrapper = currentTarget?.closest('.card-img-wrapper');
+    const related = event.relatedTarget as HTMLElement | null;
+    const stillInWrapper = !!(wrapper && related && wrapper.contains(related));
+    const overInternalControl = !!related?.closest('.btn-overlay-action');
+    if (stillInWrapper && !overInternalControl) {
+      this.hoveredExpandCardId.set(recordId);
+    } else {
+      this.onExpandAreaMouseLeave(recordId);
     }
   }
 

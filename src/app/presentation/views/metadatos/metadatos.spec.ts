@@ -59,7 +59,7 @@ describe('Metadatos', () => {
         { provide: IListRepository, useValue: mockListRepository },
         { provide: ICameraRepository, useValue: mockCameraRepository },
         { provide: IAuthRepository, useValue: { login: () => of() } },
-        { provide: MediaFileService, useValue: { getFileUrl: () => of('') } }
+        { provide: MediaFileService, useValue: { getFileUrl: (name: string) => of(name ? `https://minio.local/${name}` : '') } }
       ]
     }).compileComponents();
 
@@ -223,6 +223,113 @@ describe('Metadatos', () => {
     expect(component.bufferedEvents().length).toBe(0);
     expect(toggleBtn.getAttribute('aria-checked')).toBe('true');
     expect(toggleBtn.textContent).toContain('En vivo');
+  });
+
+  it('should display vehicle crop by default and allow switching to plate crop in card and lightbox when img_plate_crop_minio_object_name exists', () => {
+    vi.spyOn(component.permissionsService, 'hasPermission').mockReturnValue(true);
+    const metadataService = (component as any).metadataService;
+    metadataService.activeIndex.set('vehiculos');
+    metadataService.records.set([
+      {
+        id: 'veh-with-plate',
+        camara: 'Cam Acceso',
+        timestamp: new Date('2026-11-17T12:00:00Z'),
+        confiabilidad: 0.94,
+        imgMinioObjectName: 'vehicles/veh-with-plate.jpg',
+        imgPlateCropMinioObjectName: 'plates/plate-with-plate.jpg',
+        urlImg: 'vehicles/veh-with-plate.jpg',
+        tipoObjeto: 'automovil',
+        reconocimiento: 'XYZ987',
+        colores: []
+      },
+      {
+        id: 'veh-legacy',
+        camara: 'Cam Salida',
+        timestamp: new Date('2026-11-17T12:01:00Z'),
+        confiabilidad: 0.88,
+        imgMinioObjectName: 'vehicles/veh-legacy.jpg',
+        imgPlateCropMinioObjectName: '',
+        urlImg: 'vehicles/veh-legacy.jpg',
+        tipoObjeto: 'camioneta',
+        reconocimiento: 'LMN456',
+        colores: []
+      }
+    ]);
+    fixture.detectChanges();
+
+    const cards = fixture.nativeElement.querySelectorAll('.metadata-card') as NodeListOf<HTMLElement>;
+    expect(cards.length).toBe(2);
+
+    // Tarjeta 1 (con crop de placa): por defecto muestra img_minio_object_name (Vehículo) y switcher sigue hover is-hovered
+    const firstCardImgWrapper = cards[0].querySelector('.card-img-wrapper') as HTMLElement;
+    expect(firstCardImgWrapper.getAttribute('data-minio-object')).toBe('vehicles/veh-with-plate.jpg');
+    expect(cards[0].querySelector('.index-badge-overlay')).toBeNull();
+    expect(cards[0].classList.contains('is-hovered')).toBe(false);
+    cards[0].dispatchEvent(new MouseEvent('mouseenter'));
+    fixture.detectChanges();
+    expect(cards[0].classList.contains('is-hovered')).toBe(true);
+    const switcherButtons = cards[0].querySelectorAll('.vehicle-crop-switcher .vehicle-crop-btn') as NodeListOf<HTMLButtonElement>;
+    expect(switcherButtons.length).toBe(2);
+    expect(switcherButtons[0].classList.contains('active')).toBe(true);
+    expect(switcherButtons[1].classList.contains('active')).toBe(false);
+
+    // Tarjeta 2 (sin crop de placa): no muestra switcher
+    expect(cards[1].querySelector('.vehicle-crop-switcher')).toBeNull();
+    expect(cards[1].querySelector('.card-img-wrapper')?.getAttribute('data-minio-object')).toBe('vehicles/veh-legacy.jpg');
+
+    // Simular estado de error previo en la imagen del vehículo y validar que al cambiar a Placa se limpia
+    const cardImgBeforeSwitch = firstCardImgWrapper.querySelector('img') as HTMLImageElement;
+    cardImgBeforeSwitch.style.display = 'none';
+    cardImgBeforeSwitch.setAttribute('data-retry-count', '2');
+
+    // Cambiar tarjeta 1 a "Placa" no debe abrir el Lightbox y debe limpiar estado de error
+    switcherButtons[1].click();
+    fixture.detectChanges();
+    expect(component.previewImageRecord()).toBeNull();
+    expect(firstCardImgWrapper.getAttribute('data-minio-object')).toBe('plates/plate-with-plate.jpg');
+    expect(switcherButtons[1].classList.contains('active')).toBe(true);
+    expect(cardImgBeforeSwitch.style.display).toBe('');
+    expect(cardImgBeforeSwitch.getAttribute('data-retry-count')).toBeNull();
+
+    // No debe existir el botón Extender en la barra inferior; debe existir el indicador SVG de extensión en card-img-wrapper
+    expect(cards[0].querySelector('#btn-fullscreen-veh-with-plate')).toBeNull();
+    expect(firstCardImgWrapper.classList.contains('is-clickable')).toBe(true);
+    expect(firstCardImgWrapper.querySelector('.card-expand-indicator .icon-fullscreen')).toBeTruthy();
+
+    // Hover sobre el área de imagen activa is-expand-hovered; entrar al toggle o botón interno lo oculta y salir hacia la imagen lo restaura
+    firstCardImgWrapper.dispatchEvent(new MouseEvent('mouseenter'));
+    fixture.detectChanges();
+    expect(firstCardImgWrapper.classList.contains('is-expand-hovered')).toBe(true);
+
+    const switcher = cards[0].querySelector('.vehicle-crop-switcher') as HTMLElement;
+    switcher.dispatchEvent(new MouseEvent('mouseenter'));
+    fixture.detectChanges();
+    expect(firstCardImgWrapper.classList.contains('is-expand-hovered')).toBe(false);
+
+    switcher.dispatchEvent(new MouseEvent('mouseleave', { relatedTarget: firstCardImgWrapper }));
+    fixture.detectChanges();
+    expect(firstCardImgWrapper.classList.contains('is-expand-hovered')).toBe(true);
+
+    // También debe ocultarse al entrar a un botón de .ed-img-overlay
+    const watchlistBtn = cards[0].querySelector('.ed-img-overlay .btn-watchlist') as HTMLElement;
+    expect(watchlistBtn).toBeTruthy();
+    watchlistBtn.dispatchEvent(new MouseEvent('mouseenter'));
+    fixture.detectChanges();
+    expect(firstCardImgWrapper.classList.contains('is-expand-hovered')).toBe(false);
+
+    watchlistBtn.dispatchEvent(new MouseEvent('mouseleave', { relatedTarget: firstCardImgWrapper }));
+    fixture.detectChanges();
+    expect(firstCardImgWrapper.classList.contains('is-expand-hovered')).toBe(true);
+
+    // Pulsar cualquier parte del card superior (card-img-wrapper) abre el Lightbox mostrando únicamente la imagen del vehículo
+    firstCardImgWrapper.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.meta-lightbox-dual')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.meta-lightbox-switcher')).toBeNull();
+    const lightboxImg = fixture.nativeElement.querySelector('.meta-lightbox-img') as HTMLImageElement;
+    expect(lightboxImg).toBeTruthy();
+    expect(lightboxImg.getAttribute('src')).toBe('https://minio.local/vehicles/veh-with-plate.jpg');
   });
 });
 

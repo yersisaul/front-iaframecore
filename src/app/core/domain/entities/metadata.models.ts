@@ -45,6 +45,7 @@ export interface MetaVehiculo extends MetaBaseRecord {
   tipoObjeto: string;
   colores: MetaColor[];
   reconocimiento: string;
+  imgPlateCropMinioObjectName?: string;
 }
 
 export interface MetaRostro extends MetaBaseRecord {
