@@ -268,5 +268,40 @@ describe('Eventos', () => {
       fixture.detectChanges();
       expect(component.selectedEventForModal()?.id).toBe('ev-card-2');
     });
+
+    it('should display timestampReal on event cards and fallback to timestamp when timestampReal is missing', () => {
+      const eventService = (component as any).eventService;
+      const baseTimestamp = new Date('2026-10-01T10:00:00Z');
+      const realMs = Date.parse('2026-11-17T14:30:15Z');
+
+      eventService.records.set([
+        {
+          id: 'ev-ts-real',
+          nombreCamara: 'Cam 1',
+          idCamara: 'c1',
+          analitica: 'Cruce de Linea',
+          detalleEvento: 'Detección',
+          timestamp: baseTimestamp,
+          timestampReal: realMs,
+          confiabilidad: 0.9
+        },
+        {
+          id: 'ev-ts-fallback',
+          nombreCamara: 'Cam 2',
+          idCamara: 'c2',
+          analitica: 'Aforo',
+          detalleEvento: 'Detección',
+          timestamp: baseTimestamp,
+          confiabilidad: 0.85
+        }
+      ]);
+      fixture.detectChanges();
+
+      const rows = fixture.nativeElement.querySelectorAll('.event-card .timestamp-row') as NodeListOf<HTMLElement>;
+      expect(rows.length).toBe(2);
+      expect(rows[0].textContent?.trim()).toBe(component.formatDate(realMs));
+      expect(rows[0].textContent?.trim()).not.toBe(component.formatDate(baseTimestamp));
+      expect(rows[1].textContent?.trim()).toBe(component.formatDate(baseTimestamp));
+    });
   });
 });

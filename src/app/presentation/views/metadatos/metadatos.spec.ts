@@ -331,6 +331,38 @@ describe('Metadatos', () => {
     expect(lightboxImg).toBeTruthy();
     expect(lightboxImg.getAttribute('src')).toBe('https://minio.local/vehicles/veh-with-plate.jpg');
   });
+
+  it('should display timestampReal on metadata cards and fallback to timestamp when timestampReal is missing', () => {
+    const metadataService = (component as any).metadataService;
+    const baseTimestamp = new Date('2026-10-01T10:00:00Z');
+    const realMs = Date.parse('2026-11-17T14:30:15Z');
+
+    metadataService.activeIndex.set('personas');
+    metadataService.records.set([
+      {
+        id: 'meta-ts-real',
+        camara: 'Cam 1',
+        timestamp: baseTimestamp,
+        timestampReal: realMs,
+        confiabilidad: 0.9,
+        colores: []
+      },
+      {
+        id: 'meta-ts-fallback',
+        camara: 'Cam 2',
+        timestamp: baseTimestamp,
+        confiabilidad: 0.85,
+        colores: []
+      }
+    ]);
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.metadata-card .timestamp-row') as NodeListOf<HTMLElement>;
+    expect(rows.length).toBe(2);
+    expect(rows[0].textContent?.trim()).toBe(component.formatDate(realMs));
+    expect(rows[0].textContent?.trim()).not.toBe(component.formatDate(baseTimestamp));
+    expect(rows[1].textContent?.trim()).toBe(component.formatDate(baseTimestamp));
+  });
 });
 
 

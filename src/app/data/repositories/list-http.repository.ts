@@ -285,16 +285,17 @@ export class ListHttpRepository implements IListRepository {
   getListDetailById(detailId: string): Observable<ListDetail> {
     return this.http.get<any>(`${this.detailsUrl}/${detailId}`).pipe(
       map(res => {
-        const objName = res.metadata?.img_minio_object_name || res.img_minio_object_name || '';
+        const safeRes = res && typeof res === 'object' ? res : {};
+        const objName = this.extractImageObjectName(safeRes);
         const mapped = {
-          detail_id: res.detail_id,
-          list_id: res.list_id,
-          nombre_asociado: res.nombre_asociado || '',
-          fingerprint_host: res.fingerprint_host || '',
-          embedding: res.embedding || [],
+          detail_id: typeof safeRes.detail_id === 'string' ? safeRes.detail_id : '',
+          list_id: safeRes.list_id || '',
+          nombre_asociado: safeRes.nombre_asociado || '',
+          fingerprint_host: safeRes.fingerprint_host || '',
+          embedding: safeRes.embedding || [],
           img_minio_object_name: objName,
           metadata: {
-            text_placa: res.metadata?.text_placa,
+            text_placa: safeRes.metadata?.text_placa,
             img_minio_object_name: objName
           }
         } as ListDetail;
@@ -378,23 +379,27 @@ export class ListHttpRepository implements IListRepository {
 
     return request$.pipe(
       map(res => {
-        const objName = res.img_minio_object_name || res.metadata?.img_minio_object_name || detail.img_minio_object_name || detail.metadata?.img_minio_object_name || '';
+        const safeRes = res && typeof res === 'object' ? res : {};
+        const objName = this.extractImageObjectName(safeRes) || this.extractImageObjectName(detail);
         return {
-          detail_id: res.detail_id,
-          list_id: detail.list_id || '',
-          nombre_asociado: detail.nombre_asociado || '',
-          fingerprint_host: detail.fingerprint_host || '',
-          embedding: detail.embedding || [],
+          detail_id: typeof safeRes.detail_id === 'string' ? safeRes.detail_id : '',
+          list_id: safeRes.list_id || detail.list_id || '',
+          nombre_asociado: safeRes.nombre_asociado || detail.nombre_asociado || '',
+          fingerprint_host: safeRes.fingerprint_host || detail.fingerprint_host || '',
+          embedding: safeRes.embedding || detail.embedding || [],
           img_minio_object_name: objName,
           metadata: {
             ...detail.metadata,
+            ...(safeRes.metadata && typeof safeRes.metadata === 'object' ? safeRes.metadata : {}),
             img_minio_object_name: objName
           }
         } as ListDetail;
       }),
       catchError(err => {
-        if (err.status === 422) {
+        if (err?.status === 422) {
           console.error('[ListRepo] registerListDetail 422 — validation detail:', JSON.stringify(err?.error?.detail));
+        } else if (err?.status >= 500) {
+          console.error(`[ListRepo] registerListDetail HTTP ${err.status} — server error:`, err?.error?.detail || err?.message);
         }
         throw err;
       })
@@ -663,10 +668,24 @@ export class ListHttpRepository implements IListRepository {
     );
   }
 
+  private extractImageObjectName(source: any): string {
+    if (!source || typeof source !== 'object') {
+      return '';
+    }
+    return (
+      source.img_minio_object_name ||
+      source.object_name ||
+      source.metadata?.img_minio_object_name ||
+      source.metadata?.object_name ||
+      source.url_img ||
+      ''
+    );
+  }
+
   private sanitizeDetails(details: ListDetail[]): ListDetail[] {
     return (details || []).map(d => {
       if (d) {
-        const objName = d.img_minio_object_name || d.metadata?.img_minio_object_name || '';
+        const objName = this.extractImageObjectName(d);
         return {
           ...d,
           img_minio_object_name: objName,

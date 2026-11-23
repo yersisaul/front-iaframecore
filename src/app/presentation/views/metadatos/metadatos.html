@@ -816,7 +816,7 @@
                 <div
                   class="timestamp-row text-muted small mb-0 d-flex align-items-center gap-1 text-end flex-shrink-0 ms-auto">
                   <span class="icon-svg icon-clock flex-shrink-0" style="width: 11px; height: 11px;"></span>
-                  <span style="font-size: 0.72rem;">{{ formatDate(record.timestamp) }}</span>
+                  <span style="font-size: 0.72rem;">{{ formatDate(getDisplayTimestamp(record)) }}</span>
                 </div>
               </div>
 
@@ -926,7 +926,7 @@
             <span class="small text-muted d-block text-capitalize">Índice: {{ activeIndex() }}</span>
             <span class="fw-semibold text-body d-block text-truncate" style="font-size: 0.85rem;">{{ record.camara
               }}</span>
-            <span class="text-muted" style="font-size: 0.7rem;">{{ formatDate(record.timestamp) }}</span>
+            <span class="text-muted" style="font-size: 0.7rem;">{{ formatDate(getDisplayTimestamp(record)) }}</span>
           </div>
         </div>
 

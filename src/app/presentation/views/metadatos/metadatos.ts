@@ -8,6 +8,7 @@ import { SidebarService } from '../../../core/services/sidebar.service';
 import { MetaIndexName, MetaColor, MetaRecord, MetaPostura } from '../../../core/domain/entities/metadata.models';
 import { MetaFilterState } from '../../../core/domain/entities/metadata.filters.models';
 import { parseUtcDate } from '../../../core/utils/date-utils';
+import { classifyFaceUploadError } from '../../../core/utils/face-upload-error.util';
 import { IStorageRepository } from '../../../core/domain/repositories/storage.repository';
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -1216,7 +1217,8 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
       },
       error: (err) => {
         console.error('Error registering subject to list:', err);
-        alert('Error al agregar el sujeto a la lista de control.');
+        const classified = classifyFaceUploadError(err);
+        alert(classified.userMessage);
       }
     });
   }
@@ -1243,6 +1245,10 @@ export class Metadatos implements OnInit, OnDestroy, AfterViewInit {
     const nxId = record.camaraIdNx || this.resolveCameraNxId(record.camara_id || '', record.camara);
     const tsMs = this.getRecordTimestampMs(record);
     return !!nxId && tsMs !== undefined;
+  }
+
+  getDisplayTimestamp(record: { timestampReal?: number; timestamp: Date }): number | Date {
+    return this.getRecordTimestampMs(record) ?? record.timestamp;
   }
 
   private getRecordTimestampMs(record: { timestampReal?: number }): number | undefined {

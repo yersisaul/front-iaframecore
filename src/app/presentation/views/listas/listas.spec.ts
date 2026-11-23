@@ -1,11 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, ActivatedRoute } from '@angular/router';
-import { provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { signal } from '@angular/core';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { Listas } from './listas';
+import { ListDetail } from '../../../core/domain/entities/list.models';
 import { IListRepository } from '../../../core/domain/repositories/list.repository';
 import { IStorageRepository } from '../../../core/domain/repositories/storage.repository';
 import { PermissionsService } from '../../../core/services/permissions.service';
@@ -18,8 +20,8 @@ describe('Listas', () => {
     getLists: () => of([]),
     registerList: () => of({}),
     deleteList: () => of(),
-    getListDetails: () => of([]),
-    registerListDetail: () => of({}),
+    getListDetails: (): Observable<ListDetail[]> => of([]),
+    registerListDetail: (): Observable<ListDetail> => of({} as ListDetail),
     deleteListDetail: () => of(),
     updateList: () => of({}),
     updateDetailImg: () => of({}),
@@ -63,7 +65,12 @@ describe('Listas', () => {
 
     fixture = TestBed.createComponent(Listas);
     component = fixture.componentInstance;
+    (component as any).reconciliationDelayMs = 0;
     await fixture.whenStable();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('should create', () => {
@@ -165,5 +172,157 @@ describe('Listas', () => {
     expect(emptyView!.textContent).toContain('No Hay Sujetos Registrados');
     expect(emptyView!.textContent).toContain('Agregar Sujeto');
     expect(emptyView!.querySelector('.icon-user')).toBeTruthy();
+  });
+
+  it('reconciles HTTP 500 upload when the face record was actually persisted on the server (new list)', async () => {
+    const listService = (component as any).listService;
+    listService.listDetails.set([]);
+    listService.activeListId.set('list-new');
+    component.selectedListId.set('list-new');
+
+    const file = new File(['face'], 'ana_lopez.jpg', { type: 'image/jpeg' });
+    component.faceImportDrafts.set([
+      { file, name: 'Ana Lopez', previewUrl: 'data:image/jpeg;base64,ana', isEditingName: false }
+    ]);
+
+    vi.spyOn(mockListRepository, 'registerListDetail').mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' }))
+    );
+    vi.spyOn(mockListRepository, 'getListDetails').mockReturnValue(
+      of([
+        {
+          detail_id: 'real-uuid-1',
+          list_id: 'list-new',
+          nombre_asociado: 'Ana Lopez',
+          fingerprint_host: '',
+          embedding: [],
+          img_minio_object_name: 'bucket/ana.jpg',
+          metadata: { img_minio_object_name: 'bucket/ana.jpg' }
+        }
+      ])
+    );
+
+    await component.saveFaceSubjects();
+
+    expect(component.faceImportStep()).toBe('summary');
+    expect(component.successfulUploads().length).toBe(1);
+    expect(component.successfulUploads()[0].detailId).toBe('real-uuid-1');
+    expect(component.failedUploads().length).toBe(0);
+  });
+
+  it('keeps HTTP 500 failure with honest server message when the record was not persisted (existing list)', async () => {
+    const listService = (component as any).listService;
+    const existingDetail = {
+      detail_id: 'old-uuid',
+      list_id: 'list-1',
+      nombre_asociado: 'Carlos Perez',
+      fingerprint_host: '',
+      embedding: [],
+      img_minio_object_name: ''
+    };
+    listService.listDetails.set([existingDetail]);
+    listService.activeListId.set('list-1');
+    component.selectedListId.set('list-1');
+
+    const file = new File(['face'], 'nuevo_sujeto.jpg', { type: 'image/jpeg' });
+    component.faceImportDrafts.set([
+      { file, name: 'Nuevo Sujeto', previewUrl: 'data:image/jpeg;base64,nuevo', isEditingName: false }
+    ]);
+
+    vi.spyOn(mockListRepository, 'registerListDetail').mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' }))
+    );
+    vi.spyOn(mockListRepository, 'getListDetails').mockReturnValue(of([existingDetail]));
+
+    await component.saveFaceSubjects();
+
+    expect(component.faceImportStep()).toBe('summary');
+    expect(component.successfulUploads().length).toBe(0);
+    expect(component.failedUploads().length).toBe(1);
+    expect(component.failedUploads()[0].errorMessage).toContain('HTTP 500');
+    expect(component.failedUploads()[0].errorMessage).not.toContain('No se pudo validar el rostro');
+  });
+
+  it('does not reconcile HTTP 422 validation rejections and shows exact validation message', async () => {
+    const listService = (component as any).listService;
+    listService.listDetails.set([]);
+    listService.activeListId.set('list-1');
+    component.selectedListId.set('list-1');
+
+    const file = new File(['face'], 'sin_rostro.jpg', { type: 'image/jpeg' });
+    component.faceImportDrafts.set([
+      { file, name: 'Sin Rostro', previewUrl: 'data:image/jpeg;base64,none', isEditingName: false }
+    ]);
+
+    vi.spyOn(mockListRepository, 'registerListDetail').mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 422, error: { detail: 'No face detected' } }))
+    );
+    const getListDetailsSpy = vi.spyOn(mockListRepository, 'getListDetails');
+
+    await component.saveFaceSubjects();
+
+    expect(getListDetailsSpy).not.toHaveBeenCalled();
+    expect(component.successfulUploads().length).toBe(0);
+    expect(component.failedUploads().length).toBe(1);
+    expect(component.failedUploads()[0].errorMessage).toBe('No se detectó un rostro válido en la fotografía.');
+  });
+
+  it('reconciles empty 201 response (detail_id: "") into real persisted record', async () => {
+    const listService = (component as any).listService;
+    listService.listDetails.set([]);
+    listService.activeListId.set('list-1');
+    component.selectedListId.set('list-1');
+
+    const file = new File(['face'], 'maria.jpg', { type: 'image/jpeg' });
+    component.faceImportDrafts.set([
+      { file, name: 'Maria', previewUrl: 'data:image/jpeg;base64,maria', isEditingName: false }
+    ]);
+
+    vi.spyOn(mockListRepository, 'registerListDetail').mockReturnValue(
+      of({
+        detail_id: '',
+        list_id: 'list-1',
+        nombre_asociado: 'Maria',
+        fingerprint_host: '',
+        embedding: [],
+        img_minio_object_name: ''
+      })
+    );
+    vi.spyOn(mockListRepository, 'getListDetails').mockReturnValue(
+      of([
+        {
+          detail_id: 'real-uuid-maria',
+          list_id: 'list-1',
+          nombre_asociado: 'Maria',
+          fingerprint_host: '',
+          embedding: [],
+          img_minio_object_name: 'bucket/maria.jpg',
+          metadata: { img_minio_object_name: 'bucket/maria.jpg' }
+        }
+      ])
+    );
+
+    await component.saveFaceSubjects();
+
+    expect(component.successfulUploads().length).toBe(1);
+    expect(component.successfulUploads()[0].detailId).toBe('real-uuid-maria');
+    expect(component.failedUploads().length).toBe(0);
+  });
+
+  it('refreshes list details when closing the face upload modal even if all uploads failed', () => {
+    const listService = (component as any).listService;
+    const loadSpy = vi.spyOn(listService, 'loadListDetails');
+    const file = new File(['face'], 'fallo.jpg', { type: 'image/jpeg' });
+
+    component.selectedListId.set('list-1');
+    component.faceImportStep.set('summary');
+    component.successfulUploads.set([]);
+    component.failedUploads.set([
+      { file, name: 'Fallo', previewUrl: 'data:image/jpeg;base64,fail', errorMessage: 'Error HTTP 500' }
+    ]);
+
+    component.closeAddFaceSubjectModal();
+
+    expect(loadSpy).toHaveBeenCalledWith('list-1');
   });
 });

@@ -151,6 +151,24 @@ export class ListService {
     );
   }
 
+  /**
+   * Consulta los detalles actuales desde la fuente de verdad para reconciliar
+   * respuestas indeterminadas sin activar el indicador global de carga.
+   */
+  fetchListDetailsForReconciliation(listId: string): Observable<ListDetail[]> {
+    return this.listRepository.getListDetails(listId).pipe(
+      tap(details => {
+        if (this.activeListId() === listId) {
+          this.listDetails.set(details);
+        }
+      }),
+      catchError(err => {
+        console.warn('[ListService] Error reconciling list details:', err);
+        return of(this.activeListId() === listId ? this.listDetails() : []);
+      })
+    );
+  }
+
   uploadAndAddSubject(listId: string, hostId: string, name: string, file: File): Observable<ListDetail> {
     this.isLoading.set(true);
     const detail: Partial<ListDetail> = {
@@ -278,6 +296,9 @@ export class ListService {
   }
 
   addOrUpdateListDetailLocal(detail: ListDetail): void {
+    if (!detail?.detail_id) {
+      return;
+    }
     this.listDetails.update(arr => {
       const idx = arr.findIndex(d => d.detail_id === detail.detail_id);
       if (idx !== -1) {

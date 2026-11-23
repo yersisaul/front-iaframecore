@@ -1184,6 +1184,10 @@ export class Eventos implements OnInit, OnDestroy, AfterViewInit {
     return !!nxId && tsMs !== undefined;
   }
 
+  getDisplayTimestamp(record: { timestampReal?: number; timestamp: Date }): number | Date {
+    return this.getRecordTimestampMs(record) ?? record.timestamp;
+  }
+
   private getRecordTimestampMs(record: { timestampReal?: number }): number | undefined {
     if (typeof record.timestampReal === 'number' && Number.isFinite(record.timestampReal) && record.timestampReal > 0) {
       return record.timestampReal;

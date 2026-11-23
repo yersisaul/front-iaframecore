@@ -2,12 +2,13 @@ import { Component, OnInit, OnDestroy, AfterViewInit, inject, signal, computed, 
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormControl, ReactiveFormsModule } from '@angular/forms';
-import { Subject, Subscription, forkJoin } from 'rxjs';
+import { Subject, Subscription, forkJoin, firstValueFrom } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { ListService } from '../../../core/services/list.service';
 import { SidebarService } from '../../../core/services/sidebar.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 import { copyToClipboard } from '../../../core/utils/clipboard.util';
+import { classifyFaceUploadError, ClassifiedFaceUploadError } from '../../../core/utils/face-upload-error.util';
 import { List, ListDetail } from '../../../core/domain/entities/list.models';
 import { ConfirmDeleteModalComponent } from '../../shared/confirm-delete-modal/confirm-delete-modal.component';
 import { PaginationControlsComponent } from '../../shared/pagination-controls/pagination-controls.component';
@@ -24,6 +25,17 @@ export interface FaceUploadResult {
   previewUrl: string;
   errorMessage?: string;
   detailId?: string;
+}
+
+interface FaceUploadItem {
+  file: File;
+  name: string;
+  previewUrl: string;
+}
+
+interface PendingIndeterminateUpload {
+  item: FaceUploadItem;
+  classified: ClassifiedFaceUploadError;
 }
 
 export interface SubjectDetectionPostura {
@@ -164,9 +176,11 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
   // Controlador de Carga e Importación Masiva de Rostros
   readonly faceImportStep = signal<'prepare' | 'uploading' | 'summary'>('prepare');
   readonly isUploadingFaceSubjects = signal<boolean>(false);
+  readonly isReconcilingFaceUploads = signal<boolean>(false);
   readonly uploadCurrentIndex = signal<number>(0);
   readonly uploadTotalCount = signal<number>(0);
   readonly uploadCurrentFileName = signal<string>('');
+  protected reconciliationDelayMs = 1200;
 
   readonly successfulUploads = signal<FaceUploadResult[]>([]);
   readonly failedUploads = signal<FaceUploadResult[]>([]);
@@ -764,7 +778,10 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     if (this.isUploadingFaceSubjects()) return;
 
     const listId = this.selectedListId();
-    const hadSuccesses = this.successfulUploads().length > 0;
+    const hadUploadAttempt =
+      this.faceImportStep() === 'summary' ||
+      this.successfulUploads().length > 0 ||
+      this.failedUploads().length > 0;
 
     this.faceImportDrafts().forEach(d => {
       if (d.previewUrl && d.previewUrl.startsWith('blob:')) {
@@ -775,13 +792,14 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     this.faceImportDrafts.set([]);
     this.showFloatingAddButton.set(false);
     this.faceImportStep.set('prepare');
+    this.isReconcilingFaceUploads.set(false);
     this.successfulUploads.set([]);
     this.failedUploads.set([]);
     this.uploadCurrentIndex.set(0);
     this.uploadTotalCount.set(0);
     this.skippedExistingFilesCount.set(0);
 
-    if (hadSuccesses && listId) {
+    if (hadUploadAttempt && listId) {
       this.listService.loadListDetails(listId).subscribe();
     }
   }
@@ -1268,171 +1286,215 @@ export class Listas implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  private formatFaceUploadErrorMessage(err: any): string {
-    const rawMsg = (
-      typeof err === 'string' ? err :
-      (err?.error?.detail || err?.error?.message || err?.message || '')
-    ).toString().toLowerCase();
-
-    if (rawMsg.includes('no face detected') || rawMsg.includes('no face') || rawMsg.includes('sin rostro')) {
-      return 'No se detectó un rostro válido en la fotografía.';
-    }
-    if (rawMsg.includes('embedding generation issue') || rawMsg.includes('embedding')) {
-      return 'No se pudo generar la huella facial de la fotografía.';
-    }
-    if (rawMsg.includes('format') || rawMsg.includes('extension') || rawMsg.includes('invalid image')) {
-      return 'El formato o la resolución de la imagen no es compatible.';
-    }
-    if (rawMsg.includes('multiple faces') || rawMsg.includes('more than one face')) {
-      return 'Se detectó más de un rostro. Utilice una foto con un único rostro.';
-    }
-    if (rawMsg.includes('422') || rawMsg.includes('unprocessable')) {
-      return 'La imagen no cumple con los requisitos del registro facial.';
-    }
-    if (rawMsg.includes('500') || rawMsg.includes('server error')) {
-      return 'Ocurrió un error en el servidor al analizar el rostro.';
-    }
-
-    return 'No se pudo validar el rostro en la fotografía.';
-  }
-
   async saveFaceSubjects(): Promise<void> {
-    const listId = this.selectedListId();
     const drafts = this.faceImportDrafts();
-    if (!listId || drafts.length === 0) return;
+    if (!this.selectedListId() || drafts.length === 0) return;
 
-    this.faceImportStep.set('uploading');
-    this.isUploadingFaceSubjects.set(true);
-    this.isSavingSubject.set(true);
-    this.uploadTotalCount.set(drafts.length);
-    this.uploadCurrentIndex.set(0);
     this.successfulUploads.set([]);
     this.failedUploads.set([]);
-
-    const successes: FaceUploadResult[] = [];
-    const failures: FaceUploadResult[] = [];
-
-    const { firstValueFrom } = await import('rxjs');
-
-    for (let i = 0; i < drafts.length; i++) {
-      const draft = drafts[i];
-      this.uploadCurrentIndex.set(i + 1);
-      this.uploadCurrentFileName.set(draft.name);
-
-      // Verificación preventiva: no registrar si ya existe en listDetails
-      const alreadyRegistered = this.listDetails().find(d => 
-        (d.nombre_asociado || '').trim().toLowerCase() === draft.name.trim().toLowerCase()
-      );
-
-      if (alreadyRegistered) {
-        successes.push({
-          file: draft.file,
-          name: draft.name,
-          previewUrl: draft.previewUrl,
-          detailId: alreadyRegistered.detail_id
-        });
-        this.successfulUploads.set([...successes]);
-        continue;
-      }
-
-      try {
-        const result = await firstValueFrom(
-          this.listService.uploadAndAddSubject(listId, '', draft.name, draft.file)
-        );
-        successes.push({
-          file: draft.file,
-          name: draft.name,
-          previewUrl: draft.previewUrl,
-          detailId: result.detail_id
-        });
-        this.successfulUploads.set([...successes]);
-        if (result.detail_id) {
-          this.listService.markAsNew(result.detail_id);
-        }
-      } catch (err: any) {
-        console.error(`Error uploading face subject ${draft.name}:`, err);
-        failures.push({
-          file: draft.file,
-          name: draft.name,
-          previewUrl: draft.previewUrl,
-          errorMessage: this.formatFaceUploadErrorMessage(err)
-        });
-        this.failedUploads.set([...failures]);
-      }
-    }
-
-    this.isUploadingFaceSubjects.set(false);
-    this.isSavingSubject.set(false);
-    this.faceImportStep.set('summary');
+    await this.executeFaceUploadBatch(drafts, []);
   }
 
   async retryFailedFaceUploads(): Promise<void> {
-    const listId = this.selectedListId();
     const toRetry = [...this.failedUploads()];
-    if (!listId || toRetry.length === 0) return;
+    if (!this.selectedListId() || toRetry.length === 0) return;
+
+    const previousSuccesses = [...this.successfulUploads()];
+    this.failedUploads.set([]);
+    await this.executeFaceUploadBatch(toRetry, previousSuccesses);
+  }
+
+  private async executeFaceUploadBatch(
+    items: FaceUploadItem[],
+    initialSuccesses: FaceUploadResult[]
+  ): Promise<void> {
+    const listId = this.selectedListId();
+    if (!listId || items.length === 0) return;
 
     this.faceImportStep.set('uploading');
     this.isUploadingFaceSubjects.set(true);
+    this.isReconcilingFaceUploads.set(false);
     this.isSavingSubject.set(true);
-    this.uploadTotalCount.set(toRetry.length);
+    this.uploadTotalCount.set(items.length);
     this.uploadCurrentIndex.set(0);
 
-    const newFailures: FaceUploadResult[] = [];
-    const successes = [...this.successfulUploads()];
-    this.failedUploads.set([]);
+    const preExistingDetailIds = new Set(
+      this.listDetails()
+        .filter(d => d.list_id === listId && Boolean(d.detail_id))
+        .map(d => d.detail_id)
+    );
+    const claimedDetailIds = new Set(
+      initialSuccesses.map(s => s.detailId).filter((id): id is string => Boolean(id))
+    );
 
-    const { firstValueFrom } = await import('rxjs');
+    const successes: FaceUploadResult[] = [...initialSuccesses];
+    const failures: FaceUploadResult[] = [];
+    const indeterminateItems: PendingIndeterminateUpload[] = [];
 
-    for (let i = 0; i < toRetry.length; i++) {
-      const draft = toRetry[i];
-      this.uploadCurrentIndex.set(i + 1);
-      this.uploadCurrentFileName.set(draft.name);
+    try {
+      for (let i = 0; i < items.length; i++) {
+        const draft = items[i];
+        this.uploadCurrentIndex.set(i + 1);
+        this.uploadCurrentFileName.set(draft.name);
 
-      // Verificación preventiva contra falsos fallos previos (e.g. timeout de red pero guardado en backend)
-      const alreadyRegistered = this.listDetails().find(d => 
-        (d.nombre_asociado || '').trim().toLowerCase() === draft.name.trim().toLowerCase()
-      );
-
-      if (alreadyRegistered) {
-        successes.push({
-          file: draft.file,
-          name: draft.name,
-          previewUrl: draft.previewUrl,
-          detailId: alreadyRegistered.detail_id
-        });
-        this.successfulUploads.set([...successes]);
-        continue;
-      }
-
-      try {
-        const result = await firstValueFrom(
-          this.listService.uploadAndAddSubject(listId, '', draft.name, draft.file)
+        const normalizedName = draft.name.trim().toLowerCase();
+        const alreadyRegistered = this.listDetails().find(
+          d =>
+            d.list_id === listId &&
+            Boolean(d.detail_id) &&
+            !claimedDetailIds.has(d.detail_id) &&
+            (d.nombre_asociado || '').trim().toLowerCase() === normalizedName
         );
-        successes.push({
-          file: draft.file,
-          name: draft.name,
-          previewUrl: draft.previewUrl,
-          detailId: result.detail_id
-        });
-        this.successfulUploads.set([...successes]);
-        if (result.detail_id) {
-          this.listService.markAsNew(result.detail_id);
+
+        if (alreadyRegistered) {
+          claimedDetailIds.add(alreadyRegistered.detail_id);
+          successes.push({
+            file: draft.file,
+            name: draft.name,
+            previewUrl: draft.previewUrl,
+            detailId: alreadyRegistered.detail_id
+          });
+          this.successfulUploads.set([...successes]);
+          continue;
         }
-      } catch (err: any) {
-        console.error(`Retry error uploading face subject ${draft.name}:`, err);
-        newFailures.push({
-          file: draft.file,
-          name: draft.name,
-          previewUrl: draft.previewUrl,
-          errorMessage: this.formatFaceUploadErrorMessage(err)
-        });
-        this.failedUploads.set([...newFailures]);
+
+        try {
+          const result = await firstValueFrom(
+            this.listService.uploadAndAddSubject(listId, '', draft.name, draft.file)
+          );
+
+          if (result?.detail_id) {
+            claimedDetailIds.add(result.detail_id);
+            successes.push({
+              file: draft.file,
+              name: draft.name,
+              previewUrl: draft.previewUrl,
+              detailId: result.detail_id
+            });
+            this.successfulUploads.set([...successes]);
+            this.listService.markAsNew(result.detail_id);
+          } else {
+            indeterminateItems.push({
+              item: draft,
+              classified: {
+                category: 'indeterminate',
+                shouldReconcile: true,
+                userMessage: 'El servidor respondió sin identificador de registro y no se confirmó el alta.'
+              }
+            });
+          }
+        } catch (err: unknown) {
+          const classified = classifyFaceUploadError(err);
+          console.error(
+            `Error uploading face subject ${draft.name} [${classified.category}, status=${classified.httpStatus ?? 'n/a'}]:`,
+            err
+          );
+
+          if (classified.shouldReconcile) {
+            indeterminateItems.push({ item: draft, classified });
+          } else {
+            failures.push({
+              file: draft.file,
+              name: draft.name,
+              previewUrl: draft.previewUrl,
+              errorMessage: classified.userMessage
+            });
+            this.failedUploads.set([...failures]);
+          }
+        }
       }
+
+      if (indeterminateItems.length > 0) {
+        const unresolved = await this.reconcileIndeterminateUploads(
+          listId,
+          indeterminateItems,
+          preExistingDetailIds,
+          claimedDetailIds,
+          successes
+        );
+
+        for (const pending of unresolved) {
+          failures.push({
+            file: pending.item.file,
+            name: pending.item.name,
+            previewUrl: pending.item.previewUrl,
+            errorMessage: pending.classified.userMessage
+          });
+        }
+        this.failedUploads.set([...failures]);
+      }
+    } finally {
+      this.isReconcilingFaceUploads.set(false);
+      this.isUploadingFaceSubjects.set(false);
+      this.isSavingSubject.set(false);
+      this.faceImportStep.set('summary');
+    }
+  }
+
+  /**
+   * Reconcilia errores indeterminados (5xx, red, timeout o 2xx sin ID) contra registros
+   * realmente creados después del snapshot previo al lote.
+   */
+  private async reconcileIndeterminateUploads(
+    listId: string,
+    indeterminateItems: PendingIndeterminateUpload[],
+    preExistingDetailIds: Set<string>,
+    claimedDetailIds: Set<string>,
+    successes: FaceUploadResult[]
+  ): Promise<PendingIndeterminateUpload[]> {
+    this.isReconcilingFaceUploads.set(true);
+    this.uploadCurrentFileName.set('Confirmando registros en el servidor...');
+
+    const applyMatchPass = (
+      pending: PendingIndeterminateUpload[],
+      serverDetails: ListDetail[]
+    ): PendingIndeterminateUpload[] => {
+      const remaining: PendingIndeterminateUpload[] = [];
+      for (const entry of pending) {
+        const normalizedName = entry.item.name.trim().toLowerCase();
+        const matched = serverDetails.find(
+          d =>
+            d.list_id === listId &&
+            Boolean(d.detail_id) &&
+            !preExistingDetailIds.has(d.detail_id) &&
+            !claimedDetailIds.has(d.detail_id) &&
+            (d.nombre_asociado || '').trim().toLowerCase() === normalizedName
+        );
+
+        if (matched) {
+          claimedDetailIds.add(matched.detail_id);
+          this.listService.addOrUpdateListDetailLocal(matched);
+          this.listService.markAsNew(matched.detail_id);
+          successes.push({
+            file: entry.item.file,
+            name: entry.item.name,
+            previewUrl: entry.item.previewUrl,
+            detailId: matched.detail_id
+          });
+          this.successfulUploads.set([...successes]);
+        } else {
+          remaining.push(entry);
+        }
+      }
+      return remaining;
+    };
+
+    let pending = applyMatchPass(indeterminateItems, this.listDetails());
+
+    if (pending.length > 0) {
+      const freshDetails = await firstValueFrom(this.listService.fetchListDetailsForReconciliation(listId));
+      pending = applyMatchPass(pending, freshDetails);
     }
 
-    this.isUploadingFaceSubjects.set(false);
-    this.isSavingSubject.set(false);
-    this.faceImportStep.set('summary');
+    if (pending.length > 0) {
+      if (this.reconciliationDelayMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, this.reconciliationDelayMs));
+      }
+      const delayedDetails = await firstValueFrom(this.listService.fetchListDetailsForReconciliation(listId));
+      pending = applyMatchPass(pending, delayedDetails);
+    }
+
+    return pending;
   }
 
   formatPlate(plate?: string | null): string {

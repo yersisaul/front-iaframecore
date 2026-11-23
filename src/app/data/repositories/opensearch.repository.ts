@@ -9,6 +9,7 @@ import { MetadataMapper } from '../mappers/metadata.mapper';
 import { OsResponse, CatIndexResponse } from './dtos/opensearch-response.dto';
 import { AppEnvironment } from '../../core/config/app-environment';
 import { parseUtcDate } from '../../core/utils/date-utils';
+import { toEpochMs } from '../../core/utils/nx-timestamp.utils';
 
 interface InternalMetadataSearchResult extends MetadataSearchResult {
   lastSort?: any[];
@@ -616,6 +617,7 @@ export class OpenSearchRepository implements IMetadataRepository {
         id: item.id || `face-img-search-${idx}-${Date.now()}`,
         camara: item.camara || '',
         timestamp: parseUtcDate(item.timestamp),
+        timestampReal: toEpochMs(item.timestamp_real),
         confiabilidad: typeof item.confiabilidad === 'number' ? item.confiabilidad : 0,
         imgMinioObjectName: item.img_minio_object_name || '',
         urlImg: item.img_minio_object_name || '',

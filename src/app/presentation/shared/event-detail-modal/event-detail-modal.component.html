@@ -308,7 +308,7 @@
               Fecha y Hora
             </span>
             <span class="spec-val font-monospace text-truncate text-end">
-              {{ selectedEvent.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}
+              {{ (selectedEvent.timestampReal && selectedEvent.timestampReal > 0 ? selectedEvent.timestampReal : selectedEvent.timestamp) | date:'dd/MM/yyyy HH:mm:ss' }}
             </span>
           </div>
 

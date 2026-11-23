@@ -1116,7 +1116,9 @@
           </div>
           <div class="flex-grow-1 min-w-0">
             <span class="extra-small text-muted d-block fw-semibold text-uppercase"
-              style="font-size: 0.68rem; letter-spacing: 0.05em;">Verificando en servidor facial</span>
+              style="font-size: 0.68rem; letter-spacing: 0.05em;">
+              {{ isReconcilingFaceUploads() ? 'Confirmando estado en el servidor' : 'Verificando en servidor facial' }}
+            </span>
             <span class="fw-bold text-body text-truncate d-block" style="font-size: 0.88rem;"
               [title]="uploadCurrentFileName()">{{ uploadCurrentFileName() }}</span>
           </div>
@@ -1214,7 +1216,7 @@
                       <span class="fw-semibold text-body text-truncate" [title]="item.name">{{ item.name }}</span>
                     </div>
                     <span class="extra-small text-danger opacity-90 text-truncate" [title]="item.errorMessage">
-                      {{ item.errorMessage || 'No se detectó un rostro válido en la imagen.' }}
+                      {{ item.errorMessage || 'No se pudo completar el registro de la fotografía.' }}
                     </span>
                   </div>
                   }
