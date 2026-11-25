@@ -498,13 +498,14 @@
           <div class="canvas-col flex-fill d-flex align-items-center overflow-hidden">
             <app-analytic-canvas #canvasRef class="w-100 h-100 d-flex align-items-center overflow-hidden"
               [cameraId]="camera?.id || ''" [highlightError]="activeErrorTarget() === 'canvas'"
-              [strDirection]="analyticFormState()?.specific_params?.str_direction || 'Bidireccional'"
+              [strDirection]="analyticFormState()?.str_direction || 'Bidireccional'"
               [scaleFactor]="analyticFormState()?.detection_params?.['Escala'] || analyticFormState()?.detection_params?.scale_area || 1.2"
               [zoneWidth]="analyticFormState()?.detection_params?.zona_analisis || 40"
               [speedDistAB]="analyticFormState()?.specific_params?.distancia_a_b || 14"
               [speedDistBC]="analyticFormState()?.specific_params?.distancia_b_c || 60" [imageUrl]="cameraSnapshotUrl"
               [geometryType]="canvasGeometryType()" [initialData]="selectedAnalyticForConfig()?.geometricObjects"
-              [maxShapes]="maxAreas()" (geometryChanged)="onGeometryChanged($event)">
+              [maxShapes]="maxAreas()" (geometryChanged)="onGeometryChanged($event)"
+              (strDirectionChanged)="onCanvasDirectionChanged($event)">
             </app-analytic-canvas>
           </div>
         </div>

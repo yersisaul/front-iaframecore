@@ -465,6 +465,16 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
     }
   }
 
+  onCanvasDirectionChanged(direction: 'Bidireccional' | 'De A a B' | 'De B a A'): void {
+    if (this.paramsFormComponent) {
+      this.paramsFormComponent.selectDirection(direction);
+    } else {
+      this.analyticFormState.update(state =>
+        state ? { ...state, str_direction: direction } : { str_direction: direction }
+      );
+    }
+  }
+
   onGeometryTypeChanged(type: 'polygon' | 'speed_quad' | 'line'): void {
     this.canvasGeometryType.set(type);
   }
@@ -617,10 +627,21 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
 
     const currentZoneWidth = formState?.detection_params?.zona_analisis ?? formState?.specific_params?.zona_analisis ?? 40;
     const halfW = Number(currentZoneWidth) / 2;
+    const currentDirection = formState?.str_direction || formState?.specific_params?.str_direction || 'Bidireccional';
 
     let cleanGeometricObjects: any;
     if (editingAnalytic && !this.hasUserModifiedCanvas() && editingAnalytic.geometricObjects) {
-      cleanGeometricObjects = editingAnalytic.geometricObjects;
+      cleanGeometricObjects = {
+        ...editingAnalytic.geometricObjects,
+        ...(this.canvasGeometryType() === 'line' && Array.isArray(editingAnalytic.geometricObjects['lines'])
+          ? {
+              lines: editingAnalytic.geometricObjects['lines'].map((l: any) => ({
+                ...l,
+                str_direction: currentDirection
+              }))
+            }
+          : {})
+      };
     } else {
       const rawGeo = this.drawnGeometryData();
       cleanGeometricObjects = {
@@ -639,6 +660,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
           return {
             ...l,
             camera_id: l.camera_id || this.camera?.id || '',
+            str_direction: currentDirection,
             analysis_zone: freshAnalysisZone
           };
         }) : []
@@ -663,6 +685,7 @@ export class CameraDetailDrawerComponent implements OnChanges, OnDestroy, AfterV
     };
 
     delete analyticParameters.scale_area;
+    delete analyticParameters.str_direction;
 
     if (selectedSchedObj && selectedSchedName && selectedSchedName.trim().toLowerCase() !== 'sin horario') {
       analyticParameters.horario = selectedSchedName;

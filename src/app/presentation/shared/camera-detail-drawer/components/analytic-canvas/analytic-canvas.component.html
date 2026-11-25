@@ -136,12 +136,12 @@
         <!-- Vector Punteado Amber Stealth -->
         @if (strDirection === 'De A a B') {
         <line [attr.x1]="arrowLine.x1" [attr.y1]="arrowLine.y1" [attr.x2]="arrowLine.x2" [attr.y2]="arrowLine.y2"
-          stroke="#f59e0b" stroke-width="2.8" stroke-dasharray="6,3" marker-end="url(#arrow-head-single)"
-          style="pointer-events: none;"></line>
+          class="svg-direction-arrow-flow" stroke="#f59e0b" stroke-width="2.8" stroke-dasharray="6,3"
+          marker-end="url(#arrow-head-single)" style="pointer-events: none;"></line>
         } @else if (strDirection === 'De B a A') {
         <line [attr.x1]="arrowLine.x2" [attr.y1]="arrowLine.y2" [attr.x2]="arrowLine.x1" [attr.y2]="arrowLine.y1"
-          stroke="#f59e0b" stroke-width="2.8" stroke-dasharray="6,3" marker-end="url(#arrow-head-single)"
-          style="pointer-events: none;"></line>
+          class="svg-direction-arrow-flow" stroke="#f59e0b" stroke-width="2.8" stroke-dasharray="6,3"
+          marker-end="url(#arrow-head-single)" style="pointer-events: none;"></line>
         } @else {
         <line [attr.x1]="arrowLine.x1" [attr.y1]="arrowLine.y1" [attr.x2]="arrowLine.x2" [attr.y2]="arrowLine.y2"
           stroke="#f59e0b" stroke-width="2.8" stroke-dasharray="6,3" marker-start="url(#arrow-head-double-start)"
@@ -151,19 +151,47 @@
 
         @let dirPts = calculateDirectionPoints(shape.points[0], shape.points[1], 42);
         @if (dirPts.length === 2) {
-        <!-- Insignia A en Electric Amber (#f59e0b - Lado A) -->
-        <g class="svg-direction-badge select-none">
+        <!-- Insignia A (Lado A) -->
+        <g class="svg-direction-badge select-none"
+          [class.is-active]="isDirectionSideActive('A')"
+          [class.is-inactive]="!isDirectionSideActive('A')"
+          [style.pointer-events]="(activeOpenShape() || isCanvasLocked()) ? 'none' : 'all'"
+          role="button"
+          [attr.aria-pressed]="isDirectionSideActive('A')"
+          [attr.aria-label]="getDirectionBadgeTooltip('A')"
+          (mousedown)="onDirectionBadgeMouseDown($event)"
+          (click)="onDirectionBadgeClick('A', $event)"
+          (dblclick)="$event.stopPropagation(); $event.preventDefault()"
+          (contextmenu)="$event.stopPropagation(); $event.preventDefault()">
+          <title>{{ getDirectionBadgeTooltip('A') }}</title>
+          <circle [attr.cx]="toSvgX(dirPts[0].x)" [attr.cy]="toSvgY(dirPts[0].y)" r="20"
+            class="svg-direction-badge-hover-ring"></circle>
           <circle [attr.cx]="toSvgX(dirPts[0].x)" [attr.cy]="toSvgY(dirPts[0].y)" r="16"
-            class="svg-direction-badge-halo" stroke="#f59e0b"></circle>
-          <circle [attr.cx]="toSvgX(dirPts[0].x)" [attr.cy]="toSvgY(dirPts[0].y)" r="12" fill="#f59e0b"></circle>
+            class="svg-direction-badge-halo"></circle>
+          <circle [attr.cx]="toSvgX(dirPts[0].x)" [attr.cy]="toSvgY(dirPts[0].y)" r="12"
+            class="svg-direction-badge-core"></circle>
           <text [attr.x]="toSvgX(dirPts[0].x)" [attr.y]="toSvgY(dirPts[0].y)" class="svg-direction-badge-text"
             text-anchor="middle" dominant-baseline="central">A</text>
         </g>
-        <!-- Insignia B en Electric Amber (#f59e0b - Lado B) -->
-        <g class="svg-direction-badge select-none">
+        <!-- Insignia B (Lado B) -->
+        <g class="svg-direction-badge select-none"
+          [class.is-active]="isDirectionSideActive('B')"
+          [class.is-inactive]="!isDirectionSideActive('B')"
+          [style.pointer-events]="(activeOpenShape() || isCanvasLocked()) ? 'none' : 'all'"
+          role="button"
+          [attr.aria-pressed]="isDirectionSideActive('B')"
+          [attr.aria-label]="getDirectionBadgeTooltip('B')"
+          (mousedown)="onDirectionBadgeMouseDown($event)"
+          (click)="onDirectionBadgeClick('B', $event)"
+          (dblclick)="$event.stopPropagation(); $event.preventDefault()"
+          (contextmenu)="$event.stopPropagation(); $event.preventDefault()">
+          <title>{{ getDirectionBadgeTooltip('B') }}</title>
+          <circle [attr.cx]="toSvgX(dirPts[1].x)" [attr.cy]="toSvgY(dirPts[1].y)" r="20"
+            class="svg-direction-badge-hover-ring"></circle>
           <circle [attr.cx]="toSvgX(dirPts[1].x)" [attr.cy]="toSvgY(dirPts[1].y)" r="16"
-            class="svg-direction-badge-halo" stroke="#f59e0b"></circle>
-          <circle [attr.cx]="toSvgX(dirPts[1].x)" [attr.cy]="toSvgY(dirPts[1].y)" r="12" fill="#f59e0b"></circle>
+            class="svg-direction-badge-halo"></circle>
+          <circle [attr.cx]="toSvgX(dirPts[1].x)" [attr.cy]="toSvgY(dirPts[1].y)" r="12"
+            class="svg-direction-badge-core"></circle>
           <text [attr.x]="toSvgX(dirPts[1].x)" [attr.y]="toSvgY(dirPts[1].y)" class="svg-direction-badge-text"
             text-anchor="middle" dominant-baseline="central">B</text>
         </g>
@@ -314,6 +342,10 @@
       <span class="help-item me-1"><kbd class="kbd-key">Clic en lienzo</kbd> {{ isLine() ? 'Crear línea' : 'Crear área'
         }}</span>
       @if (totalShapesCount() > 0) {
+      @if (isLine()) {
+      <span class="help-sep">·</span>
+      <span class="help-item me-1"><kbd class="kbd-key">Clic en A / B</kbd> Cambiar sentido ({{ strDirection }})</span>
+      }
       <span class="help-sep">·</span>
       <span class="help-item me-1"><kbd class="kbd-key">Doble clic en punto</kbd> Eliminar punto</span>
       <span class="help-sep">·</span>

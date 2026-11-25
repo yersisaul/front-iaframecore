@@ -40,6 +40,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
   @Input() highlightError: boolean = false;
 
   @Output() geometryChanged = new EventEmitter<any>();
+  @Output() strDirectionChanged = new EventEmitter<'Bidireccional' | 'De A a B' | 'De B a A'>();
 
   @ViewChild('canvasContainer', { static: false }) canvasContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('quickHelpBar', { static: false }) quickHelpBarRef?: ElementRef<HTMLDivElement>;
@@ -229,6 +230,11 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     if (changes['scaleFactor']) {
       if (this.shapes().length > 0) {
         this.emitGeometry(!changes['scaleFactor'].firstChange);
+      }
+    }
+    if (changes['strDirection']) {
+      if (this.geometryType === 'line' && this.shapes().length > 0) {
+        this.emitGeometry(false);
       }
     }
     if (changes['geometryType']) {
@@ -1675,6 +1681,52 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
     };
   }
 
+  // --- Interacción con Insignias de Dirección A y B ---
+
+  isDirectionSideActive(side: 'A' | 'B'): boolean {
+    if (side === 'A') {
+      return this.strDirection !== 'De A a B';
+    }
+    return this.strDirection !== 'De B a A';
+  }
+
+  getNextDirectionForToggle(side: 'A' | 'B'): 'Bidireccional' | 'De A a B' | 'De B a A' {
+    if (side === 'A') {
+      return this.strDirection === 'De A a B' ? 'Bidireccional' : 'De A a B';
+    }
+    return this.strDirection === 'De B a A' ? 'Bidireccional' : 'De B a A';
+  }
+
+  getDirectionBadgeTooltip(side: 'A' | 'B'): string {
+    const isActive = this.isDirectionSideActive(side);
+    const otherSide = side === 'A' ? 'B' : 'A';
+    if (!isActive) {
+      return `Lado ${side} desactivado · Clic para activar ${side} (Bidireccional)`;
+    }
+    if (this.strDirection === 'Bidireccional') {
+      return `Dirección actual: Bidireccional · Clic para desactivar ${side} (solo De ${side} a ${otherSide})`;
+    }
+    return `Lado ${side} activo (recibe la flecha) · Clic para invertir a De ${side} a ${otherSide}`;
+  }
+
+  onDirectionBadgeMouseDown(event: MouseEvent): void {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  onDirectionBadgeClick(side: 'A' | 'B', event: MouseEvent): void {
+    event.stopPropagation();
+    event.preventDefault();
+    if (this.isCanvasLocked() || this.activeOpenShape() !== null) {
+      return;
+    }
+
+    const nextDirection = this.getNextDirectionForToggle(side);
+    this.strDirection = nextDirection;
+    this.strDirectionChanged.emit(nextDirection);
+    this.emitGeometry(false);
+  }
+
   calculateAnalysisZone(p1: Point2D, p2: Point2D, halfWidth: number = 20): Point2D[] {
     if (!p1 || !p2) return [];
 
@@ -1757,6 +1809,7 @@ export class AnalyticCanvasComponent implements AfterViewInit, OnDestroy, OnChan
         return {
           camera_id: this.cameraId || '',
           label: `Linea${idx}`,
+          str_direction: this.strDirection || 'Bidireccional',
           extreme_points: s.points.map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) })),
           direction_points: this.calculateDirectionPoints(p1, p2, 15).map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) })),
           analysis_zone: this.calculateAnalysisZone(p1, p2, halfW).map(p => ({ x: clamp(p.x, maxW), y: clamp(p.y, maxH) }))

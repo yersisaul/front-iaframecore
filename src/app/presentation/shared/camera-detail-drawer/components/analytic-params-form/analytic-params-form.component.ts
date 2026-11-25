@@ -1298,6 +1298,7 @@ export class AnalyticParamsFormComponent implements OnChanges {
         this.selectedType.set('object_in_area');
         this.selectedClassIndexes.set([]);
         this.metadatos.set(false);
+        this.strDirection.set('Bidireccional');
         this.geometryTypeChanged.emit('polygon');
       }
     }
@@ -1420,7 +1421,20 @@ export class AnalyticParamsFormComponent implements OnChanges {
     if (params['zona_analisis'] !== undefined || params['Zona'] !== undefined || params['zona'] !== undefined) {
       this.zonaLinea.set(Number(params['zona_analisis'] ?? params['Zona'] ?? params['zona']));
     }
-    if (params['str_direction'] !== undefined) this.strDirection.set(params['str_direction']);
+
+    const rawGeo = this.initialValues.geometricObjects || this.initialValues.geometric_objects;
+    const rawLines = rawGeo?.lines || rawGeo?.lineas;
+    const lineDirection = Array.isArray(rawLines)
+      ? rawLines.find((l: any) => typeof l?.str_direction === 'string' && l.str_direction.trim().length > 0)?.str_direction
+      : undefined;
+
+    if (lineDirection !== undefined) {
+      this.strDirection.set(lineDirection);
+    } else if (params['str_direction'] !== undefined) {
+      this.strDirection.set(params['str_direction']);
+    } else {
+      this.strDirection.set('Bidireccional');
+    }
 
     // Para Reconocimiento Facial y de Placas:
     // Se extraen todos los list_id o se resuelven por class_name
@@ -1724,13 +1738,9 @@ export class AnalyticParamsFormComponent implements OnChanges {
       specificParams['Modelo'] = 'dependencias/weights/licence_detector/placas.pt';
     } else if (selType === 'line_crossing') {
       specificParams['Color'] = this.colorFiltro();
-      specificParams['str_direction'] = this.strDirection();
     } else if (selType === 'capacity_control') {
       specificParams['Aforo'] = this.aforoMaximo();
       specificParams['Aforo actual'] = this.aforoActual();
-      specificParams['str_direction'] = this.strDirection();
-    } else if (selType === 'traffic_analysis') {
-      specificParams['str_direction'] = this.strDirection();
     }
 
     const isLineType = typeObj?.geometryType === 'line';
@@ -1759,7 +1769,8 @@ export class AnalyticParamsFormComponent implements OnChanges {
         iou_threshold: this.iouTrackerThreshold()
       },
       detection_params: detectionParams,
-      specific_params: specificParams
+      specific_params: specificParams,
+      ...(isLineType ? { str_direction: this.strDirection() } : {})
     };
     this.formChanged.emit(payload);
   }

@@ -221,3 +221,132 @@ describe('AnalyticParamsFormComponent - Umbral de Similitud Facial', () => {
     expect(component.confianzaRF()).toBe(86);
   });
 });
+
+describe('AnalyticParamsFormComponent - Dirección en Cruce de Línea (str_direction)', () => {
+  let component: AnalyticParamsFormComponent;
+  let fixture: ComponentFixture<AnalyticParamsFormComponent>;
+
+  const mockListService = {
+    lists: signal([]),
+    isLoading: signal(false),
+    loadLists: vi.fn().mockReturnValue(of([])),
+  };
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [AnalyticParamsFormComponent],
+      providers: [
+        { provide: ListService, useValue: mockListService }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(AnalyticParamsFormComponent);
+    component = fixture.componentInstance;
+    await fixture.whenStable();
+  });
+
+  it('debe emitir str_direction en el nivel raíz y omitirlo de specific_params para line_crossing', () => {
+    component.selectedType.set('line_crossing');
+
+    let emittedPayload: any = null;
+    component.formChanged.subscribe((payload) => {
+      emittedPayload = payload;
+    });
+
+    component.selectDirection('De A a B');
+    expect(emittedPayload).not.toBeNull();
+    expect(emittedPayload.str_direction).toBe('De A a B');
+    expect(emittedPayload.specific_params.str_direction).toBeUndefined();
+
+    component.selectDirection('De B a A');
+    expect(emittedPayload.str_direction).toBe('De B a A');
+    expect(emittedPayload.specific_params.str_direction).toBeUndefined();
+  });
+
+  it('debe restaurar strDirection desde geometricObjects.lines cuando parameters no incluye str_direction', () => {
+    const initial = {
+      type: 'Cruce de Linea',
+      parameters: {},
+      geometricObjects: {
+        lines: [
+          {
+            label: 'Linea0',
+            str_direction: 'De B a A',
+            extreme_points: [{ x: 10, y: 10 }, { x: 100, y: 100 }],
+            analysis_zone: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }]
+          }
+        ]
+      }
+    };
+    component.initialValues = initial;
+
+    component.ngOnChanges({
+      initialValues: new SimpleChange(null, initial, true)
+    });
+
+    expect(component.strDirection()).toBe('De B a A');
+  });
+
+  it('debe priorizar geometricObjects.lines[0].str_direction sobre parameters.str_direction legado', () => {
+    const initial = {
+      type: 'Cruce de Linea',
+      parameters: {
+        str_direction: 'De B a A'
+      },
+      geometricObjects: {
+        lines: [
+          {
+            label: 'Linea0',
+            str_direction: 'De A a B',
+            extreme_points: [{ x: 10, y: 10 }, { x: 100, y: 100 }],
+            analysis_zone: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }]
+          }
+        ]
+      }
+    };
+    component.initialValues = initial;
+
+    component.ngOnChanges({
+      initialValues: new SimpleChange(null, initial, true)
+    });
+
+    expect(component.strDirection()).toBe('De A a B');
+  });
+
+  it('debe usar parameters.str_direction como fallback si geometricObjects.lines no trae str_direction', () => {
+    const initial = {
+      type: 'Cruce de Linea',
+      parameters: {
+        str_direction: 'De A a B'
+      },
+      geometricObjects: {
+        lines: [
+          {
+            label: 'Linea0',
+            extreme_points: [{ x: 10, y: 10 }, { x: 100, y: 100 }],
+            analysis_zone: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }]
+          }
+        ]
+      }
+    };
+    component.initialValues = initial;
+
+    component.ngOnChanges({
+      initialValues: new SimpleChange(null, initial, true)
+    });
+
+    expect(component.strDirection()).toBe('De A a B');
+  });
+
+  it('debe restablecer strDirection a Bidireccional cuando initialValues pasa a null', () => {
+    component.selectDirection('De A a B');
+    expect(component.strDirection()).toBe('De A a B');
+
+    component.initialValues = null;
+    component.ngOnChanges({
+      initialValues: new SimpleChange({ type: 'Cruce de Linea' }, null, false)
+    });
+
+    expect(component.strDirection()).toBe('Bidireccional');
+  });
+});
